@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hearth</string>
+    <string name="connect_title">Connect Hearth</string>
+    <string name="connect_message">Enter the private Hearth address once, then approve this television from an adult phone.</string>
+    <string name="server_address">Hearth address</string>
+    <string name="connect_action">Continue</string>
+    <string name="pairing_title">Connect this television</string>
+    <string name="pairing_message">On your phone, open Hearth, then More, Paired televisions and enter this code.</string>
+    <string name="pairing_waiting">Waiting for an adult’s approval…</string>
+    <string name="try_again">Try again</string>
+    <string name="change_address">Change address</string>
+    <string name="offline_title">Hearth is out of reach</string>
+    <string name="offline_message">Check that the Synology is awake and this television is connected to the home network.</string>
+    <string name="revoked_title">This television was disconnected</string>
+    <string name="revoked_message">Ask an adult to pair it again from Hearth settings.</string>
+    <string name="webview_update_title">Hearth needs a WebView update</string>
+    <string name="webview_update_message">Update Android System WebView on this television, then reopen Hearth.</string>
+</resources>

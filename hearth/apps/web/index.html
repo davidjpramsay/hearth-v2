@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      (() => {
+        let preference = 'automatic';
+        let eveningDimming = false;
+        try {
+          const saved = JSON.parse(localStorage.getItem('hearth.appearance.v1') ?? '{}');
+          if (['light', 'dark', 'automatic'].includes(saved.theme)) preference = saved.theme;
+          if (typeof saved.eveningDimming === 'boolean') eveningDimming = saved.eveningDimming;
+        } catch {
+          // Invalid or unavailable local storage falls back to the device setting.
+        }
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const resolved = preference === 'automatic' ? (systemDark ? 'dark' : 'light') : preference;
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.dataset.themePreference = preference;
+        document.documentElement.dataset.eveningDim = String(eveningDimming);
+        document.documentElement.style.colorScheme = resolved;
+      })();
+    </script>
+    <script>
+      if (navigator.userAgent.includes('HearthTV/')) {
+        document
+          .querySelector('meta[name="viewport"]')
+          ?.setAttribute('content', 'width=1920, viewport-fit=cover');
+      }
+    </script>
+    <meta name="theme-color" content="#f8f6f0" />
+    <link rel="icon" href="/brand/hearth-mark.png" />
+    <title>Hearth</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

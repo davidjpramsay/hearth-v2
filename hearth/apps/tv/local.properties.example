@@ -1,0 +1,2 @@
+# Copy to local.properties and replace this placeholder with the installed Android SDK.
+sdk.dir=/absolute/path/to/android-sdk

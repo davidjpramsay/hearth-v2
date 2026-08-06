@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hearth_canvas">#F7F4ED</color>
+    <color name="hearth_charcoal">#292F31</color>
+    <color name="hearth_eucalyptus">#3F7251</color>
+    <color name="hearth_sky">#1478BF</color>
+    <color name="hearth_sky_soft">#DDECF8</color>
+    <color name="hearth_surface">#FFFEFA</color>
+    <color name="hearth_muted">#60686A</color>
+</resources>

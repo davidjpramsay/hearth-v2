@@ -1,0 +1,285 @@
+# Hearth v2 implementation roadmap
+
+The roadmap is deliberately vertical. Each phase must leave a coherent, testable product state rather than a wide collection of unfinished modules.
+
+## Phase 0 — Foundation and decision validation
+
+### Work
+
+- Re-read all authoritative documents and report contradictions before coding.
+- Inspect available Node, pnpm, Java/Kotlin and Android tooling.
+- Create the pnpm monorepo under `hearth/` with `apps/server`, `apps/web`, `packages/shared` and `packages/core`.
+- Reserve `apps/tv` with documentation; do not let missing Android SDK block web/server progress.
+- Add strict TypeScript, formatting, linting, tests and reproducible scripts.
+- Establish original design tokens and seeded demo household data.
+- Add a workspace-level `.env.example` without secrets.
+- Add a concise `hearth/README.md` with verified setup/run/test commands.
+
+### Completion criteria
+
+- A clean install can run the web and server locally.
+- Typecheck, lint, tests and production builds pass.
+- No real provider credential is required.
+
+## Phase 1 — Television interaction prototype
+
+### Work
+
+- Build an original Today surface using seeded data.
+- Build Week calendar and Chores surfaces.
+- Implement persistent TV navigation and complete D-pad/keyboard focus behaviour.
+- Implement chore completion in an in-memory/fake adapter with undo.
+- Build deliberate loading, empty, stale and offline demonstrations.
+- Add responsive phone rendering for the same core information.
+- Add Playwright flows for remote-equivalent navigation.
+- Render and inspect 4K/1080 and iPhone viewports.
+
+### Completion criteria
+
+- A user can navigate Today → Week → Chores, complete a chore and return using only arrow keys, Enter and Escape/Back equivalents.
+- Focus is always visible and stable.
+- The Today screen is legible at a simulated three-metre distance.
+- The interface is recognisably Hearth and does not imitate Skylight's layout or branding.
+- Seeded state and error states are deterministic and testable.
+
+## Phase 2 — Household core and persistence
+
+Implementation note (2026-08-03): Phase 2 is implemented. The phone Admin area manages the household, people/roles, paired televisions and connection readiness. WAL-mode SQLite now persists setup, chore templates, generated occurrence snapshots, completion/undo/skip state, idempotent command receipts and audit events. One-time television pairing is independently revocable. Server-Sent Events invalidate open Today/Chores clients after commands. Restart, closed-database backup/restore, historical-template, duplicate-request and TV/adult/child/voice/automation permission tests cover the completion criteria.
+
+Recurring chore editing remains intentionally out of the Admin UI until the denser phone-oriented administration work in Phase 4. Phase 2 establishes and tests its server/domain persistence contract without putting dense editing on the television.
+
+### Work
+
+- Implement household, member, role/capability and paired-device domain models.
+- Add SQLite migrations and repositories.
+- Implement chore templates, occurrence generation, completion/undo/skip and audit events.
+- Replace in-memory UI mutations with the typed API.
+- Add request identifiers/idempotency for voice/automation-safe commands.
+- Add Today summary query and real-time invalidation/update channel.
+
+### Completion criteria
+
+- State survives server restart.
+- Historical occurrences remain correct after template changes.
+- Duplicate completion requests do not double-award or corrupt state.
+- Permission and audit tests cover TV, adult, child and automation actors.
+- Backup and restore of a development database is demonstrated.
+
+## Phase 3 — Calendar projection
+
+Status: complete and locally verified. iCloud/CalDAV is the selected first
+provider; credentialed live-read validation remains an owner-controlled setup
+action and is not required in demo mode.
+
+### Work
+
+- Finalise provider-agnostic calendar contracts. **Complete.**
+- Implement fake provider sync and recurrence/all-day test corpus. **Complete.**
+- Add the selected provider read-only. **Complete for CalDAV/iCloud.**
+- Implement sync status, stale cache and provider-error handling. **Complete.**
+- Only after explicit approval, add scoped event writes and conflict handling.
+
+### Completion criteria
+
+- Multiple calendars render with owner/source identity.
+- Provider outage leaves cached events usable.
+- Perth local dates, imported DST events, all-day events and recurrence exceptions are tested.
+- No real event is changed without approved write scope.
+
+The completed slice includes multiple source/owner identity, durable SQLite
+cache/cursor/window state, all-day and inclusive local-date projection,
+recurrence exceptions, cancellation tombstones, imported-DST date tests and
+offline/provider-outage recovery. The first real adapter uses HTTPS CalDAV,
+server-side exact calendar allowlisting, bounded recurrence expansion,
+family-safe error mapping and an external secret-config path. Contract tests
+run the adapter through the persisted Today repository. No credentialed iCloud
+read was attempted; that is a deployment validation item rather than missing
+application code. Any calendar write scope remains separately deferred.
+
+Implementation extension (2026-08-04): the owner approved Month after rendered
+television evaluation. Month now uses the existing provider-neutral projection
+through one typed 42-day query, compact colour-coded event titles with bounded
+overflow, an avatar/colour source key, deterministic D-pad navigation and a
+responsive Week/Month phone switch with a selected-date agenda. No calendar
+credential, write scope or migration was added.
+
+## Phase 4 — Lists, meals and rewards
+
+Status: complete and locally verified with deterministic demo household data.
+
+### Work
+
+- Lists and item completion/addition.
+- Meal plan and saved meals.
+- Reward definitions and ledger.
+- Phone-oriented administration for recurring chores, meals and rewards.
+- Voice-ready typed commands for the new modules.
+
+### Completion criteria
+
+- Ordinary list and meal operations work from TV and phone where appropriate.
+- Reward reversals preserve history.
+- Voice retries do not duplicate list items or reward entries.
+- Dense editing remains out of the TV's primary interaction path.
+
+Implementation note (2026-08-03): Lists and Meals now have D-pad television
+surfaces and responsive phone presentations. The phone Family Planning area
+edits future recurring chores, dinners/saved meals, reward definitions,
+adjustments and history-preserving reversals. Typed voice list commands resolve
+the target without guessing, normalize exact duplicates and use persisted
+idempotency receipts. Migration `0005_household_planning.sql` persists the new
+modules, while chore completion/undo appends matching reward award/reversal
+entries. Unit, Fastify/SQLite integration, migration, accessibility, remote,
+offline, failure/retry and rendered-viewport tests cover the completion
+criteria.
+
+## Phase 5 — Home Assistant integration and Assist command API
+
+Status: complete and locally verified with a fake Home Assistant adapter. Live
+Home Assistant credentials, entity mapping and hardware presence/IR tuning are
+deployment validation work and were not performed.
+
+### Work
+
+- Implement Home Assistant server adapter and curated state projection.
+- Configure allowlisted actions with validation, roles and confirmations.
+- Implement Hearth command endpoints for Home Assistant scripts.
+- Add deterministic Home Assistant Assist API flows for reading the day and completing a chore. Home Assistant owns capture, recognition and speech.
+- Add presence/IR automation guard conditions.
+
+### Completion criteria
+
+- “Mark Ezra's dishwasher chore complete today” updates exactly one occurrence and returns the correct text for Home Assistant/Piper to speak.
+- A generic protected-media signal from Home Assistant prevents automatic screen shutdown without exposing media metadata or controls in Hearth.
+- Home actions cannot call unlisted services/entities.
+- Home Assistant unavailability does not break calendars, chores or lists.
+
+Implementation note (2026-08-03): the responsive Home surface projects only
+living-room presence, TV power and a generic playback-protection signal. Three
+actions map to fixed server-side script IDs, with idempotency, actor checks,
+explicit Goodnight confirmation and audit events. Migration
+`0006_home_assistant_projection.sql` caches the minimal state. The `/assist`
+day-summary, list-item and chore-completion routes are structured entry points
+for Home Assistant; Hearth contains no listening or speaking UI. Browser,
+Fastify, SQLite, migration, focus/Back, accessibility and protected-playback
+tests cover the completion criteria using the fake adapter.
+
+## Phase 6 — Android TV shell
+
+### Work
+
+- Create the Kotlin TV project and manifest/launcher resources.
+- Implement the controlled WebView and secure origin/bridge.
+- Implement one-time device pairing and credential storage.
+- Implement Back/D-pad lifecycle, resume and recovery surface.
+- Test on an Android TV emulator, then on the selected TCL television.
+
+### Completion criteria
+
+- Hearth launches from Google TV like a normal TV application.
+- Overnight standby/resume restores a usable screen.
+- Normal Google TV switching away from and back to Hearth restores sensible state/focus.
+- Network and server outages show recoverable product UI, not a blank WebView.
+- No integration secret is present in the APK/web bundle.
+
+Implementation note (2026-08-04): the Kotlin shell, TV launcher manifest,
+controlled WebView, exact-origin bridge, native pairing/revocation flow,
+Keystore-backed credential encryption, Back callback, last-route restoration
+and branded recovery surfaces are implemented. Android unit tests, lint, debug
+APK assembly and minified release APK assembly pass against API 36. The API 36
+Google TV emulator now has retained evidence for pairing, a 1920-pixel logical
+viewport, D-pad complete/undo, Back/exit, process recreation, app switching,
+sleep/wake, server recovery and revocation. Phase 6 remains in progress until
+the selected TCL television passes the same checks, including a visible launcher
+tile, actual network disconnect and overnight standby/resume. No media-launch or
+Home Assistant bridge was added.
+
+## Parallel deployment workstream — Home Assistant voice and music
+
+Status: planned and documented; not installed or verified on the live Pi,
+Synology or selected TCL. This is household-infrastructure commissioning, not a
+new Hearth application phase.
+
+### Work
+
+- Preserve and verify a restorable Home Assistant/Pi backup before changing the
+  live appliance.
+- Install the Music Assistant Home Assistant OS app and connect the official
+  Home Assistant integration.
+- Add Jellyfin as a Music Assistant music source with a dedicated
+  least-privilege account kept outside this workspace.
+- Add the TCL through native Google Cast for music, explicitly enable the
+  television/video Cast player that Music Assistant disables by default, and
+  add Android TV Remote for power, volume and approved app control.
+- Name the Cast player `Hearth TV` and map the living-room Voice Preview
+  Edition/area to that target when a request omits a room.
+- Install and configure Music Assistant's custom local voice-support
+  blueprints/intents; do not claim arbitrary song-starting is built into Home
+  Assistant core.
+- Extend the Home Assistant protected-playback helper so both native-app and
+  Cast playback prevent presence-driven screen shutdown.
+- Test wake, Cast takeover, metadata, eARC audio, pause/resume/stop/volume,
+  ambiguous titles, loud-playback push-to-talk and recovery after Pi, TV and
+  network restarts.
+
+### Completion criteria
+
+- “Play Dreams by Fleetwood Mac” heard by the living-room voice unit resolves
+  through Music Assistant and plays on `Hearth TV` without naming the room.
+- An explicitly named room/player overrides the living-room mapping.
+- Playback uses Google Cast; no Jellyfin UI keypress or ADB automation is
+  required.
+- Home Assistant does not power off the panel while native or Cast media is
+  active, and returns to normal presence policy when playback ends.
+- Music Assistant or Jellyfin unavailability produces a clear voice failure and
+  does not affect Hearth calendars, chores, lists or launch/resume.
+- Jellyfin-source search, refresh, playlists and long playback pass a household
+  reliability trial; if not, a separately approved read-only Synology
+  music-share fallback is documented and tested.
+- A Home Assistant backup containing the new configuration is restored in a
+  safe test context.
+
+## Phase 7 — Photos, ambient mode and production operations
+
+Status as of 2026-08-05: in progress. The browser/server Photos slice is
+implemented with an injected fake/local source, opaque asset contracts, a
+forward-only photo migration, original mixed-orientation demo derivatives,
+responsive gallery, ambient slideshow, immediate remote exit, cached-source
+states and corrupt-image fallback. Live Synology selection/indexing,
+Home Assistant presence/quiet-hours coordination, production deployment,
+restore evidence and the household pilot remain open; Phase 7 is not complete.
+
+Cross-cutting appearance extension (2026-08-05): Light, Dark and Automatic are
+implemented as per-display browser/WebView preferences, with Automatic following
+the device colour scheme. A separate evening-dimming switch reduces Hearth's
+rendered glare without invoking Home Assistant or claiming television-brightness
+control. More/Admin and the TV rail expose the same remote-safe controls. Unit,
+accessibility, persistence, system-change, D-pad/Back and five-viewport rendered
+checks pass; physical-TCL comfort assessment remains part of the household pilot.
+
+### Work
+
+- Add approved Synology photo source, indexing and derivatives.
+- Add ambient slideshow and screen/presence coordination.
+- Create production Docker images and Synology Compose deployment.
+- Implement health monitoring, backup, restore and update procedures.
+- Conduct a household pilot and tune television readability/presence rules.
+
+### Completion criteria
+
+- Photos are attractive, correctly oriented and do not expose filesystem paths.
+- The television never remains on indefinitely after the room is unoccupied.
+- Backup restoration is performed, not merely documented.
+- Synology, Pi, router and TV restart scenarios recover without developer intervention.
+- The system passes `ACCEPTANCE.md` on actual target hardware.
+
+## Deferred opportunities
+
+- General conversational agent over the allowlisted command layer
+- Dedicated local-AI mini-PC
+- Native iOS companion
+- Multiple households/remote family sharing
+- Recipe/ingredient management
+- Advanced energy and home-status visualisations
+- Premium unified remote integration
+- MCP adapter over existing authenticated application services

@@ -1,0 +1,160 @@
+:root {
+  color-scheme: light;
+  --canvas: #f8f6f0;
+  --surface: #fffefa;
+  --surface-muted: #f0ede5;
+  --surface-soft: #f5f2eb;
+  --surface-glass: rgb(255 254 250 / 72%);
+  --input-surface: #ffffff;
+  --ink: #292f31;
+  --muted: #5f6667;
+  --hairline: #ddd9d0;
+  --eucalyptus: #3f7251;
+  --eucalyptus-soft: #e7f0e9;
+  --sky: #1668b7;
+  --sky-soft: #e6f0fa;
+  --ochre: #c97900;
+  --marigold: #c97900;
+  --ochre-soft: #fff1d8;
+  --brick: #a83b31;
+  --brick-soft: #fbe9e6;
+  --warm-ivory: #f6f1e8;
+  --plum: #55324a;
+  --plum-soft: #f1e5ee;
+  --terracotta: #c66c4e;
+  --sage: #718778;
+  --sage-soft: #e7ece5;
+  --radius-panel: 20px;
+  --radius-small: 12px;
+  --shadow-rest: 0 8px 24px rgb(48 50 47 / 8%);
+  --shadow-focus: 0 12px 30px rgb(39 66 50 / 20%);
+  --focus-halo: rgb(63 114 81 / 26%);
+  --evening-overlay: transparent;
+  --safe: 48px;
+  --rail: 254px;
+  font-family: 'Source Sans 3 Variable', 'Source Sans 3', system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #151a18;
+  --surface: #202724;
+  --surface-muted: #29312e;
+  --surface-soft: #242c29;
+  --surface-glass: rgb(32 39 36 / 88%);
+  --input-surface: #1b211f;
+  --ink: #f1eee7;
+  --muted: #b6bfbb;
+  --hairline: #424c47;
+  --eucalyptus: #82c895;
+  --eucalyptus-soft: #243a2b;
+  --sky: #76baf6;
+  --sky-soft: #20374b;
+  --ochre: #f0b45a;
+  --marigold: #f0b45a;
+  --ochre-soft: #44351f;
+  --brick: #f09287;
+  --brick-soft: #472b29;
+  --warm-ivory: #181e1c;
+  --plum: #d7a4c2;
+  --plum-soft: #3d2d37;
+  --terracotta: #e58b69;
+  --sage: #a4b8a9;
+  --sage-soft: #28372e;
+  --shadow-rest: 0 9px 25px rgb(0 0 0 / 24%);
+  --shadow-focus: 0 14px 34px rgb(0 0 0 / 38%);
+  --focus-halo: rgb(118 186 246 / 25%);
+}
+
+:root[data-evening-dim='true'] {
+  --evening-overlay: rgb(4 8 6 / 14%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  background: var(--evening-overlay);
+  pointer-events: none;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.focusable {
+  outline: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.focusable:focus-visible,
+.icon-action:focus-visible,
+.week-footer-controls button:focus-visible,
+.primary-action:focus-visible,
+.text-action:focus-visible,
+.phone-tab:focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 7px var(--focus-halo),
+    var(--shadow-focus);
+  transform: translateY(-2px) scale(1.01);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .focusable:focus-visible,
+  .icon-action:focus-visible,
+  .primary-action:focus-visible,
+  .text-action:focus-visible,
+  .phone-tab:focus-visible {
+    transform: none;
+  }
+}

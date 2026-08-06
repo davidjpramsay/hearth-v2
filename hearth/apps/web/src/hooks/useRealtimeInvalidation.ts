@@ -1,0 +1,78 @@
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { RealtimeEventSchema } from '@hearth/shared';
+
+import { hearthApi, queryKeys } from '../api/client';
+
+export function useRealtimeInvalidation(): void {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (typeof EventSource === 'undefined') return undefined;
+    const source = new EventSource(hearthApi.realtimeUrl);
+    const receive = (message: MessageEvent<string>) => {
+      let payload: unknown;
+      try {
+        payload = JSON.parse(message.data) as unknown;
+      } catch {
+        return;
+      }
+      const parsed = RealtimeEventSchema.safeParse(payload);
+      if (!parsed.success) return;
+      if (parsed.data.kind === 'chore.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.rewards }),
+        ]);
+        return;
+      }
+      if (parsed.data.kind === 'list.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.lists }),
+        ]);
+        return;
+      }
+      if (parsed.data.kind === 'meal.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+          queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'meals'] }),
+        ]);
+        return;
+      }
+      if (parsed.data.kind === 'reward.changed') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.rewards });
+        return;
+      }
+      if (parsed.data.kind === 'chore-template.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.choreTemplates }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
+        ]);
+        return;
+      }
+      if (parsed.data.kind === 'home.changed') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.home });
+        return;
+      }
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
+      ]);
+    };
+    source.addEventListener('chore.changed', receive as EventListener);
+    source.addEventListener('household.changed', receive as EventListener);
+    source.addEventListener('list.changed', receive as EventListener);
+    source.addEventListener('meal.changed', receive as EventListener);
+    source.addEventListener('reward.changed', receive as EventListener);
+    source.addEventListener('chore-template.changed', receive as EventListener);
+    source.addEventListener('home.changed', receive as EventListener);
+    return () => source.close();
+  }, [queryClient]);
+}

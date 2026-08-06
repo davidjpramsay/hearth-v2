@@ -1,0 +1,187 @@
+# Hearth v2 television and companion UX specification
+
+## Design target
+
+Hearth is viewed on a 65-inch landscape television from roughly two to four metres away. It is not a tablet interface enlarged onto a wall. The initial logical canvas is 1920×1080 and must scale cleanly to a 3840×2160 panel and to ordinary laptop/mobile browsers.
+
+## Original design language
+
+Use a calm domestic visual system rather than an enterprise dashboard or a copy of Skylight:
+
+- warm off-white or deep charcoal surfaces depending on time of day
+- charcoal primary text
+- eucalyptus green for constructive actions and completion
+- clear sky blue for calendar/navigation state
+- ochre for attention, not generic decoration
+- restrained person colours with labels or avatars as a second cue
+- soft depth and grouping, with few large surfaces rather than many cards
+- family photography as a first-class visual element
+
+Do not use Skylight artwork, wording, proprietary icons or a screenshot as the implementation template.
+
+## Readability and sizing
+
+- Normal television body text: at least 28 logical px.
+- Supporting text: at least 24 logical px when genuinely secondary.
+- Major headings/time: 44–72 logical px depending on hierarchy.
+- Focusable target height: at least 64 logical px; prefer 72–88 px for repeated rows.
+- Maintain a television-safe inset of at least 48 logical px on every edge.
+- Do not place essential text over detailed photos without an opaque or strongly graduated treatment.
+- Use no more than two dense columns of actionable content on the Today view.
+
+Exact numbers may be refined from real-TV testing, but may not be reduced merely to fit more data.
+
+## Navigation model
+
+Primary commands are Up, Down, Left, Right, Select and Back.
+
+- A persistent navigation rail or dock exposes Today, Calendar, Chores, Lists, Meals, Photos and selected Home actions.
+- The focused destination and focused action are always visually obvious.
+- Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
+- Opening a detail page should place focus on its primary meaningful control.
+- Back returns to the previous product surface; a second Back at the root may hand control to Google TV after a confirmation or normal Android behaviour.
+- When normal Google TV app switching resumes Hearth, restore its prior screen and focus when possible.
+- Focus state must not rely on colour alone. Use scale, outline, elevation or shape change with reduced-motion support.
+- Long lists use page or controlled scroll behaviour and keep the focused row visible.
+
+Touch, mouse and keyboard can work in companion/admin contexts but cannot be the only path.
+
+## Screen map
+
+### Today
+
+The default shared overview:
+
+- time, date, weather and household mode
+- upcoming events grouped by time/person
+- due-now and due-today chores
+- dinner plan
+- one active notice
+- concise list summary
+- one orientation-safe family-photo panel that is large enough to read from the sofa while
+  remaining secondary to plans and chores; landscape and portrait sources must remain fully
+  visible without distortion, and the photo sits directly on the page without a tinted or
+  blurred backing panel
+- quick access to selected Home scenes
+
+The first focus should usually be the most relevant actionable item, not the navigation chrome.
+
+### Calendar
+
+- **Week:** primary television planning surface; columns/days must remain legible.
+- Week day headings include a compact, read-only forecast icon and temperature when forecast data is available; the phone agenda carries the same daily cue without compressing its event list.
+- **Agenda:** chronological list suitable for dense days.
+- **Today:** expanded day with person lanes where useful.
+- **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact colour-coded event titles and a deterministic `+N more` summary when the day is dense; faces and source labels appear once in a persistent Calendar key. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
+
+Event cards must express start time, title, owner/source and conflicts. Location and notes appear in a focused detail surface.
+
+### Chores and routines
+
+- The television family overview uses dynamic person columns. Three children produce three primary columns; additional assignees appear only when they have chores due.
+- Keep ordinary daily workloads within one television viewport by tightening row density only as needed, never below the minimum remote target size. Exceptional workloads must not silently hide chores.
+- Up/Down moves within one person’s chores and Left/Right moves to the nearest chore in an adjacent person column.
+- Personal view with outstanding and completed items.
+- One Select should complete an ordinary chore; undo remains available.
+- Adults can open detail/reassignment functions; children see fewer controls.
+- Completion feedback is satisfying but brief and respects reduced motion.
+
+### Lists
+
+- List chooser plus focused list.
+- Large checkable rows and visible item count.
+- Home Assistant Assist can add items through Hearth's typed command API; Hearth does not show a listening control.
+- Editing long text is primarily a phone/admin-web action.
+
+### Meals
+
+- Seven-day dinner strip or week plan.
+- Today's meal receives priority on Home.
+- Saved meals and grocery linkage can appear in companion/admin views without cluttering the TV.
+
+### Photos
+
+- Full-screen ambient slideshow.
+- Optional minimal overlay: time, next event and discreet notification badge.
+- Immediate remote exit.
+- Photo source/error state should never reveal filesystem paths or technical details to the household.
+
+### Home
+
+- A deliberately curated set of scenes and important states.
+- No raw entity IDs.
+- Initial actions: Evening, Goodnight and Screen Off.
+- Security-sensitive controls are omitted or require adult confirmation.
+
+### Settings/admin
+
+- Household, member, integration and permissions management.
+- Optimised for the companion browser rather than the family TV.
+- The TV may show connection status and pairing QR/code but should not expose secrets.
+
+### Appearance and evening comfort
+
+- Offer Light, Dark and Automatic themes as a per-display preference. Automatic follows that
+  display's browser/operating-system colour scheme; changing a phone does not silently restyle the
+  television.
+- Use a warm charcoal canvas and softened surfaces in Dark rather than pure black. Preserve
+  member/event identity colours, semantic states and the high-contrast blue D-pad focus treatment.
+- Provide Appearance in the companion More/Admin area and as a small remote-reachable television
+  rail utility.
+- Keep evening dimming independent of theme and Home Assistant's Evening scene. It reduces Hearth's
+  overall rendered glare, including photos and ambient mode, but does not claim to change panel
+  hardware brightness.
+- Apply the saved appearance before React renders to avoid a bright startup flash.
+
+## Responsive companion
+
+The same web application may present a phone-oriented shell for:
+
+- adding/editing events
+- managing recurring chores and rewards
+- maintaining meals and lists
+- uploading/approving photos
+- reviewing connection problems
+- configuring Home Assistant actions
+
+The companion is responsive, not a shrunken TV canvas. Shared domain components are encouraged; television navigation chrome need not be reused on mobile.
+
+## Required UI states
+
+Every data-driven surface needs intentional states for:
+
+- first-use/empty
+- loading
+- stale cached data
+- integration unavailable
+- permission denied
+- offline
+- optimistic mutation in progress
+- mutation failure with safe retry
+- destructive or ambiguous confirmation
+
+Do not substitute raw JSON, spinners without context or toast-only errors.
+
+## Accessibility
+
+- WCAG 2.2 AA contrast for text and controls.
+- Visible focus with at least a 3:1 contrast change against adjacent colours.
+- Colour is never the only person/calendar/status signal.
+- People setup offers a curated twelve-colour Hearth palette. Every swatch has a visible name,
+  native radio semantics, and a checked/focus treatment so colour is never the only selection cue.
+- Respect reduced-motion settings.
+- Avoid time-limited interaction.
+- Announce important state changes to assistive technology in the web companion.
+- Use plain, family-readable language rather than home-automation jargon.
+
+## Render verification viewports
+
+At minimum inspect:
+
+- 3840×2160 at target TV scale
+- 1920×1080
+- 1366×768 for constrained testing
+- 390×844 iPhone portrait
+- 844×390 iPhone landscape
+
+The decisive check is real-TV or Android TV emulator navigation using only D-pad and Back.

@@ -1,0 +1,28 @@
+.DS_Store
+
+# Local browser and test-run state
+.playwright-cli/
+playwright-report/
+test-results/
+
+# Hearth v2 web/server workspace
+node_modules/
+dist/
+coverage/
+.turbo/
+.vite/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# Hearth v2 Android TV workspace
+.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+
+# Local IDE state
+.idea/
+*.iml

@@ -1,0 +1,46 @@
+{
+  "name": "@hearth/workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build:packages": "pnpm --filter @hearth/shared build && pnpm --filter @hearth/core build",
+    "dev": "pnpm build:packages && pnpm --parallel --stream --filter @hearth/shared --filter @hearth/core --filter @hearth/server --filter @hearth/web dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "pnpm build:packages && pnpm -r --if-present typecheck",
+    "test": "pnpm test:unit",
+    "test:unit": "pnpm -r --if-present test:unit",
+    "test:integration": "pnpm --filter @hearth/server test:integration",
+    "test:migrations": "pnpm --filter @hearth/server test:migrations",
+    "build": "pnpm -r --if-present build",
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test --grep @visual",
+    "test:a11y": "playwright test --grep @a11y",
+    "tv:test": "./apps/tv/gradlew -p apps/tv testDebugUnitTest",
+    "tv:lint": "./apps/tv/gradlew -p apps/tv lintDebug lintRelease",
+    "tv:build": "./apps/tv/gradlew -p apps/tv assembleDebug assembleRelease",
+    "verify:tv": "pnpm tv:test && pnpm tv:lint && pnpm tv:build",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm test:migrations && pnpm build && pnpm test:e2e"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.62.1",
+    "@types/node": "26.1.2",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.3",
+    "globals": "17.9.0",
+    "prettier": "3.9.6",
+    "typescript": "6.0.2",
+    "typescript-eslint": "8.65.0",
+    "vitest": "4.1.10"
+  }
+}
