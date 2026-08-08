@@ -19,7 +19,7 @@ import { PlanningSettingsScreen } from './screens/PlanningSettingsScreen';
 import { PhotosScreen } from './screens/PhotosScreen';
 import { PhotosSettingsScreen } from './screens/PhotosSettingsScreen';
 import { PeopleSettingsScreen } from './screens/PeopleSettingsScreen';
-import { RewardsSettingsScreen } from './screens/RewardsSettingsScreen';
+import { PocketMoneySettingsScreen } from './screens/PocketMoneySettingsScreen';
 import { RoutinesSettingsScreen } from './screens/RoutinesSettingsScreen';
 import { TelevisionsSettingsScreen } from './screens/TelevisionsSettingsScreen';
 import { TodayScreen } from './screens/TodayScreen';
@@ -37,7 +37,7 @@ const defaultFocus: Record<string, string> = {
   '/admin': 'admin-household',
   '/admin/planning': 'planning-routines',
   '/admin/routines': 'routine-template-template_school_bag',
-  '/admin/rewards': 'reward-adjust-member_ezra',
+  '/admin/pocket-money': 'pocket-amount-member_ezra',
   '/admin/photos': 'admin-back',
   '/pair': 'pair-new-code',
 };
@@ -83,7 +83,8 @@ export function App() {
         <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
         <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
         <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
-        <Route path="/admin/rewards" element={<RewardsSettingsScreen />} />
+        <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
+        <Route path="/admin/rewards" element={<Navigate replace to="/admin/pocket-money" />} />
         <Route path="/pair" element={<PairingScreen />} />
         <Route path="*" element={<Navigate replace to="/today" />} />
       </Routes>

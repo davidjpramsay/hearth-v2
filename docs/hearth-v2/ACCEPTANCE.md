@@ -46,14 +46,19 @@ until the owner supplies an external app-specific credential and calendar
 allowlist. Write-conflict behaviour remains intentionally untested because no
 write scope or write implementation has been approved.
 
-### Chores and rewards
+### Chores and pocket money
 
 - One remote Select completes one pending occurrence and offers undo.
 - A retried voice/automation request does not create a second completion.
 - Editing a recurring chore does not rewrite past completions.
 - An adult can reverse an accidental completion with an audit trail.
 - A child cannot modify another person's history or household rules without permission.
-- Reward balances reconcile to the ledger after award, undo, adjustment and redemption.
+- Every participating child has a required weekly amount and payday in phone administration.
+- Chores shows each child's week-to-date completed/total count, percentage and proportional amount due without requiring scroll on the primary television layout.
+- Completing and undoing a chore updates that running total through the same typed chore contract.
+- Excused and cancelled occurrences do not reduce the percentage; skipped occurrences remain incomplete.
+- A recorded payment snapshots the counts, percentage and amount, is idempotent on retry and cannot be duplicated for the same child/week.
+- Star balances, per-chore points, reward choices and redemptions are absent from the active UI and API.
 
 ### Lists and meals
 

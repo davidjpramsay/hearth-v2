@@ -11,7 +11,6 @@ import {
 
 import {
   AddListItemRequestSchema,
-  AdjustRewardRequestSchema,
   AdminOverviewSchema,
   ApiErrorSchema,
   AssistAddListItemRequestSchema,
@@ -32,7 +31,6 @@ import {
   CreatePairingRequestSchema,
   CreateTvPairingSessionRequestSchema,
   CreateChoreTemplateRequestSchema,
-  CreateRewardDefinitionRequestSchema,
   CreateSavedMealRequestSchema,
   DemoScenarioRequestSchema,
   ExecuteHomeActionRequestSchema,
@@ -53,10 +51,11 @@ import {
   PairedDeviceSchema,
   PairingRequestSchema,
   PhotoGallerySchema,
+  PocketMoneyOverviewSchema,
+  PocketMoneyPaymentCommandResultSchema,
+  PocketMoneySettingsCommandResultSchema,
   RealtimeEventSchema,
-  RewardCommandResultSchema,
-  RewardDefinitionCommandResultSchema,
-  RewardsOverviewSchema,
+  RecordPocketMoneyPaymentRequestSchema,
   RevokeDeviceRequestSchema,
   SavedMealCommandResultSchema,
   TodaySummarySchema,
@@ -65,6 +64,7 @@ import {
   UpdateHouseholdRequestSchema,
   UpdateChoreTemplateRequestSchema,
   UpdateMemberRequestSchema,
+  UpdatePocketMoneySettingsRequestSchema,
   WeekScheduleSchema,
   UpsertMealPlanRequestSchema,
 } from '@hearth/shared';
@@ -81,6 +81,7 @@ import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant
 import { UnconfiguredPhotoSourceProvider } from './integrations/photo-source.js';
 import { PhotoService, type PhotoRepository } from './photo-repository.js';
 import { InMemoryPlanningRepository, type PlanningRepository } from './planning-repository.js';
+import { PocketMoneyService, type PocketMoneyRepository } from './pocket-money-repository.js';
 import {
   DEMO_TV_ACTOR,
   InMemoryHearthRepository,
@@ -96,12 +97,15 @@ const MemberParamsSchema = HouseholdParamsSchema.extend({ memberId: OpaqueIdSche
 const DeviceParamsSchema = HouseholdParamsSchema.extend({ deviceId: OpaqueIdSchema });
 const ListParamsSchema = HouseholdParamsSchema.extend({ listId: OpaqueIdSchema });
 const ListItemParamsSchema = HouseholdParamsSchema.extend({ itemId: OpaqueIdSchema });
-const RewardEntryParamsSchema = HouseholdParamsSchema.extend({ entryId: OpaqueIdSchema });
 const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: OpaqueIdSchema });
 const PairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
 const TodayQuerySchema = z.object({ date: LocalDateSchema });
 const WeekQuerySchema = z.object({ start: LocalDateSchema });
 const MonthQuerySchema = z.object({ month: MonthKeySchema });
+const PocketMoneyQuerySchema = z.object({
+  weekStart: LocalDateSchema,
+  asOf: LocalDateSchema,
+});
 
 export const LOGGER_REDACT_PATHS = [
   'req.headers.authorization',
@@ -123,6 +127,7 @@ export interface BuildServerOptions {
   planningRepository?: PlanningRepository;
   homeRepository?: HomeRepository;
   photoRepository?: PhotoRepository;
+  pocketMoneyRepository?: PocketMoneyRepository;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -137,6 +142,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const photoRepository =
     options.photoRepository ??
     (demoMode ? new PhotoService() : new PhotoService(new UnconfiguredPhotoSourceProvider()));
+  const pocketMoneyRepository =
+    options.pocketMoneyRepository ?? new PocketMoneyService(repository, adminRepository);
   const server = Fastify({
     logger:
       options.logger === false
@@ -527,6 +534,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ),
         );
         realtime.publish(params.householdId, 'chore.changed', occurrence.id);
+        realtime.publish(params.householdId, 'pocket-money.changed', occurrence.id);
         return AssistChoreCompletionResultSchema.parse({
           speech: `Done. I marked ${occurrence.title} complete for ${occurrence.assignee.displayName} today.`,
           command: result,
@@ -674,68 +682,54 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
-  server.get('/api/v1/households/:householdId/rewards', async (request, reply) => {
+  server.get('/api/v1/households/:householdId/pocket-money', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
-    if (params === null) return reply;
+    const query = parse(PocketMoneyQuerySchema, request.query, reply);
+    if (params === null || query === null) return reply;
     return run(reply, async () =>
-      RewardsOverviewSchema.parse(await planningRepository.getRewards(params.householdId)),
+      PocketMoneyOverviewSchema.parse(
+        await pocketMoneyRepository.getOverview(params.householdId, query.weekStart, query.asOf),
+      ),
     );
   });
 
-  server.post('/api/v1/households/:householdId/reward-definitions', async (request, reply) => {
-    const params = parse(HouseholdParamsSchema, request.params, reply);
-    const body = parse(CreateRewardDefinitionRequestSchema, request.body, reply);
-    if (params === null || body === null) return reply;
-    return run(reply, async () => {
-      const result = RewardDefinitionCommandResultSchema.parse(
-        await planningRepository.createRewardDefinition(
-          params.householdId,
-          body,
-          commandActor(request.headers, options, adminRepository),
-        ),
-      );
-      realtime.publish(params.householdId, 'reward.changed', result.definition.id);
-      return result;
-    });
-  });
-
-  server.post('/api/v1/households/:householdId/reward-adjustments', async (request, reply) => {
-    const params = parse(HouseholdParamsSchema, request.params, reply);
-    const body = parse(AdjustRewardRequestSchema, request.body, reply);
-    if (params === null || body === null) return reply;
-    return run(reply, async () => {
-      const result = RewardCommandResultSchema.parse(
-        await planningRepository.adjustReward(
-          params.householdId,
-          body,
-          commandActor(request.headers, options, adminRepository),
-        ),
-      );
-      realtime.publish(params.householdId, 'reward.changed', result.entry.id);
-      return result;
-    });
-  });
-
-  server.post(
-    '/api/v1/households/:householdId/reward-ledger/:entryId/reversals',
+  server.put(
+    '/api/v1/households/:householdId/members/:memberId/pocket-money-settings',
     async (request, reply) => {
-      const params = parse(RewardEntryParamsSchema, request.params, reply);
-      const body = parse(CommandRequestSchema, request.body, reply);
+      const params = parse(MemberParamsSchema, request.params, reply);
+      const body = parse(UpdatePocketMoneySettingsRequestSchema, request.body, reply);
       if (params === null || body === null) return reply;
       return run(reply, async () => {
-        const result = RewardCommandResultSchema.parse(
-          await planningRepository.reverseReward(
+        const result = PocketMoneySettingsCommandResultSchema.parse(
+          await pocketMoneyRepository.updateSettings(
             params.householdId,
-            params.entryId,
-            body.requestId,
+            params.memberId,
+            body,
             commandActor(request.headers, options, adminRepository),
           ),
         );
-        realtime.publish(params.householdId, 'reward.changed', result.entry.id);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.memberId);
         return result;
       });
     },
   );
+
+  server.post('/api/v1/households/:householdId/pocket-money-payments', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(RecordPocketMoneyPaymentRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = PocketMoneyPaymentCommandResultSchema.parse(
+        await pocketMoneyRepository.recordPayment(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'pocket-money.changed', body.memberId);
+      return result;
+    });
+  });
 
   server.get('/api/v1/households/:householdId/chore-templates', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
@@ -829,6 +823,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ),
         );
         realtime.publish(params.householdId, 'chore.changed', params.occurrenceId);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.occurrenceId);
         return result;
       });
     },
@@ -851,6 +846,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ),
         );
         realtime.publish(params.householdId, 'chore.changed', params.occurrenceId);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.occurrenceId);
         return result;
       });
     },
@@ -872,6 +868,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ),
         );
         realtime.publish(params.householdId, 'chore.changed', params.occurrenceId);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.occurrenceId);
         return result;
       });
     },
@@ -884,6 +881,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       adminRepository.reset();
       homeRepository.reset();
       photoRepository.reset();
+      pocketMoneyRepository.reset();
       return reply.send({ reset: true });
     });
 
@@ -901,6 +899,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.addHook('onClose', async () => {
     planningRepository.close();
     adminRepository.close();
+    pocketMoneyRepository.close();
   });
 
   return server;

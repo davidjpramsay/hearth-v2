@@ -16,10 +16,11 @@ import {
   MonthKeySchema,
   MonthScheduleSchema,
   PhotoGallerySchema,
+  PocketMoneyOverviewSchema,
+  PocketMoneyPaymentSchema,
   PairingCodeSchema,
   CreateTvPairingSessionRequestSchema,
   TvPairingSessionSchema,
-  RewardsOverviewSchema,
   TodayPhotoSummarySchema,
   AssistAddListItemRequestSchema,
 } from './schemas.js';
@@ -325,7 +326,7 @@ describe('shared wire schemas', () => {
     ).toBe(1);
   });
 
-  it('requires seven provider-independent meal days and reversal-linked reward history', () => {
+  it('requires seven provider-independent meal days and validates pocket-money progress', () => {
     const days = Array.from({ length: 7 }, (_, index) => ({
       localDate: `2026-08-${String(index + 3).padStart(2, '0')}`,
       dayLabel: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index],
@@ -344,12 +345,29 @@ describe('shared wire schemas', () => {
       }).days,
     ).toHaveLength(7);
     expect(
-      RewardsOverviewSchema.parse({
+      PocketMoneyOverviewSchema.parse({
         householdId: 'household_demo',
-        balances: [],
-        definitions: [],
-        ledger: [],
+        weekStart: '2026-08-03',
+        weekEnd: '2026-08-09',
+        asOfDate: '2026-08-03',
+        displayRange: '3–9 Aug',
+        children: [],
       }),
-    ).toMatchObject({ householdId: 'household_demo', ledger: [] });
+    ).toMatchObject({ householdId: 'household_demo', children: [] });
+    expect(
+      PocketMoneyPaymentSchema.safeParse({
+        id: 'payment_invalid',
+        memberId: 'member_child',
+        weekStart: '2026-08-03',
+        weekEnd: '2026-08-09',
+        scheduledCount: 2,
+        completedCount: 3,
+        completionPercentage: 100,
+        amountCents: 1200,
+        paidAt: '2026-08-07T10:00:00+08:00',
+        paidByActorId: 'member_parent',
+        source: 'companion',
+      }).success,
+    ).toBe(false);
   });
 });

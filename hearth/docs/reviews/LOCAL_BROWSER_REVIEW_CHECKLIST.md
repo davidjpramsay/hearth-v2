@@ -99,7 +99,7 @@ Recommended browser viewport checks:
 - [ ] Confirm focus remains on the same chore and exposes Undo.
 - [ ] Undo the chore and confirm the original state returns.
 - [ ] Decide whether completed chores should remain visible, move down or disappear.
-- [ ] Decide whether chore points/rewards should appear on Today.
+- [ ] Decide whether the compact weekly pocket-money total should also appear on Today or stay on Chores only.
 - [ ] Review Dinner, List summary and Notice for usefulness and prominence.
 - [ ] Decide what the Notice panel should eventually contain and who can edit it.
 - [ ] Identify any missing “at a glance” information needed each morning.
@@ -133,7 +133,7 @@ Recommended browser viewport checks:
 - [ ] Confirm completed, pending and skipped treatments are unambiguous.
 - [ ] Decide whether completed chores should show the completion time/person.
 - [ ] Decide whether locked/adult-only chores need a different visual treatment.
-- [ ] Decide whether points should be shown beside each chore.
+- [ ] Confirm chores stay focused on completion rather than showing points or monetary values per task.
 - [ ] Decide whether chores need due times, reminders or a “do next” order.
 - [ ] Decide whether recurring routines and one-off chores should look different.
 - [ ] Check whether six chores fit comfortably without scrolling.
@@ -196,10 +196,10 @@ Admin is intended primarily for a phone or computer, not routine television use.
 - [ ] People: decide what profile information and avatar controls are needed.
 - [ ] People: confirm archiving is clearly different from deleting history.
 - [ ] Routines: create and edit a recurring chore.
-- [ ] Routines: check weekday selection, assignee, points and start date.
-- [ ] Rewards: add/remove fictional points and reverse the adjustment.
-- [ ] Rewards: decide whether the star/point language suits your family.
-- [ ] Rewards: decide whether rewards need approval, limits or expiry.
+- [ ] Routines: check weekday selection, assignee and start date.
+- [ ] Pocket money: set a required weekly amount and payday for each child.
+- [ ] Pocket money: complete and undo a chore; confirm the weekly percentage and amount due change proportionally.
+- [ ] Pocket money: record the week's payment; confirm the amount/count/percentage snapshot stays visible after reload.
 - [ ] Televisions: review pairing, connected and revoked wording.
 - [ ] Connections: confirm it lists only Calendar and Home Assistant.
 - [ ] Confirm Jellyfin and music do not appear as Hearth-owned integrations.

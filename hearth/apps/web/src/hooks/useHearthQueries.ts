@@ -52,8 +52,12 @@ export function useMealPlanQuery(startDate = '2026-08-03', enabled = true) {
   });
 }
 
-export function useRewardsQuery(enabled = true) {
-  return useQuery({ queryKey: queryKeys.rewards, queryFn: hearthApi.getRewards, enabled });
+export function usePocketMoneyQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.pocketMoney,
+    queryFn: hearthApi.getPocketMoney,
+    enabled,
+  });
 }
 
 export function useChoreTemplatesQuery(enabled = true) {

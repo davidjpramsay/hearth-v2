@@ -1,5 +1,7 @@
 # Phase 4 planning concepts
 
+> Historical reference: the former ochre-star reward concept was superseded by the pocket-money concept and D-027 on 2026-08-06. It is not an active product requirement or shipped interface.
+
 These original concepts are the visual source of truth for the household
 planning slice:
 

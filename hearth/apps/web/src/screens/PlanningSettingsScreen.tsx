@@ -12,7 +12,7 @@ const planningAreas: Array<{
 }> = [
   {
     title: 'Routines and chores',
-    description: 'Repeat patterns, assignees and star values',
+    description: 'Repeat patterns and assignees',
     path: '/admin/routines',
     icon: 'chores',
     focusId: 'planning-routines',
@@ -25,11 +25,11 @@ const planningAreas: Array<{
     focusId: 'planning-meals',
   },
   {
-    title: 'Rewards',
-    description: 'Star balances, choices and corrections',
-    path: '/admin/rewards',
-    icon: 'star',
-    focusId: 'planning-rewards',
+    title: 'Pocket money',
+    description: 'Weekly amounts, progress, payday and payments',
+    path: '/admin/pocket-money',
+    icon: 'wallet',
+    focusId: 'planning-pocket-money',
   },
   {
     title: 'Household lists',

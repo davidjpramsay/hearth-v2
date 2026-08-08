@@ -24,7 +24,7 @@ const ezra: Member = {
   color: '#1668b7',
   avatarUrl: '/demo/ezra.png',
   role: 'child' as const,
-  capabilities: ['household.view', 'chores.complete', 'lists.change', 'rewards.view'],
+  capabilities: ['household.view', 'chores.complete', 'lists.change', 'pocket-money.view'],
 };
 
 const maya: Member = {
@@ -39,7 +39,7 @@ const maya: Member = {
     'chores.complete',
     'lists.change',
     'meals.change',
-    'rewards.view',
+    'pocket-money.view',
     'home.control',
   ],
 };

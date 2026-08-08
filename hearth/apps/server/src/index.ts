@@ -15,6 +15,7 @@ import {
 import { HomeService } from './home-repository.js';
 import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
+import { PocketMoneyService } from './pocket-money-repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 
 const host = process.env.HEARTH_HOST ?? '127.0.0.1';
@@ -44,6 +45,7 @@ const homeRepository = new HomeService(
 const photoRepository = new PhotoService(
   demoMode ? new FakePhotoSourceProvider() : new UnconfiguredPhotoSourceProvider(),
 );
+const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository, database);
 
 const server = buildServer({
   demoMode,
@@ -52,6 +54,7 @@ const server = buildServer({
   repository,
   homeRepository,
   photoRepository,
+  pocketMoneyRepository,
 });
 
 try {

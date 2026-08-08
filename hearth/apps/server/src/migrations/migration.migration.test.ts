@@ -282,4 +282,41 @@ describe('0001 household core migration', () => {
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
+
+  it('adds required child pocket-money settings and one payment snapshot per week', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 9').get()).toEqual({
+      name: 'pocket_money',
+    });
+    database.exec(`
+      INSERT INTO households VALUES ('household_money', 'Money', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_child', 'household_money', 'Child', '#000000', NULL, 'child', NULL, 'now', 'now', '["pocket-money.view"]');
+      INSERT INTO members VALUES ('member_adult', 'household_money', 'Adult', '#111111', NULL, 'adult', NULL, 'now', 'now', '["household.admin"]');
+      INSERT INTO pocket_money_settings VALUES ('household_money', 'member_child', 1200, 'AUD', 'friday', 'now', 'now');
+      INSERT INTO pocket_money_payments VALUES (
+        'payment_one', 'household_money', 'member_child', '2026-08-03', '2026-08-09',
+        6, 4, 67, 800, 'now', 'member_adult', 'companion'
+      );
+    `);
+    expect(() =>
+      database.exec(
+        "INSERT INTO pocket_money_settings VALUES ('household_money', 'member_adult', 1000, 'AUD', 'friday', 'now', 'now');",
+      ),
+    ).toThrow(/active child/);
+    expect(() =>
+      database.exec(
+        "INSERT INTO pocket_money_payments VALUES ('payment_two', 'household_money', 'member_child', '2026-08-03', '2026-08-09', 6, 4, 67, 800, 'later', 'member_adult', 'companion');",
+      ),
+    ).toThrow(/UNIQUE/);
+    expect(() =>
+      database.exec(
+        "INSERT INTO pocket_money_settings VALUES ('household_money', 'member_child', 0, 'AUD', 'friday', 'now', 'now');",
+      ),
+    ).toThrow();
+    database.close();
+  });
 });

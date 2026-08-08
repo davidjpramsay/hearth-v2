@@ -58,7 +58,7 @@ test('phone adds a list item and edits a dinner through the typed API', async ({
   await expect(editor.getByLabel('Dinner')).toHaveValue('Vegetable curry');
 });
 
-test('phone Family Planning edits future routines and reverses a reward adjustment', async ({
+test('phone Family Planning edits future routines and manages weekly pocket money', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -67,27 +67,38 @@ test('phone Family Planning edits future routines and reverses a reward adjustme
   await expect(page.getByRole('heading', { name: 'Family planning' })).toBeVisible();
   await page.getByRole('link', { name: /Routines and chores/ }).click();
   const schoolBag = page.locator('.routine-editor').filter({ hasText: 'Pack school bag' });
-  await schoolBag.getByLabel('Stars').fill('5');
+  await schoolBag.getByLabel('Routine').fill('School morning');
   await schoolBag.getByRole('button', { name: 'Save future routine' }).click();
   await expect(page.getByRole('status')).toContainText('updated from today forward');
   await page.reload();
-  await expect(schoolBag.getByLabel('Stars')).toHaveValue('5');
+  await expect(schoolBag.getByLabel('Routine')).toHaveValue('School morning');
 
+  await page.goto('/admin/pocket-money');
+  await page.getByLabel('Weekly pocket money').fill('15.00');
+  await page.getByLabel('Payday').selectOption('friday');
+  await page.getByRole('button', { name: 'Save weekly settings' }).click();
+  await expect(page.getByRole('status')).toContainText('weekly amount is saved');
+  await page.reload();
+  await expect(page.getByLabel('Weekly pocket money')).toHaveValue('15.00');
+
+  await page.goto('/chores');
+  await page.locator('[data-focus-id="chore-primary"]').click();
+  await expect(page.getByText('33% this week')).toBeVisible();
+  await expect(page.getByText('$5.00 of $15.00')).toBeVisible();
+
+  await page.goto('/admin/pocket-money');
+  await page.getByRole('button', { name: 'Record paid' }).click();
+  await expect(page.getByText('$5.00 paid · 33% complete')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Paid' })).toBeDisabled();
+});
+
+test('the former Rewards bookmark redirects without exposing the star system', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/rewards');
-  const adjustment = page.locator('.reward-adjust-form');
-  await adjustment.getByLabel('Person').selectOption('member_ezra');
-  await adjustment.getByLabel('Stars (+ or −)').fill('4');
-  await adjustment.getByLabel('Reason').fill('Helped with dinner');
-  await adjustment.getByRole('button', { name: 'Record adjustment' }).click();
-  const entry = page
-    .locator('.reward-ledger article')
-    .filter({ has: page.getByText('Helped with dinner', { exact: true }) });
-  await expect(entry).toContainText('+4');
-  await entry.getByRole('button', { name: 'Reverse' }).click();
-  await expect(entry).toContainText('Recorded');
-  await expect(
-    page.locator('.reward-ledger article').filter({ hasText: 'Helped with dinner · reversed' }),
-  ).toContainText('-4');
+  await expect(page).toHaveURL(/\/admin\/pocket-money$/);
+  await expect(page.getByRole('heading', { name: 'Pocket money' })).toBeVisible();
+  await expect(page.getByText('Available stars')).toHaveCount(0);
+  await expect(page.getByText('Family choices')).toHaveCount(0);
 });
 
 test('list failure restores the item and retries with focus preserved', async ({ page }) => {
@@ -130,7 +141,13 @@ test('cached lists stay visible through a real browser offline event', async ({
   await context.setOffline(false);
 });
 
-for (const path of ['/lists', '/meals', '/admin/planning', '/admin/routines', '/admin/rewards']) {
+for (const path of [
+  '/lists',
+  '/meals',
+  '/admin/planning',
+  '/admin/routines',
+  '/admin/pocket-money',
+]) {
   test(`@a11y ${path} has no serious accessibility violations`, async ({ page }) => {
     await page.setViewportSize({
       width: path.startsWith('/admin') ? 390 : 1920,
@@ -171,7 +188,7 @@ for (const viewport of planningViewports) {
   }
 }
 
-for (const route of ['planning', 'routines', 'rewards'] as const) {
+for (const route of ['planning', 'routines', 'pocket-money'] as const) {
   test(`@visual ${route} phone administration`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/admin/${route}`);

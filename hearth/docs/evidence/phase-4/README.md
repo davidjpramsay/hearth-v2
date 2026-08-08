@@ -1,5 +1,7 @@
 # Phase 4 household-planning evidence
 
+> Historical record: the star/reward screenshots and checks in this folder were superseded by the proportional pocket-money implementation and D-027 on 2026-08-06. They remain only as evidence of the earlier build. Current evidence is in `docs/evidence/pocket-money/`.
+
 This folder retains code-rendered Playwright Chromium evidence. The available
 toolset had no Browser/IAB controller, so the installed project Chromium was
 used as the documented fallback.

@@ -191,7 +191,6 @@ test('three active assignees become three television columns with horizontal D-p
         routineLabel: 'After school',
         repeat: 'weekly',
         repeatDays: ['MO'],
-        pointsValue: 1,
         activeFrom: '2026-08-03',
       },
     },

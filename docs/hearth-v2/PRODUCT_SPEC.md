@@ -26,7 +26,7 @@ It should then allow a family member to act with a remote, an iPhone or natural 
 
 ### Household administrator
 
-Connects calendars, establishes people and permissions, creates recurring chores and routines, manages rewards and configures Home Assistant actions.
+Connects calendars, establishes people and permissions, creates recurring chores and routines, sets weekly pocket money and payday rules, records payments and configures Home Assistant actions.
 
 ### Adult household member
 
@@ -34,7 +34,7 @@ Views and changes events, completes or reassigns tasks, manages meals and lists,
 
 ### Child household member
 
-Sees a simple personal view, checks off assigned chores, sees progress and rewards, and cannot change household-wide configuration.
+Sees a simple personal view, checks off assigned chores, sees weekly progress and the proportional pocket-money amount due, and cannot change household-wide configuration.
 
 ### Guest or casual viewer
 
@@ -70,12 +70,14 @@ Can understand the current household state and use clearly exposed room controls
 - Morning, after-school, evening and bedtime routine grouping.
 - Streaks and progress that encourage rather than shame.
 
-### 3. Rewards
+### 3. Pocket money
 
-- Optional points/stars per completed chore.
-- Household-configured rewards and redemption targets.
-- Reversal-safe ledger rather than a single mutable total.
-- Adults can adjust or approve rewards; child actions cannot silently alter balances.
+- Every participating child has a required weekly amount in Australian dollars and a household-selected payday.
+- Week-to-date progress is the number of completed chore occurrences divided by all non-excused, non-cancelled occurrences due so far in the Monday–Sunday week.
+- The amount due is the same proportion of the weekly amount, rounded to the nearest cent. Skipped chores remain due and therefore reduce the proportion.
+- A parent can record the amount paid. The payment stores a dated snapshot of the counts, percentage and amount so later chore/template edits do not rewrite payment history.
+- Only an adult administrator can change weekly amounts/paydays or record a payment. Chore completion uses the normal actor and permission rules.
+- Hearth does not expose star balances, reward choices, redemptions or per-chore point values.
 
 ### 4. Lists
 
@@ -167,7 +169,7 @@ The first household release includes:
 - Household and member setup
 - Seeded demo mode plus migration to real household data
 - Today, Week, Month and Agenda calendar views
-- Chores/routines and completion history
+- Chores/routines, weekly pocket-money progress and payment history
 - Lists
 - Photo ambient mode
 - Responsive administration
@@ -176,7 +178,7 @@ The first household release includes:
 - Android TV shell
 - Synology deployment and backup
 
-Rewards and meal planning should have schema-ready boundaries but may follow the first vertical release if schedule or quality would otherwise suffer.
+Meal planning may follow the first vertical release if schedule or quality would otherwise suffer.
 
 ## Explicit non-goals for the first release
 

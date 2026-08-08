@@ -977,7 +977,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
-            input.pointsValue,
+            0,
             input.activeFrom,
             now,
             now,
@@ -1022,7 +1022,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
-            input.pointsValue,
+            0,
             input.activeFrom,
             new Date().toISOString(),
             templateId,
@@ -1045,9 +1045,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
 
   reset(): void {
     this.database.exec(
-      `DELETE FROM reward_ledger_entries;
-       DELETE FROM reward_definitions;
-       DELETE FROM meal_plan_entries;
+      `DELETE FROM meal_plan_entries;
        DELETE FROM saved_meals;
        DELETE FROM list_items;
        DELETE FROM household_lists;`,
@@ -1481,45 +1479,6 @@ export class SqlitePlanningRepository implements PlanningRepository {
         DEMO_NOW,
       );
     }
-    const insertReward = this.database.prepare(
-      `INSERT OR IGNORE INTO reward_definitions
-        (id, household_id, name, description, cost, approval_required, archived_at, created_at,
-         updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-    );
-    for (const definition of demoRewardDefinitions()) {
-      insertReward.run(
-        definition.id,
-        DEMO_HOUSEHOLD_ID,
-        definition.name,
-        definition.description,
-        definition.cost,
-        definition.approvalRequired ? 1 : 0,
-        DEMO_NOW,
-        DEMO_NOW,
-      );
-    }
-    for (const entry of demoRewardLedger()) {
-      this.database
-        .prepare(
-          `INSERT OR IGNORE INTO reward_ledger_entries
-            (id, household_id, member_id, delta, reason, reward_id, related_chore_occurrence_id,
-             reversal_of_entry_id, actor_id, source_channel, occurred_at)
-           VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
-        )
-        .run(
-          entry.id,
-          DEMO_HOUSEHOLD_ID,
-          entry.member.id,
-          entry.delta,
-          entry.reason,
-          entry.rewardId,
-          entry.reversalOfEntryId,
-          entry.actorId,
-          entry.source,
-          entry.occurredAt,
-        );
-    }
   }
 
   private updateDemoCapabilities(): void {
@@ -1678,12 +1637,6 @@ function demoChoreTemplates(): ChoreTemplate[] {
       assignee: occurrence.assignee,
       routineLabel: occurrence.routineLabel,
       ...parsed,
-      pointsValue:
-        occurrence.id === 'occurrence_school_bag'
-          ? 2
-          : occurrence.id === 'occurrence_feed_pepper'
-            ? 3
-            : 1,
       activeFrom: DEMO_LOCAL_DATE,
       archived: false,
     });
@@ -1755,7 +1708,6 @@ function templateFromInput(
     routineLabel: input.routineLabel,
     repeat: input.repeat,
     repeatDays: input.repeatDays,
-    pointsValue: input.pointsValue,
     activeFrom: input.activeFrom,
     archived: false,
   });
@@ -1926,7 +1878,6 @@ function choreTemplateFromRow(row: ChoreTemplateRow): ChoreTemplate {
     assignee: memberFromRow(row),
     routineLabel: row.routine_label,
     ...choreRepeatFromRule(row.recurrence_rule),
-    pointsValue: row.points_value,
     activeFrom: row.active_from,
     archived: row.archived_at !== null,
   });

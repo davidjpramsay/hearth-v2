@@ -2,7 +2,7 @@
 
 ## Mission
 
-Build Hearth v2 as an original, reliable family command centre for a wall-mounted Google TV. It should deliver the useful family outcomes associated with Skylight Calendar—shared schedules, chores, routines, rewards, meal planning, lists and photos—then extend them through Home Assistant and local voice. Manual media browsing remains in the independent native Google TV apps. Separately from Hearth, Home Assistant may use Music Assistant to resolve voice-requested music from Jellyfin and cast it to approved household players.
+Build Hearth v2 as an original, reliable family command centre for a wall-mounted Google TV. It should deliver useful family outcomes—shared schedules, chores, routines, proportional pocket money, meal planning, lists and photos—then extend them through Home Assistant and local voice. Manual media browsing remains in the independent native Google TV apps. Separately from Hearth, Home Assistant may use Music Assistant to resolve voice-requested music from Jellyfin and cast it to approved household players.
 
 The product must feel calm, obvious and dependable to every family member. It is a household appliance, not a developer dashboard.
 
@@ -36,7 +36,7 @@ If two documents disagree, do not silently choose one. Report the contradiction 
 - The primary display is a landscape 4K Google TV controlled by D-pad remote, voice and iPhone. Touch must never be required.
 - Hearth is a product of its own. Do not reproduce Skylight names, branding, copy, artwork, screenshots or pixel-level layout.
 - Layouts are code. Do not build a visual layout editor, layout DSL or user-configurable grid in the first release.
-- Hearth owns household members, chores, routines, rewards, lists, meals, announcements and its own audit trail.
+- Hearth owns household members, chores, routines, proportional pocket-money settings/payments, lists, meals, announcements and its own audit trail.
 - The connected calendar provider remains the calendar source of truth. Hearth syncs through an adapter and does not invent a second authoritative calendar.
 - Home Assistant owns physical devices, presence, scenes, television control and voice pipelines.
 - The Synology Jellyfin server remains the media-library authority. The native Google TV Jellyfin client owns normal browsing and manual playback. Outside Hearth, Home Assistant may use Music Assistant to search the Jellyfin music library and cast voice-requested audio to a named television or speaker. Hearth does not connect to, control or launch Jellyfin, Music Assistant or Cast; it may receive only the generic media-active state needed to prevent unsafe television power automation.

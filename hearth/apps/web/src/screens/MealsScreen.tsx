@@ -7,7 +7,7 @@ import { createRequestId, DEMO_DATE, hearthApi, queryKeys } from '../api/client'
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState } from '../components/Status';
-import { useMealPlanQuery, useRewardsQuery } from '../hooks/useHearthQueries';
+import { useMealPlanQuery } from '../hooks/useHearthQueries';
 
 export function MealsScreen({
   scenario: _scenario,
@@ -20,7 +20,6 @@ export function MealsScreen({
   const [selectedDate, setSelectedDate] = useState(DEMO_DATE);
   const [tvMessage, setTvMessage] = useState<string | null>(null);
   const plan = useMealPlanQuery(startDate, !preparing);
-  const rewards = useRewardsQuery(!preparing);
   const queryClient = useQueryClient();
   const savePlan = useMutation({
     mutationFn: hearthApi.upsertMealPlan,
@@ -43,8 +42,6 @@ export function MealsScreen({
   const selectedDinner = selectedDay?.entries.find((entry) => entry.slot === 'dinner') ?? null;
   const today = plan.data.days.find((day) => day.isToday) ?? plan.data.days[0];
   const tonight = today?.entries.find((entry) => entry.slot === 'dinner') ?? null;
-  const familyStars =
-    rewards.data?.balances.reduce((sum, balance) => sum + balance.balance, 0) ?? 0;
 
   function submitPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,18 +75,7 @@ export function MealsScreen({
 
   return (
     <div className="screen meals-screen">
-      <ScreenHeader
-        eyebrow="Dinner plan"
-        title="Meals"
-        meta={plan.data.displayRange}
-        actions={
-          <div className="family-stars" aria-label={`${familyStars} family stars`}>
-            <span>Family stars</span>
-            <strong>{familyStars}</strong>
-            <Icon name="star" />
-          </div>
-        }
-      />
+      <ScreenHeader eyebrow="Dinner plan" title="Meals" meta={plan.data.displayRange} />
       <section className="tonight-band" aria-labelledby="tonight-heading">
         <Icon name="meal" />
         <div>

@@ -120,7 +120,7 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-017 — One audited planning command path and append-only rewards
 
 - Date: 2026-08-03
-- Status: accepted
+- Status: reward portion superseded by D-027; shared command-path portion remains accepted
 - Choice: Persist lists, saved meals, meal plans and reward definitions/ledger on the existing migrated SQLite household database. Send TV, companion and future voice operations through the same typed command services, actor/source checks, idempotency receipts and audit path. Resolve voice list names before mutation and refuse ambiguous targets; reject active normalized duplicates. Derive star balances from an append-only signed ledger, with corrections represented as uniquely linked reversal entries.
 - Consequence: A retry cannot silently add a second list item or reward entry, a voice command cannot guess between lists, and reward history remains reconcilable after chore awards, undo, adjustments and reversals. Dense recurring-chore, meal and reward editing remains phone-first while TV list completion uses the same contract.
 
@@ -292,3 +292,11 @@ Record durable choices here. New decisions should include date, status, context,
   credential, migration or household audit event is required, and a corrupted/unavailable storage
   value fails safely to Automatic. A future paired-device policy could remotely recommend a theme,
   but must not silently replace this explicit local choice.
+
+## D-027 — Proportional pocket money replaces star rewards
+
+- Date: 2026-08-06
+- Status: accepted
+- Context: The owner does not want an abstract star economy or reward catalogue. Each child instead has a real weekly pocket-money amount, and parents need an honest running figure and a record of what to pay.
+- Choice: Require an adult-configured weekly amount in Australian cents and payday for every participating child. For the Monday–Sunday week, calculate progress from completed chores divided by all non-excused, non-cancelled chores due through the selected as-of date. Apply that percentage directly to the weekly amount and round once to the nearest cent. Keep skipped chores in the denominator. Let an adult record one idempotent payment snapshot per child/week containing counts, percentage and amount. Remove star values from chore contracts and administration, remove reward routes/screens and stop chore completion/undo from writing reward-ledger entries.
+- Consequence: Chores can show a child-friendly weekly percentage and amount due while phone administration owns weekly settings and payment recording. A later chore/template change cannot rewrite an existing payment. Migration `0009_pocket_money.sql` is forward-only; the migration-0005 reward tables remain dormant so existing databases are not destructively rewritten, but no active API or UI reads or writes them. D-017 remains authoritative for the shared typed/idempotent/audited command path and is superseded only for its reward-ledger choice.

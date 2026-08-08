@@ -52,15 +52,6 @@ const TEMPLATE_RULES = new Map<string, string>([
   ['occurrence_make_bed', 'FREQ=DAILY'],
 ]);
 
-const TEMPLATE_POINTS = new Map<string, number>([
-  ['occurrence_school_bag', 2],
-  ['occurrence_feed_pepper', 3],
-  ['occurrence_dishes', 1],
-  ['occurrence_laundry', 2],
-  ['occurrence_herbs', 1],
-  ['occurrence_make_bed', 1],
-]);
-
 export class SqliteHearthRepository implements HearthRepository {
   private scenario: DemoScenario = 'healthy';
   private readonly calendar: CalendarProjectionService;
@@ -243,7 +234,6 @@ export class SqliteHearthRepository implements HearthRepository {
             context.occurredAt,
             occurrenceId,
           );
-        this.awardChorePoints(householdId, occurrenceId, actor, context.occurredAt, requestId);
         return {
           occurrence: result.occurrence,
           completionId: result.occurrence.completionId ?? context.completionId,
@@ -279,7 +269,6 @@ export class SqliteHearthRepository implements HearthRepository {
                  completed_by_actor_id = NULL, updated_at = ? WHERE id = ?`,
           )
           .run(context.occurredAt, occurrenceId);
-        this.reverseChorePoints(householdId, occurrenceId, actor, context.occurredAt, requestId);
         return {
           occurrence: result.occurrence,
           completionId,
@@ -580,114 +569,6 @@ export class SqliteHearthRepository implements HearthRepository {
       );
   }
 
-  private awardChorePoints(
-    householdId: string,
-    occurrenceIdValue: string,
-    actor: CommandActor,
-    occurredAt: string,
-    requestId: string,
-  ): void {
-    const row = this.database
-      .prepare(
-        `SELECT t.points_value, o.assignee_member_id, o.title_snapshot
-         FROM chore_occurrences o JOIN chore_templates t ON t.id = o.template_id
-         WHERE o.id = ? AND o.household_id = ?`,
-      )
-      .get(occurrenceIdValue, householdId) as
-      { points_value: number; assignee_member_id: string; title_snapshot: string } | undefined;
-    if (row === undefined || row.points_value <= 0) return;
-    const entryId = id('reward_entry_chore');
-    this.database
-      .prepare(
-        `INSERT OR IGNORE INTO reward_ledger_entries
-          (id, household_id, member_id, delta, reason, reward_id, related_chore_occurrence_id,
-           reversal_of_entry_id, actor_id, source_channel, occurred_at)
-         VALUES (?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?, ?)`,
-      )
-      .run(
-        entryId,
-        householdId,
-        row.assignee_member_id,
-        row.points_value,
-        row.title_snapshot,
-        occurrenceIdValue,
-        actor.id,
-        actor.source,
-        occurredAt,
-      );
-    this.writeAudit(
-      householdId,
-      {
-        id: id('audit_reward'),
-        actorType: actor.type,
-        actorId: actor.id,
-        source: actor.source,
-        action: 'reward.award',
-        targetId: entryId,
-        occurredAt,
-        result: 'succeeded',
-      },
-      requestId,
-      'reward_ledger_entry',
-    );
-  }
-
-  private reverseChorePoints(
-    householdId: string,
-    occurrenceIdValue: string,
-    actor: CommandActor,
-    occurredAt: string,
-    requestId: string,
-  ): void {
-    const original = this.database
-      .prepare(
-        `SELECT id, member_id, delta, reason FROM reward_ledger_entries
-         WHERE household_id = ? AND related_chore_occurrence_id = ?
-           AND reversal_of_entry_id IS NULL`,
-      )
-      .get(householdId, occurrenceIdValue) as
-      { id: string; member_id: string; delta: number; reason: string } | undefined;
-    if (original === undefined) return;
-    const reversed = this.database
-      .prepare('SELECT 1 FROM reward_ledger_entries WHERE reversal_of_entry_id = ?')
-      .get(original.id);
-    if (reversed !== undefined) return;
-    const entryId = id('reward_entry_chore_reversal');
-    this.database
-      .prepare(
-        `INSERT INTO reward_ledger_entries
-          (id, household_id, member_id, delta, reason, reward_id, related_chore_occurrence_id,
-           reversal_of_entry_id, actor_id, source_channel, occurred_at)
-         VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
-      )
-      .run(
-        entryId,
-        householdId,
-        original.member_id,
-        -original.delta,
-        `${original.reason} · reversed`,
-        original.id,
-        actor.id,
-        actor.source,
-        occurredAt,
-      );
-    this.writeAudit(
-      householdId,
-      {
-        id: id('audit_reward'),
-        actorType: actor.type,
-        actorId: actor.id,
-        source: actor.source,
-        action: 'reward.reverse',
-        targetId: entryId,
-        occurredAt,
-        result: 'reversed',
-      },
-      requestId,
-      'reward_ledger_entry',
-    );
-  }
-
   private writeRejectedAudit(
     householdId: string,
     occurrenceIdValue: string,
@@ -861,7 +742,7 @@ export class SqliteHearthRepository implements HearthRepository {
         chore.title,
         TEMPLATE_RULES.get(chore.id) ?? 'FREQ=DAILY',
         chore.routineLabel,
-        TEMPLATE_POINTS.get(chore.id) ?? 0,
+        0,
         DEMO_LOCAL_DATE,
         createdAt,
         createdAt,

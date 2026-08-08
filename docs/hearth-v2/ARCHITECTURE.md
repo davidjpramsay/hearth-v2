@@ -49,7 +49,7 @@ Suggested modules:
 - `members`
 - `calendar`
 - `chores`
-- `rewards`
+- `pocket-money`
 - `lists`
 - `meals`
 - `photos`
@@ -83,7 +83,7 @@ Zod schemas, API request/response contracts, event envelopes, identifiers and ge
 
 ### `packages/core`
 
-Pure household-domain behaviour: recurrence expansion, completion rules, reward ledger rules, permission decisions and deterministic summaries. No Fastify, SQL, browser or Home Assistant imports.
+Pure household-domain behaviour: recurrence expansion, completion rules, proportional pocket-money calculation, permission decisions and deterministic summaries. No Fastify, SQL, browser or Home Assistant imports.
 
 ## Data flow
 
@@ -127,12 +127,19 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `GET /api/v1/households/:id/lists` plus typed item add, complete and reversal commands
 - `POST /api/v1/households/:id/assist/list-items`, which resolves a named list without guessing and rejects active duplicates
 - `GET /api/v1/households/:id/meal-plan?start=` plus typed meal-plan and saved-meal commands
-- `GET /api/v1/households/:id/rewards` plus reward definition, adjustment and history-preserving reversal commands
+- `GET /api/v1/households/:id/pocket-money?weekStart=&asOf=` for child weekly progress and amounts due
+- `PUT /api/v1/households/:id/members/:memberId/pocket-money-settings` for adult-only required weekly amount and payday changes
+- `POST /api/v1/households/:id/pocket-money-payments` for an adult-only, idempotent weekly payment snapshot
 - adult-only recurring chore-template query/create/update commands
 - `GET /api/v1/households/:id/home` for curated presence, television power and power-safety state
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist
 - `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
+
+Pocket-money settings and payment commands use the same server-side adult session, validation,
+idempotency receipt and audit path as other household writes. Chore completion and undo publish a
+`pocket-money.changed` invalidation; they do not create star/reward records. The forward-only
+`0009_pocket_money.sql` migration leaves the former reward tables dormant for upgrade safety.
 
 `TodaySummary`, `WeekSchedule` and `MonthSchedule` expose read-only calendar sources and
 normalized events with opaque `calendarId`, inclusive household-local start/end
@@ -168,7 +175,7 @@ updates.
 
 Phase 4 uses the same command envelope, actor/source resolution, audit summaries,
 idempotency receipts and SSE invalidation path as chores. The television may
-check list items, but recurring-chore, meal and reward editing stays in the
+check list items, but recurring-chore, meal and pocket-money editing stays in the
 responsive companion presentation.
 
 Demo-only reset/scenario routes exist only when the server is started in demo

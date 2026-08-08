@@ -138,7 +138,7 @@ Event cards must express start time, title, owner/source and conflicts. Location
 The same web application may present a phone-oriented shell for:
 
 - adding/editing events
-- managing recurring chores and rewards
+- managing recurring chores, weekly pocket-money amounts, paydays and payment records
 - maintaining meals and lists
 - uploading/approving photos
 - reviewing connection problems

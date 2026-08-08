@@ -10,7 +10,7 @@ installed or verified.**
 
 ## Product statement
 
-Hearth is an original family command centre for a wall-mounted Google TV. It brings together calendars, chores, routines, rewards, meals, lists, photos and household notices, and extends those features through Home Assistant and local voice. The native Jellyfin Google TV app independently handles normal movie, television and music browsing from the Synology server. A separate Home Assistant/Music Assistant path may search that Jellyfin music library and cast voice-requested audio to the television without making media part of Hearth.
+Hearth is an original family command centre for a wall-mounted Google TV. It brings together calendars, chores, routines, proportional pocket money, meals, lists, photos and household notices, and extends those features through Home Assistant and local voice. The native Jellyfin Google TV app independently handles normal movie, television and music browsing from the Synology server. A separate Home Assistant/Music Assistant path may search that Jellyfin music library and cast voice-requested audio to the television without making media part of Hearth.
 
 The reference class is the family organiser represented by Skylight Calendar. Hearth should match the useful household outcomes, not copy the product's identity or interface.
 
@@ -47,7 +47,7 @@ These are intentionally deferred and should not block the first rendered prototy
 
 - Exact iCloud calendar read allowlist and any future calendars that may be modified
 - Household member names, colours and permissions beyond the known example of Ezra
-- Real household chore/reward rules; the product language is now **stars**
+- Real child weekly pocket-money amounts and preferred payday; demo mode uses A$12 each Friday for Ezra
 - Exact Home Assistant script/entity mappings plus the presence grace period, quiet hours and protected-playback signal source
 - Exact Home Assistant Voice satellite-to-player mapping, the final `Hearth TV`
   Cast entity and a dedicated least-privilege Jellyfin account for Music

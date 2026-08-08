@@ -103,7 +103,7 @@ overflow, an avatar/colour source key, deterministic D-pad navigation and a
 responsive Week/Month phone switch with a selected-date agenda. No calendar
 credential, write scope or migration was added.
 
-## Phase 4 — Lists, meals and rewards
+## Phase 4 — Lists, meals and pocket money
 
 Status: complete and locally verified with deterministic demo household data.
 
@@ -111,25 +111,28 @@ Status: complete and locally verified with deterministic demo household data.
 
 - Lists and item completion/addition.
 - Meal plan and saved meals.
-- Reward definitions and ledger.
-- Phone-oriented administration for recurring chores, meals and rewards.
+- Required weekly pocket-money amount and payday for each child.
+- Week-to-date chore proportion, amount due and immutable payment snapshots.
+- Phone-oriented administration for recurring chores, meals and pocket money.
 - Voice-ready typed commands for the new modules.
 
 ### Completion criteria
 
 - Ordinary list and meal operations work from TV and phone where appropriate.
-- Reward reversals preserve history.
-- Voice retries do not duplicate list items or reward entries.
+- Pocket-money payment retries are idempotent and a child/week cannot be paid twice.
+- Voice retries do not duplicate list items or chore completions.
 - Dense editing remains out of the TV's primary interaction path.
 
-Implementation note (2026-08-03): Lists and Meals now have D-pad television
+Implementation note (updated 2026-08-06): Lists and Meals have D-pad television
 surfaces and responsive phone presentations. The phone Family Planning area
-edits future recurring chores, dinners/saved meals, reward definitions,
-adjustments and history-preserving reversals. Typed voice list commands resolve
+edits future recurring chores, dinners/saved meals, child weekly amounts,
+paydays and payment snapshots. Chores shows the current weekly completion
+proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted
-idempotency receipts. Migration `0005_household_planning.sql` persists the new
-modules, while chore completion/undo appends matching reward award/reversal
-entries. Unit, Fastify/SQLite integration, migration, accessibility, remote,
+idempotency receipts. Migration `0009_pocket_money.sql` supersedes the active
+reward implementation while retaining the old migration tables as dormant
+history; chore completion/undo no longer writes star awards. Unit,
+Fastify/SQLite integration, migration, accessibility, remote,
 offline, failure/retry and rendered-viewport tests cover the completion
 criteria.
 

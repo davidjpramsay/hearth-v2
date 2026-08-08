@@ -19,7 +19,7 @@ export const CapabilitySchema = z.enum([
   'chores.complete',
   'lists.change',
   'meals.change',
-  'rewards.view',
+  'pocket-money.view',
   'home.control',
 ]);
 
@@ -306,7 +306,6 @@ export const ChoreTemplateSchema = z.object({
   routineLabel: z.string().min(1).max(80),
   repeat: ChoreRepeatSchema,
   repeatDays: z.array(z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])).min(1),
-  pointsValue: z.number().int().min(0).max(100),
   activeFrom: LocalDateSchema,
   archived: z.boolean(),
 });
@@ -323,7 +322,6 @@ const ChoreTemplateFieldsSchema = z.object({
   routineLabel: z.string().trim().min(1).max(80),
   repeat: ChoreRepeatSchema,
   repeatDays: z.array(z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])).min(1),
-  pointsValue: z.number().int().min(0).max(100),
   activeFrom: LocalDateSchema,
 });
 
@@ -442,6 +440,89 @@ export const MealCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
+export const PaydaySchema = z.enum([
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+]);
+
+export const PocketMoneyPaymentSchema = z
+  .object({
+    id: OpaqueIdSchema,
+    memberId: OpaqueIdSchema,
+    weekStart: LocalDateSchema,
+    weekEnd: LocalDateSchema,
+    scheduledCount: z.number().int().nonnegative(),
+    completedCount: z.number().int().nonnegative(),
+    completionPercentage: z.number().int().min(0).max(100),
+    amountCents: z.number().int().nonnegative(),
+    paidAt: TimestampSchema,
+    paidByActorId: OpaqueIdSchema,
+    source: z.enum(['companion', 'system']),
+  })
+  .refine((payment) => payment.completedCount <= payment.scheduledCount, {
+    message: 'Completed chores cannot exceed scheduled chores.',
+    path: ['completedCount'],
+  });
+
+export const PocketMoneyChildSummarySchema = z
+  .object({
+    member: MemberSchema,
+    weeklyAmountCents: z.number().int().positive().max(100_000).nullable(),
+    currency: z.literal('AUD'),
+    payday: PaydaySchema.nullable(),
+    scheduledCount: z.number().int().nonnegative(),
+    completedCount: z.number().int().nonnegative(),
+    completionPercentage: z.number().int().min(0).max(100),
+    earnedAmountCents: z.number().int().nonnegative().nullable(),
+    status: z.enum(['not-configured', 'building', 'ready', 'paid']),
+    payment: PocketMoneyPaymentSchema.nullable(),
+  })
+  .refine((summary) => summary.completedCount <= summary.scheduledCount, {
+    message: 'Completed chores cannot exceed scheduled chores.',
+    path: ['completedCount'],
+  });
+
+export const PocketMoneyOverviewSchema = z.object({
+  householdId: OpaqueIdSchema,
+  weekStart: LocalDateSchema,
+  weekEnd: LocalDateSchema,
+  asOfDate: LocalDateSchema,
+  displayRange: z.string().min(1).max(80),
+  children: z.array(PocketMoneyChildSummarySchema),
+});
+
+export const UpdatePocketMoneySettingsRequestSchema = CommandRequestSchema.extend({
+  weeklyAmountCents: z.number().int().min(100).max(100_000),
+  payday: PaydaySchema,
+  weekStart: LocalDateSchema,
+  asOfDate: LocalDateSchema,
+});
+
+export const RecordPocketMoneyPaymentRequestSchema = CommandRequestSchema.extend({
+  memberId: OpaqueIdSchema,
+  weekStart: LocalDateSchema,
+  asOfDate: LocalDateSchema,
+});
+
+export const PocketMoneySettingsCommandResultSchema = z.object({
+  child: PocketMoneyChildSummarySchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
+export const PocketMoneyPaymentCommandResultSchema = z.object({
+  payment: PocketMoneyPaymentSchema,
+  child: PocketMoneyChildSummarySchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
+/** @deprecated Retained only so historical reward records remain readable. */
 export const RewardDefinitionSchema = z.object({
   id: OpaqueIdSchema,
   name: z.string().min(1).max(140),
@@ -543,6 +624,8 @@ export const AuditSummarySchema = z.object({
     'reward.adjust',
     'reward.reverse',
     'reward.award',
+    'pocket-money.settings.update',
+    'pocket-money.payment.record',
     'home.action.execute',
   ]),
   targetId: OpaqueIdSchema,
@@ -591,6 +674,7 @@ export const RealtimeEventSchema = z.object({
     'list.changed',
     'meal.changed',
     'reward.changed',
+    'pocket-money.changed',
     'chore-template.changed',
     'home.changed',
   ]),
@@ -800,6 +884,18 @@ export type UpsertMealPlanRequest = z.infer<typeof UpsertMealPlanRequestSchema>;
 export type CreateSavedMealRequest = z.infer<typeof CreateSavedMealRequestSchema>;
 export type SavedMealCommandResult = z.infer<typeof SavedMealCommandResultSchema>;
 export type MealCommandResult = z.infer<typeof MealCommandResultSchema>;
+export type Payday = z.infer<typeof PaydaySchema>;
+export type PocketMoneyPayment = z.infer<typeof PocketMoneyPaymentSchema>;
+export type PocketMoneyChildSummary = z.infer<typeof PocketMoneyChildSummarySchema>;
+export type PocketMoneyOverview = z.infer<typeof PocketMoneyOverviewSchema>;
+export type UpdatePocketMoneySettingsRequest = z.infer<
+  typeof UpdatePocketMoneySettingsRequestSchema
+>;
+export type RecordPocketMoneyPaymentRequest = z.infer<typeof RecordPocketMoneyPaymentRequestSchema>;
+export type PocketMoneySettingsCommandResult = z.infer<
+  typeof PocketMoneySettingsCommandResultSchema
+>;
+export type PocketMoneyPaymentCommandResult = z.infer<typeof PocketMoneyPaymentCommandResultSchema>;
 export type RewardDefinition = z.infer<typeof RewardDefinitionSchema>;
 export type RewardLedgerEntry = z.infer<typeof RewardLedgerEntrySchema>;
 export type MemberRewardBalance = z.infer<typeof MemberRewardBalanceSchema>;

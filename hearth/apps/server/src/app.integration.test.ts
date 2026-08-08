@@ -501,7 +501,7 @@ describe('Hearth v2 API', () => {
     expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('plans meals and reverses reward adjustments without rewriting history', async () => {
+  it('plans meals and calculates an idempotent weekly pocket-money payment', async () => {
     const app = server();
     const headers = { 'x-hearth-demo-actor': 'member_maya' };
     const meal = await app.inject({
@@ -517,40 +517,68 @@ describe('Hearth v2 API', () => {
         note: 'Rice at 5:30',
       },
     });
-    const adjustment = await app.inject({
-      method: 'POST',
-      url: '/api/v1/households/household_hearth_demo/reward-adjustments',
+    const settings = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/members/member_ezra/pocket-money-settings',
       headers,
       payload: {
-        requestId: 'request_reward_http_001',
-        memberId: 'member_ezra',
-        delta: 4,
-        reason: 'Helped with dinner',
-        rewardId: null,
+        requestId: 'request_pocket_settings_http_001',
+        weeklyAmountCents: 1500,
+        payday: 'friday',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
       },
     });
-    const reversal = await app.inject({
+    const completion = await app.inject({
       method: 'POST',
-      url: `/api/v1/households/household_hearth_demo/reward-ledger/${adjustment.json().entry.id}/reversals`,
-      headers,
-      payload: { requestId: 'request_reward_reverse_http_001' },
+      url: '/api/v1/households/household_hearth_demo/chore-occurrences/occurrence_school_bag/completions',
+      payload: { requestId: 'request_pocket_chore_http_001' },
     });
-    const rewards = await app.inject({
+    const overview = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/pocket-money?weekStart=2026-08-03&asOf=2026-08-03',
+    });
+    const payment = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_001',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+      },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_001',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+      },
+    });
+    const removedRewardsRoute = await app.inject({
       method: 'GET',
       url: '/api/v1/households/household_hearth_demo/rewards',
     });
 
     expect(meal.json()).toMatchObject({ entry: { mealName: 'Vegetable curry' } });
-    expect(adjustment.json()).toMatchObject({ entry: { delta: 4 } });
-    expect(reversal.json()).toMatchObject({
-      entry: { delta: -4, reversalOfEntryId: adjustment.json().entry.id },
+    expect(settings.json()).toMatchObject({
+      child: { weeklyAmountCents: 1500, payday: 'friday' },
     });
-    expect(rewards.json().ledger).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: adjustment.json().entry.id, delta: 4 }),
-        expect.objectContaining({ reversalOfEntryId: adjustment.json().entry.id, delta: -4 }),
-      ]),
-    );
+    expect(completion.statusCode).toBe(200);
+    expect(overview.json().children[0]).toMatchObject({
+      completedCount: 1,
+      scheduledCount: 3,
+      completionPercentage: 33,
+      earnedAmountCents: 500,
+    });
+    expect(payment.json()).toMatchObject({ payment: { amountCents: 500 }, replayed: false });
+    expect(replay.json()).toMatchObject({ payment: { amountCents: 500 }, replayed: true });
+    expect(removedRewardsRoute.statusCode).toBe(404);
   });
 
   it('keeps recurring chore administration adult-only at the HTTP boundary', async () => {

@@ -115,53 +115,14 @@ describe('SQLite household planning repository', () => {
     expect(plan.days[3]?.entries[0]).toMatchObject({ mealName: 'Maya’s noodle bowls' });
   });
 
-  it('keeps reward history through adjustment and reversal and ties chore points to undo', async () => {
-    const { database, chores, planning } = await repositories();
-    const adjusted = await planning.adjustReward(
-      DEMO_HOUSEHOLD_ID,
-      {
-        requestId: 'request_reward_adjust',
-        memberId: 'member_ezra',
-        delta: 4,
-        reason: 'Kind help',
-        rewardId: null,
-      },
-      adult,
-    );
-    const replayedAdjustment = await planning.adjustReward(
-      DEMO_HOUSEHOLD_ID,
-      {
-        requestId: 'request_reward_adjust',
-        memberId: 'member_ezra',
-        delta: 4,
-        reason: 'Kind help',
-        rewardId: null,
-      },
-      adult,
-    );
-    const reversed = await planning.reverseReward(
-      DEMO_HOUSEHOLD_ID,
-      adjusted.entry.id,
-      'request_reward_reverse',
-      adult,
-    );
-    expect(reversed.entry).toMatchObject({ delta: -4, reversalOfEntryId: adjusted.entry.id });
-    expect(replayedAdjustment).toMatchObject({ replayed: true, entry: { id: adjusted.entry.id } });
-
-    const before = await planning.getRewards(DEMO_HOUSEHOLD_ID);
-    const beforeEzra = before.balances.find(
-      (balance) => balance.member.id === 'member_ezra',
-    )?.balance;
+  it('does not create legacy star awards when chores are completed or undone', async () => {
+    const { database, chores } = await repositories();
     const completion = await chores.complete(
       DEMO_HOUSEHOLD_ID,
       'occurrence_school_bag',
       'request_reward_chore',
       DEMO_TV_ACTOR,
     );
-    const afterComplete = await planning.getRewards(DEMO_HOUSEHOLD_ID);
-    expect(
-      afterComplete.balances.find((balance) => balance.member.id === 'member_ezra')?.balance,
-    ).toBe((beforeEzra ?? 0) + 2);
     await chores.undo(
       DEMO_HOUSEHOLD_ID,
       'occurrence_school_bag',
@@ -169,22 +130,13 @@ describe('SQLite household planning repository', () => {
       completion.completionId,
       DEMO_TV_ACTOR,
     );
-    const afterUndo = await planning.getRewards(DEMO_HOUSEHOLD_ID);
-    expect(afterUndo.balances.find((balance) => balance.member.id === 'member_ezra')?.balance).toBe(
-      beforeEzra,
-    );
     expect(
       database
         .prepare(
           'SELECT delta, reversal_of_entry_id FROM reward_ledger_entries WHERE related_chore_occurrence_id = ? OR reversal_of_entry_id IS NOT NULL ORDER BY occurred_at',
         )
         .all('occurrence_school_bag'),
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ delta: 2 }),
-        expect.objectContaining({ delta: -2 }),
-      ]),
-    );
+    ).toEqual([]);
   });
 
   it('edits future recurring chores without rewriting generated history and rejects child admin', async () => {
@@ -204,7 +156,6 @@ describe('SQLite household planning repository', () => {
         routineLabel: 'Morning',
         repeat: 'daily',
         repeatDays: ['MO', 'TU', 'WE', 'TH', 'FR'],
-        pointsValue: 3,
         activeFrom: '2026-08-03',
       },
       adult,

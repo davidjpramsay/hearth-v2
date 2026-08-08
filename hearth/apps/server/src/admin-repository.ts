@@ -896,7 +896,7 @@ function memberFromInput(
           'chores.complete',
           'lists.change',
           'meals.change',
-          'rewards.view',
+          'pocket-money.view',
           'home.control',
         ]
       : input.role === 'adult'
@@ -905,10 +905,10 @@ function memberFromInput(
             'chores.complete',
             'lists.change',
             'meals.change',
-            'rewards.view',
+            'pocket-money.view',
             'home.control',
           ]
-        : ['household.view', 'chores.complete', 'lists.change', 'rewards.view'],
+        : ['household.view', 'chores.complete', 'lists.change', 'pocket-money.view'],
   });
 }
 

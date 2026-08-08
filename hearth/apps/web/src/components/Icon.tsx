@@ -29,6 +29,7 @@ export type IconName =
   | 'television'
   | 'today'
   | 'users'
+  | 'wallet'
   | 'warning';
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -164,6 +165,13 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
+    </>
+  ),
+  wallet: (
+    <>
+      <path d="M4 6.5h14a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12v3.5" />
+      <path d="M16 12h6v5h-6a2.5 2.5 0 0 1 0-5Z" />
+      <path d="M17 14.5h.01" />
     </>
   ),
   warning: (

@@ -69,11 +69,11 @@ export function RoutinesSettingsScreen() {
       backLabel="Back to Family planning"
       backTo="/admin/planning"
       title="Routines and chores"
-      subtitle="Who does what, when, and how many stars it earns"
+      subtitle="Who does what and when"
     >
       <div className="history-safe-note">
         <Icon name="refresh" />
-        <p>Changes apply from today forward. Past completions and earned stars stay intact.</p>
+        <p>Changes apply from today forward. Past chore completions stay intact.</p>
       </div>
       {confirmation === null ? null : (
         <p className="save-confirmation" role="status">
@@ -131,9 +131,7 @@ function RoutineEditor({
         <Avatar member={template.assignee} />
         <span>
           <strong>{template.title}</strong>
-          <small>
-            {repeatLabel(template)} · {template.pointsValue} stars
-          </small>
+          <small>{repeatLabel(template)}</small>
         </span>
         <Icon name="chevron-right" />
       </summary>
@@ -186,16 +184,6 @@ function RoutineFields({
               </option>
             ))}
           </select>
-        </label>
-        <label>
-          Stars
-          <input
-            defaultValue={template?.pointsValue ?? 1}
-            max={100}
-            min={0}
-            name="pointsValue"
-            type="number"
-          />
         </label>
       </div>
       <div className="admin-form__split routine-fields__split">
@@ -277,7 +265,6 @@ function templateFields(
           : selectedDays.length > 0
             ? selectedDays
             : [existingDays?.[0] ?? 'MO'],
-    pointsValue: Number(data.get('pointsValue') ?? 0),
     activeFrom: String(data.get('activeFrom') ?? '2026-08-03'),
   };
 }

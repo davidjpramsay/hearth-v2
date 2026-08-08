@@ -24,7 +24,7 @@ export function useRealtimeInvalidation(): void {
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.today }),
           queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.rewards }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney }),
         ]);
         return;
       }
@@ -42,8 +42,8 @@ export function useRealtimeInvalidation(): void {
         ]);
         return;
       }
-      if (parsed.data.kind === 'reward.changed') {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.rewards });
+      if (parsed.data.kind === 'pocket-money.changed') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney });
         return;
       }
       if (parsed.data.kind === 'chore-template.changed') {
@@ -70,7 +70,7 @@ export function useRealtimeInvalidation(): void {
     source.addEventListener('household.changed', receive as EventListener);
     source.addEventListener('list.changed', receive as EventListener);
     source.addEventListener('meal.changed', receive as EventListener);
-    source.addEventListener('reward.changed', receive as EventListener);
+    source.addEventListener('pocket-money.changed', receive as EventListener);
     source.addEventListener('chore-template.changed', receive as EventListener);
     source.addEventListener('home.changed', receive as EventListener);
     return () => source.close();

@@ -17,9 +17,9 @@ import {
   PairedDeviceSchema,
   PairingRequestSchema,
   PhotoGallerySchema,
-  RewardCommandResultSchema,
-  RewardDefinitionCommandResultSchema,
-  RewardsOverviewSchema,
+  PocketMoneyOverviewSchema,
+  PocketMoneyPaymentCommandResultSchema,
+  PocketMoneySettingsCommandResultSchema,
   SavedMealCommandResultSchema,
   TodaySummarySchema,
   WeekScheduleSchema,
@@ -43,9 +43,10 @@ import {
   type PairedDevice,
   type PairingRequest,
   type PhotoGallery,
-  type RewardCommandResult,
-  type RewardDefinitionCommandResult,
-  type RewardsOverview,
+  type Payday,
+  type PocketMoneyOverview,
+  type PocketMoneyPaymentCommandResult,
+  type PocketMoneySettingsCommandResult,
   type SavedMealCommandResult,
   type TodaySummary,
   type WeekSchedule,
@@ -73,7 +74,7 @@ export const queryKeys = {
   admin: [DEMO_HOUSEHOLD_ID, 'admin'] as const,
   lists: [DEMO_HOUSEHOLD_ID, 'lists'] as const,
   meals: (startDate = DEMO_DATE) => [DEMO_HOUSEHOLD_ID, 'meals', startDate] as const,
-  rewards: [DEMO_HOUSEHOLD_ID, 'rewards'] as const,
+  pocketMoney: [DEMO_HOUSEHOLD_ID, 'pocket-money', DEMO_DATE] as const,
   choreTemplates: [DEMO_HOUSEHOLD_ID, 'chore-templates'] as const,
 };
 
@@ -199,41 +200,36 @@ export const hearthApi = {
         body: JSON.stringify(input),
       },
     ),
-  getRewards: () =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/rewards`, RewardsOverviewSchema),
-  createRewardDefinition: (input: {
-    requestId: string;
-    name: string;
-    description: string | null;
-    cost: number;
-    approvalRequired: boolean;
-  }) =>
+  getPocketMoney: () =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/reward-definitions`,
-      RewardDefinitionCommandResultSchema,
-      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/pocket-money?weekStart=${DEMO_DATE}&asOf=${DEMO_DATE}`,
+      PocketMoneyOverviewSchema,
     ),
-  adjustReward: (input: {
+  updatePocketMoneySettings: (
+    memberId: string,
+    input: {
+      requestId: string;
+      weeklyAmountCents: number;
+      payday: Payday;
+      weekStart: string;
+      asOfDate: string;
+    },
+  ) =>
+    request(
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/pocket-money-settings`,
+      PocketMoneySettingsCommandResultSchema,
+      { method: 'PUT', headers: demoAdminHeaders, body: JSON.stringify(input) },
+    ),
+  recordPocketMoneyPayment: (input: {
     requestId: string;
     memberId: string;
-    delta: number;
-    reason: string;
-    rewardId: string | null;
+    weekStart: string;
+    asOfDate: string;
   }) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/reward-adjustments`,
-      RewardCommandResultSchema,
-      {
-        method: 'POST',
-        headers: demoAdminHeaders,
-        body: JSON.stringify(input),
-      },
-    ),
-  reverseReward: (entryId: string, requestId: string) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/reward-ledger/${entryId}/reversals`,
-      RewardCommandResultSchema,
-      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify({ requestId }) },
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/pocket-money-payments`,
+      PocketMoneyPaymentCommandResultSchema,
+      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
     ),
   getChoreTemplates: () =>
     request(
@@ -375,9 +371,9 @@ export type HearthListCommandResult = ListItemCommandResult;
 export type HearthMealPlan = MealPlan;
 export type HearthMealCommandResult = MealCommandResult;
 export type HearthSavedMealCommandResult = SavedMealCommandResult;
-export type HearthRewards = RewardsOverview;
-export type HearthRewardCommandResult = RewardCommandResult;
-export type HearthRewardDefinitionCommandResult = RewardDefinitionCommandResult;
+export type HearthPocketMoney = PocketMoneyOverview;
+export type HearthPocketMoneySettingsCommandResult = PocketMoneySettingsCommandResult;
+export type HearthPocketMoneyPaymentCommandResult = PocketMoneyPaymentCommandResult;
 export type HearthChoreTemplates = ChoreTemplateList;
 export type HearthChoreTemplateCommandResult = ChoreTemplateCommandResult;
 
@@ -388,7 +384,6 @@ export interface ChoreTemplateInput {
   routineLabel: string;
   repeat: 'daily' | 'weekdays' | 'weekly';
   repeatDays: Array<'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'>;
-  pointsValue: number;
   activeFrom: string;
 }
 

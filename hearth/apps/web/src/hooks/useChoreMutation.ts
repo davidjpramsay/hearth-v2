@@ -37,6 +37,7 @@ export function useChoreMutation() {
       await Promise.all([
         queryClient.cancelQueries({ queryKey: queryKeys.today }),
         queryClient.cancelQueries({ queryKey: queryKeys.chores }),
+        queryClient.cancelQueries({ queryKey: queryKeys.pocketMoney }),
       ]);
       const context = {
         today: queryClient.getQueryData<TodaySummary>(queryKeys.today),
@@ -63,6 +64,7 @@ export function useChoreMutation() {
     },
     onSuccess: (result) => {
       updateOccurrence(queryClient, result.occurrence);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney });
     },
     onError: (error, variables, context) => {
       if (context?.today !== undefined) queryClient.setQueryData(queryKeys.today, context.today);

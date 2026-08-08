@@ -55,7 +55,7 @@ Avoid introducing Next.js, Electron, Supabase, Kubernetes, Redis, a message brok
 - Do not add Music Assistant, Jellyfin, Cast, generic Android-intent or media-player modules to Hearth. Home Assistant may return only the existing generic protected-media boolean to Hearth for television power safety.
 - UI code must not call Home Assistant or calendar providers directly.
 - Mutations use request identifiers where retries could duplicate work.
-- Record actor, source, target and timestamp for chore, calendar, list, reward and home-control mutations.
+- Record actor, source, target and timestamp for chore, calendar, list, pocket-money and home-control mutations.
 - Fail safely when an integration is unavailable: core calendar/chore screens must remain readable from cached/local data.
 
 ## Work sequencing

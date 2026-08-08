@@ -102,7 +102,6 @@ The external credential/config file is never stored in SQLite.
 - recurrence rule
 - routine/time-of-day grouping
 - due-time policy
-- points/stars value
 - active date range and archive state
 - creation/update history reference
 
@@ -125,25 +124,26 @@ Template edits do not rewrite historical occurrences. Generate occurrences withi
 
 Routines group chores; they do not duplicate completion state.
 
-## Rewards
+## Pocket money
 
-### Reward definition
+### Pocket-money setting
 
-- name, description
-- cost/target
-- active/archive state
-- approval requirement
+- household and child member
+- required weekly amount in integer Australian cents
+- payday, constrained to a weekday name
+- creation/update timestamps
 
-### Reward ledger entry
+Only active child members may receive a setting. New children appear as unconfigured until an adult supplies the required weekly amount and payday.
 
-- member
-- signed points/stars delta
-- reason and related chore/reward reference
-- actor
-- timestamp
-- reversal reference
+### Pocket-money payment
 
-Balances are computed from the ledger. Never maintain only a mutable balance that loses correction history.
+- household and child member
+- Monday week start and Sunday week end
+- scheduled and completed counts at payment time
+- completion percentage and proportional amount in cents
+- payment timestamp, adult actor and source
+
+There is at most one recorded payment per child and week. Payment rows are immutable snapshots rather than a mutable balance. Chores in `excused` or `cancelled` state are excluded from the denominator; `pending` and `skipped` remain incomplete. Migration `0009_pocket_money.sql` introduces these records. The former reward tables from migration 0005 remain dormant for forward-only migration safety; no route, UI or chore command writes them.
 
 ## Lists
 
@@ -293,7 +293,7 @@ short-lived pairing requests and revocable television devices. Migration
 Migration `0004_calendar_projection.sql` adds durable provider cursor/window
 state, recurrence-exception metadata and local-date projection indexes.
 Migration `0005_household_planning.sql` adds household lists/items, saved meals,
-meal-plan entries, reward definitions and an append-only reward ledger. A
+meal-plan entries and the now-dormant historical reward tables. A
 unique reversal reference prevents reversing the same ledger entry twice, and
 a partial unique index prevents awarding the same chore occurrence twice.
 Migration `0006_home_assistant_projection.sql` adds the minimal cached household
@@ -308,10 +308,11 @@ mutation, audit and idempotent receipt transactionally. Duplicate request IDs
 replay the stored typed result. The in-memory repository remains available only
 for fast isolated contract tests.
 
-The Phase 4 runtime stores list, meal, reward and recurring-chore administration
+The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administration
 on the same SQLite connection. Voice list commands resolve a normalized list
 name before mutation, return `AMBIGUOUS_TARGET` rather than choosing among
 multiple matches, reject active exact-item duplicates, and replay a prior typed
-result when the same request ID is retried. Reward balances are always derived
-from signed ledger history; corrections append linked reversals instead of
-editing old entries.
+result when the same request ID is retried. Pocket-money settings and immutable
+weekly payment snapshots use the same idempotent, audited command path. The
+former reward tables remain dormant migration history and are not read or
+written by the runtime.

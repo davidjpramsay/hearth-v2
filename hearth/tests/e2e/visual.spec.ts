@@ -6,11 +6,13 @@ import { expect, test } from '@playwright/test';
 const evidence = resolve('docs/evidence/phase-1/screenshots');
 const phaseThreeEvidence = resolve('docs/evidence/phase-3/screenshots');
 const monthEvidence = resolve('docs/evidence/month-calendar');
+const pocketMoneyEvidence = resolve('docs/evidence/pocket-money/screenshots');
 
 test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
   await mkdir(phaseThreeEvidence, { recursive: true });
   await mkdir(monthEvidence, { recursive: true });
+  await mkdir(pocketMoneyEvidence, { recursive: true });
 });
 
 test.beforeEach(async ({ request }) => {
@@ -158,7 +160,6 @@ test('@visual Chores dynamic three-column board at television and phone sizes', 
         routineLabel: 'After school',
         repeat: 'weekly',
         repeatDays: ['MO'],
-        pointsValue: 1,
         activeFrom: '2026-08-03',
       },
     },
@@ -193,6 +194,39 @@ test('@visual Chores dynamic three-column board at television and phone sizes', 
     path: resolve(evidence, 'chores-three-columns-phone-portrait.png'),
     animations: 'disabled',
   });
+});
+
+test('@visual pocket-money progress and administration at required viewports', async ({
+  page,
+  request,
+}) => {
+  const completion = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-occurrences/occurrence_school_bag/completions',
+    { data: { requestId: 'request_visual_pocket_money_completion' } },
+  );
+  expect(completion.ok()).toBe(true);
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto('/chores');
+    await expect(page.getByText('33% this week')).toBeVisible();
+    await expect(page.getByText('$4.00 of $12.00')).toBeVisible();
+    await page.screenshot({
+      path: resolve(pocketMoneyEvidence, `chores-pocket-money-${viewport.name}.png`),
+      animations: 'disabled',
+    });
+  }
+
+  for (const viewport of viewports.filter((candidate) => candidate.name.startsWith('phone'))) {
+    await page.setViewportSize(viewport);
+    await page.goto('/admin/pocket-money');
+    await expect(page.getByRole('heading', { name: 'Pocket money' })).toBeVisible();
+    await page.screenshot({
+      path: resolve(pocketMoneyEvidence, `admin-pocket-money-${viewport.name}.png`),
+      animations: 'disabled',
+      fullPage: true,
+    });
+  }
 });
 
 const states = [

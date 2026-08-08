@@ -31,8 +31,8 @@ const settings: {
   },
   {
     title: 'Family planning',
-    description: () => 'Routines, meals, lists and rewards',
-    icon: 'star',
+    description: () => 'Routines, meals, lists and pocket money',
+    icon: 'wallet',
     path: '/admin/planning',
   },
   {
