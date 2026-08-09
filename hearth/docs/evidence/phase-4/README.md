@@ -14,6 +14,8 @@ used as the documented fallback.
 - `screenshots/meals-phone-portrait.png`, `meals-phone-landscape.png`
 - `screenshots/admin-planning-phone-portrait.png`
 - `screenshots/admin-lists-phone-portrait.png`
+- `screenshots/admin-meals-phone-portrait.png`
+- `screenshots/admin-meals-dark-phone-portrait.png`
 - `screenshots/admin-routines-phone-portrait.png`
 - `screenshots/admin-pocket-money-phone-portrait.png`
 

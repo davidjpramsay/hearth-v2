@@ -15,6 +15,8 @@ import {
   HomeStatusSchema,
   IntegrationStateSchema,
   MealPlanSchema,
+  SavedMealLibrarySchema,
+  UpdateMealPlanWeekRequestSchema,
   MonthKeySchema,
   MonthScheduleSchema,
   UpdateMemberAvatarRequestSchema,
@@ -517,6 +519,59 @@ describe('shared wire schemas', () => {
         savedMeals: [],
       }).days,
     ).toHaveLength(7);
+    expect(
+      SavedMealLibrarySchema.parse({
+        householdId: 'household_demo',
+        activeMeals: [
+          {
+            id: 'saved_meal_tacos',
+            name: 'Tacos',
+            description: 'Everyone builds their own',
+            preparationMinutes: 25,
+            favourite: true,
+            archivedAt: null,
+          },
+        ],
+        archivedMeals: [],
+      }).activeMeals[0],
+    ).toMatchObject({ name: 'Tacos', preparationMinutes: 25 });
+    expect(
+      UpdateMealPlanWeekRequestSchema.safeParse({
+        requestId: 'request_meal_week_valid',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-04',
+            slot: 'dinner',
+            mealName: 'Tacos',
+            savedMealId: 'saved_meal_tacos',
+            note: null,
+          },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(
+      UpdateMealPlanWeekRequestSchema.safeParse({
+        requestId: 'request_meal_week_invalid',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-11',
+            slot: 'dinner',
+            mealName: 'Too late',
+            savedMealId: null,
+            note: null,
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      UpdateMealPlanWeekRequestSchema.safeParse({
+        requestId: 'request_meal_week_empty',
+        startDate: '2026-08-03',
+        entries: [],
+      }).success,
+    ).toBe(false);
     expect(
       PocketMoneyOverviewSchema.parse({
         householdId: 'household_demo',

@@ -595,4 +595,40 @@ describe('0001 household core migration', () => {
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
+
+  it('adds bounded preparation time to saved meals without rewriting planning history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 16').get()).toEqual(
+      { name: 'meal_planning_polish' },
+    );
+    const columns = database.prepare('PRAGMA table_info(saved_meals)').all() as Array<{
+      name: string;
+    }>;
+    expect(columns.map((column) => column.name)).toContain('preparation_minutes');
+    database.exec(`
+      INSERT INTO households VALUES ('household_meals', 'Meal home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO saved_meals
+        (id, household_id, name, description, favourite, archived_at, created_at, updated_at, preparation_minutes)
+      VALUES ('saved_meal_test', 'household_meals', 'Tacos', NULL, 1, NULL, 'now', 'now', 25);
+    `);
+    expect(
+      database
+        .prepare('SELECT preparation_minutes FROM saved_meals WHERE id = ?')
+        .get('saved_meal_test'),
+    ).toEqual({ preparation_minutes: 25 });
+    expect(() =>
+      database.exec(`
+        INSERT INTO saved_meals
+          (id, household_id, name, description, favourite, archived_at, created_at, updated_at, preparation_minutes)
+        VALUES ('saved_meal_invalid', 'household_meals', 'Impossible', NULL, 0, NULL, 'now', 'now', 0);
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
 });

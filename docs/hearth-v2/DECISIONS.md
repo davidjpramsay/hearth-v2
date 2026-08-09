@@ -503,3 +503,26 @@ Record durable choices here. New decisions should include date, status, context,
   adapter uses filesystem modification time for ordering/`capturedAt`; richer EXIF capture dates,
   hiding/favourite administration and any iPhone PhotoKit import remain later, separately bounded
   work.
+
+## D-037 — Meal administration is dinner-first and whole-week transactional
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: The television's two meal actions only displayed explanatory text and the phone edited
+  one selected night at a time. Saved meals could be created but not searched, updated or retired,
+  while exposing breakfast and lunch immediately would triple a form before the household had asked
+  for those surfaces.
+- Choice: Keep tonight and the seven-night dinner strip as the family television surface. Send its
+  two management actions to one authenticated phone route where all seven dinner-name fields remain
+  visible together and saved-meal/note details expand only when needed. Replace a displayed week's
+  entries in one validated, transactional, receipt-idempotent command; add separately confirmed
+  clear and copy commands. Treat saved meals as recoverable household records with search,
+  favourite ordering, optional preparation minutes/notes and update/archive/restore commands.
+  Retain breakfast and lunch as valid schema slots but defer their UI until household use justifies
+  the added density. Keep recipes and ingredient-to-list generation deferred.
+- Consequence: Planning several nights is materially faster on a phone, a retry cannot leave a
+  partly updated week, and historical plans remain understandable after a saved meal is archived.
+  Migration `0016_meal_planning_polish.sql` adds only bounded preparation metadata and an ordering
+  index; the runtime repository still owns all command, receipt and audit transactions. Adding
+  breakfast/lunch editing or grocery generation later requires demonstrated household need rather
+  than a new integration boundary.

@@ -176,7 +176,12 @@ for (const viewport of darkViewportCases) {
     });
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto(viewport.path);
-    await expect(page.getByRole('heading', { name: viewport.heading })).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: viewport.heading,
+        exact: typeof viewport.heading === 'string',
+      }),
+    ).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);

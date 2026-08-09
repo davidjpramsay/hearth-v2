@@ -131,7 +131,12 @@ summaries and stable family-safe API errors. The implemented routes are:
 - adult-only `GET /api/v1/households/:id/list-settings` plus idempotent list
   create/update/archive/restore/order and item update/archive/order/clear-checked commands
 - `POST /api/v1/households/:id/assist/list-items`, which resolves a named list without guessing and rejects active duplicates
-- `GET /api/v1/households/:id/meal-plan?start=` plus typed meal-plan and saved-meal commands
+- `GET /api/v1/households/:id/meal-plan?start=` for the family-readable week and active saved-meal
+  summaries
+- adult-only `GET /api/v1/households/:id/saved-meal-library` plus idempotent saved-meal
+  create/update/archive/restore commands
+- adult-only `PUT /api/v1/households/:id/meal-plan-weeks` and confirmed week clear/copy commands;
+  each whole-week mutation is one transaction, receipt and audit event
 - `GET /api/v1/households/:id/pocket-money?weekStart=&asOf=` for child weekly progress and amounts due
 - `PUT /api/v1/households/:id/members/:memberId/pocket-money-settings` for adult-only required weekly amount and payday changes
 - `POST /api/v1/households/:id/pocket-money-payments` for an adult-only, idempotent full or partial weekly payment snapshot with an optional note
@@ -254,12 +259,11 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0012` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0016` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
-money, member avatars, calendar setup and companion passkeys/sessions. Migration
-`0012_passkey_authentication.sql` stores credential public-key material/counters and only SHA-256
-session-token hashes. The live demo server uses the SQLite repository; its in-memory adapter remains
-only for isolated contract tests.
+money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
+history, the Synology photo index and saved-meal preparation metadata. The live demo server uses
+the SQLite repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
 

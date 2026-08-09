@@ -24,8 +24,10 @@ import {
   MealCommandResultSchema,
   MealPlanEntrySchema,
   MealPlanSchema,
+  MealPlanWeekCommandResultSchema,
   MemberSchema,
   SavedMealCommandResultSchema,
+  SavedMealLibrarySchema,
   SavedMealSchema,
   type AddListItemRequest,
   type AuditSummary,
@@ -35,6 +37,8 @@ import {
   type CreateHouseholdListRequest,
   type CreateChoreTemplateRequest,
   type CreateSavedMealRequest,
+  type ClearMealPlanWeekRequest,
+  type CopyMealPlanWeekRequest,
   type DemoScenario,
   type HouseholdList,
   type HouseholdListSettings,
@@ -44,15 +48,19 @@ import {
   type ListSettingsCommandResult,
   type MealCommandResult,
   type MealPlan,
+  type MealPlanWeekCommandResult,
   type Member,
   type SavedMeal,
   type SavedMealCommandResult,
+  type SavedMealLibrary,
   type UpdateChoreTemplateRequest,
   type UpdateHouseholdListRequest,
   type UpdateListItemRequest,
   type ReorderHouseholdListsRequest,
   type ReorderListItemsRequest,
   type UpsertMealPlanRequest,
+  type UpdateMealPlanWeekRequest,
+  type UpdateSavedMealRequest,
 } from '@hearth/shared';
 
 import { createDemoSeed, DEMO_HOUSEHOLD_ID, DEMO_LOCAL_DATE, DEMO_NOW } from './demo/seed.js';
@@ -148,6 +156,40 @@ export interface PlanningRepository {
     input: CreateSavedMealRequest,
     actor: CommandActor,
   ): Promise<SavedMealCommandResult>;
+  getSavedMealLibrary(householdId: string, actor: CommandActor): Promise<SavedMealLibrary>;
+  updateSavedMeal(
+    householdId: string,
+    mealId: string,
+    input: UpdateSavedMealRequest,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult>;
+  archiveSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult>;
+  restoreSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult>;
+  updateMealPlanWeek(
+    householdId: string,
+    input: UpdateMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult>;
+  clearMealPlanWeek(
+    householdId: string,
+    input: ClearMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult>;
+  copyMealPlanWeek(
+    householdId: string,
+    input: CopyMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult>;
   getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList>;
   createChoreTemplate(
     householdId: string,
@@ -169,6 +211,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
   private lists = demoLists();
   private archivedLists: Array<{ list: HouseholdList; archivedAt: string }> = [];
   private savedMeals = demoSavedMeals();
+  private archivedSavedMeals: SavedMeal[] = [];
   private mealEntries = demoMealEntries();
   private templates = demoChoreTemplates();
   private readonly receipts = new Map<string, AuditedResult>();
@@ -445,6 +488,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     this.assertHousehold(householdId);
     this.assertAdmin(actor);
     return this.replayOrRun('meal-plan', input.requestId, MealCommandResultSchema, () => {
+      this.assertSavedMealReferences([input.savedMealId]);
       const entry = MealPlanEntrySchema.parse({
         id:
           this.mealEntries.find(
@@ -480,14 +524,19 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       input.requestId,
       SavedMealCommandResultSchema,
       () => {
-        if (this.savedMeals.some((meal) => sameText(meal.name, input.name))) {
+        if (
+          this.savedMeals.some((meal) => sameText(meal.name, input.name)) ||
+          this.archivedSavedMeals.some((meal) => sameText(meal.name, input.name))
+        ) {
           throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
         }
         const savedMeal = SavedMealSchema.parse({
           id: this.id('saved_meal'),
           name: input.name,
           description: input.description,
-          favourite: true,
+          preparationMinutes: input.preparationMinutes,
+          favourite: input.favourite,
+          archivedAt: null,
         });
         this.savedMeals.push(savedMeal);
         return {
@@ -495,6 +544,206 @@ export class InMemoryPlanningRepository implements PlanningRepository {
           audit: this.audit('saved-meal.create', savedMeal.id, actor),
           replayed: false,
         };
+      },
+    );
+  }
+
+  async getSavedMealLibrary(householdId: string, actor: CommandActor): Promise<SavedMealLibrary> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return SavedMealLibrarySchema.parse({
+      householdId,
+      activeMeals: this.scenario === 'empty' ? [] : sortSavedMeals(this.savedMeals),
+      archivedMeals: this.scenario === 'empty' ? [] : sortSavedMeals(this.archivedSavedMeals),
+    });
+  }
+
+  async updateSavedMeal(
+    householdId: string,
+    mealId: string,
+    input: UpdateSavedMealRequest,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'saved-meal-update',
+      input.requestId,
+      SavedMealCommandResultSchema,
+      () => {
+        const index = this.savedMeals.findIndex((meal) => meal.id === mealId);
+        if (index < 0) throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+        if (
+          this.savedMeals.some((meal) => meal.id !== mealId && sameText(meal.name, input.name)) ||
+          this.archivedSavedMeals.some((meal) => sameText(meal.name, input.name))
+        ) {
+          throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
+        }
+        const savedMeal = SavedMealSchema.parse({
+          id: mealId,
+          name: input.name,
+          description: input.description,
+          preparationMinutes: input.preparationMinutes,
+          favourite: input.favourite,
+          archivedAt: null,
+        });
+        this.savedMeals[index] = savedMeal;
+        return {
+          savedMeal,
+          audit: this.audit('saved-meal.update', mealId, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async archiveSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('saved-meal-archive', requestId, SavedMealCommandResultSchema, () => {
+      const index = this.savedMeals.findIndex((meal) => meal.id === mealId);
+      const current = this.savedMeals[index];
+      if (current === undefined)
+        throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+      const savedMeal = SavedMealSchema.parse({ ...current, archivedAt: this.now() });
+      this.savedMeals.splice(index, 1);
+      this.archivedSavedMeals.push(savedMeal);
+      return {
+        savedMeal,
+        audit: this.audit('saved-meal.archive', mealId, actor),
+        replayed: false,
+      };
+    });
+  }
+
+  async restoreSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('saved-meal-restore', requestId, SavedMealCommandResultSchema, () => {
+      const index = this.archivedSavedMeals.findIndex((meal) => meal.id === mealId);
+      const current = this.archivedSavedMeals[index];
+      if (current === undefined)
+        throw new RepositoryError('NOT_FOUND', 'That archived meal was not found.');
+      const savedMeal = SavedMealSchema.parse({ ...current, archivedAt: null });
+      this.archivedSavedMeals.splice(index, 1);
+      this.savedMeals.push(savedMeal);
+      return {
+        savedMeal,
+        audit: this.audit('saved-meal.restore', mealId, actor, 'reversed'),
+        replayed: false,
+      };
+    });
+  }
+
+  async updateMealPlanWeek(
+    householdId: string,
+    input: UpdateMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'meal-week-update',
+      input.requestId,
+      MealPlanWeekCommandResultSchema,
+      () => {
+        this.assertSavedMealReferences(input.entries.map((entry) => entry.savedMealId));
+        this.mealEntries = this.mealEntries.filter(
+          (entry) => !localDateInWeek(entry.localDate, input.startDate),
+        );
+        this.mealEntries.push(
+          ...input.entries.map((entry) =>
+            MealPlanEntrySchema.parse({ ...entry, id: this.id('meal_plan') }),
+          ),
+        );
+        return this.weekResult(householdId, input.startDate, 'meal.week.update', actor);
+      },
+    );
+  }
+
+  async clearMealPlanWeek(
+    householdId: string,
+    input: ClearMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'meal-week-clear',
+      input.requestId,
+      MealPlanWeekCommandResultSchema,
+      () => {
+        const retained = this.mealEntries.filter(
+          (entry) => !localDateInWeek(entry.localDate, input.startDate),
+        );
+        if (retained.length === this.mealEntries.length) {
+          throw new RepositoryError('CONFLICT', 'There are no planned meals to clear.');
+        }
+        this.mealEntries = retained;
+        return this.weekResult(householdId, input.startDate, 'meal.week.clear', actor);
+      },
+    );
+  }
+
+  async copyMealPlanWeek(
+    householdId: string,
+    input: CopyMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'meal-week-copy',
+      input.requestId,
+      MealPlanWeekCommandResultSchema,
+      () => {
+        if (input.sourceStartDate === input.targetStartDate) {
+          throw new RepositoryError('CONFLICT', 'Choose a different week to copy.');
+        }
+        const source = this.mealEntries.filter((entry) =>
+          localDateInWeek(entry.localDate, input.sourceStartDate),
+        );
+        if (source.length === 0) {
+          throw new RepositoryError('CONFLICT', 'The earlier week has no meals to copy.');
+        }
+        const target = this.mealEntries.filter((entry) =>
+          localDateInWeek(entry.localDate, input.targetStartDate),
+        );
+        if (target.length > 0 && !input.replaceExisting) {
+          throw new RepositoryError('CONFIRMATION_REQUIRED', 'Confirm replacing this week first.');
+        }
+        this.mealEntries = this.mealEntries.filter(
+          (entry) => !localDateInWeek(entry.localDate, input.targetStartDate),
+        );
+        this.mealEntries.push(
+          ...source.map((entry) =>
+            MealPlanEntrySchema.parse({
+              ...entry,
+              id: this.id('meal_plan'),
+              savedMealId:
+                entry.savedMealId !== null &&
+                this.savedMeals.some((meal) => meal.id === entry.savedMealId)
+                  ? entry.savedMealId
+                  : null,
+              localDate: shiftLocalDateBetweenWeeks(
+                entry.localDate,
+                input.sourceStartDate,
+                input.targetStartDate,
+              ),
+            }),
+          ),
+        );
+        return this.weekResult(householdId, input.targetStartDate, 'meal.week.copy', actor);
       },
     );
   }
@@ -562,6 +811,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     this.lists = demoLists();
     this.archivedLists = [];
     this.savedMeals = demoSavedMeals();
+    this.archivedSavedMeals = [];
     this.mealEntries = demoMealEntries();
     this.templates = demoChoreTemplates();
     this.receipts.clear();
@@ -668,6 +918,26 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       throw new RepositoryError('NOT_FOUND', 'That list item was not found.');
     }
     return { list: owner, item: itemValue };
+  }
+
+  private assertSavedMealReferences(savedMealIds: readonly (string | null)[]): void {
+    const activeIds = new Set(this.savedMeals.map((meal) => meal.id));
+    if (savedMealIds.some((mealId) => mealId !== null && !activeIds.has(mealId))) {
+      throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+    }
+  }
+
+  private weekResult(
+    householdId: string,
+    startDate: string,
+    action: AuditSummary['action'],
+    actor: CommandActor,
+  ): MealPlanWeekCommandResult {
+    return {
+      plan: mealPlan(householdId, startDate, this.mealEntries, sortSavedMeals(this.savedMeals)),
+      audit: this.audit(action, mealWeekTargetId(startDate), actor),
+      replayed: false,
+    };
   }
 
   private assertUniqueListName(name: string, excludingId?: string): void {
@@ -1143,20 +1413,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
 
   async getMealPlan(householdId: string, startDate: string): Promise<MealPlan> {
     this.assertHousehold(householdId);
-    const endDate = addLocalDays(startDate, 6);
-    const entries = this.database
-      .prepare(
-        `SELECT * FROM meal_plan_entries
-         WHERE household_id = ? AND local_date BETWEEN ? AND ? ORDER BY local_date, meal_slot`,
-      )
-      .all(householdId, startDate, endDate) as MealRow[];
-    return mealPlan(
-      householdId,
-      startDate,
-      this.scenario === 'empty' ? [] : entries.map(mealFromRow),
-      this.scenario === 'empty' ? [] : this.readSavedMeals(householdId),
-      this.currentLocalDate(householdId),
-    );
+    return this.readMealPlan(householdId, startDate);
   }
 
   async upsertMealPlan(
@@ -1229,15 +1486,26 @@ export class SqlitePlanningRepository implements PlanningRepository {
       SavedMealCommandResultSchema,
       () => {
         const mealId = id('saved_meal');
-        const now = new Date().toISOString();
+        const now = this.now();
+        this.assertUniqueSavedMealName(householdId, input.name);
         try {
           this.database
             .prepare(
               `INSERT INTO saved_meals
-                (id, household_id, name, description, favourite, archived_at, created_at, updated_at)
-               VALUES (?, ?, ?, ?, 1, NULL, ?, ?)`,
+                (id, household_id, name, description, preparation_minutes, favourite,
+                 archived_at, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
             )
-            .run(mealId, householdId, input.name, input.description, now, now);
+            .run(
+              mealId,
+              householdId,
+              input.name,
+              input.description,
+              input.preparationMinutes,
+              input.favourite ? 1 : 0,
+              now,
+              now,
+            );
         } catch (error) {
           if (isUniqueError(error))
             throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
@@ -1248,6 +1516,216 @@ export class SqlitePlanningRepository implements PlanningRepository {
           audit: audit('saved-meal.create', mealId, actor),
           replayed: false,
         };
+      },
+    );
+  }
+
+  async getSavedMealLibrary(householdId: string, actor: CommandActor): Promise<SavedMealLibrary> {
+    this.assertAdmin(householdId, actor);
+    return this.readSavedMealLibrary(householdId);
+  }
+
+  async updateSavedMeal(
+    householdId: string,
+    mealId: string,
+    input: UpdateSavedMealRequest,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'saved-meal-update',
+      'saved_meal',
+      SavedMealCommandResultSchema,
+      () => {
+        this.readSavedMeal(householdId, mealId);
+        this.assertUniqueSavedMealName(householdId, input.name, mealId);
+        try {
+          this.database
+            .prepare(
+              `UPDATE saved_meals
+               SET name = ?, description = ?, preparation_minutes = ?, favourite = ?, updated_at = ?
+               WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+            )
+            .run(
+              input.name,
+              input.description,
+              input.preparationMinutes,
+              input.favourite ? 1 : 0,
+              this.now(),
+              mealId,
+              householdId,
+            );
+        } catch (error) {
+          if (isUniqueError(error))
+            throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
+          throw error;
+        }
+        return {
+          savedMeal: this.readSavedMeal(householdId, mealId),
+          audit: audit('saved-meal.update', mealId, actor, 'succeeded', this.now()),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async archiveSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      requestId,
+      'saved-meal-archive',
+      'saved_meal',
+      SavedMealCommandResultSchema,
+      () => {
+        this.readSavedMeal(householdId, mealId);
+        const now = this.now();
+        this.database
+          .prepare(
+            `UPDATE saved_meals SET archived_at = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+          )
+          .run(now, now, mealId, householdId);
+        return {
+          savedMeal: this.readSavedMeal(householdId, mealId, 'archived'),
+          audit: audit('saved-meal.archive', mealId, actor, 'succeeded', now),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async restoreSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      requestId,
+      'saved-meal-restore',
+      'saved_meal',
+      SavedMealCommandResultSchema,
+      () => {
+        this.readSavedMeal(householdId, mealId, 'archived');
+        const now = this.now();
+        this.database
+          .prepare(
+            `UPDATE saved_meals SET archived_at = NULL, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NOT NULL`,
+          )
+          .run(now, mealId, householdId);
+        return {
+          savedMeal: this.readSavedMeal(householdId, mealId),
+          audit: audit('saved-meal.restore', mealId, actor, 'reversed', now),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async updateMealPlanWeek(
+    householdId: string,
+    input: UpdateMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'meal-week-update',
+      'meal_plan_week',
+      MealPlanWeekCommandResultSchema,
+      () => {
+        for (const entry of input.entries) {
+          if (entry.savedMealId !== null) this.readSavedMeal(householdId, entry.savedMealId);
+        }
+        this.deleteMealPlanWeek(householdId, input.startDate);
+        for (const entry of input.entries) this.insertMealPlanEntry(householdId, entry, actor.id);
+        return this.weekResult(householdId, input.startDate, 'meal.week.update', actor);
+      },
+    );
+  }
+
+  async clearMealPlanWeek(
+    householdId: string,
+    input: ClearMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'meal-week-clear',
+      'meal_plan_week',
+      MealPlanWeekCommandResultSchema,
+      () => {
+        const changes = this.deleteMealPlanWeek(householdId, input.startDate);
+        if (changes === 0) {
+          throw new RepositoryError('CONFLICT', 'There are no planned meals to clear.');
+        }
+        return this.weekResult(householdId, input.startDate, 'meal.week.clear', actor);
+      },
+    );
+  }
+
+  async copyMealPlanWeek(
+    householdId: string,
+    input: CopyMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'meal-week-copy',
+      'meal_plan_week',
+      MealPlanWeekCommandResultSchema,
+      () => {
+        if (input.sourceStartDate === input.targetStartDate) {
+          throw new RepositoryError('CONFLICT', 'Choose a different week to copy.');
+        }
+        const source = this.readMealRows(householdId, input.sourceStartDate);
+        if (source.length === 0) {
+          throw new RepositoryError('CONFLICT', 'The earlier week has no meals to copy.');
+        }
+        const target = this.readMealRows(householdId, input.targetStartDate);
+        if (target.length > 0 && !input.replaceExisting) {
+          throw new RepositoryError('CONFIRMATION_REQUIRED', 'Confirm replacing this week first.');
+        }
+        const activeSavedMealIds = new Set(this.readSavedMeals(householdId).map((meal) => meal.id));
+        this.deleteMealPlanWeek(householdId, input.targetStartDate);
+        for (const sourceRow of source) {
+          const entry = mealFromRow(sourceRow);
+          this.insertMealPlanEntry(
+            householdId,
+            {
+              localDate: shiftLocalDateBetweenWeeks(
+                entry.localDate,
+                input.sourceStartDate,
+                input.targetStartDate,
+              ),
+              slot: entry.slot,
+              mealName: entry.mealName,
+              savedMealId:
+                entry.savedMealId !== null && activeSavedMealIds.has(entry.savedMealId)
+                  ? entry.savedMealId
+                  : null,
+              note: entry.note,
+            },
+            actor.id,
+          );
+        }
+        return this.weekResult(householdId, input.targetStartDate, 'meal.week.copy', actor);
       },
     );
   }
@@ -1617,14 +2095,117 @@ export class SqlitePlanningRepository implements PlanningRepository {
     return rows.map(savedMealFromRow);
   }
 
-  private readSavedMeal(householdId: string, mealId: string): SavedMeal {
+  private readSavedMealLibrary(householdId: string): SavedMealLibrary {
+    this.assertHousehold(householdId);
+    const rows = this.database
+      .prepare(
+        `SELECT * FROM saved_meals WHERE household_id = ?
+         ORDER BY archived_at IS NOT NULL, favourite DESC, name`,
+      )
+      .all(householdId) as SavedMealRow[];
+    return SavedMealLibrarySchema.parse({
+      householdId,
+      activeMeals: rows.filter((row) => row.archived_at === null).map(savedMealFromRow),
+      archivedMeals: rows.filter((row) => row.archived_at !== null).map(savedMealFromRow),
+    });
+  }
+
+  private assertUniqueSavedMealName(householdId: string, name: string, excludingId?: string): void {
+    const rows = this.database
+      .prepare('SELECT id, name FROM saved_meals WHERE household_id = ?')
+      .all(householdId) as Array<{ id: string; name: string }>;
+    if (rows.some((row) => row.id !== excludingId && sameText(row.name, name))) {
+      throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
+    }
+  }
+
+  private readSavedMeal(
+    householdId: string,
+    mealId: string,
+    state: 'active' | 'archived' = 'active',
+  ): SavedMeal {
     const row = this.database
       .prepare(
-        'SELECT * FROM saved_meals WHERE id = ? AND household_id = ? AND archived_at IS NULL',
+        `SELECT * FROM saved_meals WHERE id = ? AND household_id = ? AND archived_at IS ${
+          state === 'active' ? 'NULL' : 'NOT NULL'
+        }`,
       )
       .get(mealId, householdId) as SavedMealRow | undefined;
-    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+    if (row === undefined) {
+      throw new RepositoryError(
+        'NOT_FOUND',
+        state === 'active' ? 'That saved meal was not found.' : 'That archived meal was not found.',
+      );
+    }
     return savedMealFromRow(row);
+  }
+
+  private readMealRows(householdId: string, startDate: string): MealRow[] {
+    return this.database
+      .prepare(
+        `SELECT * FROM meal_plan_entries
+         WHERE household_id = ? AND local_date BETWEEN ? AND ? ORDER BY local_date, meal_slot`,
+      )
+      .all(householdId, startDate, addLocalDays(startDate, 6)) as MealRow[];
+  }
+
+  private readMealPlan(householdId: string, startDate: string): MealPlan {
+    return mealPlan(
+      householdId,
+      startDate,
+      this.scenario === 'empty' ? [] : this.readMealRows(householdId, startDate).map(mealFromRow),
+      this.scenario === 'empty' ? [] : this.readSavedMeals(householdId),
+      this.currentLocalDate(householdId),
+    );
+  }
+
+  private deleteMealPlanWeek(householdId: string, startDate: string): number {
+    return this.database
+      .prepare(
+        `DELETE FROM meal_plan_entries
+         WHERE household_id = ? AND local_date BETWEEN ? AND ?`,
+      )
+      .run(householdId, startDate, addLocalDays(startDate, 6)).changes;
+  }
+
+  private insertMealPlanEntry(
+    householdId: string,
+    entry: Omit<UpsertMealPlanRequest, 'requestId'>,
+    actorId: string,
+  ): void {
+    const now = this.now();
+    this.database
+      .prepare(
+        `INSERT INTO meal_plan_entries
+          (id, household_id, local_date, meal_slot, saved_meal_id, meal_name_snapshot,
+           note, planned_by_actor_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id('meal_plan'),
+        householdId,
+        entry.localDate,
+        entry.slot,
+        entry.savedMealId,
+        entry.mealName,
+        entry.note,
+        actorId,
+        now,
+        now,
+      );
+  }
+
+  private weekResult(
+    householdId: string,
+    startDate: string,
+    action: AuditSummary['action'],
+    actor: CommandActor,
+  ): MealPlanWeekCommandResult {
+    return {
+      plan: this.readMealPlan(householdId, startDate),
+      audit: audit(action, mealWeekTargetId(startDate), actor, 'succeeded', this.now()),
+      replayed: false,
+    };
   }
 
   private readMealEntry(entryId: string) {
@@ -1775,8 +2356,9 @@ export class SqlitePlanningRepository implements PlanningRepository {
 
     const insertSavedMeal = this.database.prepare(
       `INSERT OR IGNORE INTO saved_meals
-        (id, household_id, name, description, favourite, archived_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 1, NULL, ?, ?)`,
+        (id, household_id, name, description, preparation_minutes, favourite,
+         archived_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
     );
     for (const meal of demoSavedMeals()) {
       insertSavedMeal.run(
@@ -1784,6 +2366,8 @@ export class SqlitePlanningRepository implements PlanningRepository {
         DEMO_HOUSEHOLD_ID,
         meal.name,
         meal.description,
+        meal.preparationMinutes,
+        meal.favourite ? 1 : 0,
         DEMO_NOW,
         DEMO_NOW,
       );
@@ -1876,8 +2460,10 @@ function demoSavedMeals(): SavedMeal[] {
     SavedMealSchema.parse({
       id: `saved_meal_demo_${index + 1}`,
       name,
-      description: index === 0 ? 'Prep at 5:30' : null,
-      favourite: true,
+      description: index === 0 ? 'Good for a school night' : null,
+      preparationMinutes: index === 0 ? 45 : index < 5 ? 30 : null,
+      favourite: index < 7,
+      archivedAt: null,
     }),
   );
 }
@@ -2043,6 +2629,33 @@ function assertExactOrder(
   }
 }
 
+function sortSavedMeals(meals: readonly SavedMeal[]): SavedMeal[] {
+  return meals.toSorted(
+    (first, second) =>
+      Number(second.favourite) - Number(first.favourite) || first.name.localeCompare(second.name),
+  );
+}
+
+function localDateInWeek(localDate: string, startDate: string): boolean {
+  return localDate >= startDate && localDate <= addLocalDays(startDate, 6);
+}
+
+function shiftLocalDateBetweenWeeks(
+  localDate: string,
+  sourceStartDate: string,
+  targetStartDate: string,
+): string {
+  const offset = Math.round(
+    (Date.parse(`${localDate}T12:00:00Z`) - Date.parse(`${sourceStartDate}T12:00:00Z`)) /
+      86_400_000,
+  );
+  return addLocalDays(targetStartDate, offset);
+}
+
+function mealWeekTargetId(startDate: string): string {
+  return `meal_week_${startDate.replaceAll('-', '_')}`;
+}
+
 function audit(
   action: AuditSummary['action'],
   targetId: string,
@@ -2094,7 +2707,9 @@ function savedMealFromRow(row: SavedMealRow): SavedMeal {
     id: row.id,
     name: row.name,
     description: row.description,
+    preparationMinutes: row.preparation_minutes,
     favourite: row.favourite === 1,
+    archivedAt: row.archived_at,
   });
 }
 
@@ -2157,7 +2772,9 @@ interface SavedMealRow {
   id: string;
   name: string;
   description: string | null;
+  preparation_minutes: number | null;
   favourite: 0 | 1;
+  archived_at: string | null;
 }
 
 interface MealRow {

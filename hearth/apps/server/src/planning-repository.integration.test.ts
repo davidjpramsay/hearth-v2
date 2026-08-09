@@ -249,7 +249,7 @@ describe('SQLite household planning repository', () => {
     expect((await planning.getLists(DEMO_HOUSEHOLD_ID)).lists).toHaveLength(1);
   });
 
-  it('persists meal planning and keeps saved meals separately reusable', async () => {
+  it('manages saved meals and replay-safe whole-week planning without losing history', async () => {
     const { database, planning } = await repositories();
     const saved = await planning.createSavedMeal(
       DEMO_HOUSEHOLD_ID,
@@ -257,26 +257,161 @@ describe('SQLite household planning repository', () => {
         requestId: 'request_save_meal',
         name: 'Maya’s noodle bowls',
         description: 'Fast Thursday dinner',
+        preparationMinutes: 25,
+        favourite: true,
       },
       adult,
     );
-    const planned = await planning.upsertMealPlan(
+    await expect(
+      planning.createSavedMeal(
+        DEMO_HOUSEHOLD_ID,
+        {
+          requestId: 'request_save_meal_case_duplicate',
+          name: '  MAYA’S NOODLE BOWLS ',
+          description: null,
+          preparationMinutes: null,
+          favourite: false,
+        },
+        adult,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT' } satisfies Partial<RepositoryError>);
+    const updated = await planning.updateSavedMeal(
+      DEMO_HOUSEHOLD_ID,
+      saved.savedMeal.id,
+      {
+        requestId: 'request_update_saved_meal',
+        name: 'Maya’s sesame noodle bowls',
+        description: 'Fast Thursday dinner',
+        preparationMinutes: 20,
+        favourite: true,
+      },
+      adult,
+    );
+    const archived = await planning.archiveSavedMeal(
+      DEMO_HOUSEHOLD_ID,
+      saved.savedMeal.id,
+      'request_archive_saved_meal',
+      adult,
+    );
+    const archiveReplay = await planning.archiveSavedMeal(
+      DEMO_HOUSEHOLD_ID,
+      saved.savedMeal.id,
+      'request_archive_saved_meal',
+      adult,
+    );
+    const archivedLibrary = await planning.getSavedMealLibrary(DEMO_HOUSEHOLD_ID, adult);
+    await planning.restoreSavedMeal(
+      DEMO_HOUSEHOLD_ID,
+      saved.savedMeal.id,
+      'request_restore_saved_meal',
+      adult,
+    );
+    const week = await planning.updateMealPlanWeek(
       DEMO_HOUSEHOLD_ID,
       {
-        requestId: 'request_plan_meal',
-        localDate: '2026-08-06',
-        slot: 'dinner',
-        mealName: saved.savedMeal.name,
-        savedMealId: saved.savedMeal.id,
-        note: 'Prep at 5:45',
+        requestId: 'request_plan_week',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: updated.savedMeal.name,
+            savedMealId: updated.savedMeal.id,
+            note: 'Prep at 5:45',
+          },
+          {
+            localDate: '2026-08-04',
+            slot: 'dinner',
+            mealName: 'Leftovers',
+            savedMealId: null,
+            note: null,
+          },
+        ],
       },
       adult,
     );
-    const restarted = new SqlitePlanningRepository(database);
+    const weekReplay = await planning.updateMealPlanWeek(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_plan_week',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: updated.savedMeal.name,
+            savedMealId: updated.savedMeal.id,
+            note: 'Prep at 5:45',
+          },
+          {
+            localDate: '2026-08-04',
+            slot: 'dinner',
+            mealName: 'Leftovers',
+            savedMealId: null,
+            note: null,
+          },
+        ],
+      },
+      adult,
+    );
+    const copied = await planning.copyMealPlanWeek(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_copy_week',
+        sourceStartDate: '2026-08-03',
+        targetStartDate: '2026-08-10',
+        replaceExisting: false,
+      },
+      adult,
+    );
+    await expect(
+      planning.copyMealPlanWeek(
+        DEMO_HOUSEHOLD_ID,
+        {
+          requestId: 'request_copy_week_requires_confirmation',
+          sourceStartDate: '2026-08-03',
+          targetStartDate: '2026-08-10',
+          replaceExisting: false,
+        },
+        adult,
+      ),
+    ).rejects.toMatchObject({
+      code: 'CONFIRMATION_REQUIRED',
+    } satisfies Partial<RepositoryError>);
+    const cleared = await planning.clearMealPlanWeek(
+      DEMO_HOUSEHOLD_ID,
+      { requestId: 'request_clear_week', startDate: '2026-08-03' },
+      adult,
+    );
+    const restarted = new SqlitePlanningRepository(database, { seedDemo: false });
     const plan = await restarted.getMealPlan(DEMO_HOUSEHOLD_ID, '2026-08-03');
-    expect(planned.entry.mealName).toBe('Maya’s noodle bowls');
+    const copiedPlan = await restarted.getMealPlan(DEMO_HOUSEHOLD_ID, '2026-08-10');
+
+    expect(updated.savedMeal).toMatchObject({
+      name: 'Maya’s sesame noodle bowls',
+      preparationMinutes: 20,
+    });
+    expect(archived.savedMeal.archivedAt).not.toBeNull();
+    expect(archiveReplay.replayed).toBe(true);
+    expect(archivedLibrary.archivedMeals).toContainEqual(
+      expect.objectContaining({ id: saved.savedMeal.id }),
+    );
+    expect(week.plan.days[0]?.entries[0]).toMatchObject({
+      mealName: 'Maya’s sesame noodle bowls',
+    });
+    expect(weekReplay).toMatchObject({ replayed: true, plan: { startDate: '2026-08-03' } });
+    expect(copied.plan.days[0]?.entries[0]).toMatchObject({ localDate: '2026-08-10' });
+    expect(cleared.plan.days.every((day) => day.entries.length === 0)).toBe(true);
+    expect(plan.days.every((day) => day.entries.length === 0)).toBe(true);
+    expect(copiedPlan.days[1]?.entries[0]).toMatchObject({ mealName: 'Leftovers' });
     expect(plan.savedMeals.some((meal) => meal.id === saved.savedMeal.id)).toBe(true);
-    expect(plan.days[3]?.entries[0]).toMatchObject({ mealName: 'Maya’s noodle bowls' });
+    expect(
+      database
+        .prepare(
+          "SELECT COUNT(*) AS count FROM audit_events WHERE action_type LIKE 'meal.%' OR action_type LIKE 'saved-meal.%'",
+        )
+        .get(),
+    ).toEqual({ count: 7 });
   });
 
   it('does not create legacy star awards when chores are completed or undone', async () => {

@@ -114,7 +114,16 @@ the phone More hub.
 
 - Seven-day dinner strip or week plan.
 - Today's meal receives priority on Home.
-- Saved meals and grocery linkage can appear in companion/admin views without cluttering the TV.
+- The TV's **Saved family meals** and **Plan another night** actions open real authenticated
+  companion destinations; they are not acknowledgement-only controls.
+- Phone administration keeps all seven dinner-name fields visible together for rapid planning.
+  Saved-meal selection and a note expand per night only when needed.
+- Saved meals are searchable, show favourites first, expose optional preparation time/notes and use
+  recoverable archive/restore rather than destructive deletion.
+- Copying or clearing a week requires an explicit confirmation. One **Save week** action commits the
+  displayed seven-night plan together and reports failure without silently dropping entered data.
+- Breakfast/lunch and grocery linkage remain available future extensions without cluttering the
+  dinner-first television or phone paths.
 
 ### Photos
 

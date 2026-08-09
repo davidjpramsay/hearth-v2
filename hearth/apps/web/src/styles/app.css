@@ -2747,7 +2747,7 @@
   border: 0;
   border-radius: 16px;
   color: white;
-  background: var(--plum);
+  background: var(--plum-solid);
   font-weight: 720;
   cursor: pointer;
 }
@@ -2960,9 +2960,9 @@
   cursor: pointer;
 }
 .notice-form .button--primary {
-  border-color: var(--plum);
+  border-color: var(--plum-solid);
   color: white;
-  background: var(--plum);
+  background: var(--plum-solid);
 }
 .notice-card .button--danger {
   border-color: #dfaaa4;
@@ -3943,7 +3943,7 @@
   padding: 56px 72px 48px;
   border-radius: 28px;
   color: #fffaf0;
-  background: var(--plum);
+  background: var(--plum-solid);
   box-shadow: 0 20px 50px rgb(59 36 51 / 18%);
   display: flex;
   flex-direction: column;
@@ -5232,7 +5232,9 @@
   align-items: center;
   gap: 16px;
   background: var(--surface);
+  color: var(--ink);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 .meal-action > svg:first-child {
@@ -5253,20 +5255,6 @@
   color: var(--muted);
   font-size: 18px;
 }
-.meal-tv-message {
-  min-height: 56px;
-  margin-top: 13px;
-  padding: 8px 14px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  color: #4a5f4c;
-  background: var(--sage-soft);
-  font-size: 19px;
-}
-.meal-tv-message button,
 .meal-week-controls button {
   min-height: 42px;
   padding: 0 14px;
@@ -5286,8 +5274,437 @@
   align-items: center;
   gap: 7px;
 }
-.phone-meal-editor {
+.meals-manage-link {
   display: none;
+}
+
+.meal-settings-intro {
+  padding: 17px;
+  border: 1px solid #bac8b5;
+  border-radius: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: #455b47;
+  background: var(--sage-soft);
+}
+.meal-settings-intro > svg {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+}
+.meal-settings-intro strong,
+.meal-settings-intro p {
+  display: block;
+  margin: 0;
+}
+.meal-settings-intro strong {
+  font-size: 18px;
+}
+.meal-settings-intro p {
+  margin-top: 3px;
+  line-height: 1.35;
+}
+.meal-settings-error {
+  margin-top: 14px;
+}
+.meal-settings-error .admin-secondary {
+  margin-top: 8px;
+}
+.meal-week-settings,
+.saved-meal-library {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: var(--surface-glass);
+}
+.meal-week-settings > header,
+.saved-meal-library > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.meal-week-settings h2,
+.saved-meal-library h2,
+.meal-week-settings p,
+.saved-meal-library p {
+  margin: 0;
+}
+.meal-week-settings h2,
+.saved-meal-library h2 {
+  font-size: 25px;
+}
+.saved-meal-library > header > div > p:last-child {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.meal-settings-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.meal-settings-week-nav .admin-secondary {
+  min-width: 46px;
+  min-height: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.meal-settings-week-nav svg {
+  width: 20px;
+  height: 20px;
+}
+.meal-week-settings__form {
+  margin-top: 15px;
+}
+.meal-week-settings__days {
+  border-top: 1px solid var(--hairline);
+}
+.meal-night-editor {
+  min-height: 82px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hairline);
+  display: grid;
+  grid-template-columns: 72px minmax(220px, 1fr) minmax(210px, 0.72fr);
+  align-items: end;
+  gap: 11px;
+}
+.meal-night-editor__date {
+  align-self: center;
+}
+.meal-night-editor__date strong,
+.meal-night-editor__date span {
+  display: block;
+}
+.meal-night-editor__date strong {
+  color: var(--eucalyptus);
+  font-size: 19px;
+  text-transform: uppercase;
+}
+.meal-night-editor__date span {
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.meal-night-editor label {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 680;
+}
+.meal-night-editor label > span {
+  display: block;
+  margin-bottom: 5px;
+}
+.meal-night-editor__options {
+  min-width: 0;
+  align-self: end;
+}
+.meal-night-editor__options > summary {
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  background: var(--surface-muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 720;
+  list-style: none;
+}
+.meal-night-editor__options > summary::-webkit-details-marker {
+  display: none;
+}
+.meal-night-editor__options > summary svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 160ms ease;
+}
+.meal-night-editor__options[open] > summary svg {
+  transform: rotate(180deg);
+}
+.meal-night-editor__option-fields {
+  margin-top: 9px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+.meal-night-editor input,
+.meal-night-editor select,
+.saved-meal-search input,
+.saved-meal-edit input,
+.saved-meal-edit textarea,
+.saved-meal-create textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 11px;
+  border: 1px solid #cfc5bd;
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--input-surface, white);
+  font: inherit;
+  font-size: 15px;
+}
+.saved-meal-edit textarea,
+.saved-meal-create textarea {
+  min-height: 82px;
+  padding-top: 10px;
+  resize: vertical;
+}
+.meal-week-settings__form > .admin-submit {
+  width: 100%;
+  margin-top: 14px;
+}
+.meal-week-tools {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.meal-week-tools > div > button {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.meal-week-tools svg,
+.saved-meal-library > header button svg,
+.archived-saved-meal button svg,
+.saved-meal-edit__actions button svg {
+  width: 18px;
+  height: 18px;
+}
+.meal-tool-confirmation {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 13px;
+  background: var(--surface-muted);
+}
+.meal-tool-confirmation p {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.meal-tool-confirmation button {
+  min-height: 42px;
+  margin: 0 6px 0 0;
+}
+.saved-meal-library > header > button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.saved-meal-create {
+  margin-top: 14px;
+}
+.saved-meal-create h3 {
+  margin: 0 0 13px;
+  font-size: 20px;
+}
+.saved-meal-search {
+  min-height: 48px;
+  margin-top: 14px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  background: var(--input-surface, white);
+}
+.saved-meal-search svg {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+}
+.saved-meal-search input {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+.saved-meal-empty {
+  margin-top: 13px !important;
+  padding: 16px;
+  border-radius: 13px;
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+.saved-meal-cards {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.saved-meal-card {
+  min-width: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 15px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.saved-meal-card > summary {
+  min-height: 72px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+.saved-meal-card > summary::-webkit-details-marker {
+  display: none;
+}
+.saved-meal-card > summary > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  transition: transform 160ms ease;
+}
+.saved-meal-card[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.saved-meal-card__star {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--terracotta);
+  background: var(--surface-muted);
+}
+.saved-meal-card__star svg {
+  width: 19px;
+  height: 19px;
+}
+.saved-meal-card summary strong,
+.saved-meal-card summary small {
+  display: block;
+}
+.saved-meal-card summary strong {
+  font-size: 17px;
+}
+.saved-meal-card summary small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.saved-meal-edit {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  border-radius: 0;
+  box-shadow: none;
+}
+.saved-meal-fields__split {
+  align-items: end;
+}
+.saved-meal-field-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.saved-meal-field-label svg {
+  width: 16px;
+  height: 16px;
+}
+.saved-meal-favourite {
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 9px !important;
+  cursor: pointer;
+}
+.saved-meal-favourite input {
+  width: 18px;
+  min-height: 18px;
+}
+.saved-meal-favourite span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.saved-meal-favourite svg {
+  width: 18px;
+  height: 18px;
+  color: var(--terracotta);
+}
+.saved-meal-edit__actions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.saved-meal-edit__actions button {
+  min-height: 44px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.archived-saved-meals {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--surface-muted);
+}
+.archived-saved-meals > summary {
+  font-weight: 720;
+  cursor: pointer;
+}
+.archived-saved-meals > p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.archived-saved-meal {
+  min-height: 62px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.archived-saved-meal:first-of-type {
+  margin-top: 10px;
+}
+.archived-saved-meal strong,
+.archived-saved-meal small {
+  display: block;
+}
+.archived-saved-meal small {
+  margin-top: 2px;
+  color: var(--muted);
+}
+.archived-saved-meal button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .planning-intro,
@@ -5985,9 +6402,9 @@
     padding: 0 12px;
   }
   .phone-list-add button {
-    border-color: var(--plum);
+    border-color: var(--plum-solid);
     color: white;
-    background: var(--plum);
+    background: var(--plum-solid);
     font-weight: 700;
   }
   .lists-manage-link {
@@ -6020,6 +6437,19 @@
 
   .meals-screen .screen-header__actions {
     margin-left: auto;
+  }
+  .meals-manage-link {
+    min-height: 44px;
+    padding: 0 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    color: var(--plum);
+    background: var(--surface-raised);
+    font-size: 14px;
+    font-weight: 720;
+    text-decoration: none;
   }
   .tonight-band {
     min-height: 115px;
@@ -6059,62 +6489,125 @@
     font-size: 16px;
   }
   .meal-actions,
-  .meal-week-controls,
-  .meal-tv-message {
+  .meal-week-controls {
     display: none;
   }
-  .phone-meal-editor {
-    margin-top: 18px;
-    display: block;
+  .meal-settings-intro {
+    padding: 15px;
   }
-  .phone-meal-editor h2 {
-    margin: 0 0 11px;
-    font-size: 23px;
+  .meal-week-settings,
+  .saved-meal-library {
+    padding: 15px;
+    border-radius: 18px;
   }
-  .phone-meal-editor form {
-    padding: 16px;
-    border: 1px solid #e2d9d0;
-    border-radius: 16px;
-    background: rgb(255 255 255 / 78%);
+  .meal-week-settings > header,
+  .saved-meal-library > header {
+    align-items: flex-start;
   }
-  .phone-meal-editor label {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    color: #51484d;
-    font-size: 14px;
-    font-weight: 680;
+  .meal-week-settings h2,
+  .saved-meal-library h2 {
+    font-size: 22px;
   }
-  .phone-meal-editor label + label {
-    margin-top: 13px;
+  .meal-settings-week-nav {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
-  .phone-meal-editor input,
-  .phone-meal-editor select {
+  .meal-night-editor {
+    min-height: 76px;
+    padding: 10px 0;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+  }
+  .meal-night-editor__date {
+    grid-row: 1;
+    align-self: start;
+    padding-top: 22px;
+  }
+  .meal-night-editor__dinner {
+    grid-column: 2;
+  }
+  .meal-night-editor__options {
+    grid-column: 3;
+  }
+  .meal-night-editor__options > summary {
+    width: 46px;
     min-height: 48px;
+    padding: 0;
+    justify-content: center;
+  }
+  .meal-night-editor__options > summary span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .meal-night-editor__options[open] {
+    grid-column: 2 / -1;
+  }
+  .meal-night-editor__options[open] > summary {
+    width: 100%;
     padding: 0 11px;
-    border: 1px solid #cfc5bd;
-    border-radius: 11px;
-    background: white;
+    justify-content: space-between;
+  }
+  .meal-night-editor__options[open] > summary span {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+  .meal-night-editor__option-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .meal-night-editor__option-fields label {
+    grid-column: auto;
+  }
+  .meal-night-editor input,
+  .meal-night-editor select {
+    min-height: 48px;
     font-size: 16px;
   }
-  .phone-meal-editor .admin-submit {
-    min-height: 50px;
+  .meal-week-tools {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .phone-meal-editor .saved-meal-add {
-    margin-top: 12px;
+  .meal-tool-confirmation button {
+    width: 100%;
+    margin: 6px 0 0;
   }
-  .saved-meal-add button {
-    min-height: 46px;
+  .saved-meal-library > header {
+    display: block;
+  }
+  .saved-meal-library > header > button {
+    width: 100%;
     margin-top: 12px;
-    border: 1px solid #cdbfc8;
-    border-radius: 11px;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 7px;
-    color: var(--plum);
-    background: white;
-    font-weight: 700;
+  }
+  .saved-meal-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .saved-meal-fields__split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .saved-meal-favourite {
+    margin-top: 13px;
+  }
+  .saved-meal-edit__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .saved-meal-edit__actions button {
+    width: 100%;
+  }
+  .archived-saved-meal {
+    align-items: flex-start;
   }
   .planning-area-card {
     min-height: 82px;
@@ -6777,7 +7270,9 @@
 :root[data-theme='dark'] .routine-editor,
 :root[data-theme='dark'] .pocket-money-admin-card,
 :root[data-theme='dark'] .pocket-money-history,
-:root[data-theme='dark'] .phone-meal-editor form {
+:root[data-theme='dark'] .meal-week-settings,
+:root[data-theme='dark'] .saved-meal-library,
+:root[data-theme='dark'] .saved-meal-card {
   background: var(--surface-glass);
 }
 :root[data-theme='dark'] .home-status-band {
@@ -6831,8 +7326,7 @@
 :root[data-theme='dark'] .member-colour-picker legend,
 :root[data-theme='dark'] .member-colour-picker__option input:checked ~ .member-colour-picker__name,
 :root[data-theme='dark'] .routine-fields label,
-:root[data-theme='dark'] .routine-days legend,
-:root[data-theme='dark'] .phone-meal-editor label {
+:root[data-theme='dark'] .routine-days legend {
   color: var(--ink);
 }
 :root[data-theme='dark'] .local-status,
@@ -6840,7 +7334,7 @@
 :root[data-theme='dark'] .history-safe-note,
 :root[data-theme='dark'] .pocket-money-intro,
 :root[data-theme='dark'] .pocket-money-week-context,
-:root[data-theme='dark'] .meal-tv-message {
+:root[data-theme='dark'] .meal-settings-intro {
   border-color: #48604f;
   color: #d6e8d9;
 }
@@ -6857,7 +7351,6 @@
 :root[data-theme='dark'] .admin-secondary,
 :root[data-theme='dark'] .admin-danger,
 :root[data-theme='dark'] .device-row button,
-:root[data-theme='dark'] .meal-tv-message button,
 :root[data-theme='dark'] .meal-week-controls button,
 :root[data-theme='dark'] .routine-fields input,
 :root[data-theme='dark'] .routine-fields select,
@@ -6867,9 +7360,12 @@
 :root[data-theme='dark'] .pocket-payment-form input,
 :root[data-theme='dark'] .pocket-money-void-form input,
 :root[data-theme='dark'] .phone-list-add input,
-:root[data-theme='dark'] .phone-meal-editor input,
-:root[data-theme='dark'] .phone-meal-editor select,
-:root[data-theme='dark'] .saved-meal-add button {
+:root[data-theme='dark'] .meal-night-editor input,
+:root[data-theme='dark'] .meal-night-editor select,
+:root[data-theme='dark'] .saved-meal-search,
+:root[data-theme='dark'] .saved-meal-search input,
+:root[data-theme='dark'] .saved-meal-edit textarea,
+:root[data-theme='dark'] .saved-meal-create textarea {
   border-color: var(--hairline);
   color: var(--ink);
   background: var(--input-surface);
@@ -7015,6 +7511,31 @@
 }
 
 @media (max-width: 900px) and (orientation: landscape) {
+  .meals-screen .tonight-band {
+    min-height: 92px;
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  .meals-screen .tonight-band > svg {
+    width: 36px;
+    height: 36px;
+  }
+  .meals-screen .tonight-band p {
+    font-size: 12px;
+  }
+  .meals-screen .tonight-band h2 {
+    font-size: 23px;
+  }
+  .meals-screen .tonight-band span {
+    font-size: 14px;
+  }
+  .meals-screen .meal-week {
+    margin-top: 10px;
+  }
+  .meals-screen .meal-day {
+    min-height: 88px;
+    padding: 10px;
+  }
   .home-screen .screen-header {
     min-height: 58px;
     margin-bottom: 10px;

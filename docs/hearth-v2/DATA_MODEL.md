@@ -205,8 +205,9 @@ be archived.
 ### Meal
 
 - saved family meal name
-- optional description, tags and source/reference URL
-- favourite/archive state
+- optional description/notes and bounded preparation minutes
+- favourite state used for ordering and concise family counts
+- nullable archive time; archived meals remain in historical plans and can be restored
 
 ### Meal plan entry
 
@@ -214,6 +215,12 @@ be archived.
 - meal slot such as breakfast/lunch/dinner
 - saved meal reference or free text
 - note and actor
+
+An adult may replace the displayed week's entries in one command, clear the week after explicit
+confirmation or copy one Monday–Sunday week to another. These commands validate every date against
+the target week, reject duplicate date/slot pairs and commit the plan mutation, command receipt and
+audit event together. Copying snapshots the meal name and retains a saved-meal reference only while
+that saved meal is active. Duplicate request IDs replay the original typed result.
 
 Recipe/ingredient modelling is deferred. Grocery linkage should use explicit generated list items with source references so changes remain understandable.
 
@@ -366,8 +373,14 @@ approved photo projection, proportional pocket-money records, bounded member
 avatar derivatives and credential-free calendar-setup metadata respectively. Migration
 `0012_passkey_authentication.sql` adds public-key credentials and hash-only revocable companion
 sessions without storing a setup code or raw bearer token.
+Migration `0013_notices_and_today_sections.sql` adds bounded Today visibility settings and expiring
+household notices. Migration `0014_pocket_money_payment_history.sql` adds immutable partial-payment
+notes and reasoned one-to-one voids.
 Migration `0015_synology_photo_index.sql` adds the fingerprint and bounded status index required by
 the read-only Synology photo scanner without storing a source filesystem path in asset rows.
+Migration `0016_meal_planning_polish.sql` adds nullable, bounded preparation minutes and an index for
+active/favourite saved-meal ordering. Existing meal-plan rows and historical saved meals remain
+valid without rewriting household data.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported daily and weekly occurrences on
@@ -384,3 +397,6 @@ result when the same request ID is retried. Pocket-money settings, immutable par
 payment snapshots and reasoned one-to-one voids use the same idempotent, audited command path. The
 former reward tables remain dormant migration history and are not read or
 written by the runtime.
+Saved meals and whole-week dinner mutations use the same repository boundary. Adult-only create,
+update, archive, restore, batch save, clear and copy operations are transactional, audited and
+receipt-idempotent in both the SQLite runtime and injected in-memory contract tests.

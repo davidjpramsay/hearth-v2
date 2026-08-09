@@ -91,6 +91,14 @@ export function useMealPlanQuery(startDate = getHearthRuntime().weekStart, enabl
   });
 }
 
+export function useSavedMealLibraryQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.savedMealLibrary,
+    queryFn: hearthApi.getSavedMealLibrary,
+    enabled,
+  });
+}
+
 export function usePocketMoneyQuery(
   weekStart = getHearthRuntime().weekStart,
   asOfDate = getHearthRuntime().localDate,

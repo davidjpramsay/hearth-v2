@@ -92,7 +92,17 @@ Can understand the current household state and use clearly exposed room controls
 ### 5. Meal planning
 
 - Weekly breakfast/lunch/dinner plan, with dinner prioritised visually.
-- Saved family meals and notes.
+- The television presents tonight and a calm seven-night dinner strip; dense editing belongs in
+  the authenticated phone companion.
+- The companion can edit all seven dinners in one save, copy the previous week or explicitly clear
+  a week. Saved-meal and note controls remain optional details rather than slowing the primary
+  dinner-name path.
+- Saved family meals support search, favourites, optional preparation time and notes, recoverable
+  archive and restore.
+- Meal-plan and saved-meal writes use the same validated, idempotent and audited command path as
+  other household-owned data.
+- Breakfast and lunch remain valid contract slots but do not receive a dedicated first-release UI
+  until a real household need justifies the extra density.
 - Link meal ingredients to the grocery list later.
 - Do not require recipe management in the first implementation.
 

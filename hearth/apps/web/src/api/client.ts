@@ -17,6 +17,7 @@ import {
   ListSettingsCommandResultSchema,
   MealCommandResultSchema,
   MealPlanSchema,
+  MealPlanWeekCommandResultSchema,
   MemberAvatarCommandResultSchema,
   MemberSchema,
   MonthScheduleSchema,
@@ -35,6 +36,7 @@ import {
   PocketMoneySettingsCommandResultSchema,
   RuntimeContextSchema,
   SavedMealCommandResultSchema,
+  SavedMealLibrarySchema,
   TodaySummarySchema,
   TodayConfigurationCommandResultSchema,
   TodayConfigurationSchema,
@@ -60,6 +62,8 @@ import {
   type ListSettingsCommandResult,
   type MealCommandResult,
   type MealPlan,
+  type MealPlanEntryInput,
+  type MealPlanWeekCommandResult,
   type Member,
   type MemberAvatarCommandResult,
   type MonthSchedule,
@@ -78,6 +82,7 @@ import {
   type PocketMoneyPaymentVoidCommandResult,
   type PocketMoneySettingsCommandResult,
   type SavedMealCommandResult,
+  type SavedMealLibrary,
   type RuntimeContext,
   type TodaySummary,
   type TodaySectionVisibility,
@@ -137,6 +142,9 @@ export const queryKeys = {
   },
   meals: (startDate = getHearthRuntime().weekStart) =>
     [householdId(getHearthRuntime()), 'meals', startDate] as const,
+  get savedMealLibrary() {
+    return [householdId(getHearthRuntime()), 'saved-meal-library'] as const;
+  },
   get pocketMoneyRoot() {
     return [householdId(getHearthRuntime()), 'pocket-money'] as const;
   },
@@ -395,8 +403,76 @@ export const hearthApi = {
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
     }),
-  createSavedMeal: (input: { requestId: string; name: string; description: string | null }) =>
+  createSavedMeal: (input: {
+    requestId: string;
+    name: string;
+    description: string | null;
+    preparationMinutes: number | null;
+    favourite: boolean;
+  }) =>
     request(`${householdApiBase()}/saved-meals`, SavedMealCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  getSavedMealLibrary: () =>
+    request(`${householdApiBase()}/saved-meal-library`, SavedMealLibrarySchema, {
+      headers: demoAdminHeaders,
+    }),
+  updateSavedMeal: (
+    mealId: string,
+    input: {
+      requestId: string;
+      name: string;
+      description: string | null;
+      preparationMinutes: number | null;
+      favourite: boolean;
+    },
+  ) =>
+    request(`${householdApiBase()}/saved-meals/${mealId}`, SavedMealCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  archiveSavedMeal: (mealId: string, requestId: string) =>
+    request(`${householdApiBase()}/saved-meals/${mealId}/archives`, SavedMealCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId }),
+    }),
+  restoreSavedMeal: (mealId: string, requestId: string) =>
+    request(
+      `${householdApiBase()}/saved-meals/${mealId}/restorations`,
+      SavedMealCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+    ),
+  updateMealPlanWeek: (input: {
+    requestId: string;
+    startDate: string;
+    entries: MealPlanEntryInput[];
+  }) =>
+    request(`${householdApiBase()}/meal-plan-weeks`, MealPlanWeekCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  clearMealPlanWeek: (startDate: string, requestId: string) =>
+    request(`${householdApiBase()}/meal-plan-week-clears`, MealPlanWeekCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId, startDate }),
+    }),
+  copyMealPlanWeek: (input: {
+    requestId: string;
+    sourceStartDate: string;
+    targetStartDate: string;
+    replaceExisting: boolean;
+  }) =>
+    request(`${householdApiBase()}/meal-plan-week-copies`, MealPlanWeekCommandResultSchema, {
       method: 'POST',
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
@@ -629,6 +705,8 @@ export type HearthListCommandResult = ListItemCommandResult;
 export type HearthMealPlan = MealPlan;
 export type HearthMealCommandResult = MealCommandResult;
 export type HearthSavedMealCommandResult = SavedMealCommandResult;
+export type HearthSavedMealLibrary = SavedMealLibrary;
+export type HearthMealPlanWeekCommandResult = MealPlanWeekCommandResult;
 export type HearthPocketMoney = PocketMoneyOverview;
 export type HearthPocketMoneySettingsCommandResult = PocketMoneySettingsCommandResult;
 export type HearthPocketMoneyPaymentCommandResult = PocketMoneyPaymentCommandResult;

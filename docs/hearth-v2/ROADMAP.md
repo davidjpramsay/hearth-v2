@@ -172,11 +172,13 @@ Status: complete and locally verified with deterministic demo household data.
 - Voice retries do not duplicate list items or chore completions.
 - Dense editing remains out of the TV's primary interaction path.
 
-Implementation note (updated 2026-08-06): Lists and Meals have D-pad television
+Implementation note (updated 2026-08-09): Lists and Meals have D-pad television
 surfaces and responsive phone presentations. The phone Family Planning area
 creates, renames, colours, orders, archives and restores lists; edits, orders
-and removes list items; and explicitly clears checked history. It also edits
-future recurring chores, dinners/saved meals, child weekly amounts,
+and removes list items; and explicitly clears checked history. Meal administration now edits all
+seven dinner names together, expands saved-meal/note details only when needed, copies or clears a
+week with confirmation, and creates, searches, favourites, updates, archives and restores reusable
+meals with optional preparation time and notes. It also edits future recurring chores, child weekly amounts,
 paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted

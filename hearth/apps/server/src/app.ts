@@ -32,6 +32,7 @@ import {
   ChoreTemplateListSchema,
   CommandRequestSchema,
   CompletionReversalRequestSchema,
+  CopyMealPlanWeekRequestSchema,
   CreateMemberRequestSchema,
   CreateHouseholdNoticeRequestSchema,
   CreatePairingRequestSchema,
@@ -51,8 +52,10 @@ import {
   ListItemCommandResultSchema,
   ListSettingsCommandResultSchema,
   LocalDateSchema,
+  ClearMealPlanWeekRequestSchema,
   MealCommandResultSchema,
   MealPlanSchema,
+  MealPlanWeekCommandResultSchema,
   MemberAvatarCommandResultSchema,
   type Member,
   MemberSchema,
@@ -83,6 +86,7 @@ import {
   RevokeDeviceRequestSchema,
   RuntimeContextSchema,
   SavedMealCommandResultSchema,
+  SavedMealLibrarySchema,
   SaveCalendarConnectionRequestSchema,
   TodaySummarySchema,
   TodayConfigurationCommandResultSchema,
@@ -96,7 +100,9 @@ import {
   UpdateListItemRequestSchema,
   UpdateMemberRequestSchema,
   UpdateMemberAvatarRequestSchema,
+  UpdateMealPlanWeekRequestSchema,
   UpdatePocketMoneySettingsRequestSchema,
+  UpdateSavedMealRequestSchema,
   UpdateTodaySectionsRequestSchema,
   VoidPocketMoneyPaymentRequestSchema,
   WeekScheduleSchema,
@@ -145,6 +151,7 @@ const MemberParamsSchema = HouseholdParamsSchema.extend({ memberId: OpaqueIdSche
 const DeviceParamsSchema = HouseholdParamsSchema.extend({ deviceId: OpaqueIdSchema });
 const ListParamsSchema = HouseholdParamsSchema.extend({ listId: OpaqueIdSchema });
 const ListItemParamsSchema = HouseholdParamsSchema.extend({ itemId: OpaqueIdSchema });
+const SavedMealParamsSchema = HouseholdParamsSchema.extend({ mealId: OpaqueIdSchema });
 const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: OpaqueIdSchema });
 const NoticeParamsSchema = HouseholdParamsSchema.extend({ noticeId: OpaqueIdSchema });
 const PocketMoneyPaymentParamsSchema = HouseholdParamsSchema.extend({ paymentId: OpaqueIdSchema });
@@ -1304,6 +1311,130 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         ),
       );
       realtime.publish(params.householdId, 'meal.changed', result.savedMeal.id);
+      return result;
+    });
+  });
+
+  server.get('/api/v1/households/:householdId/saved-meal-library', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      SavedMealLibrarySchema.parse(
+        await planningRepository.getSavedMealLibrary(
+          params.householdId,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      ),
+    );
+  });
+
+  server.put('/api/v1/households/:householdId/saved-meals/:mealId', async (request, reply) => {
+    const params = parse(SavedMealParamsSchema, request.params, reply);
+    const body = parse(UpdateSavedMealRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = SavedMealCommandResultSchema.parse(
+        await planningRepository.updateSavedMeal(
+          params.householdId,
+          params.mealId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.savedMeal.id);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/saved-meals/:mealId/archives',
+    async (request, reply) => {
+      const params = parse(SavedMealParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = SavedMealCommandResultSchema.parse(
+          await planningRepository.archiveSavedMeal(
+            params.householdId,
+            params.mealId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'meal.changed', result.savedMeal.id);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/saved-meals/:mealId/restorations',
+    async (request, reply) => {
+      const params = parse(SavedMealParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = SavedMealCommandResultSchema.parse(
+          await planningRepository.restoreSavedMeal(
+            params.householdId,
+            params.mealId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'meal.changed', result.savedMeal.id);
+        return result;
+      });
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/meal-plan-weeks', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(UpdateMealPlanWeekRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MealPlanWeekCommandResultSchema.parse(
+        await planningRepository.updateMealPlanWeek(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/meal-plan-week-clears', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(ClearMealPlanWeekRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MealPlanWeekCommandResultSchema.parse(
+        await planningRepository.clearMealPlanWeek(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/meal-plan-week-copies', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CopyMealPlanWeekRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MealPlanWeekCommandResultSchema.parse(
+        await planningRepository.copyMealPlanWeek(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.audit.targetId);
       return result;
     });
   });

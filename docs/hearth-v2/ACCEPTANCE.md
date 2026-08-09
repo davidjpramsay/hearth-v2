@@ -116,7 +116,19 @@ Chromium fallback produced the retained evidence.
   These commands are idempotent, audited and survive restart.
 - The television list surface does not expose dense administration controls.
 - Today's meal is visible without entering the Meals module.
-- Long-form editing is comfortable from the phone companion.
+- The TV's meal actions reach real companion management destinations while keeping dense editing
+  out of the television path.
+- An authenticated adult can edit multiple dinners and optional notes in one phone-friendly weekly
+  form; one save updates the displayed week atomically and survives restart.
+- An adult can copy the previous week or clear the current week only through an explicit
+  confirmation. Retrying the same request ID replays the original result without duplicate entries
+  or audit events.
+- Saved family meals can be created, searched, favourited, updated, archived and restored with
+  optional preparation time and notes. Archived meals remain understandable in historical plans.
+- Permission, invalid-week, copy-conflict and fail-next/retry paths return stable family-readable
+  errors and leave the plan consistent.
+- Long-form editing is comfortable from the phone companion; the primary seven dinner fields stay
+  visible together while saved-meal and note controls expand only when needed.
 
 ### Notices and Today composition
 
@@ -267,7 +279,7 @@ not yet complete.
 
 Local deployment evidence as of 2026-08-09: the production server/web images build and become
 healthy together in private mode on native ARM64 and emulated DS920+ `linux/amd64`; the same-origin
-readiness route, 13-migration database startup, unseeded first-use runtime, non-root/read-only
+readiness route, 16-migration database startup, unseeded first-use runtime, non-root/read-only
 security settings and clean `SIGTERM` shutdown pass. These checks validate the scaffold only. The
 five operations bullets above still require the actual Synology, Pi, TV, router and restore drill,
 so production acceptance remains incomplete.

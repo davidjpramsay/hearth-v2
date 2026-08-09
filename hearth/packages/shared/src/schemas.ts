@@ -547,7 +547,15 @@ export const SavedMealSchema = z.object({
   id: OpaqueIdSchema,
   name: z.string().min(1).max(140),
   description: z.string().max(320).nullable(),
+  preparationMinutes: z.number().int().min(1).max(600).nullable(),
   favourite: z.boolean(),
+  archivedAt: TimestampSchema.nullable(),
+});
+
+export const SavedMealLibrarySchema = z.object({
+  householdId: OpaqueIdSchema,
+  activeMeals: z.array(SavedMealSchema),
+  archivedMeals: z.array(SavedMealSchema),
 });
 
 export const MealPlanEntrySchema = z.object({
@@ -587,6 +595,50 @@ export const UpsertMealPlanRequestSchema = CommandRequestSchema.extend({
 export const CreateSavedMealRequestSchema = CommandRequestSchema.extend({
   name: z.string().trim().min(1).max(140),
   description: z.string().trim().max(320).nullable(),
+  preparationMinutes: z.number().int().min(1).max(600).nullable(),
+  favourite: z.boolean(),
+});
+
+export const UpdateSavedMealRequestSchema = CreateSavedMealRequestSchema;
+
+export const MealPlanEntryInputSchema = UpsertMealPlanRequestSchema.omit({ requestId: true });
+
+export const UpdateMealPlanWeekRequestSchema = CommandRequestSchema.extend({
+  startDate: LocalDateSchema,
+  entries: z.array(MealPlanEntryInputSchema).min(1).max(21),
+}).superRefine((value, context) => {
+  const start = Date.parse(`${value.startDate}T12:00:00Z`);
+  const end = start + 6 * 86_400_000;
+  const seen = new Set<string>();
+  for (const [index, entry] of value.entries.entries()) {
+    const date = Date.parse(`${entry.localDate}T12:00:00Z`);
+    if (date < start || date > end) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Every meal must belong to the selected seven-day week.',
+        path: ['entries', index, 'localDate'],
+      });
+    }
+    const key = `${entry.localDate}:${entry.slot}`;
+    if (seen.has(key)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Each day and meal slot can appear only once.',
+        path: ['entries', index, 'slot'],
+      });
+    }
+    seen.add(key);
+  }
+});
+
+export const ClearMealPlanWeekRequestSchema = CommandRequestSchema.extend({
+  startDate: LocalDateSchema,
+});
+
+export const CopyMealPlanWeekRequestSchema = CommandRequestSchema.extend({
+  sourceStartDate: LocalDateSchema,
+  targetStartDate: LocalDateSchema,
+  replaceExisting: z.boolean(),
 });
 
 export const SavedMealCommandResultSchema = z.object({
@@ -597,6 +649,12 @@ export const SavedMealCommandResultSchema = z.object({
 
 export const MealCommandResultSchema = z.object({
   entry: MealPlanEntrySchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
+export const MealPlanWeekCommandResultSchema = z.object({
+  plan: MealPlanSchema,
   audit: z.lazy(() => AuditSummarySchema),
   replayed: z.boolean(),
 });
@@ -748,7 +806,13 @@ export const AuditSummarySchema = z.object({
     'list.item.complete',
     'list.item.undo',
     'meal.plan',
+    'meal.week.update',
+    'meal.week.clear',
+    'meal.week.copy',
     'saved-meal.create',
+    'saved-meal.update',
+    'saved-meal.archive',
+    'saved-meal.restore',
     'pocket-money.settings.update',
     'pocket-money.payment.record',
     'pocket-money.payment.void',
@@ -1178,13 +1242,20 @@ export type AssistAddListItemRequest = z.infer<typeof AssistAddListItemRequestSc
 export type ListItemCommandResult = z.infer<typeof ListItemCommandResultSchema>;
 export type MealSlot = z.infer<typeof MealSlotSchema>;
 export type SavedMeal = z.infer<typeof SavedMealSchema>;
+export type SavedMealLibrary = z.infer<typeof SavedMealLibrarySchema>;
 export type MealPlanEntry = z.infer<typeof MealPlanEntrySchema>;
+export type MealPlanEntryInput = z.infer<typeof MealPlanEntryInputSchema>;
 export type MealPlanDay = z.infer<typeof MealPlanDaySchema>;
 export type MealPlan = z.infer<typeof MealPlanSchema>;
 export type UpsertMealPlanRequest = z.infer<typeof UpsertMealPlanRequestSchema>;
 export type CreateSavedMealRequest = z.infer<typeof CreateSavedMealRequestSchema>;
+export type UpdateSavedMealRequest = z.infer<typeof UpdateSavedMealRequestSchema>;
+export type UpdateMealPlanWeekRequest = z.infer<typeof UpdateMealPlanWeekRequestSchema>;
+export type ClearMealPlanWeekRequest = z.infer<typeof ClearMealPlanWeekRequestSchema>;
+export type CopyMealPlanWeekRequest = z.infer<typeof CopyMealPlanWeekRequestSchema>;
 export type SavedMealCommandResult = z.infer<typeof SavedMealCommandResultSchema>;
 export type MealCommandResult = z.infer<typeof MealCommandResultSchema>;
+export type MealPlanWeekCommandResult = z.infer<typeof MealPlanWeekCommandResultSchema>;
 export type Payday = z.infer<typeof PaydaySchema>;
 export type PocketMoneyPaymentVoid = z.infer<typeof PocketMoneyPaymentVoidSchema>;
 export type PocketMoneyPayment = z.infer<typeof PocketMoneyPaymentSchema>;

@@ -1,5 +1,39 @@
 # Phase 4 household-planning verification
 
+## 2026-08-09 meal-planning polish addendum
+
+The Meals slice now has one real adult companion destination for compact whole-week dinner
+planning and reusable meal management. All seven dinner fields remain visible together; saved-meal
+and note details expand per night. The TV's two broad meal actions link to that route. Whole-week
+save, confirmed copy/clear and saved-meal create/update/archive/restore commands are typed,
+adult-authorised, receipt-idempotent, audited and persisted through the SQLite repository. Migration
+0016 adds bounded preparation minutes and active/favourite ordering without rewriting prior plans.
+
+Passed from `hearth/`:
+
+- `pnpm install --frozen-lockfile` — the pnpm 10.33.2 lockfile was current across all five projects.
+- `pnpm verify` — formatting, lint, strict type checks, 96 unit tests, 70 server integration tests,
+  15 migration tests, web/server production builds and all 169 Playwright tests passed.
+- The 169 browser cases include remote/Back restoration, multi-night save, same-request failure
+  retry, adult/child authorization, invalid/empty/out-of-week input, copy conflict, confirmed clear,
+  saved-meal search/favourite/edit/archive/restore, SQLite restart, all required TV/phone viewports,
+  dark mode and axe accessibility checks.
+- `git diff --check` — passed after final documentation formatting.
+
+The production Meals Admin chunk is 14.18 kB JavaScript (4.29 kB gzip). The main entry is
+460.75 kB JavaScript (134.02 kB gzip), and the stylesheet is 130.69 kB (23.69 kB gzip). The server
+build copied all 16 forward migrations. The installed Playwright Chromium remained the rendering
+fallback because no Browser/IAB controller was available.
+
+The accepted Meals concept and fresh 4K, 1080p, 1366, phone portrait, phone landscape, light Admin
+and dark Admin counterparts were inspected with `view_image`. That inspection found and fixed three
+material polish issues: seven fully expanded three-field phone rows were collapsed to a compact
+dinner-first editor; short phone landscape was tightened so the meal cards finish above the fixed
+tabs; and the dark shared submit background was split from the light plum text token after axe
+measured only 2.1:1 contrast. The settled dark action colour measures 7.87:1 against white. The
+first combined browser gate also exposed an ambiguous non-exact Today test locator; making the page
+heading exact removed the test defect, and the complete 169-case gate then passed.
+
 ## 2026-08-09 list-management polish addendum
 
 The current Phase 4 list slice now includes phone-first adult administration:

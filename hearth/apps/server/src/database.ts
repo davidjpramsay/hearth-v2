@@ -30,6 +30,10 @@ const migrations = [
     version: 15,
     url: new URL('./migrations/0015_synology_photo_index.sql', import.meta.url),
   },
+  {
+    version: 16,
+    url: new URL('./migrations/0016_meal_planning_polish.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

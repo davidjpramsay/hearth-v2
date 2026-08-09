@@ -19,4 +19,6 @@ the interface.
 The implementation uses the established shared phone header/navigation rather
 than simulated iOS chrome and splits dense administration into scrollable
 Family Planning routes. Checked-list clearing is now an adult-only confirmed
-soft archive; list and item management remains off the television.
+soft archive; list and item management remains off the television. Meal planning extends the
+accepted phone language with a compact seven-night editor: dinner names remain visible together,
+while saved-meal selection and notes expand per night only when needed.

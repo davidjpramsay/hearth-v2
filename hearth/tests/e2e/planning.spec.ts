@@ -40,7 +40,7 @@ test('remote-only Lists check, undo, Meals navigation and Back restoration', asy
   await expect(page.locator('[data-focus-id="nav-meals"]')).toBeFocused();
 });
 
-test('phone adds a list item and edits a dinner through the typed API', async ({ page }) => {
+test('phone adds a list item and edits several dinners through the typed API', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/lists');
   await page.getByPlaceholder('Add an item').fill('Oranges');
@@ -51,15 +51,92 @@ test('phone adds a list item and edits a dinner through the typed API', async ({
   await expect(page.getByRole('link', { name: 'Manage lists' })).toBeVisible();
 
   await page.goto('/meals');
-  await page.locator('[data-focus-id="meal-day-2026-08-04"]').click();
-  const editor = page.locator('.phone-meal-editor');
-  await editor.getByLabel('Dinner').fill('Vegetable curry');
-  await editor.getByLabel('Note').fill('Rice at 5:30');
-  await editor.getByRole('button', { name: 'Save dinner' }).click();
-  await expect(editor.getByRole('status')).toContainText('Dinner saved');
+  await page.getByRole('link', { name: 'Manage meals' }).click();
+  await expect(page.getByRole('heading', { name: 'Meal planning' })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Tue dinner', exact: true }).fill('Vegetable curry');
+  await page.locator('summary[aria-label="Tue dinner details"]').click();
+  await page.getByLabel('Tue dinner note').fill('Rice at 5:30');
+  await page.getByRole('textbox', { name: 'Wed dinner', exact: true }).fill('Leftover curry');
+  await page.getByRole('button', { name: 'Save week' }).click();
+  await expect(page.getByRole('status')).toContainText('dinner plan was saved');
   await page.reload();
-  await page.locator('[data-focus-id="meal-day-2026-08-04"]').click();
-  await expect(editor.getByLabel('Dinner')).toHaveValue('Vegetable curry');
+  await expect(page.getByRole('textbox', { name: 'Tue dinner', exact: true })).toHaveValue(
+    'Vegetable curry',
+  );
+  await expect(page.getByRole('textbox', { name: 'Wed dinner', exact: true })).toHaveValue(
+    'Leftover curry',
+  );
+});
+
+test('phone adults search, create, edit, archive and restore saved meals and copy a week', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/planning');
+  await page.getByRole('link', { name: /Meals/ }).click();
+  await expect(page.getByRole('heading', { name: 'Meal planning' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'New meal' }).click();
+  const create = page.locator('.saved-meal-create');
+  await create.getByLabel('Meal name').fill('Sesame noodle bowls');
+  await create.getByLabel('Preparation time').fill('25');
+  await create.getByLabel('Notes').fill('Fast school-night meal');
+  await create.getByRole('button', { name: 'Save meal' }).click();
+  await expect(page.getByRole('status')).toContainText('Sesame noodle bowls was saved');
+
+  await page.getByPlaceholder('Search saved meals').fill('sesame');
+  await page
+    .locator('.saved-meal-card')
+    .filter({ hasText: 'Sesame noodle bowls' })
+    .locator('summary')
+    .click();
+  const editor = page.locator('.saved-meal-card[open] .saved-meal-edit');
+  await editor.getByLabel('Meal name').fill('Sesame noodles');
+  await editor.getByLabel('Preparation time').fill('20');
+  await editor.getByLabel('Family favourite').uncheck();
+  await editor.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('status')).toContainText('Sesame noodles was updated');
+
+  await page.getByPlaceholder('Search saved meals').fill('sesame');
+  await page.getByRole('button', { name: 'Archive', exact: true }).click();
+  await page.getByRole('button', { name: 'Archive Sesame noodles?' }).click();
+  await expect(page.getByRole('status')).toContainText('can be restored');
+  await page.locator('.archived-saved-meals > summary').click();
+  await page.getByRole('button', { name: 'Restore' }).click();
+  await expect(page.getByRole('status')).toContainText('Sesame noodles is active again');
+
+  await page.getByRole('button', { name: 'Later week' }).click();
+  await page.getByRole('button', { name: 'Copy previous week' }).click();
+  await page.getByRole('button', { name: 'Replace and copy' }).click();
+  await expect(page.getByRole('status')).toContainText('previous week was copied');
+  await expect(page.getByRole('textbox', { name: 'Mon dinner', exact: true })).toHaveValue(
+    'Lemon chicken & roast vegetables',
+  );
+  await page.getByRole('button', { name: 'Clear this week' }).click();
+  await page.getByRole('button', { name: 'Clear all dinners' }).click();
+  await expect(page.getByRole('status')).toContainText('week was cleared');
+  await expect(page.getByRole('textbox', { name: 'Mon dinner', exact: true })).toHaveValue('');
+  await page.getByRole('button', { name: 'Save week' }).click();
+  await expect(page.getByRole('status')).toContainText('Confirm clearing the week');
+  await expect(page.getByRole('group', { name: 'Confirm clearing week' })).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', { name: 'Family planning' })).toBeVisible();
+});
+
+test('meal administration reports a failed save and retries the same safe week command', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/meals?scenario=fail-next');
+  await page.getByRole('textbox', { name: 'Tue dinner', exact: true }).fill('Tuesday soup');
+  await page.getByRole('button', { name: 'Save week' }).click();
+  await expect(page.getByRole('alert')).toContainText('That change did not save');
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('status')).toContainText('dinner plan was saved');
+  await expect(page.getByRole('textbox', { name: 'Tue dinner', exact: true })).toHaveValue(
+    'Tuesday soup',
+  );
 });
 
 test('phone adults create, edit, order, clear, archive and restore household lists', async ({
@@ -269,6 +346,7 @@ for (const path of [
   '/meals',
   '/admin/planning',
   '/admin/lists',
+  '/admin/meals',
   '/admin/routines',
   '/admin/pocket-money',
 ]) {
@@ -328,6 +406,30 @@ test('@a11y partial-payment history and correction form have no serious violatio
   ).toEqual([]);
 });
 
+test('@visual @a11y dark meal administration remains readable on phone', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'hearth.appearance.v1',
+      JSON.stringify({ theme: 'dark', eveningDimming: false }),
+    );
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/meals');
+  await expect(page.getByRole('heading', { name: 'Meal planning' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  await page.screenshot({
+    path: resolve(evidence, 'admin-meals-dark-phone-portrait.png'),
+    animations: 'disabled',
+    fullPage: true,
+  });
+});
+
 const planningViewports = [
   { name: 'tv-4k', width: 3840, height: 2160 },
   { name: 'tv-1080', width: 1920, height: 1080 },
@@ -352,7 +454,7 @@ for (const viewport of planningViewports) {
   }
 }
 
-for (const route of ['planning', 'lists', 'routines', 'pocket-money'] as const) {
+for (const route of ['planning', 'lists', 'meals', 'routines', 'pocket-money'] as const) {
   test(`@visual ${route} phone administration`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/admin/${route}`);

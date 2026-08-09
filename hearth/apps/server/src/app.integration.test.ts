@@ -1224,6 +1224,208 @@ describe('Hearth v2 API', () => {
     expect(removedRewardsRoute.statusCode).toBe(404);
   });
 
+  it('keeps meal-library and whole-week commands adult-only, validated and replay-safe', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const adultHeaders = { 'x-hearth-demo-actor': 'member_maya' };
+    const childHeaders = { 'x-hearth-demo-actor': 'member_ezra' };
+    const created = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_saved_meal_create',
+        name: 'Sesame noodles',
+        description: 'Fast school-night meal',
+        preparationMinutes: 20,
+        favourite: true,
+      },
+    });
+    const mealId = created.json().savedMeal.id as string;
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `${base}/saved-meals/${mealId}`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_saved_meal_update',
+        name: 'Sesame noodle bowls',
+        description: 'Fast school-night meal',
+        preparationMinutes: 25,
+        favourite: false,
+      },
+    });
+    const childLibrary = await app.inject({
+      method: 'GET',
+      url: `${base}/saved-meal-library`,
+      headers: childHeaders,
+    });
+    const archived = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals/${mealId}/archives`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_saved_meal_archive' },
+    });
+    const archiveReplay = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals/${mealId}/archives`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_saved_meal_archive' },
+    });
+    const library = await app.inject({
+      method: 'GET',
+      url: `${base}/saved-meal-library`,
+      headers: adultHeaders,
+    });
+    const restored = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals/${mealId}/restorations`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_saved_meal_restore' },
+    });
+    const invalidWeek = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_invalid',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-11',
+            slot: 'dinner',
+            mealName: 'Too late',
+            savedMealId: null,
+            note: null,
+          },
+        ],
+      },
+    });
+    const deniedWeek = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: childHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_denied',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: 'Not allowed',
+            savedMealId: null,
+            note: null,
+          },
+        ],
+      },
+    });
+    const emptyWeek = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_empty',
+        startDate: '2026-08-03',
+        entries: [],
+      },
+    });
+    const planned = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_save',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: 'Sesame noodle bowls',
+            savedMealId: mealId,
+            note: 'Chop vegetables first',
+          },
+        ],
+      },
+    });
+    const planReplay = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_save',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: 'Sesame noodle bowls',
+            savedMealId: mealId,
+            note: 'Chop vegetables first',
+          },
+        ],
+      },
+    });
+    const copied = await app.inject({
+      method: 'POST',
+      url: `${base}/meal-plan-week-copies`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_copy',
+        sourceStartDate: '2026-08-03',
+        targetStartDate: '2026-08-10',
+        replaceExisting: false,
+      },
+    });
+    const copyConflict = await app.inject({
+      method: 'POST',
+      url: `${base}/meal-plan-week-copies`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_copy_conflict',
+        sourceStartDate: '2026-08-03',
+        targetStartDate: '2026-08-10',
+        replaceExisting: false,
+      },
+    });
+    const cleared = await app.inject({
+      method: 'POST',
+      url: `${base}/meal-plan-week-clears`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_clear',
+        startDate: '2026-08-10',
+      },
+    });
+
+    expect(created).toMatchObject({ statusCode: 200 });
+    expect(updated.json()).toMatchObject({
+      savedMeal: { name: 'Sesame noodle bowls', preparationMinutes: 25, favourite: false },
+      audit: { action: 'saved-meal.update' },
+    });
+    expect(childLibrary.statusCode).toBe(403);
+    expect(childLibrary.json().error.code).toBe('FORBIDDEN');
+    expect(archived.json()).toMatchObject({
+      savedMeal: { archivedAt: expect.any(String) },
+      replayed: false,
+    });
+    expect(archiveReplay.json()).toMatchObject({ replayed: true });
+    expect(library.json().archivedMeals).toContainEqual(expect.objectContaining({ id: mealId }));
+    expect(restored.json().savedMeal.archivedAt).toBeNull();
+    expect(invalidWeek.statusCode).toBe(400);
+    expect(invalidWeek.json().error.code).toBe('VALIDATION_ERROR');
+    expect(emptyWeek.statusCode).toBe(400);
+    expect(emptyWeek.json().error.code).toBe('VALIDATION_ERROR');
+    expect(deniedWeek.statusCode).toBe(403);
+    expect(planned.json().audit).toMatchObject({ action: 'meal.week.update' });
+    expect(planned.json().plan.days[0].entries).toHaveLength(1);
+    expect(planReplay.json()).toMatchObject({ replayed: true });
+    expect(copied.json().plan.days[0].entries[0]).toMatchObject({ localDate: '2026-08-10' });
+    expect(copyConflict.statusCode).toBe(409);
+    expect(copyConflict.json().error.code).toBe('CONFIRMATION_REQUIRED');
+    expect(
+      cleared.json().plan.days.every((day: { entries: unknown[] }) => day.entries.length === 0),
+    ).toBe(true);
+  });
+
   it('keeps recurring chore administration adult-only at the HTTP boundary', async () => {
     const app = server();
     const url = '/api/v1/households/household_hearth_demo/chore-templates';

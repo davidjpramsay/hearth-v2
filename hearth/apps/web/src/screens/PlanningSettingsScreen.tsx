@@ -20,7 +20,7 @@ const planningAreas: Array<{
   {
     title: 'Meals',
     description: 'Plan dinners and keep family favourites',
-    path: '/meals',
+    path: '/admin/meals',
     icon: 'meal',
     focusId: 'planning-meals',
   },
