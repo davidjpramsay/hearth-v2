@@ -102,6 +102,9 @@ the phone More hub.
   distinguishes **One day only**, daily, weekdays and selected weekly days. Archiving requires a
   second explicit action; archived chores retain past completions and can resume from today without
   filling the paused interval with newly generated occurrences.
+- The phone schedule editor uses an explicit multi-person picker. Selecting several people creates
+  one separately completable occurrence for each selected person; summaries name the full assignee
+  set rather than implying that one shared completion satisfies everyone.
 - A separate phone-first **Today’s chores** surface opens one occurrence at a time. It shows the
   snapshotted description and due time, requires an adult reason before Skip, Excuse or Reassign,
   explains the pocket-money consequence in family language and keeps newest-first history visible.

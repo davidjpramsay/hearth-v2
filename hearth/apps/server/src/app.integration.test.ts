@@ -1504,7 +1504,7 @@ describe('Hearth v2 API', () => {
       requestId: 'request_http_one_off_chore',
       title: 'Bring bins in',
       description: null,
-      assigneeId: 'member_ezra',
+      assigneeIds: ['member_ezra', 'member_maya'],
       routineLabel: 'Extra jobs',
       dueTime: '16:30',
       repeat: 'once',
@@ -1529,6 +1529,36 @@ describe('Hearth v2 API', () => {
       url,
       headers: adultHeaders,
       payload: { ...oneOffPayload, requestId: 'request_invalid_weekly_chore', repeat: 'weekly' },
+    });
+    const noAssignee = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_invalid_empty_assignees',
+        assigneeIds: [],
+      },
+    });
+    const duplicateAssignee = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_invalid_duplicate_assignees',
+        assigneeIds: ['member_ezra', 'member_ezra'],
+      },
+    });
+    const missingAssignee = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_missing_chore_assignee',
+        assigneeIds: ['member_missing'],
+      },
     });
     const archiveUrl = `${url}/${templateId}/archivals`;
     const archived = await app.inject({
@@ -1556,6 +1586,7 @@ describe('Hearth v2 API', () => {
     expect(child.json().error.code).toBe('FORBIDDEN');
     expect(created.json()).toMatchObject({
       template: {
+        assignees: [{ id: 'member_ezra' }, { id: 'member_maya' }],
         repeat: 'once',
         repeatDays: [],
         activeFrom: '2026-08-04',
@@ -1566,6 +1597,12 @@ describe('Hearth v2 API', () => {
     expect(createReplay.json()).toMatchObject({ replayed: true });
     expect(invalid.statusCode).toBe(400);
     expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+    expect(noAssignee.statusCode).toBe(400);
+    expect(noAssignee.json().error.code).toBe('VALIDATION_ERROR');
+    expect(duplicateAssignee.statusCode).toBe(400);
+    expect(duplicateAssignee.json().error.code).toBe('VALIDATION_ERROR');
+    expect(missingAssignee.statusCode).toBe(404);
+    expect(missingAssignee.json().error.code).toBe('NOT_FOUND');
     expect(archived.json()).toMatchObject({
       template: { archived: true },
       audit: { action: 'chore-template.archive' },

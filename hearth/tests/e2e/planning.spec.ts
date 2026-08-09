@@ -427,6 +427,72 @@ test('@a11y today’s chore management has no serious violations on phone', asyn
   ).toEqual([]);
 });
 
+test('phone routines assign one schedule to several people and TV expands separate chores', async ({
+  page,
+  request,
+}) => {
+  const headers = { 'x-hearth-demo-actor': 'member_maya' };
+  const memberResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/members',
+    {
+      headers,
+      data: {
+        requestId: 'request_multi_assignee_child',
+        displayName: 'Alex',
+        role: 'child',
+        color: '#7a5b8f',
+        administrator: false,
+      },
+    },
+  );
+  expect(memberResponse.ok()).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/routines');
+  await page.getByRole('button', { name: 'New chore' }).click();
+  const form = page.locator('.routine-add-form');
+  const ezra = form.getByRole('checkbox', { name: /Ezra/ });
+  const alex = form.getByRole('checkbox', { name: /Alex/ });
+  await expect(ezra).toBeChecked();
+  await expect(alex).not.toBeChecked();
+  await alex.check();
+  await form.getByLabel('Chore', { exact: true }).fill('Put sports gear away');
+  await form.getByLabel('Routine group').fill('After school');
+  await form.getByLabel('Due time').fill('16:15');
+  await form.getByRole('button', { name: 'Add chore' }).click();
+  await expect(page.getByRole('status')).toContainText('Put sports gear away was scheduled');
+  const editor = page.locator('.routine-editor').filter({ hasText: 'Put sports gear away' });
+  await expect(editor).toContainText('Ezra and Alex · Weekdays · 4:15 pm');
+  await editor.locator('summary').click();
+  await expect(editor.getByRole('checkbox', { name: /Ezra/ })).toBeChecked();
+  await expect(editor.getByRole('checkbox', { name: /Alex/ })).toBeChecked();
+  await editor.locator('.routine-assignees').scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: resolve(evidence, 'routines-multi-assignee-phone.png'),
+    animations: 'disabled',
+  });
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/chores');
+  const board = page.locator('.chore-groups');
+  await expect(board).toHaveAttribute('data-column-count', '3');
+  const ezraColumn = board.locator('.chore-group').filter({ hasText: /^Ezra/ });
+  const alexColumn = board.locator('.chore-group').filter({ hasText: /^Alex/ });
+  await expect(ezraColumn.getByText('Put sports gear away')).toBeVisible();
+  await expect(alexColumn.getByText('Put sports gear away')).toBeVisible();
+  await alexColumn.getByRole('button', { name: 'Complete Put sports gear away' }).click();
+  await expect(
+    alexColumn.getByRole('button', { name: /Put sports gear away, done/ }),
+  ).toBeVisible();
+  await expect(
+    ezraColumn.getByRole('button', { name: 'Complete Put sports gear away' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: resolve(evidence, 'chores-multi-assignee-tv-1080.png'),
+    animations: 'disabled',
+  });
+});
+
 test('one-off chore creation reports a failed save and retries the same safe command', async ({
   page,
 }) => {

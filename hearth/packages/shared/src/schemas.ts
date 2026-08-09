@@ -444,31 +444,58 @@ function validateChoreTemplate(
   }
 }
 
-export const ChoreTemplateSchema = z
-  .object({
-    id: OpaqueIdSchema,
-    title: z.string().min(1).max(140),
-    description: z.string().max(320).nullable(),
-    assignee: MemberSchema,
-    routineLabel: z.string().min(1).max(80),
-    dueTime: LocalTimeSchema.nullable().default(null),
-    repeat: ChoreRepeatSchema,
-    repeatDays: z.array(ChoreDaySchema),
-    activeFrom: LocalDateSchema,
-    activeUntil: LocalDateSchema.nullable(),
-    archived: z.boolean(),
-  })
-  .superRefine(validateChoreTemplate);
+const ChoreTemplateAssigneesSchema = z
+  .array(MemberSchema)
+  .min(1, 'Choose at least one person for this chore.')
+  .max(20)
+  .refine((members) => new Set(members.map((member) => member.id)).size === members.length, {
+    message: 'Choose each person only once.',
+  });
+
+function normalizeLegacyChoreTemplate(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if ('assignees' in record || !('assignee' in record)) return value;
+  const { assignee, ...template } = record;
+  return { ...template, assignees: [assignee] };
+}
+
+export const ChoreTemplateSchema = z.preprocess(
+  normalizeLegacyChoreTemplate,
+  z
+    .object({
+      id: OpaqueIdSchema,
+      title: z.string().min(1).max(140),
+      description: z.string().max(320).nullable(),
+      assignees: ChoreTemplateAssigneesSchema,
+      routineLabel: z.string().min(1).max(80),
+      dueTime: LocalTimeSchema.nullable().default(null),
+      repeat: ChoreRepeatSchema,
+      repeatDays: z.array(ChoreDaySchema),
+      activeFrom: LocalDateSchema,
+      activeUntil: LocalDateSchema.nullable(),
+      archived: z.boolean(),
+    })
+    .superRefine(validateChoreTemplate),
+);
 
 export const ChoreTemplateListSchema = z.object({
   householdId: OpaqueIdSchema,
   templates: z.array(ChoreTemplateSchema),
 });
 
-const ChoreTemplateFieldsSchema = z.object({
+const ChoreTemplateAssigneeIdsSchema = z
+  .array(OpaqueIdSchema)
+  .min(1, 'Choose at least one person for this chore.')
+  .max(20)
+  .refine((memberIds) => new Set(memberIds).size === memberIds.length, {
+    message: 'Choose each person only once.',
+  });
+
+const ChoreTemplateFieldsSchema = CommandRequestSchema.extend({
   title: z.string().trim().min(1).max(140),
   description: z.string().trim().max(320).nullable(),
-  assigneeId: OpaqueIdSchema,
+  assigneeIds: ChoreTemplateAssigneeIdsSchema,
   routineLabel: z.string().trim().min(1).max(80),
   dueTime: LocalTimeSchema.nullable().default(null),
   repeat: ChoreRepeatSchema,
@@ -476,12 +503,22 @@ const ChoreTemplateFieldsSchema = z.object({
   activeFrom: LocalDateSchema,
 });
 
-export const CreateChoreTemplateRequestSchema = CommandRequestSchema.extend(
-  ChoreTemplateFieldsSchema.shape,
-).superRefine(validateChoreSchedule);
-export const UpdateChoreTemplateRequestSchema = CommandRequestSchema.extend(
-  ChoreTemplateFieldsSchema.shape,
-).superRefine(validateChoreSchedule);
+function normalizeLegacyChoreTemplateRequest(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if ('assigneeIds' in record || !('assigneeId' in record)) return value;
+  const { assigneeId, ...request } = record;
+  return { ...request, assigneeIds: [assigneeId] };
+}
+
+export const CreateChoreTemplateRequestSchema = z.preprocess(
+  normalizeLegacyChoreTemplateRequest,
+  ChoreTemplateFieldsSchema.superRefine(validateChoreSchedule),
+);
+export const UpdateChoreTemplateRequestSchema = z.preprocess(
+  normalizeLegacyChoreTemplateRequest,
+  ChoreTemplateFieldsSchema.superRefine(validateChoreSchedule),
+);
 export const RestoreChoreTemplateRequestSchema = CommandRequestSchema.extend({
   resumeFrom: LocalDateSchema,
 });

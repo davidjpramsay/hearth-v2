@@ -32,10 +32,10 @@ async function repositories() {
   temporaryDirectories.push(directory);
   const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
   openDatabases.push(database);
-  new SqliteAdminRepository(database);
+  const admin = new SqliteAdminRepository(database);
   const chores = new SqliteHearthRepository(database);
   const planning = new SqlitePlanningRepository(database);
-  return { database, chores, planning };
+  return { admin, database, chores, planning };
 }
 
 describe('SQLite household planning repository', () => {
@@ -451,7 +451,7 @@ describe('SQLite household planning repository', () => {
         requestId: 'request_update_pepper',
         title: 'Give Pepper breakfast',
         description: null,
-        assigneeId: 'member_ezra',
+        assigneeIds: ['member_ezra'],
         routineLabel: 'Morning',
         dueTime: '07:15',
         repeat: 'daily',
@@ -477,6 +477,107 @@ describe('SQLite household planning repository', () => {
     } satisfies Partial<RepositoryError>);
   });
 
+  it('expands a multi-assignee template into one independently completable chore per person', async () => {
+    const { admin, chores, database, planning } = await repositories();
+    const alex = await admin.createMember(DEMO_HOUSEHOLD_ID, adult.id, {
+      requestId: 'request_add_alex_for_shared_chore',
+      displayName: 'Alex',
+      role: 'child',
+      color: '#7a5b8f',
+      administrator: false,
+    });
+    const created = await planning.createChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_create_shared_sports_gear',
+        title: 'Put sports gear away',
+        description: 'Each person puts away their own gear.',
+        assigneeIds: ['member_ezra', alex.id],
+        routineLabel: 'After school',
+        dueTime: '16:15',
+        repeat: 'daily',
+        repeatDays: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'],
+        activeFrom: '2026-08-04',
+      },
+      adult,
+    );
+
+    expect(created.template.assignees.map((member) => member.displayName)).toEqual([
+      'Ezra',
+      'Alex',
+    ]);
+    expect(
+      database
+        .prepare(
+          'SELECT member_id FROM chore_template_assignees WHERE template_id = ? ORDER BY member_id',
+        )
+        .all(created.template.id),
+    ).toHaveLength(2);
+    const schedules = await planning.getChoreTemplates(DEMO_HOUSEHOLD_ID, adult);
+    expect(
+      schedules.templates.filter((template) => template.id === created.template.id),
+    ).toHaveLength(1);
+
+    const day = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-04');
+    const occurrences = day.groups
+      .flatMap((group) => group.occurrences)
+      .filter((occurrence) => occurrence.title === 'Put sports gear away');
+    expect(occurrences.map((occurrence) => occurrence.assignee.displayName).sort()).toEqual([
+      'Alex',
+      'Ezra',
+    ]);
+    expect(new Set(occurrences.map((occurrence) => occurrence.id))).toHaveProperty('size', 2);
+
+    const ezraOccurrence = occurrences.find(
+      (occurrence) => occurrence.assignee.id === 'member_ezra',
+    );
+    expect(ezraOccurrence).toBeDefined();
+    await chores.complete(
+      DEMO_HOUSEHOLD_ID,
+      ezraOccurrence!.id,
+      'request_complete_shared_sports_gear_ezra',
+      adult,
+    );
+    const afterCompletion = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-04');
+    const sharedStates = afterCompletion.groups
+      .flatMap((group) => group.occurrences)
+      .filter((occurrence) => occurrence.title === 'Put sports gear away')
+      .map((occurrence) => [occurrence.assignee.displayName, occurrence.state]);
+    expect(sharedStates).toContainEqual(['Ezra', 'completed']);
+    expect(sharedStates).toContainEqual(['Alex', 'pending']);
+
+    const updated = await planning.updateChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      created.template.id,
+      {
+        requestId: 'request_update_shared_sports_gear',
+        title: 'Put sports gear away',
+        description: 'Each person puts away their own gear.',
+        assigneeIds: [alex.id],
+        routineLabel: 'After school',
+        dueTime: '16:15',
+        repeat: 'daily',
+        repeatDays: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'],
+        activeFrom: '2026-08-04',
+      },
+      adult,
+    );
+    expect(updated.template.assignees.map((member) => member.displayName)).toEqual(['Alex']);
+    const preservedDay = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-04');
+    expect(
+      preservedDay.groups
+        .flatMap((group) => group.occurrences)
+        .filter((occurrence) => occurrence.title === 'Put sports gear away'),
+    ).toHaveLength(2);
+    const nextDay = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-05');
+    expect(
+      nextDay.groups
+        .flatMap((group) => group.occurrences)
+        .filter((occurrence) => occurrence.title === 'Put sports gear away')
+        .map((occurrence) => occurrence.assignee.displayName),
+    ).toEqual(['Alex']);
+  });
+
   it('schedules a one-off chore and archives or restores it without rewriting generated history', async () => {
     const { chores, planning } = await repositories();
     const created = await planning.createChoreTemplate(
@@ -485,7 +586,7 @@ describe('SQLite household planning repository', () => {
         requestId: 'request_create_one_off_bins',
         title: 'Bring bins in',
         description: 'After the truck has passed',
-        assigneeId: 'member_ezra',
+        assigneeIds: ['member_ezra'],
         routineLabel: 'Extra jobs',
         dueTime: '16:30',
         repeat: 'once',
@@ -500,7 +601,7 @@ describe('SQLite household planning repository', () => {
         requestId: 'request_create_one_off_bins',
         title: 'Bring bins in',
         description: 'After the truck has passed',
-        assigneeId: 'member_ezra',
+        assigneeIds: ['member_ezra'],
         routineLabel: 'Extra jobs',
         dueTime: '16:30',
         repeat: 'once',

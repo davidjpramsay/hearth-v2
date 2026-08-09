@@ -567,3 +567,23 @@ Record durable choices here. New decisions should include date, status, context,
   snapshots and adds the history lookup index. Multi-assignee templates and due windows remain
   separate later work; this decision completes the reasoned exception/reassignment/history portion
   deferred by D-038.
+
+## D-040 — Multi-assignee schedules create one occurrence per person
+
+- Date: 2026-08-10
+- Status: accepted
+- Context: The product specification and initial data model allowed a chore template to name one or
+  more people, and migration `0003_chore_runtime.sql` already stored a set of template assignees.
+  The public contract, SQLite mapper and phone editor nevertheless exposed only one person. Treating
+  several people as sharing one completion would also make responsibility and proportional pocket
+  money ambiguous.
+- Choice: Make `assigneeIds` a non-empty, duplicate-free command field and return a grouped
+  `assignees` array. For every due template/date/instance, generate one occurrence per selected
+  active member. Each copy has its own completion, exception, audit and pocket-money state. Keep
+  previously generated occurrence snapshots intact when the future schedule changes. Normalize old
+  singular `assigneeId` requests and stored `assignee` command results at the schema boundary so a
+  forward upgrade can safely replay existing idempotency receipts.
+- Consequence: Parents author one schedule for a shared household responsibility while each child
+  receives a clear, independently completable job. The existing join-table and occurrence-uniqueness
+  constraints implement the choice without a new migration. Due windows and routine ordering remain
+  separate later work.

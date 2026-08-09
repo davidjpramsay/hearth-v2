@@ -206,10 +206,12 @@ export function RoutinesSettingsScreen() {
             .filter((template) => template.archived)
             .map((template) => (
               <div className="archived-routine" key={template.id}>
-                <Avatar member={template.assignee} />
+                <AssigneeAvatars members={template.assignees} />
                 <span>
                   <strong>{template.title}</strong>
-                  <small>{repeatLabel(template)}</small>
+                  <small>
+                    {assigneeNames(template)} · {repeatLabel(template)}
+                  </small>
                 </span>
                 <button
                   className="admin-secondary"
@@ -264,10 +266,12 @@ function RoutineEditor({
         data-focus-entry={primary ? 'true' : undefined}
         data-focus-id={`routine-template-${template.id}`}
       >
-        <Avatar member={template.assignee} />
+        <AssigneeAvatars members={template.assignees} />
         <span>
           <strong>{template.title}</strong>
-          <small>{repeatLabel(template)}</small>
+          <small>
+            {assigneeNames(template)} · {repeatLabel(template)}
+          </small>
         </span>
         <Icon name="chevron-right" />
       </summary>
@@ -309,6 +313,11 @@ function RoutineFields({
   const [repeat, setRepeat] = useState<ChoreTemplateInput['repeat']>(
     template?.repeat ?? 'weekdays',
   );
+  const defaultAssigneeId = members.find((member) => member.role === 'child')?.id ?? members[0]?.id;
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(
+    template?.assignees.map((member) => member.id) ??
+      (defaultAssigneeId === undefined ? [] : [defaultAssigneeId]),
+  );
   return (
     <div className="routine-fields">
       <label>
@@ -330,18 +339,43 @@ function RoutineFields({
           placeholder="Optional"
         />
       </label>
-      <div className="admin-form__split routine-fields__split">
-        <label>
-          Person
-          <select defaultValue={template?.assignee.id ?? members[0]?.id} name="assigneeId" required>
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <fieldset className="routine-assignees">
+        <legend>People</legend>
+        <p id={`routine-assignees-help-${template?.id ?? 'new'}`}>
+          Each selected person gets their own chore to complete.
+        </p>
+        <div className="routine-assignees__options">
+          {members.map((member) => {
+            const checked = selectedAssigneeIds.includes(member.id);
+            return (
+              <label key={member.id}>
+                <input
+                  aria-describedby={`routine-assignees-help-${template?.id ?? 'new'}`}
+                  checked={checked}
+                  name="assigneeIds"
+                  onChange={(event) => {
+                    const checkedNow = event.currentTarget.checked;
+                    setSelectedAssigneeIds((current) => {
+                      if (checkedNow) return [...current, member.id];
+                      return current.length === 1
+                        ? current
+                        : current.filter((memberId) => memberId !== member.id);
+                    });
+                  }}
+                  type="checkbox"
+                  value={member.id}
+                />
+                <Avatar member={member} size="small" />
+                <span>
+                  <strong>{member.displayName}</strong>
+                  <small>{member.role === 'child' ? 'Child' : 'Adult'}</small>
+                </span>
+                <Icon name="check" />
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
       <div className="admin-form__split routine-fields__split">
         <label>
           Repeat
@@ -442,7 +476,7 @@ function templateFields(
   return {
     title: String(data.get('title') ?? '').trim(),
     description: String(data.get('description') ?? '').trim() || null,
-    assigneeId: String(data.get('assigneeId') ?? ''),
+    assigneeIds: data.getAll('assigneeIds').map(String),
     routineLabel: String(data.get('routineLabel') ?? '').trim(),
     dueTime: String(data.get('dueTime') ?? '').trim() || null,
     repeat,
@@ -470,6 +504,30 @@ function repeatLabel(template: ChoreTemplate): string {
           ? 'Weekdays'
           : `Every ${formatList(template.repeatDays.map((day) => dayLabels[day]))}`;
   return template.dueTime === null ? repeat : `${repeat} · ${formatDueTime(template.dueTime)}`;
+}
+
+function assigneeNames(template: ChoreTemplate): string {
+  return formatList(template.assignees.map((member) => member.displayName));
+}
+
+function AssigneeAvatars({ members }: { members: ChoreTemplate['assignees'] }) {
+  const visible = members.slice(0, 3);
+  return (
+    <span
+      aria-label={`Assigned to ${formatList(members.map((member) => member.displayName))}`}
+      className="routine-assignee-avatars"
+      role="img"
+    >
+      {visible.map((member) => (
+        <Avatar key={member.id} member={member} size="small" />
+      ))}
+      {members.length > visible.length ? (
+        <span aria-hidden="true" className="routine-assignee-avatars__more">
+          +{members.length - visible.length}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 const dayLabels: Record<ChoreTemplate['repeatDays'][number], string> = {

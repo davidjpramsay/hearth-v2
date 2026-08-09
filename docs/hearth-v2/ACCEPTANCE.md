@@ -92,6 +92,9 @@ Chromium fallback produced the retained evidence.
 - One remote Select completes one pending occurrence and offers undo.
 - A retried voice/automation request does not create a second completion.
 - Editing a recurring chore does not rewrite past completions.
+- An adult can select one or more people on a chore schedule. A multi-person schedule is returned as
+  one grouped template but generates one distinct occurrence per selected person; completing one
+  occurrence leaves every other person's copy pending and preserves independent pocket-money totals.
 - An adult can create a one-off chore for a household-local date, archive any active chore only
   after confirmation and restore it from today. Command retries replay safely, past occurrences
   remain visible and the archived interval does not produce retroactive jobs.

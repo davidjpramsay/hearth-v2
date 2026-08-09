@@ -77,7 +77,11 @@ describe('shared wire schemas', () => {
       repeatDays: [],
       activeFrom: '2026-08-04',
     });
-    expect(once).toMatchObject({ repeat: 'once', repeatDays: [] });
+    expect(once).toMatchObject({
+      assigneeIds: ['member_ezra'],
+      repeat: 'once',
+      repeatDays: [],
+    });
     const template = {
       id: 'template_bins_once',
       title: once.title,
@@ -98,7 +102,31 @@ describe('shared wire schemas', () => {
       activeUntil: once.activeFrom,
       archived: false,
     };
-    expect(ChoreTemplateSchema.parse(template).activeUntil).toBe('2026-08-04');
+    const normalizedTemplate = ChoreTemplateSchema.parse(template);
+    expect(normalizedTemplate.activeUntil).toBe('2026-08-04');
+    expect(normalizedTemplate.assignees.map((member) => member.id)).toEqual(['member_ezra']);
+    expect(
+      CreateChoreTemplateRequestSchema.parse({
+        ...once,
+        requestId: 'request_chore_multi_001',
+        assigneeIds: ['member_ezra', 'member_maya'],
+      }).assigneeIds,
+    ).toEqual(['member_ezra', 'member_maya']);
+    expect(CreateChoreTemplateRequestSchema.safeParse({ ...once, assigneeIds: [] }).success).toBe(
+      false,
+    );
+    expect(
+      CreateChoreTemplateRequestSchema.safeParse({
+        ...once,
+        assigneeIds: ['member_ezra', 'member_ezra'],
+      }).success,
+    ).toBe(false);
+    expect(
+      ChoreTemplateSchema.safeParse({
+        ...normalizedTemplate,
+        assignees: [normalizedTemplate.assignees[0], normalizedTemplate.assignees[0]],
+      }).success,
+    ).toBe(false);
     expect(ChoreTemplateSchema.safeParse({ ...template, activeUntil: null }).success).toBe(false);
     expect(
       CreateChoreTemplateRequestSchema.safeParse({ ...once, dueTime: '4:30 pm' }).success,

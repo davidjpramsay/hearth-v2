@@ -184,6 +184,10 @@ local date and retains previously generated occurrence history through idempoten
 It also edits future recurring chores and due times. A separate phone-first daily management surface
 supports reasoned skip, excuse and adult reassignment, exposes snapshotted descriptions and
 newest-first immutable history, and preserves the documented pocket-money denominator rules.
+The schedule editor now accepts one or more people through a phone-friendly visual picker. The
+existing template-assignee join table is returned as one grouped template and expands to one
+independently completable occurrence per selected person, with legacy singular receipts normalized
+at the contract boundary.
 Television rows show due time without exposing adult management controls. It also manages child weekly amounts,
 paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve

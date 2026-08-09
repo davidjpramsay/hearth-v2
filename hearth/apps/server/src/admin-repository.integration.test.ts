@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { DEMO_ADMIN_ACTOR_ID, SqliteAdminRepository, credentialHash } from './admin-repository.js';
 import { openHearthDatabase } from './database.js';
-import { DEMO_HOUSEHOLD_ID } from './demo/seed.js';
+import { createDemoSeed, DEMO_HOUSEHOLD_ID } from './demo/seed.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
@@ -80,6 +80,41 @@ describe('SQLite admin repository', () => {
     expect(afterRestore.household.name).toBe('Persistent household');
     expect(afterRestore.recentAudit.map((event) => event.action)).toContain('member.create');
     restored.close();
+  });
+
+  it('restores the complete fictional household during a demo reset', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-admin-reset-'));
+    temporaryDirectories.push(directory);
+    const repository = new SqliteAdminRepository(
+      await openHearthDatabase(join(directory, 'hearth.sqlite')),
+    );
+    await repository.updateHousehold(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID, {
+      requestId: 'request_change_demo_household',
+      name: 'Changed demo home',
+      timezone: 'Australia/Sydney',
+    });
+    await repository.updateMember(DEMO_HOUSEHOLD_ID, 'member_ezra', DEMO_ADMIN_ACTOR_ID, {
+      requestId: 'request_change_demo_member',
+      displayName: 'Changed Ezra',
+      role: 'child',
+      color: '#ff0000',
+      administrator: false,
+    });
+    await repository.createMember(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID, {
+      requestId: 'request_add_demo_member',
+      displayName: 'Alex',
+      role: 'child',
+      color: '#718778',
+      administrator: false,
+    });
+
+    repository.reset();
+
+    const reset = await repository.getOverview(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID);
+    const seed = createDemoSeed().household;
+    expect(reset.household).toEqual(seed);
+    expect(reset.recentAudit).toEqual([]);
+    repository.close();
   });
 
   it('stores only a television credential hash and revokes its session', async () => {

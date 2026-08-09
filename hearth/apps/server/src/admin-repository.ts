@@ -934,13 +934,23 @@ export class SqliteAdminRepository implements AdminRepository {
         "DELETE FROM members WHERE household_id = ? AND id NOT IN ('member_ezra', 'member_maya')",
       )
       .run(DEMO_HOUSEHOLD_ID);
-    this.database
-      .prepare('UPDATE members SET archived_at = NULL WHERE household_id = ?')
-      .run(DEMO_HOUSEHOLD_ID);
+    const restoreMember = this.database.prepare(
+      `UPDATE members
+       SET display_name = ?, colour = ?, avatar_key = ?, role = ?, archived_at = NULL,
+           updated_at = ?, capabilities_json = ?
+       WHERE household_id = ? AND id = ?`,
+    );
     for (const member of createDemoSeed().household.members) {
-      this.database
-        .prepare('UPDATE members SET avatar_key = ? WHERE household_id = ? AND id = ?')
-        .run(member.avatarUrl, DEMO_HOUSEHOLD_ID, member.id);
+      restoreMember.run(
+        member.displayName,
+        member.color,
+        member.avatarUrl,
+        member.role,
+        DEMO_NOW,
+        JSON.stringify(member.capabilities),
+        DEMO_HOUSEHOLD_ID,
+        member.id,
+      );
     }
     this.seedDefaultDevice();
   }

@@ -130,7 +130,7 @@ The external credential/config file is never stored in SQLite.
 - stable occurrence ID
 - template reference plus snapshotted title and optional description
 - scheduled local date and due time
-- assigned member(s)
+- exactly one assigned member
 - state: pending, completed, skipped, excused or cancelled
 - completion/skip timestamp and actor where relevant
 - immutable audit history for completion, undo, skip, excuse and reassignment; adult exception
@@ -138,6 +138,11 @@ The external credential/config file is never stored in SQLite.
   identity
 
 Template edits do not rewrite historical occurrences. Generate occurrences within a controlled horizon and enforce a uniqueness rule for template/date/instance.
+Each member in a template's default assignee set expands to a distinct occurrence for the same
+template/date/instance. Completion, exception history and pocket-money eligibility therefore remain
+per person; one child's completion never completes another child's copy. The existing
+`chore_template_assignees` primary key and occurrence uniqueness key already enforce this model, so
+multi-assignee authoring does not require a new migration.
 One-off templates use an explicit once-only recurrence and equal start/end local dates. Archiving
 stops new generation without deleting the template or occurrences. Restoring begins a new active
 window on the supplied household-local date (and moves a restored one-off to that date), so dates

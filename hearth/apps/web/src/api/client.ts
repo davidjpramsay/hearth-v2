@@ -771,7 +771,7 @@ export type HearthChoreOccurrenceChangeResult = ChoreOccurrenceChangeResult;
 export interface ChoreTemplateInput {
   title: string;
   description: string | null;
-  assigneeId: string;
+  assigneeIds: string[];
   routineLabel: string;
   dueTime: string | null;
   repeat: 'once' | 'daily' | 'weekdays' | 'weekly';

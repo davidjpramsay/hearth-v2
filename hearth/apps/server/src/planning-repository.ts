@@ -1818,12 +1818,13 @@ export class SqlitePlanningRepository implements PlanningRepository {
          FROM chore_templates t
          JOIN chore_template_assignees a ON a.template_id = t.id
          JOIN members m ON m.id = a.member_id
-         WHERE t.household_id = ? ORDER BY t.archived_at IS NOT NULL, t.created_at, t.id`,
+         WHERE t.household_id = ?
+         ORDER BY t.archived_at IS NOT NULL, t.created_at, t.id, m.created_at, m.id`,
       )
       .all(householdId) as ChoreTemplateRow[];
     return ChoreTemplateListSchema.parse({
       householdId,
-      templates: this.scenario === 'empty' ? [] : rows.map(choreTemplateFromRow),
+      templates: this.scenario === 'empty' ? [] : choreTemplatesFromRows(rows),
     });
   }
 
@@ -1833,7 +1834,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
     actor: CommandActor,
   ): Promise<ChoreTemplateCommandResult> {
     this.assertAdmin(householdId, actor);
-    this.readMember(householdId, input.assigneeId);
+    for (const assigneeId of input.assigneeIds) this.readMember(householdId, assigneeId);
     return this.execute(
       householdId,
       input.requestId,
@@ -1864,9 +1865,10 @@ export class SqlitePlanningRepository implements PlanningRepository {
             now,
             now,
           );
-        this.database
-          .prepare('INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)')
-          .run(templateId, input.assigneeId);
+        const insertAssignee = this.database.prepare(
+          'INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)',
+        );
+        for (const assigneeId of input.assigneeIds) insertAssignee.run(templateId, assigneeId);
         return {
           template: this.readChoreTemplate(householdId, templateId),
           audit: audit('chore-template.create', templateId, actor),
@@ -1884,7 +1886,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
   ): Promise<ChoreTemplateCommandResult> {
     this.assertAdmin(householdId, actor);
     this.readChoreTemplate(householdId, templateId);
-    this.readMember(householdId, input.assigneeId);
+    for (const assigneeId of input.assigneeIds) this.readMember(householdId, assigneeId);
     return this.execute(
       householdId,
       input.requestId,
@@ -1915,9 +1917,10 @@ export class SqlitePlanningRepository implements PlanningRepository {
         this.database
           .prepare('DELETE FROM chore_template_assignees WHERE template_id = ?')
           .run(templateId);
-        this.database
-          .prepare('INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)')
-          .run(templateId, input.assigneeId);
+        const insertAssignee = this.database.prepare(
+          'INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)',
+        );
+        for (const assigneeId of input.assigneeIds) insertAssignee.run(templateId, assigneeId);
         return {
           template: this.readChoreTemplate(householdId, templateId),
           audit: audit('chore-template.update', templateId, actor),
@@ -2369,19 +2372,20 @@ export class SqlitePlanningRepository implements PlanningRepository {
   }
 
   private readChoreTemplate(householdId: string, templateId: string): ChoreTemplate {
-    const row = this.database
+    const rows = this.database
       .prepare(
         `SELECT t.*, a.member_id, m.display_name, m.colour, m.avatar_key, m.role,
                 m.capabilities_json
          FROM chore_templates t
          JOIN chore_template_assignees a ON a.template_id = t.id
          JOIN members m ON m.id = a.member_id
-         WHERE t.id = ? AND t.household_id = ?`,
+         WHERE t.id = ? AND t.household_id = ?
+         ORDER BY m.created_at, m.id`,
       )
-      .get(templateId, householdId) as ChoreTemplateRow | undefined;
-    if (row === undefined)
+      .all(templateId, householdId) as ChoreTemplateRow[];
+    if (rows.length === 0)
       throw new RepositoryError('NOT_FOUND', 'That recurring chore was not found.');
-    return choreTemplateFromRow(row);
+    return choreTemplateFromRows(rows);
   }
 
   private readMember(householdId: string, memberId: string): Member {
@@ -2669,7 +2673,7 @@ function demoChoreTemplates(): ChoreTemplate[] {
       id: `template_${occurrence.id.replace('occurrence_', '')}`,
       title: occurrence.title,
       description: descriptions.get(occurrence.id) ?? null,
-      assignee: occurrence.assignee,
+      assignees: [occurrence.assignee],
       routineLabel: occurrence.routineLabel,
       dueTime: occurrence.dueTime,
       ...parsed,
@@ -2728,7 +2732,7 @@ function templateFromInput(
     id: idValue,
     title: input.title,
     description: input.description,
-    assignee: demoMember(input.assigneeId),
+    assignees: input.assigneeIds.map(demoMember),
     routineLabel: input.routineLabel,
     dueTime: input.dueTime,
     repeat: input.repeat,
@@ -2892,12 +2896,24 @@ function mealFromRow(row: MealRow) {
   });
 }
 
-function choreTemplateFromRow(row: ChoreTemplateRow): ChoreTemplate {
+function choreTemplatesFromRows(rows: ChoreTemplateRow[]): ChoreTemplate[] {
+  const grouped = new Map<string, ChoreTemplateRow[]>();
+  for (const row of rows) {
+    const templateRows = grouped.get(row.id);
+    if (templateRows === undefined) grouped.set(row.id, [row]);
+    else templateRows.push(row);
+  }
+  return [...grouped.values()].map(choreTemplateFromRows);
+}
+
+function choreTemplateFromRows(rows: ChoreTemplateRow[]): ChoreTemplate {
+  const row = rows[0];
+  if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That chore was not found.');
   return ChoreTemplateSchema.parse({
     id: row.id,
     title: row.title,
     description: row.description,
-    assignee: memberFromRow(row),
+    assignees: rows.map(memberFromRow),
     routineLabel: row.routine_label,
     dueTime: row.due_time,
     ...choreRepeatFromRule(row.recurrence_rule),
