@@ -39,6 +39,7 @@ import {
   DemoScenarioRequestSchema,
   ExecuteHomeActionRequestSchema,
   ExchangeTvPairingRequestSchema,
+  FirstUsePasskeyOptionsRequestSchema,
   HouseholdListsSchema,
   HomeActionIdSchema,
   HomeActionResultSchema,
@@ -55,6 +56,11 @@ import {
   OpaqueIdSchema,
   PairedDeviceSchema,
   PairingRequestSchema,
+  PasskeyAuthStatusSchema,
+  PasskeyCeremonyOptionsSchema,
+  PasskeyCeremonyVerificationRequestSchema,
+  PasskeySessionSchema,
+  PasskeySignOutResultSchema,
   PhotoGallerySchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
@@ -90,6 +96,7 @@ import {
   FakeCalendarConnectionVerifier,
   type CalendarConnectionRepository,
 } from './calendar-connection-repository.js';
+import { HEARTH_COMPANION_COOKIE, type CompanionAuthRepository } from './companion-auth.js';
 import { RealtimeHub } from './realtime.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
@@ -137,6 +144,7 @@ export const LOGGER_REDACT_PATHS = [
   '*.password',
   '*.dataBase64',
   '*.appPassword',
+  '*.setupCode',
 ] as const;
 
 export const HEARTH_DEVICE_COOKIE = 'hearth_device';
@@ -152,7 +160,9 @@ export interface BuildServerOptions {
   photoRepository?: PhotoRepository;
   pocketMoneyRepository?: PocketMoneyRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
+  companionAuth?: CompanionAuthRepository;
   runtime?: RuntimeConfiguration;
+  trustProxyHops?: number;
   readiness?: () => Promise<void> | void;
 }
 
@@ -201,6 +211,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     );
   const server = Fastify({
     bodyLimit: 1_500_000,
+    trustProxy: options.trustProxyHops ?? false,
     logger:
       options.logger === false
         ? false
@@ -255,6 +266,80 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.get('/api/v1/runtime', async () =>
     RuntimeContextSchema.parse(await resolveRuntimeContext(runtime, adminRepository)),
   );
+
+  server.get('/api/v1/auth/status', async (request, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    if (options.companionAuth === undefined) {
+      return PasskeyAuthStatusSchema.parse({
+        mode: runtime.mode,
+        configured: false,
+        secureOrigin: false,
+        requiresSetup: runtime.mode === 'private',
+        authenticated: false,
+        actor: null,
+      });
+    }
+    return options.companionAuth.status(optionalCompanionCredential(request.headers));
+  });
+
+  server.post('/api/v1/auth/first-use/registration-options', async (request, reply) => {
+    const body = parse(FirstUsePasskeyOptionsRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () =>
+      PasskeyCeremonyOptionsSchema.parse(
+        await companionAuth(options).firstUseRegistrationOptions(body, request.ip),
+      ),
+    );
+  });
+
+  server.post('/api/v1/auth/first-use/registration-verifications', async (request, reply) => {
+    const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const auth = companionAuth(options);
+      const result = await auth.verifyFirstUseRegistration(body.ceremonyId, body.response);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', auth.sessionCookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    });
+  });
+
+  server.post('/api/v1/auth/authentication-options', async (_request, reply) =>
+    run(reply, async () =>
+      PasskeyCeremonyOptionsSchema.parse(await companionAuth(options).authenticationOptions()),
+    ),
+  );
+
+  server.post('/api/v1/auth/authentication-verifications', async (request, reply) => {
+    const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const auth = companionAuth(options);
+      const result = await auth.verifyAuthentication(body.ceremonyId, body.response);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', auth.sessionCookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    });
+  });
+
+  server.get('/api/v1/auth/session', async (request, reply) =>
+    run(reply, async () => {
+      reply.header('Cache-Control', 'no-store');
+      return PasskeySessionSchema.parse(
+        companionAuth(options).session(companionCredential(request.headers)),
+      );
+    }),
+  );
+
+  server.post('/api/v1/auth/sign-outs', async (request, reply) => {
+    const auth = companionAuth(options);
+    const token = optionalCompanionCredential(request.headers);
+    if (token !== null) auth.signOut(token);
+    reply.header('Cache-Control', 'no-store').header('Set-Cookie', auth.clearSessionCookie());
+    return PasskeySignOutResultSchema.parse({ signedOut: true });
+  });
 
   server.get('/api/v1/health', async () => ({
     status: 'ok',
@@ -1163,7 +1248,9 @@ function actorId(
   headers: Record<string, string | string[] | undefined>,
   options: BuildServerOptions,
 ): string {
-  if (isPrivateMode(options)) return 'actor_unauthenticated';
+  if (isPrivateMode(options)) {
+    return companionActor(headers, options).id;
+  }
   const header = headers['x-hearth-demo-actor'];
   return typeof header === 'string' ? header : DEMO_ADMIN_ACTOR_ID;
 }
@@ -1176,7 +1263,7 @@ function commandActor(
   const credential = optionalDeviceCredential(headers);
   if (credential !== null) return adminRepository.authenticateDeviceCredential(credential);
   if (isPrivateMode(options)) {
-    throw new RepositoryError('UNAUTHENTICATED', 'Pair this device or sign in to continue.');
+    return companionActor(headers, options);
   }
   return demoCommandActor(headers);
 }
@@ -1238,10 +1325,59 @@ function optionalDeviceCredential(
     const [name, ...valueParts] = part.trim().split('=');
     if (name === HEARTH_DEVICE_COOKIE) {
       const value = valueParts.join('=');
-      return value.length > 0 ? decodeURIComponent(value) : null;
+      return value.length > 0 ? safeDecodeCookie(value) : null;
     }
   }
   return null;
+}
+
+function companionAuth(options: BuildServerOptions): CompanionAuthRepository {
+  if (options.companionAuth === undefined) {
+    throw new RepositoryError(
+      'INTEGRATION_UNAVAILABLE',
+      'Private companion authentication is not configured.',
+    );
+  }
+  return options.companionAuth;
+}
+
+function companionActor(
+  headers: Record<string, string | string[] | undefined>,
+  options: BuildServerOptions,
+): CommandActor {
+  if (options.companionAuth === undefined) {
+    throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+  }
+  return options.companionAuth.authenticate(companionCredential(headers));
+}
+
+function companionCredential(headers: Record<string, string | string[] | undefined>): string {
+  const token = optionalCompanionCredential(headers);
+  if (token === null) throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+  return token;
+}
+
+function optionalCompanionCredential(
+  headers: Record<string, string | string[] | undefined>,
+): string | null {
+  const cookie = headers.cookie;
+  if (typeof cookie !== 'string') return null;
+  for (const part of cookie.split(';')) {
+    const [name, ...valueParts] = part.trim().split('=');
+    if (name === HEARTH_COMPANION_COOKIE) {
+      const value = valueParts.join('=');
+      return value.length > 0 ? safeDecodeCookie(value) : null;
+    }
+  }
+  return null;
+}
+
+function safeDecodeCookie(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
 }
 
 function memberLookup(members: Member[]): Map<string, Member> {

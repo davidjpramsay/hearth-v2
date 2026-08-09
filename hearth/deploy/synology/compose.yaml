@@ -12,8 +12,12 @@ services:
       HEARTH_HOST: 0.0.0.0
       HEARTH_PORT: 4310
       HEARTH_LOG_LEVEL: ${HEARTH_LOG_LEVEL:-info}
+      HEARTH_TRUST_PROXY_HOPS: 1
       HEARTH_DATABASE_PATH: /data/hearth.sqlite
       HEARTH_CALENDAR_CONFIG_PATH: /run/hearth-secrets/calendar.json
+      HEARTH_AUTH_RP_ID: ${HEARTH_AUTH_RP_ID:?Set the permanent private Hearth hostname}
+      HEARTH_AUTH_ORIGIN: ${HEARTH_AUTH_ORIGIN:?Set the matching private HTTPS origin}
+      HEARTH_FIRST_USE_CODE_PATH: /run/hearth-secrets/first-use-code
     user: '${HEARTH_UID:?Set HEARTH_UID}:${HEARTH_GID:?Set HEARTH_GID}'
     init: true
     read_only: true

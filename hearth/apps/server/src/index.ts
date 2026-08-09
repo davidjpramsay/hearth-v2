@@ -1,3 +1,4 @@
+import { readFile, unlink } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import type { RuntimeMode } from '@hearth/shared';
@@ -10,6 +11,7 @@ import {
   FakeCalendarConnectionVerifier,
   type CalendarCredentialStore,
 } from './calendar-connection-repository.js';
+import { CompanionAuthService, type CompanionAuthConfiguration } from './companion-auth.js';
 import { LATEST_MIGRATION_VERSION, openHearthDatabase } from './database.js';
 import {
   ManagedCalendarProvider,
@@ -37,6 +39,7 @@ import { FixedClock, SystemClock } from './runtime-context.js';
 const host = process.env.HEARTH_HOST ?? '127.0.0.1';
 const port = Number.parseInt(process.env.HEARTH_PORT ?? '4310', 10);
 const runtimeMode = parseRuntimeMode(process.env.HEARTH_MODE ?? 'demo');
+const trustProxyHops = parseTrustProxyHops(process.env.HEARTH_TRUST_PROXY_HOPS);
 const demoMode = runtimeMode !== 'private';
 const databasePath =
   process.env.HEARTH_DATABASE_PATH ??
@@ -52,12 +55,12 @@ const calendarConfigPath = process.env.HEARTH_CALENDAR_CONFIG_PATH;
 const calendarRuntime = await resolveCalendarRuntime({ demoMode, configPath: calendarConfigPath });
 const database = await openHearthDatabase(databasePath);
 const adminRepository = new SqliteAdminRepository(database, { seedDemo: demoMode });
-const householdId = demoMode
-  ? DEMO_HOUSEHOLD_ID
-  : ((
-      database.prepare('SELECT id FROM households ORDER BY created_at LIMIT 1').get() as
-        { id: string } | undefined
-    )?.id ?? null);
+const privateHouseholdId = () =>
+  (
+    database.prepare('SELECT id FROM households ORDER BY created_at LIMIT 1').get() as
+      { id: string } | undefined
+  )?.id ?? null;
+const runtimeHouseholdId = demoMode ? DEMO_HOUSEHOLD_ID : privateHouseholdId;
 const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
 const managedCalendarProvider = new ManagedCalendarProvider();
 if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);
@@ -75,8 +78,8 @@ const repository = new SqliteHearthRepository(
 const planningRepository = new SqlitePlanningRepository(database, { seedDemo: demoMode, clock });
 const homeRepository = new HomeService(
   demoMode ? new FakeHomeAssistantProvider() : new UnconfiguredHomeAssistantProvider(),
-  householdId === null ? undefined : database,
-  { householdId: householdId ?? 'household_unconfigured', clock },
+  database,
+  { householdId: runtimeHouseholdId, clock },
 );
 const photoRepository = new PhotoService(
   demoMode ? new FakePhotoSourceProvider() : new UnconfiguredPhotoSourceProvider(),
@@ -108,10 +111,15 @@ const calendarConnectionRepository = new CalendarConnectionService(
     ...(calendarCredentialStore === undefined ? {} : { credentialStore: calendarCredentialStore }),
   },
 );
+const companionAuthConfiguration = demoMode ? null : resolveCompanionAuthConfiguration();
+const companionAuth =
+  companionAuthConfiguration === null
+    ? undefined
+    : new CompanionAuthService(database, companionAuthConfiguration);
 
 const server = buildServer({
   demoMode,
-  runtime: { mode: runtimeMode, householdId, clock },
+  runtime: { mode: runtimeMode, householdId: runtimeHouseholdId, clock },
   adminRepository,
   planningRepository,
   repository,
@@ -119,6 +127,8 @@ const server = buildServer({
   photoRepository,
   pocketMoneyRepository,
   calendarConnectionRepository,
+  ...(companionAuth === undefined ? {} : { companionAuth }),
+  ...(trustProxyHops === undefined ? {} : { trustProxyHops }),
   readiness: () => {
     database.prepare('SELECT 1').get();
     const migration = database
@@ -154,4 +164,63 @@ try {
 function parseRuntimeMode(value: string): RuntimeMode {
   if (value === 'demo' || value === 'test' || value === 'private') return value;
   throw new Error('HEARTH_MODE must be demo, test or private.');
+}
+
+function parseTrustProxyHops(value: string | undefined): number | undefined {
+  if (value === undefined || value.trim() === '') return undefined;
+  const hops = Number(value);
+  if (!Number.isInteger(hops) || hops < 1 || hops > 5) {
+    throw new Error('HEARTH_TRUST_PROXY_HOPS must be an integer from 1 to 5.');
+  }
+  return hops;
+}
+
+function resolveCompanionAuthConfiguration(): CompanionAuthConfiguration | null {
+  const rpId = process.env.HEARTH_AUTH_RP_ID;
+  const origin = process.env.HEARTH_AUTH_ORIGIN;
+  const firstUseCodePath = process.env.HEARTH_FIRST_USE_CODE_PATH;
+  if (rpId === undefined && origin === undefined && firstUseCodePath === undefined) return null;
+  if (rpId === undefined || origin === undefined || firstUseCodePath === undefined) {
+    throw new Error(
+      'HEARTH_AUTH_RP_ID, HEARTH_AUTH_ORIGIN and HEARTH_FIRST_USE_CODE_PATH must be configured together.',
+    );
+  }
+  if (!/^[a-z0-9.-]+$/i.test(rpId) || rpId.includes('..')) {
+    throw new Error('HEARTH_AUTH_RP_ID must be a valid private hostname.');
+  }
+  let parsedOrigin: URL;
+  try {
+    parsedOrigin = new URL(origin);
+  } catch {
+    throw new Error('HEARTH_AUTH_ORIGIN must be a valid HTTPS origin.');
+  }
+  if (
+    parsedOrigin.protocol !== 'https:' ||
+    parsedOrigin.hostname !== rpId ||
+    parsedOrigin.pathname !== '/' ||
+    parsedOrigin.search !== '' ||
+    parsedOrigin.hash !== ''
+  ) {
+    throw new Error(
+      'HEARTH_AUTH_ORIGIN must be an HTTPS origin whose hostname exactly matches HEARTH_AUTH_RP_ID.',
+    );
+  }
+  return {
+    mode: 'private',
+    rpId,
+    origin: parsedOrigin.origin,
+    secureCookie: true,
+    readFirstUseCode: () => readFile(firstUseCodePath, 'utf8'),
+    consumeFirstUseCode: async () => {
+      try {
+        await unlink(firstUseCodePath);
+      } catch (error) {
+        if (!isMissingFile(error)) throw error;
+      }
+    },
+  };
+}
+
+function isMissingFile(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }

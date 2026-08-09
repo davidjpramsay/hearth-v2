@@ -62,6 +62,48 @@ export const RuntimeContextSchema = z.object({
   requiresSetup: z.boolean(),
 });
 
+export const PasskeyAuthStatusSchema = z.object({
+  mode: RuntimeModeSchema,
+  configured: z.boolean(),
+  secureOrigin: z.boolean(),
+  requiresSetup: z.boolean(),
+  authenticated: z.boolean(),
+  actor: MemberSchema.pick({ id: true, displayName: true, role: true }).nullable(),
+});
+
+export const FirstUsePasskeyOptionsRequestSchema = z
+  .object({
+    setupCode: z.string().trim().min(12).max(160),
+    householdName: z.string().trim().min(1).max(100),
+    adultName: z.string().trim().min(1).max(80),
+    timezone: TimezoneSchema,
+    passkeyLabel: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
+export const PasskeyCeremonyOptionsSchema = z.object({
+  ceremonyId: OpaqueIdSchema,
+  options: z.record(z.string(), z.unknown()),
+  expiresAt: TimestampSchema,
+});
+
+export const PasskeyCeremonyVerificationRequestSchema = z
+  .object({
+    ceremonyId: OpaqueIdSchema,
+    response: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
+export const PasskeySessionSchema = z.object({
+  authenticated: z.literal(true),
+  householdId: OpaqueIdSchema,
+  memberId: OpaqueIdSchema,
+  displayName: z.string().min(1).max(80),
+  expiresAt: TimestampSchema,
+});
+
+export const PasskeySignOutResultSchema = z.object({ signedOut: z.literal(true) });
+
 export const IntegrationStateSchema = z.object({
   kind: z.enum(['calendar', 'home-assistant']),
   status: z.enum([
@@ -651,6 +693,7 @@ export const AuditSummarySchema = z.object({
     'pocket-money.payment.record',
     'calendar.connection.save',
     'calendar.connection.remove',
+    'auth.passkey.register',
     'home.action.execute',
   ]),
   targetId: OpaqueIdSchema,
@@ -957,6 +1000,14 @@ export type HouseholdSummary = z.infer<typeof HouseholdSummarySchema>;
 export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export type RuntimeHousehold = z.infer<typeof RuntimeHouseholdSchema>;
 export type RuntimeContext = z.infer<typeof RuntimeContextSchema>;
+export type PasskeyAuthStatus = z.infer<typeof PasskeyAuthStatusSchema>;
+export type FirstUsePasskeyOptionsRequest = z.infer<typeof FirstUsePasskeyOptionsRequestSchema>;
+export type PasskeyCeremonyOptions = z.infer<typeof PasskeyCeremonyOptionsSchema>;
+export type PasskeyCeremonyVerificationRequest = z.infer<
+  typeof PasskeyCeremonyVerificationRequestSchema
+>;
+export type PasskeySession = z.infer<typeof PasskeySessionSchema>;
+export type PasskeySignOutResult = z.infer<typeof PasskeySignOutResultSchema>;
 export type IntegrationState = z.infer<typeof IntegrationStateSchema>;
 export type CalendarSource = z.infer<typeof CalendarSourceSchema>;
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;

@@ -9,7 +9,7 @@ export interface HearthClock {
 
 export interface RuntimeConfiguration {
   mode: RuntimeMode;
-  householdId: string | null;
+  householdId: string | null | (() => string | null);
   clock: HearthClock;
   fallbackTimezone?: string;
   fallbackLocale?: string;
@@ -33,10 +33,11 @@ export async function resolveRuntimeContext(
   configuration: RuntimeConfiguration,
   adminRepository: AdminRepository,
 ): Promise<RuntimeContext> {
-  const household =
-    configuration.householdId === null
-      ? null
-      : await adminRepository.getHousehold(configuration.householdId);
+  const householdId =
+    typeof configuration.householdId === 'function'
+      ? configuration.householdId()
+      : configuration.householdId;
+  const household = householdId === null ? null : await adminRepository.getHousehold(householdId);
   const timezone = household?.timezone ?? configuration.fallbackTimezone ?? 'Australia/Perth';
   const locale = household?.locale ?? configuration.fallbackLocale ?? 'en-AU';
   const now = configuration.clock.now();

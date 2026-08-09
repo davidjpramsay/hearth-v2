@@ -30,11 +30,25 @@ test('private first use is honest and does not request demo household data', asy
       }),
     }),
   );
+  await page.route('**/api/v1/auth/status', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        mode: 'private',
+        configured: true,
+        secureOrigin: true,
+        requiresSetup: true,
+        authenticated: false,
+        actor: null,
+      }),
+    }),
+  );
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
   await expect(page.getByRole('heading', { name: 'Set up this Hearth' })).toBeVisible();
-  await expect(page.getByText('No demo people or family data have been added.')).toBeVisible();
+  await expect(page.getByText('Finish setup on your iPhone')).toBeVisible();
+  await expect(page.locator('form')).toBeHidden();
   expect(householdRequests).toBe(0);
   await page.screenshot({
     path: resolve(evidence, 'private-first-use-tv-1080.png'),
@@ -42,6 +56,8 @@ test('private first use is honest and does not request demo household data', asy
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('form')).toBeVisible();
+  await expect(page.getByLabel('Local first-use code')).toBeVisible();
   await page.screenshot({
     path: resolve(evidence, 'private-first-use-phone-portrait.png'),
     animations: 'disabled',

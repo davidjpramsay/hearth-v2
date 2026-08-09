@@ -486,6 +486,178 @@
   font-weight: 700;
 }
 
+.runtime-gate--setup {
+  width: min(94vw, 760px);
+  min-height: 100vh;
+  margin-inline: auto;
+  padding-block: clamp(32px, 6vw, 80px);
+}
+
+.runtime-gate__detail {
+  color: var(--muted);
+}
+
+.first-use-tv-guidance {
+  display: grid;
+  max-width: 680px;
+  gap: 8px;
+  padding: 24px 30px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.first-use-tv-guidance strong {
+  font-size: 28px;
+}
+
+.first-use-tv-guidance span {
+  color: var(--muted);
+  font-size: 23px;
+  line-height: 1.35;
+}
+
+.first-use-form {
+  display: grid;
+  width: min(100%, 560px);
+  gap: 18px;
+  margin-top: 18px;
+  text-align: left;
+}
+
+.first-use-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.first-use-form input {
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  background: var(--input-surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 20px;
+}
+
+.form-message {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-small);
+  font-size: 18px;
+}
+
+.form-message--error {
+  color: var(--brick);
+  background: var(--brick-soft);
+}
+
+.admin-auth-gate {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: calc(100vh - 96px);
+  padding: 48px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.admin-auth-gate img {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 18px;
+}
+
+.admin-auth-gate h1,
+.admin-auth-gate p {
+  max-width: 620px;
+}
+
+.admin-auth-gate h1 {
+  margin: 0;
+  font-size: clamp(36px, 4vw, 60px);
+}
+
+.admin-auth-gate p {
+  color: var(--muted);
+  font-size: clamp(20px, 2vw, 28px);
+}
+
+.admin-auth-gate .button {
+  min-height: 56px;
+  margin-top: 18px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: var(--radius-small);
+  color: var(--surface);
+  background: var(--eucalyptus);
+  font: inherit;
+  font-size: 19px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.admin-auth-gate .button:disabled,
+.first-use-form button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+@media (max-width: 899px) {
+  .first-use-tv-guidance {
+    display: none;
+  }
+
+  .runtime-gate--setup {
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 24px 28px 32px;
+  }
+
+  .runtime-gate--setup img {
+    width: 42px;
+  }
+
+  .runtime-gate--setup h1 {
+    font-size: 36px;
+  }
+
+  .runtime-gate--setup p {
+    font-size: 19px;
+  }
+
+  .first-use-form {
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .first-use-form label {
+    gap: 3px;
+    font-size: 15px;
+  }
+
+  .first-use-form input {
+    min-height: 48px;
+    font-size: 18px;
+  }
+
+  .runtime-gate--setup button {
+    min-height: 52px;
+    font-size: 18px;
+  }
+}
+
+@media (min-width: 900px) {
+  .runtime-gate--setup .first-use-form {
+    display: none;
+  }
+}
+
 /* Phase 5 Home Assistant surface */
 .home-screen {
   max-width: 1780px;
@@ -2060,6 +2232,22 @@
   width: 48px;
   height: 48px;
   object-fit: contain;
+}
+.admin-session-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-session-controls .button--quiet {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 22px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 .admin-actor {
   min-height: 52px;

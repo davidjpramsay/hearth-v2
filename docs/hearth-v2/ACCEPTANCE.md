@@ -187,6 +187,10 @@ theme reporting remain untested until the physical-TV pilot.
 - Television pairing can be revoked.
 - Server-side secrets are absent from built JS and APK artefacts.
 - Child/guest roles cannot access admin configuration.
+- In private mode, an adult can create the first household only with the external one-time setup
+  code and a user-verified passkey; Admin then requires a valid revocable `HttpOnly` companion
+  session. The database stores public-key material and session hashes, never the setup code or raw
+  session token.
 - Mutation audit records include actor, channel, target, time and result.
 - Logs do not include tokens or full sensitive calendar content by default.
 - Public internet exposure is absent unless separately reviewed and approved.
@@ -214,7 +218,7 @@ not yet complete.
 
 Local deployment evidence as of 2026-08-09: the production server/web images build and become
 healthy together in private mode on native ARM64 and emulated DS920+ `linux/amd64`; the same-origin
-readiness route, 11-migration database startup, unseeded first-use runtime, non-root/read-only
+readiness route, 12-migration database startup, unseeded first-use runtime, non-root/read-only
 security settings and clean `SIGTERM` shutdown pass. These checks validate the scaffold only. The
 five operations bullets above still require the actual Synology, Pi, TV, router and restore drill,
 so production acceptance remains incomplete.

@@ -418,4 +418,60 @@ describe('0001 household core migration', () => {
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
+
+  it('adds public-key passkeys and hash-only companion sessions', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 12').get()).toEqual(
+      { name: 'passkey_authentication' },
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_auth', 'Auth home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES (
+        'member_auth', 'household_auth', 'Adult', '#2f766d', NULL, 'adult', NULL,
+        'now', 'now', '["household.admin"]'
+      );
+    `);
+    database
+      .prepare(
+        `INSERT INTO passkey_credentials
+          (id, credential_id, household_id, member_id, webauthn_user_id, public_key, counter,
+           device_type, backed_up, transports_json, label, created_at, last_used_at, revoked_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 'multiDevice', 1, ?, ?, ?, NULL, NULL)`,
+      )
+      .run(
+        'passkey_auth',
+        'credential_auth',
+        'household_auth',
+        'member_auth',
+        'webauthn_user_auth',
+        Buffer.from([1, 2, 3]),
+        '["internal"]',
+        'iPhone',
+        'now',
+      );
+    database
+      .prepare(
+        `INSERT INTO companion_sessions
+          (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at)
+         VALUES (?, ?, ?, 'now', 'now', 'later', NULL)`,
+      )
+      .run('a'.repeat(64), 'household_auth', 'member_auth');
+    expect(
+      database.prepare('SELECT length(public_key) AS bytes FROM passkey_credentials').get(),
+    ).toEqual({ bytes: 3 });
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO companion_sessions
+            (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at)
+           VALUES ('plain-token', 'household_auth', 'member_auth', 'now', 'now', 'later', NULL)`,
+        )
+        .run(),
+    ).toThrow(/CHECK/);
+    database.close();
+  });
 });

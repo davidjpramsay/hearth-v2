@@ -51,9 +51,10 @@ Hardening note (2026-08-09): the runtime now distinguishes `demo`, `test` and
 week and month values through `/api/v1/runtime`. Browser API paths and query
 keys no longer embed the fictional household/date. Private repository
 construction applies migrations without seeding Ezra, Maya or planning data and
-shows an explicit setup-required state. The authenticated adult first-use
-creation action remains part of the private HTTPS/passkey work rather than a
-demo header escape hatch.
+shows an explicit setup-required state. The authenticated adult first-use action now verifies a
+one-time external setup code and a user-verified passkey before transactionally creating the named
+household, first adult and default lists. Private Admin uses the resulting revocable, hash-only
+companion session; real enrolment remains blocked until the stable private HTTPS origin is approved.
 
 Recurring chore editing remains intentionally out of the Admin UI until the denser phone-oriented administration work in Phase 4. Phase 2 establishes and tests its server/domain persistence contract without putting dense editing on the television.
 
@@ -281,7 +282,7 @@ states and corrupt-image fallback. A production-oriented two-container Synology
 scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
 with same-origin proxying, non-root/read-only processes, readiness gating,
 forward migrations and clean shutdown verified locally. Live Synology
-commissioning, hostname/TLS and passkeys, approved photo selection/indexing,
+commissioning, hostname/TLS and real-device passkey enrolment/recovery, approved photo selection/indexing,
 Home Assistant presence/quiet-hours coordination,
 restore evidence and the household pilot remain open; Phase 7 is not complete.
 

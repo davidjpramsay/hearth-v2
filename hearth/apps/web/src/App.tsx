@@ -1,6 +1,7 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { useAppearance } from './appearance/appearance';
+import { AdminAuthBoundary } from './auth/AdminAuthBoundary';
 import { AppShell } from './components/AppShell';
 import { useRemoteNavigation } from './focus/useRemoteNavigation';
 import { useScenario } from './hooks/useScenario';
@@ -56,18 +57,29 @@ export function App() {
           element={<PhotosScreen preparing={preparing} scenario={scenario} />}
         />
         <Route path="/home" element={<HomeScreen preparing={preparing} scenario={scenario} />} />
-        <Route path="/admin" element={<AdminScreen />} />
-        <Route path="/admin/appearance" element={<AppearanceSettingsScreen />} />
-        <Route path="/admin/household" element={<HouseholdSettingsScreen />} />
-        <Route path="/admin/people" element={<PeopleSettingsScreen />} />
-        <Route path="/admin/televisions" element={<TelevisionsSettingsScreen />} />
-        <Route path="/admin/connections" element={<ConnectionsSettingsScreen />} />
-        <Route path="/admin/connections/calendar" element={<CalendarConnectionSettingsScreen />} />
-        <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
-        <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
-        <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
-        <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
-        <Route path="/admin/rewards" element={<Navigate replace to="/admin/pocket-money" />} />
+        <Route
+          element={
+            <AdminAuthBoundary>
+              <Outlet />
+            </AdminAuthBoundary>
+          }
+        >
+          <Route path="/admin" element={<AdminScreen />} />
+          <Route path="/admin/appearance" element={<AppearanceSettingsScreen />} />
+          <Route path="/admin/household" element={<HouseholdSettingsScreen />} />
+          <Route path="/admin/people" element={<PeopleSettingsScreen />} />
+          <Route path="/admin/televisions" element={<TelevisionsSettingsScreen />} />
+          <Route path="/admin/connections" element={<ConnectionsSettingsScreen />} />
+          <Route
+            path="/admin/connections/calendar"
+            element={<CalendarConnectionSettingsScreen />}
+          />
+          <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
+          <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
+          <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
+          <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
+          <Route path="/admin/rewards" element={<Navigate replace to="/admin/pocket-money" />} />
+        </Route>
         <Route path="/pair" element={<PairingScreen />} />
         <Route path="*" element={<Navigate replace to="/today" />} />
       </Routes>

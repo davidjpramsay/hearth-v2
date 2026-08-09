@@ -1,10 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
 import { configureHearthClient, hearthApi } from '../api/client';
+import { FirstUseSetup } from '../auth/FirstUseSetup';
+import { authStatusQueryKey } from '../auth/queryKeys';
 import { RuntimeContextValue } from './context';
 
 export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const runtime = useQuery({
     queryKey: ['hearth-runtime'],
     queryFn: hearthApi.getRuntime,
@@ -12,6 +15,12 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
     gcTime: Number.POSITIVE_INFINITY,
     retry: 1,
     networkMode: 'online',
+  });
+  const auth = useQuery({
+    queryKey: authStatusQueryKey,
+    queryFn: hearthApi.getAuthStatus,
+    enabled: runtime.data?.mode === 'private' && runtime.data.requiresSetup,
+    staleTime: 15_000,
   });
 
   if (runtime.isPending) {
@@ -38,6 +47,41 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
   }
 
   if (runtime.data.requiresSetup || runtime.data.household === null) {
+    if (runtime.data.mode === 'private') {
+      if (auth.isPending) {
+        return (
+          <main className="runtime-gate" aria-busy="true" aria-live="polite">
+            <img alt="" src="/brand/hearth-mark.png" />
+            <h1>Preparing secure setup</h1>
+            <p>Checking this Hearth’s private passkey settings…</p>
+          </main>
+        );
+      }
+      if (auth.isError) {
+        return (
+          <main className="runtime-gate" role="alert">
+            <img alt="" src="/brand/hearth-mark.png" />
+            <h1>Secure setup could not start</h1>
+            <p>{auth.error.message}</p>
+            <button className="button button--primary" type="button" onClick={() => auth.refetch()}>
+              Try again
+            </button>
+          </main>
+        );
+      }
+      return (
+        <FirstUseSetup
+          runtime={runtime.data}
+          auth={auth.data}
+          onComplete={async () => {
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] }),
+              queryClient.invalidateQueries({ queryKey: authStatusQueryKey }),
+            ]);
+          }}
+        />
+      );
+    }
     return (
       <main className="runtime-gate">
         <img alt="" src="/brand/hearth-mark.png" />

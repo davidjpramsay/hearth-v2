@@ -20,6 +20,10 @@ import {
   MonthScheduleSchema,
   PairedDeviceSchema,
   PairingRequestSchema,
+  PasskeyAuthStatusSchema,
+  PasskeyCeremonyOptionsSchema,
+  PasskeySessionSchema,
+  PasskeySignOutResultSchema,
   PhotoGallerySchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
@@ -51,6 +55,10 @@ import {
   type MonthSchedule,
   type PairedDevice,
   type PairingRequest,
+  type FirstUsePasskeyOptionsRequest,
+  type PasskeyAuthStatus,
+  type PasskeyCeremonyOptions,
+  type PasskeySession,
   type PhotoGallery,
   type Payday,
   type PocketMoneyOverview,
@@ -121,6 +129,28 @@ export const hearthApi = {
     return `${householdApiBase()}/events`;
   },
   getRuntime: () => request(`${API_BASE}/runtime`, RuntimeContextSchema),
+  getAuthStatus: () => request(`${API_BASE}/auth/status`, PasskeyAuthStatusSchema),
+  getFirstUseRegistrationOptions: (input: FirstUsePasskeyOptionsRequest) =>
+    request(`${API_BASE}/auth/first-use/registration-options`, PasskeyCeremonyOptionsSchema, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  verifyFirstUseRegistration: (ceremonyId: string, response: Record<string, unknown>) =>
+    request(`${API_BASE}/auth/first-use/registration-verifications`, PasskeySessionSchema, {
+      method: 'POST',
+      body: JSON.stringify({ ceremonyId, response }),
+    }),
+  getAuthenticationOptions: () =>
+    request(`${API_BASE}/auth/authentication-options`, PasskeyCeremonyOptionsSchema, {
+      method: 'POST',
+    }),
+  verifyAuthentication: (ceremonyId: string, response: Record<string, unknown>) =>
+    request(`${API_BASE}/auth/authentication-verifications`, PasskeySessionSchema, {
+      method: 'POST',
+      body: JSON.stringify({ ceremonyId, response }),
+    }),
+  signOut: () =>
+    request(`${API_BASE}/auth/sign-outs`, PasskeySignOutResultSchema, { method: 'POST' }),
   getToday: () =>
     request(`${householdApiBase()}/today?date=${getHearthRuntime().localDate}`, TodaySummarySchema),
   getWeek: () =>
@@ -390,6 +420,9 @@ export const hearthApi = {
 
 export type HearthApi = typeof hearthApi;
 export type HearthRuntime = RuntimeContext;
+export type HearthAuthStatus = PasskeyAuthStatus;
+export type HearthPasskeyCeremonyOptions = PasskeyCeremonyOptions;
+export type HearthPasskeySession = PasskeySession;
 export type HearthToday = TodaySummary;
 export type HearthWeek = WeekSchedule;
 export type HearthMonth = MonthSchedule;

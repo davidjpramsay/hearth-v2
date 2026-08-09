@@ -270,7 +270,21 @@ encrypted by a non-exportable Keystore key.
 
 ### Session
 
-Short-lived authenticated session with actor/device, expiry and scope. Do not persist raw bearer secrets in logs or audit rows.
+The private companion stores a random-session SHA-256 hash, household/member references,
+created/last-seen/expiry timestamps and revocation state. The raw 30-day token exists only in the
+`HttpOnly`, `Secure`, `SameSite=Strict` browser cookie and never enters logs, audit rows or SQLite.
+
+### Passkey credential
+
+- opaque credential row ID and WebAuthn credential ID
+- household/member and WebAuthn user references
+- credential public key and signature counter
+- authenticator transports, device type and backup state
+- user-facing label, created/last-used timestamps and revocation state
+
+Registration challenges and the one-time first-use code are ephemeral and never stored in this
+table. Migration `0012_passkey_authentication.sql` implements both credential and companion-session
+records.
 
 ## Audit event
 
@@ -323,7 +337,9 @@ secret.
 Migration `0008_photo_library.sql`, `0009_pocket_money.sql`,
 `0010_member_avatars.sql` and `0011_calendar_connection_setup.sql` add the
 approved photo projection, proportional pocket-money records, bounded member
-avatar derivatives and credential-free calendar-setup metadata respectively.
+avatar derivatives and credential-free calendar-setup metadata respectively. Migration
+`0012_passkey_authentication.sql` adds public-key credentials and hash-only revocable companion
+sessions without storing a setup code or raw bearer token.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported daily and weekly occurrences on

@@ -1,19 +1,29 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IconName } from '../components/Icon';
 import { Link } from 'react-router-dom';
 
+import { hearthApi } from '../api/client';
+import { authStatusQueryKey } from '../auth/queryKeys';
 import { AdminError, AdminLoading } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useHearthQueries';
+import { useHearthRuntime } from '../runtime/context';
 
 const settings: {
   title: string;
-  description: (members: number, televisions: number, householdName: string) => string;
+  description: (
+    members: number,
+    televisions: number,
+    householdName: string,
+    timezone: string,
+  ) => string;
   icon: IconName;
   path: string;
 }[] = [
   {
     title: 'Household',
-    description: (_members, _televisions, householdName) => `${householdName} · Perth`,
+    description: (_members, _televisions, householdName, timezone) =>
+      `${householdName} · ${timezoneLabel(timezone)}`,
     icon: 'home',
     path: '/admin/household',
   },
@@ -66,7 +76,15 @@ function adjacentSettingFocusId(index: number, fallback: string): string {
 }
 
 export function AdminScreen() {
+  const runtime = useHearthRuntime();
+  const queryClient = useQueryClient();
   const admin = useAdminQuery();
+  const signOut = useMutation({
+    mutationFn: hearthApi.signOut,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: authStatusQueryKey });
+    },
+  });
   if (admin.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;
 
@@ -77,10 +95,25 @@ export function AdminScreen() {
     <section className="admin-home">
       <header className="admin-home__topbar">
         <img alt="" src="/brand/hearth-mark.png" />
-        <div className="admin-actor" aria-label={`${admin.data.actor.displayName}, administrator`}>
-          <span aria-hidden="true">{admin.data.actor.displayName.slice(0, 1)}</span>
-          <strong>{admin.data.actor.displayName}</strong>
-          <small>Administrator</small>
+        <div className="admin-session-controls">
+          <div
+            className="admin-actor"
+            aria-label={`${admin.data.actor.displayName}, administrator`}
+          >
+            <span aria-hidden="true">{admin.data.actor.displayName.slice(0, 1)}</span>
+            <strong>{admin.data.actor.displayName}</strong>
+            <small>Administrator</small>
+          </div>
+          {runtime.mode === 'private' ? (
+            <button
+              className="button button--quiet"
+              type="button"
+              disabled={signOut.isPending}
+              onClick={() => signOut.mutate()}
+            >
+              {signOut.isPending ? 'Signing out…' : 'Sign out'}
+            </button>
+          ) : null}
         </div>
       </header>
       <div className="admin-home__title">
@@ -119,6 +152,7 @@ export function AdminScreen() {
                   admin.data.household.members.length,
                   connected,
                   admin.data.household.name,
+                  admin.data.household.timezone,
                 )}
               </small>
             </span>
@@ -138,10 +172,15 @@ export function AdminScreen() {
         <Icon name="television" />
         Pair a television
       </Link>
-      <p className="demo-session-note">
-        Demo adult session · Real passkey sign-in starts after the private HTTPS hostname is
-        configured.
-      </p>
+      {runtime.mode === 'private' ? null : (
+        <p className="demo-session-note">
+          Demo adult session · Private deployment uses passkey sign-in.
+        </p>
+      )}
     </section>
   );
+}
+
+function timezoneLabel(timezone: string): string {
+  return timezone.split('/').at(-1)?.replaceAll('_', ' ') ?? timezone;
 }

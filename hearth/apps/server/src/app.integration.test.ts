@@ -336,6 +336,7 @@ describe('Hearth v2 API', () => {
         '*.password',
         '*.appPassword',
         '*.dataBase64',
+        '*.setupCode',
       ]),
     );
     const app = server();

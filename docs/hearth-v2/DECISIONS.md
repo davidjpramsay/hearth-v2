@@ -366,10 +366,9 @@ Record durable choices here. New decisions should include date, status, context,
   dates and focus entry from returned data.
 - Consequence: Private startup is an explicit first-use state rather than Ezra
   and Maya, household renames/timezone changes update the runtime contract, and
-  date boundaries are consistent on TV and phone. The initial adult creation
-  action remains coupled to the private HTTPS/passkey slice; until that exists,
-  an empty private database shows an honest setup-required surface and accepts
-  no demo bootstrap command.
+  date boundaries are consistent on TV and phone. D-032 now implements the initial adult creation
+  action behind the stable private HTTPS/passkey boundary; an unconfigured private database still
+  shows an honest setup-required surface and accepts no demo bootstrap command.
 
 ## D-031 — Synology uses a hardened two-container same-origin deployment
 
@@ -391,3 +390,25 @@ Record durable choices here. New decisions should include date, status, context,
   hostname, trusted certificate, adult passkeys, backup/restore drill and live commissioning still
   require explicit approval. No real household or provider data may be entered before those controls
   are complete.
+
+## D-032 — Private first use establishes a named adult passkey session
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: Private mode could prove that no fictional household was seeded, but it had no secure
+  way to create the real household or authenticate phone administration. A temporary hostname,
+  shared admin URL token or browser-stored bearer credential would undermine the stable private
+  WebAuthn boundary selected in D-014.
+- Choice: Require `HEARTH_AUTH_RP_ID`, its exact `HEARTH_AUTH_ORIGIN` and an external
+  `HEARTH_FIRST_USE_CODE_PATH` together. Rate limit and constant-time-check the one-time code before
+  issuing a five-minute, single-use WebAuthn registration challenge. Require a discoverable,
+  user-verified passkey. After verification, create the household, first adult administrator,
+  Groceries/To-do lists, credential and audit record transactionally. Persist credential public-key
+  material, counters, transports/device/backup state and only a SHA-256 digest of a random 30-day
+  companion session. Deliver it as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie; advance the
+  passkey counter on authentication and revoke the session on sign-out. Keep television device
+  credentials independent.
+- Consequence: Private Admin no longer relies on demo actor headers and first use completes without a
+  server restart, but real enrolment cannot happen until the permanent private HTTPS hostname and
+  trusted certificate are approved. A second-adult/additional-passkey and locally confirmed recovery
+  flow remains required before the household pilot.

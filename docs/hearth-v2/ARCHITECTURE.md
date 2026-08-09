@@ -138,6 +138,8 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist
 - `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
+- `GET /api/v1/auth/status`, first-use registration options/verification, discoverable-passkey
+  authentication options/verification, session and sign-out routes for the private companion
 
 Member-avatar commands use the adult Admin session, strict request-size and JPEG checks,
 idempotency receipts and explicit audit actions. The browser normalizes the selected original to a
@@ -209,7 +211,9 @@ planning defaults and real-time event paths are derived only after that
 response succeeds. `demo` and `test` inject the fixed Perth clock used by
 retained evidence; `private` injects the system clock. A private database with
 no household returns `requiresSetup: true` and a null household, so the browser
-renders first use without issuing household queries.
+renders first use without issuing household queries. After the one-time local setup code and
+WebAuthn registration are verified, household/member/default-list creation and credential storage
+commit in one transaction; the runtime resolver observes the new household without a restart.
 
 Repository construction follows the same mode boundary. Demo/test may seed the
 fictional household. Private construction runs migrations but does not insert
@@ -230,12 +234,12 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0006` establish the household core, Admin/pairing state,
-chore runtime, calendar projection, household planning and Home Assistant
-projection. Migration `0007_tv_device_credentials.sql` adds the hashed native
-pairing credential, shell version and exchange timestamp. The live demo server
-uses the SQLite repository; its in-memory adapter remains only for isolated
-contract tests.
+Migrations `0001`–`0012` establish the household core, Admin/pairing state, chore runtime, calendar
+projection, household planning, Home Assistant projection, television credentials, photos, pocket
+money, member avatars, calendar setup and companion passkeys/sessions. Migration
+`0012_passkey_authentication.sql` stores credential public-key material/counters and only SHA-256
+session-token hashes. The live demo server uses the SQLite repository; its in-memory adapter remains
+only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
 
@@ -259,7 +263,18 @@ cryptographic randomness.
 
 ### Companion/admin
 
-The LAN-only release uses named adult household accounts with passkeys as the primary companion sign-in. A local recovery flow may issue a renewable recovery code only after adult confirmation on an already trusted surface; it must never place a shared admin token in a URL. Passkeys require a stable private hostname and HTTPS secure origin before real household data is entered.
+The LAN-only release uses named adult household accounts with passkeys as the primary companion
+sign-in. Private first use reads a high-entropy one-time code from an external secret file, rate
+limits invalid attempts, requires user verification and a discoverable passkey, then issues a
+30-day `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Only its SHA-256 digest is stored; sign-out
+revokes the database session. Registration and authentication challenges are single-use and expire
+after five minutes. WebAuthn credentials retain their public key, signature counter, transports,
+device type and backup state; successful authentication advances the counter.
+
+A second-adult/recovery flow remains required before the household pilot. It may issue a renewable
+recovery code only after adult confirmation on an already trusted surface; it must never place a
+shared admin token in a URL. Passkeys require a stable private hostname and HTTPS secure origin
+before real household data is entered.
 
 During the isolated demo, a server-resolved Maya administrator session exercises the same role/capability checks without pretending to be production authentication. This demo actor header is disabled outside demo mode. See D-014.
 

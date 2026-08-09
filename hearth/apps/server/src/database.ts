@@ -17,6 +17,7 @@ const migrations = [
   { version: 9, url: new URL('./migrations/0009_pocket_money.sql', import.meta.url) },
   { version: 10, url: new URL('./migrations/0010_member_avatars.sql', import.meta.url) },
   { version: 11, url: new URL('./migrations/0011_calendar_connection_setup.sql', import.meta.url) },
+  { version: 12, url: new URL('./migrations/0012_passkey_authentication.sql', import.meta.url) },
 ] as const;
 
 const latestMigration = migrations.at(-1);

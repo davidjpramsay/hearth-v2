@@ -92,7 +92,17 @@ Use reserved DHCP addresses and stable local DNS names where available. Suggeste
 
 Do not hard-code LAN IPs in application bundles. Production configuration enters the TV through pairing or a controlled environment/build setting.
 
-Companion passkeys require a stable private hostname with HTTPS before real household data is entered. The exact Synology/Tailscale hostname and certificate mechanism are deployment inputs, not values to hard-code in application bundles.
+Companion passkeys require a stable private hostname with HTTPS before real household data is entered.
+Set `HEARTH_AUTH_RP_ID` to that exact hostname, `HEARTH_AUTH_ORIGIN` to its exact HTTPS origin and
+`HEARTH_FIRST_USE_CODE_PATH` to an external access-restricted secret file. All three values are
+required together. The exact Synology/Tailscale hostname and certificate mechanism are deployment
+inputs, not values to hard-code in application bundles.
+
+Before the first start, generate a high-entropy code into the configured first-use file with mode
+`0600` or stricter and read it only on the local trusted administration path. Do not put it in an
+environment variable, Compose, source, chat, logs, SQLite or a URL. Hearth rate limits invalid
+attempts and consumes the file after the first adult passkey and household are committed. Keep the
+origin stable after enrolment; changing the WebAuthn relying-party hostname requires new credentials.
 
 The CalDAV adapter also fails closed without private configuration. In
 non-demo mode, `HEARTH_CALENDAR_CONFIG_PATH` must point to a JSON secret mounted
@@ -122,9 +132,9 @@ present.
 Set `HEARTH_MODE=private` only with a dedicated private database path. If
 `HEARTH_DATABASE_PATH` is omitted, Hearth chooses `data/hearth-private.sqlite`
 for private mode and `data/hearth-demo.sqlite` for demo/test. Do not point
-private mode at a copied demo database. The adult first-use creation command is
-not yet enabled; the empty private startup state is intentional until the
-private HTTPS/passkey slice is commissioned.
+private mode at a copied demo database. The adult first-use command is implemented but remains inert
+without the approved private HTTPS origin and external one-time code. Do not enrol a real passkey or
+enter household data until that origin/certificate is commissioned.
 
 ## Proposed Synology paths
 
@@ -146,7 +156,7 @@ Deployment files belong in `hearth/deploy/synology`; live secrets never return t
 As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffold: a multi-stage
 Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
 Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
-ignored runtime directory template. The server production build includes all 11 forward migrations
+ignored runtime directory template. The server production build includes all 12 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 
 Both native ARM64 development images and emulated `linux/amd64` images for the DS920+ were built and
@@ -168,8 +178,9 @@ docker build --platform linux/amd64 --target web \
 ```
 
 Live commissioning remains blocked on an owner-approved private hostname/certificate, dedicated
-Synology service UID/GID and folders, adult passkey enrolment, backup/restore tooling and a focused
-security review. Do not enter real household or provider data before those controls are complete.
+Synology service UID/GID and folders, real-device passkey enrolment plus second-adult recovery,
+backup/restore tooling and a focused security review. Do not enter real household or provider data
+before those controls are complete.
 
 ## Backup design
 
