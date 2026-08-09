@@ -68,7 +68,9 @@ jobs:
             hearth/apps/tv/gradle/wrapper/gradle-wrapper.properties
 
       - name: Install Android SDK 36
-        run: sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+        run: >-
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Test, lint and build television shell
         run: >-
