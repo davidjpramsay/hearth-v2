@@ -17,6 +17,7 @@ test.beforeEach(async ({ request }) => {
 test('remote-only Home navigation, confirmation, action and Back restoration', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
+  await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.locator('[data-focus-id="nav-today"]').focus();
   for (let step = 0; step < 7; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-home"]')).toBeFocused();

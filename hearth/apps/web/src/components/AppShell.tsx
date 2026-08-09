@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAppearance } from '../appearance/appearance';
+import { useHearthRuntime } from '../runtime/context';
 import { Icon, type IconName } from './Icon';
 
 interface NavigationItem {
@@ -26,20 +27,10 @@ const phoneNavigation = navigation.filter((item) =>
   ['Today', 'Week', 'Chores'].includes(item.label),
 );
 
-const screenEntry: Record<string, string> = {
-  '/today': 'today-chore-occurrence_school_bag',
-  '/week': 'week-event-event_school_mon',
-  '/month': 'month-day-2026-08-04',
-  '/chores': 'chore-primary',
-  '/lists': 'list-item-list_item_milk',
-  '/meals': 'meal-day-2026-08-03',
-  '/photos': 'photos-thumb-photo_family_breakfast',
-  '/home': 'home-action-evening-mode',
-};
-
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { preferences } = useAppearance();
+  const runtime = useHearthRuntime();
   if (pathname === '/pair') {
     return (
       <main className="pair-shell" id="main-content">
@@ -66,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="tv-rail__nav">
           {navigation.map((item, index) => (
-            <RailItem item={item} index={index} pathname={pathname} key={item.label} />
+            <RailItem item={item} index={index} key={item.label} />
           ))}
         </nav>
         <div className="tv-rail__footer">
@@ -84,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span>Appearance</span>
           </NavLink>
           <div className="tv-rail__status">
-            <span className="connection-dot" /> Demo home
+            <span className="connection-dot" /> {runtime.household?.name}
           </div>
         </div>
       </aside>
@@ -118,15 +109,7 @@ function PhoneNavigation() {
   );
 }
 
-function RailItem({
-  item,
-  index,
-  pathname,
-}: {
-  item: NavigationItem;
-  index: number;
-  pathname: string;
-}) {
+function RailItem({ item, index }: { item: NavigationItem; index: number }) {
   const prior = navigation.slice(0, index).findLast((candidate) => candidate.enabled);
   const next = navigation.slice(index + 1).find((candidate) => candidate.enabled);
   const focusId = `nav-${item.label.toLowerCase()}`;
@@ -135,7 +118,7 @@ function RailItem({
     'data-focus-id': focusId,
     'data-focus-up': prior === undefined ? focusId : `nav-${prior.label.toLowerCase()}`,
     'data-focus-down': next === undefined ? 'nav-appearance' : `nav-${next.label.toLowerCase()}`,
-    'data-focus-right': screenEntry[pathname] ?? `nav-${currentSection(pathname)}`,
+    'data-focus-right': 'screen-entry',
   };
   if (!item.enabled) {
     return (
@@ -191,8 +174,4 @@ function PhoneTab({
       <span>{item.label}</span>
     </NavLink>
   );
-}
-
-function currentSection(pathname: string): string {
-  return pathname.split('/')[1] || 'today';
 }

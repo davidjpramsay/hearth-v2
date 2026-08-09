@@ -83,6 +83,7 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await page.goto('/photos');
   await expect(page).toHaveTitle(/Hearth/);
   await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
+  await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
 
   const tiles = page.locator('.photo-collage__tile');
   await expect(tiles).toHaveCount(5);
@@ -161,8 +162,16 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     'photo_family_breakfast',
   );
   await expect(page.locator('.photos-collage--landscape')).toBeVisible();
-  await page.waitForTimeout(350);
-  await page.locator('.photos-hero').click();
+  await expect(page.locator('.photos-hero')).not.toHaveAttribute(
+    'data-photo-id',
+    'photo_family_breakfast',
+    { timeout: 2_000 },
+  );
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_park_football',
+  );
+  await page.locator('[data-photo-id="photo_family_breakfast"]').click();
   await page.waitForTimeout(350);
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',
@@ -172,10 +181,6 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     'data-photo-id',
     'photo_family_breakfast',
     { timeout: 2_000 },
-  );
-  await expect(page.locator('.photos-hero')).toHaveAttribute(
-    'data-photo-id',
-    'photo_park_football',
   );
   expect(consoleProblems).toEqual([]);
 });
@@ -193,6 +198,7 @@ test('reduced motion keeps the Photos collage still', async ({ page }) => {
   });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
+  await expect(page.getByText('Automatic · every 45 seconds')).toHaveCount(0);
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',
     'photo_family_breakfast',

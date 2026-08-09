@@ -46,6 +46,15 @@ The roadmap is deliberately vertical. Each phase must leave a coherent, testable
 
 Implementation note (2026-08-03): Phase 2 is implemented. The phone Admin area manages the household, people/roles, paired televisions and connection readiness. WAL-mode SQLite now persists setup, chore templates, generated occurrence snapshots, completion/undo/skip state, idempotent command receipts and audit events. One-time television pairing is independently revocable. Server-Sent Events invalidate open Today/Chores clients after commands. Restart, closed-database backup/restore, historical-template, duplicate-request and TV/adult/child/voice/automation permission tests cover the completion criteria.
 
+Hardening note (2026-08-09): the runtime now distinguishes `demo`, `test` and
+`private`, injects household/clock context, and publishes household-local today,
+week and month values through `/api/v1/runtime`. Browser API paths and query
+keys no longer embed the fictional household/date. Private repository
+construction applies migrations without seeding Ezra, Maya or planning data and
+shows an explicit setup-required state. The authenticated adult first-use
+creation action remains part of the private HTTPS/passkey work rather than a
+demo header escape hatch.
+
 Recurring chore editing remains intentionally out of the Admin UI until the denser phone-oriented administration work in Phase 4. Phase 2 establishes and tests its server/domain persistence contract without putting dense editing on the television.
 
 Implementation extension (2026-08-08): People now changes profile photos through a phone-sized

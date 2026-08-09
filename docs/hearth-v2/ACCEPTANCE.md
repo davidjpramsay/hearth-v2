@@ -24,6 +24,11 @@ A change is complete only when:
 - Every primary screen is reachable with D-pad and Back.
 - Focus never disappears, becomes trapped or lands behind an overlay.
 - Resuming Hearth after normal Google TV app switching restores the previous Hearth screen or a documented safe default.
+- Demo/test dates are deterministic, while private mode derives today, Monday
+  week start and current month from the configured household timezone.
+- A new private database contains no fictional household or planning records,
+  exposes an explicit setup-required launch state and does not enable demo
+  reset/scenario commands.
 
 ### Calendar
 

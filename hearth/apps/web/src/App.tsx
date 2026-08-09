@@ -26,34 +26,13 @@ import { TelevisionsSettingsScreen } from './screens/TelevisionsSettingsScreen';
 import { TodayScreen } from './screens/TodayScreen';
 import { WeekScreen } from './screens/WeekScreen';
 
-const defaultFocus: Record<string, string> = {
-  '/today': 'today-chore-occurrence_school_bag',
-  '/week': 'week-event-event_school_mon',
-  '/month': 'month-day-2026-08-04',
-  '/chores': 'chore-primary',
-  '/lists': 'list-item-list_item_milk',
-  '/meals': 'meal-day-2026-08-03',
-  '/photos': 'photos-thumb-photo_family_breakfast',
-  '/home': 'home-action-evening-mode',
-  '/admin': 'admin-household',
-  '/admin/planning': 'planning-routines',
-  '/admin/routines': 'routine-template-template_school_bag',
-  '/admin/pocket-money': 'pocket-amount-member_ezra',
-  '/admin/photos': 'admin-back',
-  '/admin/connections': 'connection-calendar',
-  '/admin/connections/calendar': 'calendar-server-url',
-  '/pair': 'pair-new-code',
-};
-
 export function App() {
   const location = useLocation();
   const { preferences } = useAppearance();
   const { scenario, preparing, error } = useScenario();
   useRealtimeInvalidation();
   const initialFocus =
-    location.pathname === '/admin/appearance'
-      ? `appearance-${preferences.theme}`
-      : (defaultFocus[location.pathname] ?? 'nav-today');
+    location.pathname === '/admin/appearance' ? `appearance-${preferences.theme}` : 'screen-entry';
   useRemoteNavigation(initialFocus);
   return (
     <AppShell>

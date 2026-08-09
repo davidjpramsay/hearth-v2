@@ -9,6 +9,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useMonthQuery } from '../hooks/useHearthQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useHearthRuntime } from '../runtime/context';
 
 const WEEKDAYS = [
   ['Monday', 'Mon'],
@@ -29,12 +30,13 @@ export function MonthScreen({
   scenario: DemoScenario | 'offline';
   preparing: boolean;
 }) {
+  const runtime = useHearthRuntime();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedMonth = searchParams.get('month');
   const monthKey =
     requestedMonth !== null && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)
       ? requestedMonth
-      : '2026-08';
+      : runtime.currentMonth;
   const query = useMonthQuery(monthKey, !preparing);
   const online = useOnlineStatus(scenario === 'offline');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -58,17 +60,19 @@ export function MonthScreen({
         title={month.displayMonth}
         meta={month.displayYear}
         actions={
-          <div className="week-glance">
-            <div>
-              <Icon name="sun" />
-              <strong>16°</strong>
-              <span>Clear</span>
+          runtime.mode === 'private' ? null : (
+            <div className="week-glance">
+              <div>
+                <Icon name="sun" />
+                <strong>16°</strong>
+                <span>Clear</span>
+              </div>
+              <div>
+                <Icon name="sunrise" />
+                <strong>Morning</strong>
+              </div>
             </div>
-            <div>
-              <Icon name="sunrise" />
-              <strong>Morning</strong>
-            </div>
-          </div>
+          )
         }
       />
       <CalendarViewSwitch />
@@ -178,6 +182,7 @@ function MonthCell({
       aria-label={dayLabel(day.localDate, events)}
       aria-pressed={selected}
       className={`month-cell focusable${day.inMonth ? '' : ' month-cell--outside'}${day.isToday ? ' month-cell--today' : ''}`}
+      data-focus-entry={day.isToday ? 'true' : undefined}
       data-focus-id={`month-day-${day.localDate}`}
       data-focus-left={
         index % 7 === 0 ? 'nav-month' : `month-day-${days[previous]?.localDate ?? day.localDate}`

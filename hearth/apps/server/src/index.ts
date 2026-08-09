@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
+import type { RuntimeMode } from '@hearth/shared';
+
 import { SqliteAdminRepository } from './admin-repository.js';
 import { buildServer } from './app.js';
 import {
@@ -29,17 +31,34 @@ import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
+import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
+import { FixedClock, SystemClock } from './runtime-context.js';
 
 const host = process.env.HEARTH_HOST ?? '127.0.0.1';
 const port = Number.parseInt(process.env.HEARTH_PORT ?? '4310', 10);
-const demoMode = (process.env.HEARTH_MODE ?? 'demo') === 'demo';
+const runtimeMode = parseRuntimeMode(process.env.HEARTH_MODE ?? 'demo');
+const demoMode = runtimeMode !== 'private';
 const databasePath =
   process.env.HEARTH_DATABASE_PATH ??
-  fileURLToPath(new URL('../../../data/hearth-demo.sqlite', import.meta.url));
+  fileURLToPath(
+    new URL(
+      runtimeMode === 'private'
+        ? '../../../data/hearth-private.sqlite'
+        : '../../../data/hearth-demo.sqlite',
+      import.meta.url,
+    ),
+  );
 const calendarConfigPath = process.env.HEARTH_CALENDAR_CONFIG_PATH;
 const calendarRuntime = await resolveCalendarRuntime({ demoMode, configPath: calendarConfigPath });
 const database = await openHearthDatabase(databasePath);
-const adminRepository = new SqliteAdminRepository(database);
+const adminRepository = new SqliteAdminRepository(database, { seedDemo: demoMode });
+const householdId = demoMode
+  ? DEMO_HOUSEHOLD_ID
+  : ((
+      database.prepare('SELECT id FROM households ORDER BY created_at LIMIT 1').get() as
+        { id: string } | undefined
+    )?.id ?? null);
+const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
 const managedCalendarProvider = new ManagedCalendarProvider();
 if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);
 const repository = new SqliteHearthRepository(
@@ -49,17 +68,22 @@ const repository = new SqliteHearthRepository(
     : {
         calendarProvider: managedCalendarProvider,
         ownerForCalendarExternalId: managedCalendarProvider.ownerForCalendarExternalId,
+        seedDemo: false,
+        clock,
       },
 );
-const planningRepository = new SqlitePlanningRepository(database);
+const planningRepository = new SqlitePlanningRepository(database, { seedDemo: demoMode, clock });
 const homeRepository = new HomeService(
   demoMode ? new FakeHomeAssistantProvider() : new UnconfiguredHomeAssistantProvider(),
-  database,
+  householdId === null ? undefined : database,
+  { householdId: householdId ?? 'household_unconfigured', clock },
 );
 const photoRepository = new PhotoService(
   demoMode ? new FakePhotoSourceProvider() : new UnconfiguredPhotoSourceProvider(),
 );
-const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository, database);
+const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository, database, {
+  seedDemo: demoMode,
+});
 const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
   ? undefined
   : {
@@ -87,6 +111,7 @@ const calendarConnectionRepository = new CalendarConnectionService(
 
 const server = buildServer({
   demoMode,
+  runtime: { mode: runtimeMode, householdId, clock },
   adminRepository,
   planningRepository,
   repository,
@@ -101,4 +126,9 @@ try {
 } catch (error) {
   server.log.error(error);
   process.exitCode = 1;
+}
+
+function parseRuntimeMode(value: string): RuntimeMode {
+  if (value === 'demo' || value === 'test' || value === 'private') return value;
+  throw new Error('HEARTH_MODE must be demo, test or private.');
 }

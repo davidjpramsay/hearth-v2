@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DemoScenarioSchema, type DemoScenario } from '@hearth/shared';
 
 import { hearthApi, queryKeys } from '../api/client';
+import { useHearthRuntime } from '../runtime/context';
 
 export function useScenario(): {
   scenario: DemoScenario | 'offline';
@@ -12,12 +13,13 @@ export function useScenario(): {
 } {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const runtime = useHearthRuntime();
   const requested = searchParams.get('scenario') ?? 'healthy';
   const scenario = requested === 'offline' ? 'offline' : parseScenario(requested);
   const control = useQuery({
     queryKey: ['demo-scenario', scenario],
     queryFn: async () => {
-      if (scenario === 'offline') return scenario;
+      if (scenario === 'offline' || runtime.mode === 'private') return scenario;
       await hearthApi.setScenario(scenario);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
@@ -27,7 +29,7 @@ export function useScenario(): {
       ]);
       return scenario;
     },
-    enabled: scenario !== 'offline',
+    enabled: scenario !== 'offline' && runtime.mode !== 'private',
     retry: false,
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
@@ -35,8 +37,8 @@ export function useScenario(): {
   });
 
   return {
-    scenario,
-    preparing: scenario !== 'offline' && control.isPending,
+    scenario: runtime.mode === 'private' ? 'healthy' : scenario,
+    preparing: runtime.mode !== 'private' && scenario !== 'offline' && control.isPending,
     error: control.isError ? 'Hearth could not prepare that demo state.' : null,
   };
 }

@@ -41,6 +41,27 @@ export const HouseholdSummarySchema = z.object({
   members: z.array(MemberSchema),
 });
 
+export const RuntimeModeSchema = z.enum(['demo', 'test', 'private']);
+
+export const RuntimeHouseholdSchema = HouseholdSummarySchema.pick({
+  id: true,
+  name: true,
+  timezone: true,
+  locale: true,
+});
+
+export const RuntimeContextSchema = z.object({
+  mode: RuntimeModeSchema,
+  generatedAt: TimestampSchema,
+  household: RuntimeHouseholdSchema.nullable(),
+  timezone: TimezoneSchema,
+  locale: z.string().min(2).max(20),
+  localDate: LocalDateSchema,
+  weekStart: LocalDateSchema,
+  currentMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  requiresSetup: z.boolean(),
+});
+
 export const IntegrationStateSchema = z.object({
   kind: z.enum(['calendar', 'home-assistant']),
   status: z.enum([
@@ -165,7 +186,7 @@ export const TodaySummarySchema = z.object({
   generatedAt: TimestampSchema,
   displayTime: z.string().regex(/^\d{1,2}:\d{2}$/),
   displayDate: z.string().min(1).max(100),
-  weather: WeatherSummarySchema,
+  weather: WeatherSummarySchema.nullable(),
   freshness: z.enum(['current', 'stale', 'offline']),
   statusMessage: z.string().max(180).nullable(),
   calendars: z.array(CalendarSourceSchema),
@@ -933,6 +954,9 @@ export const DemoScenarioRequestSchema = z.object({ scenario: DemoScenarioSchema
 export type Member = z.infer<typeof MemberSchema>;
 export type Capability = z.infer<typeof CapabilitySchema>;
 export type HouseholdSummary = z.infer<typeof HouseholdSummarySchema>;
+export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
+export type RuntimeHousehold = z.infer<typeof RuntimeHouseholdSchema>;
+export type RuntimeContext = z.infer<typeof RuntimeContextSchema>;
 export type IntegrationState = z.infer<typeof IntegrationStateSchema>;
 export type CalendarSource = z.infer<typeof CalendarSourceSchema>;
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;

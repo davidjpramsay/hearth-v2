@@ -100,6 +100,7 @@ export function AdminScreen() {
         {settings.map((setting, index) => (
           <Link
             className="admin-setting-row focusable"
+            data-focus-entry={index === 0 ? 'true' : undefined}
             data-focus-down={adjacentSettingFocusId(index + 1, 'admin-pair-television')}
             data-focus-id={settingFocusId(setting.title)}
             data-focus-left={settingFocusId(setting.title)}

@@ -6,12 +6,21 @@ import {
   calendarEventOverlapsRange,
   createMonthGrid,
   localDateInTimezone,
+  localMonth,
+  startOfLocalWeek,
 } from './calendar.js';
 
 describe('calendar projection dates', () => {
   it('advances household-local dates without depending on the process timezone', () => {
     expect(addLocalDays('2026-08-03', 6)).toBe('2026-08-09');
     expect(addLocalDays('2026-12-31', 1)).toBe('2027-01-01');
+  });
+
+  it('finds Monday and Sunday week boundaries across month and year rollover', () => {
+    expect(startOfLocalWeek('2026-08-09')).toBe('2026-08-03');
+    expect(startOfLocalWeek('2026-08-09', 0)).toBe('2026-08-09');
+    expect(startOfLocalWeek('2027-01-01')).toBe('2026-12-28');
+    expect(localMonth('2027-01-01')).toBe('2027-01');
   });
 
   it('projects imported instants through DST while Perth remains stable', () => {

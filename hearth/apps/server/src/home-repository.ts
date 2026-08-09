@@ -24,6 +24,7 @@ import {
   type HomeAssistantSnapshot,
 } from './integrations/home-assistant-provider.js';
 import { RepositoryError, type CommandActor } from './repository.js';
+import { FixedClock, type HearthClock } from './runtime-context.js';
 
 interface HomeActionDefinition {
   id: HomeActionId;
@@ -87,13 +88,22 @@ export interface HomeRepository {
 
 export class HomeService implements HomeRepository {
   private scenario: DemoScenario = 'healthy';
-  private lastGoodSnapshot = structuredClone(INITIAL_SNAPSHOT);
+  private lastGoodSnapshot: HomeAssistantSnapshot;
   private readonly memoryReceipts = new Map<string, HomeActionResult>();
+  private readonly householdId: string;
+  private readonly clock: HearthClock;
 
   constructor(
     private readonly provider: HomeAssistantProvider = new FakeHomeAssistantProvider(),
     private readonly database?: InstanceType<typeof Database>,
+    options: { householdId?: string; clock?: HearthClock } = {},
   ) {
+    this.householdId = options.householdId ?? DEMO_HOUSEHOLD_ID;
+    this.clock = options.clock ?? new FixedClock(DEMO_NOW);
+    this.lastGoodSnapshot = {
+      ...structuredClone(INITIAL_SNAPSHOT),
+      observedAt: this.clock.now().toISOString(),
+    };
     const cached = this.readCachedSnapshot();
     if (cached !== null) this.lastGoodSnapshot = cached;
     else this.writeCachedSnapshot(this.lastGoodSnapshot);
@@ -206,7 +216,7 @@ export class HomeService implements HomeRepository {
       throw error;
     }
 
-    const executedAt = new Date().toISOString();
+    const executedAt = this.clock.now().toISOString();
     const audit: AuditSummary = {
       id: id('audit_home'),
       actorType: actor.type,
@@ -264,7 +274,7 @@ export class HomeService implements HomeRepository {
         ? 'Home controls are not connected yet.'
         : 'Home Assistant is unavailable · Showing the last known room state.';
     return HomeStatusSchema.parse({
-      householdId: DEMO_HOUSEHOLD_ID,
+      householdId: this.householdId,
       roomLabel: 'Living room',
       generatedAt: snapshot.observedAt,
       freshness: available ? 'current' : 'stale',
@@ -371,7 +381,7 @@ export class HomeService implements HomeRepository {
   }
 
   private assertHousehold(householdId: string): void {
-    if (householdId !== DEMO_HOUSEHOLD_ID) {
+    if (householdId !== this.householdId) {
       throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
     }
   }
@@ -386,7 +396,7 @@ export class HomeService implements HomeRepository {
     if (this.database === undefined || !this.database.open) return null;
     const row = this.database
       .prepare('SELECT * FROM home_state_cache WHERE household_id = ?')
-      .get(DEMO_HOUSEHOLD_ID) as HomeStateCacheRow | undefined;
+      .get(this.householdId) as HomeStateCacheRow | undefined;
     if (row === undefined) return null;
     return {
       occupied: row.occupied === 1,
@@ -414,13 +424,13 @@ export class HomeService implements HomeRepository {
            cached_at = excluded.cached_at`,
       )
       .run(
-        DEMO_HOUSEHOLD_ID,
+        this.householdId,
         snapshot.occupied ? 1 : 0,
         snapshot.televisionPower,
         snapshot.hearthForeground ? 1 : 0,
         snapshot.protectedMediaActive ? 1 : 0,
         snapshot.observedAt,
-        new Date().toISOString(),
+        this.clock.now().toISOString(),
       );
   }
 
@@ -508,7 +518,7 @@ export class HomeService implements HomeRepository {
         source: actor.source,
         action: 'home.action.execute',
         targetId: actionId,
-        occurredAt: new Date().toISOString(),
+        occurredAt: this.clock.now().toISOString(),
         result: 'rejected',
       },
       requestId,
@@ -532,7 +542,7 @@ export class HomeService implements HomeRepository {
         source: actor.source,
         action: 'home.action.execute',
         targetId: actionId,
-        occurredAt: new Date().toISOString(),
+        occurredAt: this.clock.now().toISOString(),
         result: 'failed',
       },
       requestId,

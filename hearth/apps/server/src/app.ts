@@ -64,6 +64,7 @@ import {
   RemoveCalendarConnectionRequestSchema,
   ResetMemberAvatarRequestSchema,
   RevokeDeviceRequestSchema,
+  RuntimeContextSchema,
   SavedMealCommandResultSchema,
   SaveCalendarConnectionRequestSchema,
   TodaySummarySchema,
@@ -96,6 +97,7 @@ import { UnconfiguredPhotoSourceProvider } from './integrations/photo-source.js'
 import { PhotoService, type PhotoRepository } from './photo-repository.js';
 import { InMemoryPlanningRepository, type PlanningRepository } from './planning-repository.js';
 import { PocketMoneyService, type PocketMoneyRepository } from './pocket-money-repository.js';
+import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import {
   DEMO_TV_ACTOR,
   InMemoryHearthRepository,
@@ -103,6 +105,12 @@ import {
   type CommandActor,
   type HearthRepository,
 } from './repository.js';
+import {
+  FixedClock,
+  SystemClock,
+  resolveRuntimeContext,
+  type RuntimeConfiguration,
+} from './runtime-context.js';
 
 const HouseholdParamsSchema = z.object({ householdId: OpaqueIdSchema });
 const ChoreParamsSchema = HouseholdParamsSchema.extend({ occurrenceId: OpaqueIdSchema });
@@ -144,10 +152,24 @@ export interface BuildServerOptions {
   photoRepository?: PhotoRepository;
   pocketMoneyRepository?: PocketMoneyRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
+  runtime?: RuntimeConfiguration;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
-  const demoMode = options.demoMode ?? true;
+  const runtime =
+    options.runtime ??
+    (options.demoMode === false
+      ? {
+          mode: 'private' as const,
+          householdId: null,
+          clock: new SystemClock(),
+        }
+      : {
+          mode: 'test' as const,
+          householdId: DEMO_HOUSEHOLD_ID,
+          clock: new FixedClock(DEMO_NOW),
+        });
+  const demoMode = runtime.mode !== 'private';
   const repository = options.repository ?? new InMemoryHearthRepository();
   const adminRepository = options.adminRepository ?? new InMemoryAdminRepository();
   const realtime = options.realtimeHub ?? new RealtimeHub();
@@ -202,11 +224,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ?? null;
     return TodaySummarySchema.parse({
       ...today,
-      household,
-      dinner: today.dinner === null ? null : (dinner?.mealName ?? today.dinner),
+      household: { ...household, mode: today.household.mode },
+      dinner: dinner?.mealName ?? today.dinner,
       listSummary:
-        today.listSummary === null || primaryList === undefined
-          ? null
+        primaryList === undefined
+          ? today.listSummary
           : { name: primaryList.name, remainingCount: primaryList.remainingCount },
       photo:
         gallery === null
@@ -229,11 +251,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   };
 
+  server.get('/api/v1/runtime', async () =>
+    RuntimeContextSchema.parse(await resolveRuntimeContext(runtime, adminRepository)),
+  );
+
   server.get('/api/v1/health', async () => ({
     status: 'ok',
     database: options.adminRepository === undefined ? 'in-memory-test' : 'sqlite-ready',
-    mode: demoMode ? 'demo' : 'private',
-    now: '2026-08-02T23:42:00.000Z',
+    mode: runtime.mode,
+    now: runtime.clock.now().toISOString(),
   }));
 
   server.get('/api/v1/households/:householdId/admin', async (request, reply) => {
@@ -1027,7 +1053,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
-  if (options.demoMode !== false) {
+  if (demoMode) {
     server.post('/api/v1/demo/reset', async (_request, reply) => {
       planningRepository.reset();
       repository.reset();
@@ -1123,7 +1149,7 @@ function actorId(
   headers: Record<string, string | string[] | undefined>,
   options: BuildServerOptions,
 ): string {
-  if (options.demoMode === false) return 'actor_unauthenticated';
+  if (isPrivateMode(options)) return 'actor_unauthenticated';
   const header = headers['x-hearth-demo-actor'];
   return typeof header === 'string' ? header : DEMO_ADMIN_ACTOR_ID;
 }
@@ -1135,7 +1161,7 @@ function commandActor(
 ): CommandActor {
   const credential = optionalDeviceCredential(headers);
   if (credential !== null) return adminRepository.authenticateDeviceCredential(credential);
-  if (options.demoMode === false) {
+  if (isPrivateMode(options)) {
     throw new RepositoryError('UNAUTHENTICATED', 'Pair this device or sign in to continue.');
   }
   return demoCommandActor(headers);
@@ -1162,7 +1188,7 @@ function assistActor(
   headers: Record<string, string | string[] | undefined>,
   options: BuildServerOptions,
 ): CommandActor {
-  if (options.demoMode === false) {
+  if (isPrivateMode(options)) {
     throw new RepositoryError('UNAUTHENTICATED', 'Home Assistant is not connected to Hearth.');
   }
   const actorHeader = headers['x-hearth-demo-actor'];
@@ -1170,6 +1196,10 @@ function assistActor(
     return { id: 'service_home_assistant', type: 'service', source: 'voice' };
   }
   return { ...demoCommandActor(headers), source: 'voice' };
+}
+
+function isPrivateMode(options: BuildServerOptions): boolean {
+  return options.runtime?.mode === 'private' || options.demoMode === false;
 }
 
 function deviceCredential(headers: Record<string, string | string[] | undefined>): string {

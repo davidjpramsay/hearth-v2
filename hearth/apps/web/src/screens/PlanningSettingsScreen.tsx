@@ -51,9 +51,10 @@ export function PlanningSettingsScreen() {
         </div>
       </div>
       <div className="planning-area-list">
-        {planningAreas.map((area) => (
+        {planningAreas.map((area, index) => (
           <Link
             className="planning-area-card"
+            data-focus-entry={index === 0 ? 'true' : undefined}
             data-focus-id={area.focusId}
             key={area.title}
             to={area.path}

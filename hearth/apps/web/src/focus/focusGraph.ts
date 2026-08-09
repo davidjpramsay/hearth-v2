@@ -13,7 +13,11 @@ export function nextFocusId(element: HTMLElement, direction: FocusDirection): st
 
 export function focusById(id: string | null): boolean {
   if (id === null) return false;
-  const target = document.querySelector<HTMLElement>(`[data-focus-id="${CSS.escape(id)}"]`);
+  const target =
+    id === 'screen-entry'
+      ? (document.querySelector<HTMLElement>('#main-content [data-focus-entry="true"]') ??
+        document.querySelector<HTMLElement>('#main-content [data-focus-id]'))
+      : document.querySelector<HTMLElement>(`[data-focus-id="${CSS.escape(id)}"]`);
   if (target === null || target.getAttribute('aria-disabled') === 'true') return false;
   target.focus({ preventScroll: true });
   target.scrollIntoView({

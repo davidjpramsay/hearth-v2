@@ -2,13 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, RotateCcw } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
-import {
-  DEMO_HOUSEHOLD_ID,
-  createRequestId,
-  hearthApi,
-  queryKeys,
-  type HearthMember,
-} from '../api/client';
+import { createRequestId, hearthApi, queryKeys, type HearthMember } from '../api/client';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { MemberAvatarDialog } from '../components/MemberAvatarDialog';
@@ -33,7 +27,7 @@ export function PeopleSettingsScreen() {
   const [photoInputError, setPhotoInputError] = useState<string | null>(null);
   const refresh = async () => queryClient.invalidateQueries({ queryKey: queryKeys.admin });
   const refreshHousehold = async () =>
-    queryClient.invalidateQueries({ queryKey: [DEMO_HOUSEHOLD_ID] });
+    queryClient.invalidateQueries({ queryKey: [queryKeys.today[0]] });
   const create = useMutation({ mutationFn: hearthApi.createMember, onSuccess: refresh });
   const update = useMutation({
     mutationFn: ({ memberId, fields }: { memberId: string; fields: MemberFields }) =>

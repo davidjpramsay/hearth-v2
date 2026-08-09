@@ -14,11 +14,13 @@ import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { useAdminQuery, useChoreTemplatesQuery } from '../hooks/useHearthQueries';
+import { useHearthRuntime } from '../runtime/context';
 
 const weekdayValues = ['MO', 'TU', 'WE', 'TH', 'FR'] as const;
 const everyDayValues = [...weekdayValues, 'SA', 'SU'] as const;
 
 export function RoutinesSettingsScreen() {
+  const runtime = useHearthRuntime();
   const admin = useAdminQuery();
   const templates = useChoreTemplatesQuery();
   const queryClient = useQueryClient();
@@ -58,7 +60,7 @@ export function RoutinesSettingsScreen() {
     const form = event.currentTarget;
     create.mutate({
       requestId: createRequestId('routine_create'),
-      ...templateFields(new FormData(form)),
+      ...templateFields(new FormData(form), runtime.localDate),
     });
     form.reset();
   }
@@ -88,19 +90,21 @@ export function RoutinesSettingsScreen() {
       <div className="routine-editor-list">
         {templates.data.templates
           .filter((template) => !template.archived)
-          .map((template) => (
+          .map((template, index) => (
             <RoutineEditor
               key={template.id}
               members={activeMembers}
               onSave={(fields) => update.mutate({ templateId: template.id, fields })}
               pending={update.isPending}
+              primary={index === 0}
+              today={runtime.localDate}
               template={template}
             />
           ))}
       </div>
       <form className="admin-form routine-add-form" onSubmit={addRoutine}>
         <h2>Add a recurring chore</h2>
-        <RoutineFields members={activeMembers} />
+        <RoutineFields members={activeMembers} today={runtime.localDate} />
         <button className="admin-submit" disabled={create.isPending} type="submit">
           {create.isPending ? 'Adding…' : 'Add recurring chore'}
         </button>
@@ -113,21 +117,28 @@ function RoutineEditor({
   template,
   members,
   pending,
+  primary,
+  today,
   onSave,
 }: {
   template: ChoreTemplate;
   members: HearthMember[];
   pending: boolean;
+  primary: boolean;
+  today: string;
   onSave: (fields: ChoreTemplateInput) => void;
 }) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSave(templateFields(new FormData(event.currentTarget), template.repeatDays));
+    onSave(templateFields(new FormData(event.currentTarget), today, template.repeatDays));
   }
 
   return (
     <details className="routine-editor" open={template.id === 'template_school_bag'}>
-      <summary data-focus-id={`routine-template-${template.id}`}>
+      <summary
+        data-focus-entry={primary ? 'true' : undefined}
+        data-focus-id={`routine-template-${template.id}`}
+      >
         <Avatar member={template.assignee} />
         <span>
           <strong>{template.title}</strong>
@@ -136,7 +147,7 @@ function RoutineEditor({
         <Icon name="chevron-right" />
       </summary>
       <form onSubmit={submit}>
-        <RoutineFields members={members} template={template} />
+        <RoutineFields members={members} template={template} today={today} />
         <button className="admin-secondary routine-save" disabled={pending} type="submit">
           {pending ? 'Saving…' : 'Save future routine'}
         </button>
@@ -148,9 +159,11 @@ function RoutineEditor({
 function RoutineFields({
   members,
   template,
+  today,
 }: {
   members: HearthMember[];
   template?: ChoreTemplate;
+  today: string;
 }) {
   const activeDays: readonly string[] = template?.repeatDays ?? weekdayValues;
   return (
@@ -230,13 +243,14 @@ function RoutineFields({
           </label>
         ))}
       </fieldset>
-      <input name="activeFrom" type="hidden" value={template?.activeFrom ?? '2026-08-03'} />
+      <input name="activeFrom" type="hidden" value={template?.activeFrom ?? today} />
     </div>
   );
 }
 
 function templateFields(
   data: FormData,
+  today: string,
   existingDays?: ChoreTemplate['repeatDays'],
 ): ChoreTemplateInput {
   const repeat =
@@ -265,7 +279,7 @@ function templateFields(
           : selectedDays.length > 0
             ? selectedDays
             : [existingDays?.[0] ?? 'MO'],
-    activeFrom: String(data.get('activeFrom') ?? '2026-08-03'),
+    activeFrom: String(data.get('activeFrom') ?? today),
   };
 }
 

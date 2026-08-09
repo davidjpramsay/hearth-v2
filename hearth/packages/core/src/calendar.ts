@@ -40,6 +40,21 @@ export function localDateInTimezone(timestamp: string, timezone: string): string
   return `${year}-${month}-${day}`;
 }
 
+export function startOfLocalWeek(localDate: string, weekStartsOn = 1): string {
+  assertLocalDate(localDate);
+  if (!Number.isInteger(weekStartsOn) || weekStartsOn < 0 || weekStartsOn > 6) {
+    throw new Error(`Expected weekStartsOn from 0 to 6, received ${weekStartsOn}.`);
+  }
+  const weekday = new Date(`${localDate}T12:00:00.000Z`).getUTCDay();
+  const daysSinceStart = (weekday - weekStartsOn + 7) % 7;
+  return addLocalDays(localDate, -daysSinceStart);
+}
+
+export function localMonth(localDate: string): string {
+  assertLocalDate(localDate);
+  return localDate.slice(0, 7);
+}
+
 export function calendarEventOverlapsRange(
   event: Pick<CalendarEvent, 'startLocalDate' | 'endLocalDate'>,
   startDate: string,

@@ -171,6 +171,12 @@ export function PhotosScreen({
         <strong>{gallery.collection.name}</strong>
         <span>·</span>
         <span>{gallery.collection.source.message}</span>
+        {!prefersReducedMotion && gallery.photos.length > 1 ? (
+          <span className="photos-rotation-note">
+            <Icon name="refresh" />
+            Automatic · every 45 seconds
+          </span>
+        ) : null}
       </div>
       <div className="photos-layout">
         <div
@@ -238,6 +244,7 @@ function PhotoThumbnail({
       aria-label={`Show photo: ${photo.alt}`}
       aria-pressed={selected}
       className={`photo-thumbnail photo-thumbnail--${photo.orientation} photo-collage__tile photo-collage__tile--${slot} focusable${featured ? ` photos-hero photos-hero--${photo.orientation}` : ''}${selected ? ' photo-thumbnail--selected' : ''}`}
+      data-focus-entry={featured ? 'true' : undefined}
       data-focus-down={links.down}
       data-focus-id={`photos-thumb-${photo.id}`}
       data-focus-left={links.left}

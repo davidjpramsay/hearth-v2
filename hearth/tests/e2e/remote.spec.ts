@@ -24,11 +24,11 @@ test('remote-only Today → Week → Month → Chores → complete → undo → 
   await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'August' })).toBeVisible();
-  await expect(page.locator('[data-focus-id="month-day-2026-08-04"]')).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="month-day-2026-08-04"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
@@ -76,7 +76,7 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   await expect(page.locator('.month-legend__family')).toHaveText('H');
   await expect(page.getByLabel(/Monday 3 August, 4 plans/)).toBeVisible();
 
-  await expect(page.locator('[data-focus-id="month-day-2026-08-04"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="month-earlier"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
@@ -93,8 +93,8 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   await expect(page.locator('.calendar-view-switch')).toBeVisible();
   await expect(page.locator('[data-focus-id="phone-tab-week"]')).toHaveClass(/phone-tab--active/);
   await expect(page.locator('.month-grid')).toBeVisible();
-  await expect(page.locator('.month-day-details')).toContainText('Library');
-  await expect(page.locator('.month-day-details')).toContainText('1 plan');
+  await expect(page.locator('.month-day-details')).toContainText('School drop-off');
+  await expect(page.locator('.month-day-details')).toContainText('4 plans');
   await page.locator('[data-focus-id="month-day-2026-08-03"]').focus();
   await expect(page.locator('.month-day-details')).toContainText('School drop-off');
 });

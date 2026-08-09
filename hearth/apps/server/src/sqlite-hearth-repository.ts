@@ -8,6 +8,7 @@ import {
   completeChore,
   createMonthGrid,
   isChoreDueOnDate,
+  localDateInTimezone,
   skipChore,
   sortByStart,
   undoChore,
@@ -42,6 +43,7 @@ import {
 } from './demo/seed.js';
 import { FakeCalendarProvider, type CalendarProvider } from './integrations/calendar-provider.js';
 import { RepositoryError, type CommandActor, type HearthRepository } from './repository.js';
+import { FixedClock, type HearthClock } from './runtime-context.js';
 
 const TEMPLATE_RULES = new Map<string, string>([
   ['occurrence_school_bag', 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'],
@@ -56,15 +58,21 @@ export class SqliteHearthRepository implements HearthRepository {
   private scenario: DemoScenario = 'healthy';
   private readonly calendar: CalendarProjectionService;
   private readonly seedCalendarSnapshot: (() => void) | null;
+  private readonly demoSeedEnabled: boolean;
+  private readonly clock: HearthClock;
 
   constructor(
     private readonly database: InstanceType<typeof Database>,
     options: {
       calendarProvider?: CalendarProvider;
       ownerForCalendarExternalId?: (externalId: string) => string | null;
+      seedDemo?: boolean;
+      clock?: HearthClock;
     } = {},
   ) {
-    this.seedDemo();
+    this.demoSeedEnabled = options.seedDemo ?? true;
+    this.clock = options.clock ?? new FixedClock(DEMO_NOW);
+    if (this.demoSeedEnabled) this.seedDemo();
     const fixture = createDemoCalendarFixture();
     const demoProvider = new FakeCalendarProvider(fixture.calendars, fixture.events);
     const provider = options.calendarProvider ?? demoProvider;
@@ -77,7 +85,7 @@ export class SqliteHearthRepository implements HearthRepository {
       ownerForCalendarExternalId,
     );
     this.seedCalendarSnapshot =
-      options.calendarProvider === undefined
+      options.calendarProvider === undefined && this.demoSeedEnabled
         ? () => {
             this.calendar.seedSnapshot(DEMO_HOUSEHOLD_ID, {
               calendars: fixture.calendars,
@@ -113,13 +121,20 @@ export class SqliteHearthRepository implements HearthRepository {
     const isEmpty = this.scenario === 'empty';
     const chores = isEmpty ? [] : this.readOccurrences(householdId, localDate);
 
+    const household = this.readHousehold(householdId);
+    const now = this.clock.now();
     return {
-      household: this.readHousehold(householdId),
+      household,
       localDate,
-      generatedAt: DEMO_NOW,
-      displayTime: '7:42',
-      displayDate: displayDate(localDate),
-      weather: { temperatureCelsius: 16, condition: 'Clear' },
+      generatedAt: now.toISOString(),
+      displayTime: new Intl.DateTimeFormat(household.locale, {
+        timeZone: household.timezone,
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: false,
+      }).format(now),
+      displayDate: displayDate(localDate, household.locale),
+      weather: this.demoSeedEnabled ? { temperatureCelsius: 16, condition: 'Clear' } : null,
       freshness: projection.freshness,
       statusMessage: projection.statusMessage,
       calendars: projection.calendars,
@@ -127,13 +142,24 @@ export class SqliteHearthRepository implements HearthRepository {
         ? []
         : sortByStart(projection.events).filter((event) => event.id !== 'event_family_dinner_mon'),
       chores,
-      dinner: isEmpty ? null : 'Lemon chicken & roast vegetables',
-      listSummary: isEmpty ? null : { name: 'Groceries', remainingCount: 6 },
-      notice: isEmpty ? null : 'Bins go out tonight',
-      photo: isEmpty ? null : DEMO_TODAY_PHOTO,
-      integrations: seed.integrations.map((integration) =>
-        integration.kind === 'calendar' ? projection.integration : integration,
-      ),
+      dinner: isEmpty || !this.demoSeedEnabled ? null : 'Lemon chicken & roast vegetables',
+      listSummary:
+        isEmpty || !this.demoSeedEnabled ? null : { name: 'Groceries', remainingCount: 6 },
+      notice: isEmpty || !this.demoSeedEnabled ? null : 'Bins go out tonight',
+      photo: isEmpty || !this.demoSeedEnabled ? null : DEMO_TODAY_PHOTO,
+      integrations: this.demoSeedEnabled
+        ? seed.integrations.map((integration) =>
+            integration.kind === 'calendar' ? projection.integration : integration,
+          )
+        : [
+            projection.integration,
+            {
+              kind: 'home-assistant',
+              status: 'not-configured',
+              lastSuccessfulAt: null,
+              message: 'Home Assistant is not connected yet.',
+            },
+          ],
     };
   }
 
@@ -154,7 +180,7 @@ export class SqliteHearthRepository implements HearthRepository {
       displayRange: displayRange(startDate, endDate),
       freshness: projection.freshness,
       statusMessage: projection.statusMessage,
-      days: createWeekDays(startDate),
+      days: createWeekDays(startDate, this.currentLocalDate(householdId), this.demoSeedEnabled),
       calendars: projection.calendars,
       events: this.scenario === 'empty' ? [] : sortByStart(projection.events),
     };
@@ -163,7 +189,7 @@ export class SqliteHearthRepository implements HearthRepository {
   async getMonth(householdId: string, month: string): Promise<MonthSchedule> {
     this.assertHousehold(householdId);
     await this.applyLatency();
-    const grid = createMonthGrid(month, DEMO_LOCAL_DATE);
+    const grid = createMonthGrid(month, this.currentLocalDate(householdId));
     const projection = await this.calendar.projectRange(
       householdId,
       grid.startDate,
@@ -190,11 +216,12 @@ export class SqliteHearthRepository implements HearthRepository {
     await this.applyLatency();
     const occurrences =
       this.scenario === 'empty' ? [] : this.readOccurrences(householdId, localDate);
+    const household = this.readHousehold(householdId);
     const members = this.readMembers(householdId);
     return {
       householdId,
       localDate,
-      displayDate: displayDate(localDate),
+      displayDate: displayDate(localDate, household.locale),
       completedCount: occurrences.filter((item) => item.state === 'completed').length,
       totalCount: occurrences.length,
       groups: members.map((member) => ({
@@ -319,8 +346,10 @@ export class SqliteHearthRepository implements HearthRepository {
        DELETE FROM chore_templates;`,
     );
     this.scenario = 'healthy';
-    this.seedDemo();
-    this.resetCalendarSnapshot();
+    if (this.demoSeedEnabled) {
+      this.seedDemo();
+      this.resetCalendarSnapshot();
+    }
   }
 
   setScenario(scenario: DemoScenario): void {
@@ -521,7 +550,10 @@ export class SqliteHearthRepository implements HearthRepository {
       state: row.state,
       completionId: row.completion_id,
       completedAt: row.completed_at,
-      completedLabel: row.completed_at === null ? null : completedLabel(row.completed_at),
+      completedLabel:
+        row.completed_at === null
+          ? null
+          : completedLabel(row.completed_at, this.readHousehold(row.household_id).timezone),
       locked: this.scenario === 'permission' && row.id === 'occurrence_school_bag',
     });
   }
@@ -586,7 +618,7 @@ export class SqliteHearthRepository implements HearthRepository {
       )
       .run(
         id('audit_rejected'),
-        new Date().toISOString(),
+        this.clock.now().toISOString(),
         householdId,
         actor.type,
         actor.id,
@@ -607,7 +639,7 @@ export class SqliteHearthRepository implements HearthRepository {
   ): void {
     if (this.scenario !== 'fail-next') return;
     this.scenario = 'healthy';
-    const now = new Date().toISOString();
+    const now = this.clock.now().toISOString();
     this.writeAudit(
       householdId,
       {
@@ -631,7 +663,7 @@ export class SqliteHearthRepository implements HearthRepository {
       actorType: actor.type,
       source: actor.source,
       requestId,
-      occurredAt: new Date().toISOString(),
+      occurredAt: this.clock.now().toISOString(),
       completionId: id('completion'),
       auditId: id('audit_chore'),
     };
@@ -664,6 +696,11 @@ export class SqliteHearthRepository implements HearthRepository {
       throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
   }
 
+  private currentLocalDate(householdId: string): string {
+    const household = this.readHousehold(householdId);
+    return localDateInTimezone(this.clock.now().toISOString(), household.timezone);
+  }
+
   private readHousehold(householdId: string) {
     const row = this.database.prepare('SELECT * FROM households WHERE id = ?').get(householdId) as
       { id: string; name: string; timezone: string; locale: string } | undefined;
@@ -674,7 +711,7 @@ export class SqliteHearthRepository implements HearthRepository {
       name: row.name,
       timezone: row.timezone,
       locale: row.locale,
-      mode: 'Morning',
+      mode: dayPeriod(this.clock.now(), row.timezone),
       members: this.readMembers(householdId),
     };
   }
@@ -774,6 +811,7 @@ interface MemberRow {
 
 interface OccurrenceRow {
   id: string;
+  household_id: string;
   assignee_member_id: string;
   title_snapshot: string;
   routine_label_snapshot: string;
@@ -824,13 +862,13 @@ function occurrenceId(templateId: string, memberId: string, localDate: string): 
   return `${templateId.replace('template_', 'occurrence_')}_${memberId.replace('member_', '')}_${localDate.replaceAll('-', '')}`;
 }
 
-function displayDate(localDate: string): string {
-  return new Intl.DateTimeFormat('en-AU', {
-    timeZone: 'Australia/Perth',
+function displayDate(localDate: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: 'UTC',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(new Date(`${localDate}T12:00:00+08:00`));
+  }).format(new Date(`${localDate}T12:00:00.000Z`));
 }
 
 function monthName(month: string): string {
@@ -839,7 +877,11 @@ function monthName(month: string): string {
   );
 }
 
-function createWeekDays(startDate: string): WeekDay[] {
+function createWeekDays(
+  startDate: string,
+  currentLocalDate: string,
+  includeDemoForecast: boolean,
+): WeekDay[] {
   return Array.from({ length: 7 }, (_, index) => {
     const localDate = addLocalDays(startDate, index);
     const date = new Date(`${localDate}T12:00:00.000Z`);
@@ -853,8 +895,8 @@ function createWeekDays(startDate: string): WeekDay[] {
         month: 'short',
         timeZone: 'UTC',
       }).format(date),
-      isToday: localDate === DEMO_LOCAL_DATE,
-      forecast: demoForecastForDay(index),
+      isToday: localDate === currentLocalDate,
+      forecast: includeDemoForecast ? demoForecastForDay(index) : null,
     };
   });
 }
@@ -875,9 +917,22 @@ function displayRange(startDate: string, endDate: string): string {
     : `${startDay} ${startMonth}–${endDay} ${endMonth}`;
 }
 
-function completedLabel(timestamp: string): string {
+function dayPeriod(now: Date, timezone: string): string {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-AU', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(now),
+  );
+  if (hour < 12) return 'Morning';
+  if (hour < 17) return 'Afternoon';
+  return 'Evening';
+}
+
+function completedLabel(timestamp: string, timezone: string): string {
   const time = new Intl.DateTimeFormat('en-AU', {
-    timeZone: 'Australia/Perth',
+    timeZone: timezone,
     hour: 'numeric',
     minute: '2-digit',
     hour12: false,

@@ -14,6 +14,7 @@ import { TodayPhoto } from '../components/TodayPhoto';
 import { useChoreMutation } from '../hooks/useChoreMutation';
 import { useTodayQuery } from '../hooks/useHearthQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useHearthRuntime } from '../runtime/context';
 
 export function TodayScreen({
   scenario,
@@ -23,6 +24,7 @@ export function TodayScreen({
   preparing: boolean;
 }) {
   const query = useTodayQuery(!preparing);
+  const runtime = useHearthRuntime();
   const mutation = useChoreMutation();
   const online = useOnlineStatus(scenario === 'offline');
   const queryClient = useQueryClient();
@@ -31,9 +33,14 @@ export function TodayScreen({
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const today = query.data;
+  const primaryChoreId =
+    today.chores.find((chore) => chore.state === 'pending' && !chore.locked)?.id ??
+    today.chores[0]?.id;
   const empty = today.events.length === 0 && today.chores.length === 0;
   if (empty) {
-    return <EmptyState onBootstrap={() => void bootstrap()} />;
+    return (
+      <EmptyState onBootstrap={runtime.mode === 'private' ? undefined : () => void bootstrap()} />
+    );
   }
 
   async function bootstrap() {
@@ -52,12 +59,14 @@ export function TodayScreen({
           <div className="today-glance">
             <div>
               <strong>{today.displayTime}</strong>
-              <span>Perth</span>
+              <span>{timezoneLabel(today.household.timezone)}</span>
             </div>
             <div className="weather">
-              <Icon name="sun" />
-              <strong>{today.weather.temperatureCelsius}°</strong>
-              <span>{today.weather.condition}</span>
+              <Icon name={today.weather === null ? 'cloud' : 'sun'} />
+              <strong>
+                {today.weather === null ? '—' : `${today.weather.temperatureCelsius}°`}
+              </strong>
+              <span>{today.weather?.condition ?? 'Forecast unavailable'}</span>
             </div>
           </div>
         }
@@ -110,6 +119,7 @@ export function TodayScreen({
               <ChoreRow
                 focus={{
                   'data-focus-id': `today-chore-${occurrence.id}`,
+                  'data-focus-entry': occurrence.id === primaryChoreId ? 'true' : undefined,
                   'data-focus-up':
                     index === 0
                       ? `today-chore-${occurrence.id}`
@@ -152,4 +162,8 @@ export function TodayScreen({
       </p>
     </div>
   );
+}
+
+function timezoneLabel(timezone: string): string {
+  return (timezone.split('/').at(-1) ?? timezone).replaceAll('_', ' ');
 }

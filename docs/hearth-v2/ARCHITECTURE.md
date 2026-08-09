@@ -202,6 +202,21 @@ Demo-only reset/scenario routes exist only when the server is started in demo
 mode. Demo actor/source headers exercise the server-side permission matrix and
 are rejected outside demo mode; they are not production authentication.
 
+The browser first requests `GET /api/v1/runtime`. Its typed response selects
+the configured household and carries the server-derived household-local date,
+Monday week start and current month. Household API paths, React Query keys,
+planning defaults and real-time event paths are derived only after that
+response succeeds. `demo` and `test` inject the fixed Perth clock used by
+retained evidence; `private` injects the system clock. A private database with
+no household returns `requiresSetup: true` and a null household, so the browser
+renders first use without issuing household queries.
+
+Repository construction follows the same mode boundary. Demo/test may seed the
+fictional household. Private construction runs migrations but does not insert
+fictional households, members, chores, lists, meals, pocket-money settings or
+device records. This separation is a composition concern rather than a second
+database schema.
+
 ## Persistence
 
 Use SQLite in WAL mode for the first household deployment:

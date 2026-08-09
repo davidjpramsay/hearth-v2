@@ -10,7 +10,10 @@ export function HouseholdSettingsScreen() {
   const queryClient = useQueryClient();
   const save = useMutation({
     mutationFn: hearthApi.updateHousehold,
-    onSuccess: (overview) => queryClient.setQueryData(queryKeys.admin, overview),
+    onSuccess: async (overview) => {
+      queryClient.setQueryData(queryKeys.admin, overview);
+      await queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] });
+    },
   });
   if (admin.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;

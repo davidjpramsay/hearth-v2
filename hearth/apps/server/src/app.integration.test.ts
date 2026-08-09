@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildServer, LOGGER_REDACT_PATHS } from './app.js';
 import { HomeService } from './home-repository.js';
 import { FakeHomeAssistantProvider } from './integrations/home-assistant-provider.js';
+import { FixedClock } from './runtime-context.js';
 
 const servers: ReturnType<typeof buildServer>[] = [];
 
@@ -17,6 +18,61 @@ function server() {
 }
 
 describe('Hearth v2 API', () => {
+  it('publishes deterministic test runtime dates and the current household name', async () => {
+    const app = server();
+    const initial = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(initial.statusCode).toBe(200);
+    expect(initial.json()).toMatchObject({
+      mode: 'test',
+      household: { id: 'household_hearth_demo', name: 'Hearth Demo Home' },
+      timezone: 'Australia/Perth',
+      localDate: '2026-08-03',
+      weekStart: '2026-08-03',
+      currentMonth: '2026-08',
+      requiresSetup: false,
+    });
+
+    await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/households/household_hearth_demo/settings',
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: {
+        requestId: 'request_runtime_household_name',
+        name: 'Ramsay Home',
+        timezone: 'Australia/Perth',
+      },
+    });
+    const updated = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(updated.json().household.name).toBe('Ramsay Home');
+  });
+
+  it('uses the household timezone at the Perth date boundary and exposes honest first use', async () => {
+    const app = buildServer({
+      logger: false,
+      runtime: {
+        mode: 'private',
+        householdId: null,
+        clock: new FixedClock('2026-12-31T16:15:00.000Z'),
+      },
+    });
+    servers.push(app);
+    const runtime = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(runtime.json()).toMatchObject({
+      mode: 'private',
+      household: null,
+      localDate: '2027-01-01',
+      weekStart: '2026-12-28',
+      currentMonth: '2027-01',
+      requiresSetup: true,
+    });
+    const demoControl = await app.inject({
+      method: 'POST',
+      url: '/api/v1/demo/scenario',
+      payload: { scenario: 'healthy' },
+    });
+    expect(demoControl.statusCode).toBe(404);
+  });
+
   it('returns schema-valid Today, Week, Month and Chores projections', async () => {
     const app = server();
     const [today, week, month, chores] = await Promise.all([

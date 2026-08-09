@@ -53,6 +53,18 @@
   color: var(--ink);
   font-weight: 650;
 }
+.photos-rotation-note {
+  margin-left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--eucalyptus);
+  font-weight: 620;
+}
+.photos-rotation-note svg {
+  width: 19px;
+  height: 19px;
+}
 .photos-layout {
   height: clamp(480px, 63vh, 690px);
   min-height: 0;
@@ -309,9 +321,15 @@
   .photos-source-line > span:first-of-type {
     display: none;
   }
-  .photos-source-line > span:last-child {
+  .photos-source-line > span:nth-of-type(2) {
     width: 100%;
     padding-left: 25px;
+  }
+  .photos-source-line .photos-rotation-note {
+    width: auto;
+    margin-left: 25px;
+    padding-left: 0;
+    font-size: 13px;
   }
   .photos-layout {
     height: 515px;
@@ -419,6 +437,53 @@
     grid-template-rows: minmax(0, 1fr);
     grid-template-areas: 'feature support-1 support-2';
   }
+}
+
+.runtime-gate {
+  min-height: 100vh;
+  padding: clamp(32px, 6vw, 96px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--canvas);
+  color: var(--ink);
+  text-align: center;
+}
+
+.runtime-gate img {
+  width: clamp(72px, 8vw, 128px);
+  height: auto;
+}
+
+.runtime-gate h1,
+.runtime-gate p {
+  margin: 0;
+}
+
+.runtime-gate h1 {
+  font-size: clamp(38px, 4vw, 64px);
+  line-height: 1;
+}
+
+.runtime-gate p {
+  max-width: 680px;
+  color: var(--muted);
+  font-size: clamp(20px, 2vw, 30px);
+  line-height: 1.35;
+}
+
+.runtime-gate button {
+  min-height: 64px;
+  padding: 0 30px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: var(--eucalyptus);
+  color: var(--surface);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
 }
 
 /* Phase 5 Home Assistant surface */

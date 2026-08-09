@@ -7,6 +7,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useWeekQuery } from '../hooks/useHearthQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useHearthRuntime } from '../runtime/context';
 import { formatEventTime } from '../utils/date';
 
 export function WeekScreen({
@@ -16,12 +17,20 @@ export function WeekScreen({
   scenario: DemoScenario | 'offline';
   preparing: boolean;
 }) {
+  const runtime = useHearthRuntime();
   const query = useWeekQuery(!preparing);
   const online = useOnlineStatus(scenario === 'offline');
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const week = query.data;
-  if (week.events.length === 0) return <EmptyState onBootstrap={() => void query.refetch()} />;
+  if (week.events.length === 0)
+    return (
+      <EmptyState
+        onBootstrap={runtime.mode === 'private' ? undefined : () => void query.refetch()}
+      />
+    );
+  const primaryEventId = week.events[0]?.id;
+  const currentForecast = week.days.find((day) => day.isToday)?.forecast ?? null;
   return (
     <div className="screen week-screen">
       <ScreenHeader
@@ -29,14 +38,16 @@ export function WeekScreen({
         meta={week.displayRange}
         actions={
           <div className="week-glance">
+            {currentForecast === null ? null : (
+              <div>
+                <Icon name={forecastIcon(currentForecast.condition)} />
+                <strong>{currentForecast.temperatureCelsius}°</strong>
+                <span>{currentForecast.label}</span>
+              </div>
+            )}
             <div>
-              <Icon name="sun" />
-              <strong>16°</strong>
-              <span>Clear</span>
-            </div>
-            <div>
-              <Icon name="sunrise" />
-              <strong>Morning</strong>
+              <Icon name={dayPeriodIcon(runtime.generatedAt, runtime.timezone)} />
+              <strong>{dayPeriod(runtime.generatedAt, runtime.timezone)}</strong>
             </div>
           </div>
         }
@@ -62,6 +73,7 @@ export function WeekScreen({
             dayIndex={dayIndex}
             events={eventsForDay(week.events, day.localDate)}
             key={day.localDate}
+            primaryEventId={primaryEventId}
           />
         ))}
       </div>
@@ -100,14 +112,33 @@ export function WeekScreen({
   );
 }
 
+function dayPeriod(timestamp: string, timezone: string): string {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-AU', {
+      timeZone: timezone,
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date(timestamp)),
+  );
+  if (hour < 12) return 'Morning';
+  if (hour < 17) return 'Afternoon';
+  return 'Evening';
+}
+
+function dayPeriodIcon(timestamp: string, timezone: string): IconName {
+  return dayPeriod(timestamp, timezone) === 'Morning' ? 'sunrise' : 'sun';
+}
+
 function WeekColumn({
   day,
   events,
   dayIndex,
+  primaryEventId,
 }: {
   day: WeekDay;
   events: CalendarEvent[];
   dayIndex: number;
+  primaryEventId: string | undefined;
 }) {
   return (
     <section className={`week-column${day.isToday ? ' week-column--today' : ''}`}>
@@ -127,6 +158,7 @@ function WeekColumn({
               <button
                 aria-label={`${formatEventTime(event)}, ${event.title}, ${event.sourceLabel}`}
                 className="week-event focusable"
+                data-focus-entry={event.id === primaryEventId ? 'true' : undefined}
                 data-focus-id={`week-event-${event.id}`}
                 data-focus-left={dayIndex === 0 ? 'nav-week' : undefined}
                 data-focus-up={

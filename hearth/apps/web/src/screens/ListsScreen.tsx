@@ -124,6 +124,7 @@ export function ListsScreen({
                   itemMutation.mutate({ item });
                 }}
                 pending={itemMutation.pendingItemId === item.id}
+                primary={index === 0}
                 selectedListId={selected.id}
               />
             ))}
@@ -160,6 +161,7 @@ function ListItemRow({
   focusUp,
   focusDown,
   pending,
+  primary,
   failed,
   message,
   onActivate,
@@ -170,6 +172,7 @@ function ListItemRow({
   focusUp: string;
   focusDown: string;
   pending: boolean;
+  primary: boolean;
   failed: boolean;
   message: string | null;
   onActivate: () => void;
@@ -180,6 +183,7 @@ function ListItemRow({
       <button
         aria-label={item.checked ? `${item.text}, checked. Undo` : `Check ${item.text}`}
         className={`list-item-row focusable${item.checked ? ' list-item-row--checked' : ''}`}
+        data-focus-entry={primary ? 'true' : undefined}
         data-focus-down={focusDown}
         data-focus-id={`list-item-${item.id}`}
         data-focus-left={`list-choice-${selectedListId}`}

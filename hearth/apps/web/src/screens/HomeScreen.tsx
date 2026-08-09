@@ -130,6 +130,7 @@ export function HomeScreen({
                     aria-disabled={!action.enabled || mutation.isPending}
                     aria-label={`${action.label}. ${action.description}`}
                     className="home-action focusable"
+                    data-focus-entry={index === 0 ? 'true' : undefined}
                     data-focus-down={`home-action-${actions[Math.min(index + 1, actions.length - 1)]?.id ?? action.id}`}
                     data-focus-id={`home-action-${action.id}`}
                     data-focus-left="nav-home"

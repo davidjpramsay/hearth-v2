@@ -21,6 +21,7 @@ import {
   PhotoGallerySchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentSchema,
+  RuntimeContextSchema,
   PairingCodeSchema,
   CreateTvPairingSessionRequestSchema,
   TvPairingSessionSchema,
@@ -29,6 +30,22 @@ import {
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
+  it('keeps private first-use runtime context free of fictional household data', () => {
+    expect(
+      RuntimeContextSchema.parse({
+        mode: 'private',
+        generatedAt: '2026-12-31T16:15:00.000Z',
+        household: null,
+        timezone: 'Australia/Perth',
+        locale: 'en-AU',
+        localDate: '2027-01-01',
+        weekStart: '2026-12-28',
+        currentMonth: '2027-01',
+        requiresSetup: true,
+      }),
+    ).toMatchObject({ mode: 'private', household: null, localDate: '2027-01-01' });
+  });
+
   it('accepts opaque request identifiers and rejects database row numbers', () => {
     expect(CommandRequestSchema.parse({ requestId: 'request_demo_001' })).toEqual({
       requestId: 'request_demo_001',

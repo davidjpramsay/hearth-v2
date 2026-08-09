@@ -82,6 +82,7 @@ export function ChoreRow({
 
 interface FocusProps {
   'data-focus-id': string;
+  'data-focus-entry'?: 'true' | undefined;
   'data-focus-up'?: string | undefined;
   'data-focus-down'?: string | undefined;
   'data-focus-left'?: string | undefined;

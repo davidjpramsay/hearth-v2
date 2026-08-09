@@ -18,6 +18,17 @@ describe('focus graph', () => {
     expect(document.activeElement).toHaveAttribute('data-focus-id', 'chore-one');
   });
 
+  it('focuses the meaningful entry control without depending on demo identifiers', () => {
+    document.body.innerHTML = `
+      <main id="main-content">
+        <button data-focus-id="first-control">First</button>
+        <button data-focus-entry="true" data-focus-id="current-action">Current action</button>
+      </main>
+    `;
+    expect(focusById('screen-entry')).toBe(true);
+    expect(document.activeElement).toHaveAttribute('data-focus-id', 'current-action');
+  });
+
   it('restores the last focus for each route after Back', () => {
     const memory = new FocusMemory();
     memory.remember('/week', 'week-event-dentist');

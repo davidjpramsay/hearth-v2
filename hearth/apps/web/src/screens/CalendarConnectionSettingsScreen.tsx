@@ -206,6 +206,7 @@ export function CalendarConnectionSettingsScreen() {
                 <input
                   autoCapitalize="none"
                   autoCorrect="off"
+                  data-focus-entry="true"
                   data-focus-id="calendar-server-url"
                   defaultValue="https://caldav.icloud.com"
                   inputMode="url"

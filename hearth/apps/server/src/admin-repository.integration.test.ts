@@ -7,6 +7,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DEMO_ADMIN_ACTOR_ID, SqliteAdminRepository, credentialHash } from './admin-repository.js';
 import { openHearthDatabase } from './database.js';
 import { DEMO_HOUSEHOLD_ID } from './demo/seed.js';
+import { SqlitePlanningRepository } from './planning-repository.js';
+import { PocketMoneyService } from './pocket-money-repository.js';
+import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -17,6 +20,33 @@ afterEach(async () => {
 });
 
 describe('SQLite admin repository', () => {
+  it('leaves a private first-use database empty when demo seeding is disabled', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-private-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    const repository = new SqliteAdminRepository(database, { seedDemo: false });
+    const hearth = new SqliteHearthRepository(database, { seedDemo: false });
+    new SqlitePlanningRepository(database, { seedDemo: false });
+    new PocketMoneyService(hearth, repository, database, { seedDemo: false });
+    const householdCount = database.prepare('SELECT COUNT(*) AS count FROM households').get() as {
+      count: number;
+    };
+    const memberCount = database.prepare('SELECT COUNT(*) AS count FROM members').get() as {
+      count: number;
+    };
+    const listCount = database.prepare('SELECT COUNT(*) AS count FROM household_lists').get() as {
+      count: number;
+    };
+    const pocketMoneyCount = database
+      .prepare('SELECT COUNT(*) AS count FROM pocket_money_settings')
+      .get() as { count: number };
+    expect(householdCount.count).toBe(0);
+    expect(memberCount.count).toBe(0);
+    expect(listCount.count).toBe(0);
+    expect(pocketMoneyCount.count).toBe(0);
+    repository.close();
+  });
+
   it('survives restart and can be restored from a closed development backup', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-admin-'));
     temporaryDirectories.push(directory);

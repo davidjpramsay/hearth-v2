@@ -24,6 +24,7 @@ import {
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
   PocketMoneySettingsCommandResultSchema,
+  RuntimeContextSchema,
   SavedMealCommandResultSchema,
   TodaySummarySchema,
   WeekScheduleSchema,
@@ -56,14 +57,14 @@ import {
   type PocketMoneyPaymentCommandResult,
   type PocketMoneySettingsCommandResult,
   type SavedMealCommandResult,
+  type RuntimeContext,
   type TodaySummary,
   type WeekSchedule,
 } from '@hearth/shared';
 import type { z } from 'zod';
 
-export const DEMO_HOUSEHOLD_ID = 'household_hearth_demo';
-export const DEMO_DATE = '2026-08-03';
 const API_BASE = import.meta.env.VITE_HEARTH_API_BASE ?? '/api/v1';
+let runtimeContext: RuntimeContext | null = null;
 
 export class HearthApiError extends Error {
   constructor(readonly payload: ApiError) {
@@ -73,103 +74,105 @@ export class HearthApiError extends Error {
 }
 
 export const queryKeys = {
-  today: [DEMO_HOUSEHOLD_ID, 'today', DEMO_DATE] as const,
-  week: [DEMO_HOUSEHOLD_ID, 'week', DEMO_DATE] as const,
-  month: (month = DEMO_DATE.slice(0, 7)) => [DEMO_HOUSEHOLD_ID, 'month', month] as const,
-  chores: [DEMO_HOUSEHOLD_ID, 'chores', DEMO_DATE] as const,
-  home: [DEMO_HOUSEHOLD_ID, 'home'] as const,
-  photos: [DEMO_HOUSEHOLD_ID, 'photos'] as const,
-  admin: [DEMO_HOUSEHOLD_ID, 'admin'] as const,
-  calendarConnection: [DEMO_HOUSEHOLD_ID, 'calendar-connection'] as const,
-  lists: [DEMO_HOUSEHOLD_ID, 'lists'] as const,
-  meals: (startDate = DEMO_DATE) => [DEMO_HOUSEHOLD_ID, 'meals', startDate] as const,
-  pocketMoney: [DEMO_HOUSEHOLD_ID, 'pocket-money', DEMO_DATE] as const,
-  choreTemplates: [DEMO_HOUSEHOLD_ID, 'chore-templates'] as const,
+  get today() {
+    const runtime = getHearthRuntime();
+    return [householdId(runtime), 'today', runtime.localDate] as const;
+  },
+  get week() {
+    const runtime = getHearthRuntime();
+    return [householdId(runtime), 'week', runtime.weekStart] as const;
+  },
+  month: (month = getHearthRuntime().currentMonth) =>
+    [householdId(getHearthRuntime()), 'month', month] as const,
+  get chores() {
+    const runtime = getHearthRuntime();
+    return [householdId(runtime), 'chores', runtime.localDate] as const;
+  },
+  get home() {
+    return [householdId(getHearthRuntime()), 'home'] as const;
+  },
+  get photos() {
+    return [householdId(getHearthRuntime()), 'photos'] as const;
+  },
+  get admin() {
+    return [householdId(getHearthRuntime()), 'admin'] as const;
+  },
+  get calendarConnection() {
+    return [householdId(getHearthRuntime()), 'calendar-connection'] as const;
+  },
+  get lists() {
+    return [householdId(getHearthRuntime()), 'lists'] as const;
+  },
+  meals: (startDate = getHearthRuntime().weekStart) =>
+    [householdId(getHearthRuntime()), 'meals', startDate] as const,
+  get pocketMoney() {
+    const runtime = getHearthRuntime();
+    return [householdId(runtime), 'pocket-money', runtime.weekStart, runtime.localDate] as const;
+  },
+  get choreTemplates() {
+    return [householdId(getHearthRuntime()), 'chore-templates'] as const;
+  },
 };
 
 const demoAdminHeaders = { 'X-Hearth-Demo-Actor': 'member_maya' } as const;
 
 export const hearthApi = {
-  realtimeUrl: `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/events`,
+  get realtimeUrl() {
+    return `${householdApiBase()}/events`;
+  },
+  getRuntime: () => request(`${API_BASE}/runtime`, RuntimeContextSchema),
   getToday: () =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/today?date=${DEMO_DATE}`,
-      TodaySummarySchema,
-    ),
+    request(`${householdApiBase()}/today?date=${getHearthRuntime().localDate}`, TodaySummarySchema),
   getWeek: () =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/week?start=${DEMO_DATE}`,
-      WeekScheduleSchema,
-    ),
-  getMonth: (month = DEMO_DATE.slice(0, 7)) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/month?month=${month}`,
-      MonthScheduleSchema,
-    ),
+    request(`${householdApiBase()}/week?start=${getHearthRuntime().weekStart}`, WeekScheduleSchema),
+  getMonth: (month = getHearthRuntime().currentMonth) =>
+    request(`${householdApiBase()}/month?month=${month}`, MonthScheduleSchema),
   getChores: () =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/chore-occurrences?date=${DEMO_DATE}`,
+      `${householdApiBase()}/chore-occurrences?date=${getHearthRuntime().localDate}`,
       ChoreListSchema,
     ),
-  getHome: () => request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/home`, HomeStatusSchema),
-  getPhotos: () =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/photos`, PhotoGallerySchema),
+  getHome: () => request(`${householdApiBase()}/home`, HomeStatusSchema),
+  getPhotos: () => request(`${householdApiBase()}/photos`, PhotoGallerySchema),
   executeHomeAction: (actionId: HomeActionId, requestId: string, confirmed: boolean) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/home/actions/${actionId}`,
-      HomeActionResultSchema,
-      {
-        method: 'POST',
-        body: JSON.stringify({ requestId, confirmed }),
-      },
-    ),
-  getLists: () =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/lists`, HouseholdListsSchema),
+    request(`${householdApiBase()}/home/actions/${actionId}`, HomeActionResultSchema, {
+      method: 'POST',
+      body: JSON.stringify({ requestId, confirmed }),
+    }),
+  getLists: () => request(`${householdApiBase()}/lists`, HouseholdListsSchema),
   addListItem: (
     listId: string,
     input: { requestId: string; text: string; quantity: string | null },
     source: 'companion' | 'voice' = 'companion',
   ) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/lists/${listId}/items`,
-      ListItemCommandResultSchema,
-      {
-        method: 'POST',
-        headers:
-          source === 'voice'
-            ? { ...demoAdminHeaders, 'X-Hearth-Demo-Source': 'voice' }
-            : demoAdminHeaders,
-        body: JSON.stringify(input),
-      },
-    ),
+    request(`${householdApiBase()}/lists/${listId}/items`, ListItemCommandResultSchema, {
+      method: 'POST',
+      headers:
+        source === 'voice'
+          ? { ...demoAdminHeaders, 'X-Hearth-Demo-Source': 'voice' }
+          : demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
   assistAddListItem: (input: {
     requestId: string;
     listName: string;
     text: string;
     quantity: string | null;
   }) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/assist/list-items`,
-      ListItemCommandResultSchema,
-      {
-        method: 'POST',
-        headers: { ...demoAdminHeaders, 'X-Hearth-Demo-Source': 'voice' },
-        body: JSON.stringify(input),
-      },
-    ),
+    request(`${householdApiBase()}/assist/list-items`, ListItemCommandResultSchema, {
+      method: 'POST',
+      headers: { ...demoAdminHeaders, 'X-Hearth-Demo-Source': 'voice' },
+      body: JSON.stringify(input),
+    }),
   completeListItem: (itemId: string, requestId: string, source: 'tv' | 'companion') =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/list-items/${itemId}/completions`,
-      ListItemCommandResultSchema,
-      {
-        method: 'POST',
-        ...(source === 'companion' ? { headers: demoAdminHeaders } : {}),
-        body: JSON.stringify({ requestId }),
-      },
-    ),
+    request(`${householdApiBase()}/list-items/${itemId}/completions`, ListItemCommandResultSchema, {
+      method: 'POST',
+      ...(source === 'companion' ? { headers: demoAdminHeaders } : {}),
+      body: JSON.stringify({ requestId }),
+    }),
   undoListItem: (itemId: string, requestId: string, source: 'tv' | 'companion') =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/list-items/${itemId}/completion-reversals`,
+      `${householdApiBase()}/list-items/${itemId}/completion-reversals`,
       ListItemCommandResultSchema,
       {
         method: 'POST',
@@ -177,11 +180,8 @@ export const hearthApi = {
         body: JSON.stringify({ requestId }),
       },
     ),
-  getMealPlan: (startDate = DEMO_DATE) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/meal-plan?start=${startDate}`,
-      MealPlanSchema,
-    ),
+  getMealPlan: (startDate = getHearthRuntime().weekStart) =>
+    request(`${householdApiBase()}/meal-plan?start=${startDate}`, MealPlanSchema),
   upsertMealPlan: (input: {
     requestId: string;
     localDate: string;
@@ -190,28 +190,20 @@ export const hearthApi = {
     savedMealId: string | null;
     note: string | null;
   }) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/meal-plan-entries`,
-      MealCommandResultSchema,
-      {
-        method: 'PUT',
-        headers: demoAdminHeaders,
-        body: JSON.stringify(input),
-      },
-    ),
+    request(`${householdApiBase()}/meal-plan-entries`, MealCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
   createSavedMeal: (input: { requestId: string; name: string; description: string | null }) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/saved-meals`,
-      SavedMealCommandResultSchema,
-      {
-        method: 'POST',
-        headers: demoAdminHeaders,
-        body: JSON.stringify(input),
-      },
-    ),
+    request(`${householdApiBase()}/saved-meals`, SavedMealCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
   getPocketMoney: () =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/pocket-money?weekStart=${DEMO_DATE}&asOf=${DEMO_DATE}`,
+      `${householdApiBase()}/pocket-money?weekStart=${getHearthRuntime().weekStart}&asOf=${getHearthRuntime().localDate}`,
       PocketMoneyOverviewSchema,
     ),
   updatePocketMoneySettings: (
@@ -225,7 +217,7 @@ export const hearthApi = {
     },
   ) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/pocket-money-settings`,
+      `${householdApiBase()}/members/${memberId}/pocket-money-settings`,
       PocketMoneySettingsCommandResultSchema,
       { method: 'PUT', headers: demoAdminHeaders, body: JSON.stringify(input) },
     ),
@@ -235,64 +227,62 @@ export const hearthApi = {
     weekStart: string;
     asOfDate: string;
   }) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/pocket-money-payments`,
-      PocketMoneyPaymentCommandResultSchema,
-      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
-    ),
+    request(`${householdApiBase()}/pocket-money-payments`, PocketMoneyPaymentCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
   getChoreTemplates: () =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/chore-templates`,
-      ChoreTemplateListSchema,
-      { headers: demoAdminHeaders },
-    ),
+    request(`${householdApiBase()}/chore-templates`, ChoreTemplateListSchema, {
+      headers: demoAdminHeaders,
+    }),
   createChoreTemplate: (input: ChoreTemplateInput & { requestId: string }) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/chore-templates`,
-      ChoreTemplateCommandResultSchema,
-      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
-    ),
+    request(`${householdApiBase()}/chore-templates`, ChoreTemplateCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
   updateChoreTemplate: (templateId: string, input: ChoreTemplateInput & { requestId: string }) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/chore-templates/${templateId}`,
+      `${householdApiBase()}/chore-templates/${templateId}`,
       ChoreTemplateCommandResultSchema,
       { method: 'PATCH', headers: demoAdminHeaders, body: JSON.stringify(input) },
     ),
   getAdmin: () =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/admin`, AdminOverviewSchema, {
+    request(`${householdApiBase()}/admin`, AdminOverviewSchema, {
       headers: demoAdminHeaders,
     }),
   getCalendarConnection: () =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection`,
+      `${householdApiBase()}/calendar-connection`,
       CalendarConnectionSettingsSchema.nullable(),
       { headers: demoAdminHeaders },
     ),
   testCalendarConnection: (input: { serverUrl: string; username: string; appPassword: string }) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection-tests`,
-      CalendarConnectionTestResultSchema,
-      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
-    ),
+    request(`${householdApiBase()}/calendar-connection-tests`, CalendarConnectionTestResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
   saveCalendarConnection: (input: {
     requestId: string;
     testId: string;
     label: string;
     calendars: Array<{ calendarId: string; ownerMemberId: string | null }>;
   }) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection`,
-      CalendarConnectionCommandResultSchema,
-      { method: 'PUT', headers: demoAdminHeaders, body: JSON.stringify(input) },
-    ),
+    request(`${householdApiBase()}/calendar-connection`, CalendarConnectionCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
   removeCalendarConnection: (requestId: string) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection/removals`,
+      `${householdApiBase()}/calendar-connection/removals`,
       CalendarConnectionCommandResultSchema,
       { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify({ requestId }) },
     ),
   updateHousehold: (input: { requestId: string; name: string; timezone: string }) =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/settings`, AdminOverviewSchema, {
+    request(`${householdApiBase()}/settings`, AdminOverviewSchema, {
       method: 'PATCH',
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
@@ -304,7 +294,7 @@ export const hearthApi = {
     color: string;
     administrator: boolean;
   }) =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members`, MemberSchema, {
+    request(`${householdApiBase()}/members`, MemberSchema, {
       method: 'POST',
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
@@ -319,24 +309,20 @@ export const hearthApi = {
       administrator: boolean;
     },
   ) =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}`, MemberSchema, {
+    request(`${householdApiBase()}/members/${memberId}`, MemberSchema, {
       method: 'PATCH',
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
     }),
   updateMemberAvatar: (memberId: string, requestId: string, dataBase64: string) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/avatar`,
-      MemberAvatarCommandResultSchema,
-      {
-        method: 'PUT',
-        headers: demoAdminHeaders,
-        body: JSON.stringify({ requestId, mimeType: 'image/jpeg', dataBase64 }),
-      },
-    ),
+    request(`${householdApiBase()}/members/${memberId}/avatar`, MemberAvatarCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId, mimeType: 'image/jpeg', dataBase64 }),
+    }),
   resetMemberAvatar: (memberId: string, requestId: string) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/avatar-resets`,
+      `${householdApiBase()}/members/${memberId}/avatar-resets`,
       MemberAvatarCommandResultSchema,
       {
         method: 'POST',
@@ -345,15 +331,11 @@ export const hearthApi = {
       },
     ),
   archiveMember: (memberId: string, requestId: string) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/archives`,
-      MemberSchema,
-      {
-        method: 'POST',
-        headers: demoAdminHeaders,
-        body: JSON.stringify({ requestId }),
-      },
-    ),
+    request(`${householdApiBase()}/members/${memberId}/archives`, MemberSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId }),
+    }),
   createPairing: (deviceName: string, requestId: string) =>
     request(`${API_BASE}/device-pairing-requests`, PairingRequestSchema, {
       method: 'POST',
@@ -362,36 +344,32 @@ export const hearthApi = {
   getPairing: (pairingId: string) =>
     request(`${API_BASE}/device-pairing-requests/${pairingId}`, PairingRequestSchema),
   approvePairing: (code: string, requestId: string) =>
-    request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/pairing-approvals`, PairedDeviceSchema, {
+    request(`${householdApiBase()}/pairing-approvals`, PairedDeviceSchema, {
       method: 'POST',
       headers: demoAdminHeaders,
       body: JSON.stringify({ code, requestId }),
     }),
   revokeDevice: (deviceId: string, requestId: string) =>
-    request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/paired-devices/${deviceId}/revocations`,
-      PairedDeviceSchema,
-      {
-        method: 'POST',
-        headers: demoAdminHeaders,
-        body: JSON.stringify({ requestId }),
-      },
-    ),
+    request(`${householdApiBase()}/paired-devices/${deviceId}/revocations`, PairedDeviceSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId }),
+    }),
   completeChore: (occurrenceId: string, requestId: string) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/chore-occurrences/${occurrenceId}/completions`,
+      `${householdApiBase()}/chore-occurrences/${occurrenceId}/completions`,
       ChoreCommandResultSchema,
       { method: 'POST', body: JSON.stringify({ requestId }) },
     ),
   undoChore: (occurrenceId: string, requestId: string, completionId: string) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/chore-occurrences/${occurrenceId}/completion-reversals`,
+      `${householdApiBase()}/chore-occurrences/${occurrenceId}/completion-reversals`,
       ChoreCommandResultSchema,
       { method: 'POST', body: JSON.stringify({ requestId, completionId }) },
     ),
   skipChore: (occurrenceId: string, requestId: string) =>
     request(
-      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/chore-occurrences/${occurrenceId}/skips`,
+      `${householdApiBase()}/chore-occurrences/${occurrenceId}/skips`,
       ChoreSkipResultSchema,
       {
         method: 'POST',
@@ -411,6 +389,7 @@ export const hearthApi = {
 };
 
 export type HearthApi = typeof hearthApi;
+export type HearthRuntime = RuntimeContext;
 export type HearthToday = TodaySummary;
 export type HearthWeek = WeekSchedule;
 export type HearthMonth = MonthSchedule;
@@ -447,6 +426,28 @@ export interface ChoreTemplateInput {
   repeat: 'daily' | 'weekdays' | 'weekly';
   repeatDays: Array<'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'>;
   activeFrom: string;
+}
+
+export function configureHearthClient(runtime: RuntimeContext): void {
+  runtimeContext = RuntimeContextSchema.parse(runtime);
+}
+
+export function getHearthRuntime(): RuntimeContext {
+  if (runtimeContext === null) {
+    throw new Error('Hearth runtime has not been loaded.');
+  }
+  return runtimeContext;
+}
+
+function householdId(runtime: RuntimeContext): string {
+  if (runtime.household === null) {
+    throw new Error('Hearth household setup is required.');
+  }
+  return runtime.household.id;
+}
+
+function householdApiBase(): string {
+  return `${API_BASE}/households/${householdId(getHearthRuntime())}`;
 }
 
 export function createRequestId(prefix: string): string {

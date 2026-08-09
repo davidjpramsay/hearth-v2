@@ -199,6 +199,7 @@ function focusLinks(
       : focusId(groups, groupIndex + 1, Math.min(rowIndex, nextGroup.occurrences.length - 1));
   return {
     'data-focus-id': occurrence === groups[0]?.occurrences[0] ? 'chore-primary' : ownId,
+    'data-focus-entry': occurrence === groups[0]?.occurrences[0] ? ('true' as const) : undefined,
     'data-focus-up': upId,
     'data-focus-down': downId,
     'data-focus-left': leftId,

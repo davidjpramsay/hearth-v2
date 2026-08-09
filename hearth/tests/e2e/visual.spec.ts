@@ -79,7 +79,7 @@ for (const viewport of viewports) {
     await expect(page.locator('.month-grid .avatar')).toHaveCount(0);
     await expect(page.locator('.month-legend .avatar')).toHaveCount(2);
     if (viewport.name.startsWith('phone')) {
-      await expect(page.locator('.month-day-details')).toContainText('Library');
+      await expect(page.locator('.month-day-details')).toContainText('School drop-off');
     } else {
       await expect(
         page.locator('.month-event-label').filter({ hasText: 'School drop-off' }).first(),

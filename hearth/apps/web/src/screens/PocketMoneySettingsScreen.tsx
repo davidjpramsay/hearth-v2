@@ -3,11 +3,12 @@ import { useState, type FormEvent } from 'react';
 
 import type { Payday } from '@hearth/shared';
 
-import { createRequestId, DEMO_DATE, hearthApi, queryKeys } from '../api/client';
+import { createRequestId, hearthApi, queryKeys } from '../api/client';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { usePocketMoneyQuery } from '../hooks/useHearthQueries';
+import { useHearthRuntime } from '../runtime/context';
 
 const PAYDAYS: Array<{ value: Payday; label: string }> = [
   { value: 'monday', label: 'Monday' },
@@ -20,6 +21,7 @@ const PAYDAYS: Array<{ value: Payday; label: string }> = [
 ];
 
 export function PocketMoneySettingsScreen() {
+  const runtime = useHearthRuntime();
   const pocketMoney = usePocketMoneyQuery();
   const queryClient = useQueryClient();
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -38,8 +40,8 @@ export function PocketMoneySettingsScreen() {
         requestId: createRequestId('pocket_money_settings'),
         weeklyAmountCents,
         payday,
-        weekStart: DEMO_DATE,
-        asOfDate: DEMO_DATE,
+        weekStart: runtime.weekStart,
+        asOfDate: runtime.localDate,
       }),
     onSuccess: async (result) => {
       setConfirmation(`${result.child.member.displayName}’s weekly amount is saved.`);
@@ -51,8 +53,8 @@ export function PocketMoneySettingsScreen() {
       hearthApi.recordPocketMoneyPayment({
         requestId: createRequestId('pocket_money_payment'),
         memberId,
-        weekStart: DEMO_DATE,
-        asOfDate: DEMO_DATE,
+        weekStart: runtime.weekStart,
+        asOfDate: runtime.localDate,
       }),
     onSuccess: async (result) => {
       setConfirmation(
@@ -95,7 +97,7 @@ export function PocketMoneySettingsScreen() {
         />
       ) : null}
       <div className="pocket-money-admin-list">
-        {pocketMoney.data.children.map((child) => (
+        {pocketMoney.data.children.map((child, childIndex) => (
           <article className="pocket-money-admin-card" key={child.member.id}>
             <header>
               <Avatar member={child.member} />
@@ -137,6 +139,7 @@ export function PocketMoneySettingsScreen() {
                 <span className="money-input">
                   <span>$</span>
                   <input
+                    data-focus-entry={childIndex === 0 ? 'true' : undefined}
                     data-focus-id={`pocket-amount-${child.member.id}`}
                     defaultValue={
                       child.weeklyAmountCents === null

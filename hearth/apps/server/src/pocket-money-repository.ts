@@ -76,9 +76,13 @@ export class PocketMoneyService implements PocketMoneyRepository {
     private readonly chores: HearthRepository,
     private readonly admin: AdminRepository,
     database?: InstanceType<typeof Database>,
+    options: { seedDemo?: boolean } = {},
   ) {
+    const seedDemo = options.seedDemo ?? true;
     this.store =
-      database === undefined ? new MemoryPocketMoneyStore() : new SqlitePocketMoneyStore(database);
+      database === undefined
+        ? new MemoryPocketMoneyStore(seedDemo)
+        : new SqlitePocketMoneyStore(database, seedDemo);
   }
 
   async getOverview(
@@ -262,8 +266,8 @@ class MemoryPocketMoneyStore implements PocketMoneyStore {
   private payments = new Map<string, PocketMoneyPayment>();
   private receipts = new Map<string, unknown>();
 
-  constructor() {
-    this.seed();
+  constructor(private readonly demoSeedEnabled: boolean) {
+    if (this.demoSeedEnabled) this.seed();
   }
 
   settings(householdId: string): PocketMoneySetting[] {
@@ -306,7 +310,7 @@ class MemoryPocketMoneyStore implements PocketMoneyStore {
     this.values.clear();
     this.payments.clear();
     this.receipts.clear();
-    this.seed();
+    if (this.demoSeedEnabled) this.seed();
   }
 
   private seed(): void {
@@ -320,8 +324,11 @@ class MemoryPocketMoneyStore implements PocketMoneyStore {
 }
 
 class SqlitePocketMoneyStore implements PocketMoneyStore {
-  constructor(private readonly database: InstanceType<typeof Database>) {
-    this.seedDemoSetting();
+  constructor(
+    private readonly database: InstanceType<typeof Database>,
+    private readonly demoSeedEnabled: boolean,
+  ) {
+    if (this.demoSeedEnabled) this.seedDemoSetting();
   }
 
   settings(householdId: string): PocketMoneySetting[] {
@@ -442,7 +449,7 @@ class SqlitePocketMoneyStore implements PocketMoneyStore {
 
   reset(): void {
     this.database.exec('DELETE FROM pocket_money_payments; DELETE FROM pocket_money_settings;');
-    this.seedDemoSetting();
+    if (this.demoSeedEnabled) this.seedDemoSetting();
   }
 
   private seedDemoSetting(): void {

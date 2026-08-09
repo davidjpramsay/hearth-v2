@@ -3,11 +3,12 @@ import { useState, type FormEvent } from 'react';
 
 import type { DemoScenario } from '@hearth/shared';
 
-import { createRequestId, DEMO_DATE, hearthApi, queryKeys } from '../api/client';
+import { createRequestId, hearthApi, queryKeys } from '../api/client';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState } from '../components/Status';
 import { useMealPlanQuery } from '../hooks/useHearthQueries';
+import { useHearthRuntime } from '../runtime/context';
 
 export function MealsScreen({
   scenario: _scenario,
@@ -16,8 +17,9 @@ export function MealsScreen({
   scenario: DemoScenario | 'offline';
   preparing: boolean;
 }) {
-  const [startDate, setStartDate] = useState(DEMO_DATE);
-  const [selectedDate, setSelectedDate] = useState(DEMO_DATE);
+  const { weekStart } = useHearthRuntime();
+  const [startDate, setStartDate] = useState(() => weekStart);
+  const [selectedDate, setSelectedDate] = useState(() => weekStart);
   const [tvMessage, setTvMessage] = useState<string | null>(null);
   const plan = useMealPlanQuery(startDate, !preparing);
   const queryClient = useQueryClient();
@@ -91,6 +93,7 @@ export function MealsScreen({
             <button
               aria-current={day.localDate === selectedDay?.localDate ? 'date' : undefined}
               className={`meal-day focusable${day.localDate === selectedDay?.localDate ? ' meal-day--selected' : ''}`}
+              data-focus-entry={day.isToday ? 'true' : undefined}
               data-focus-down="meal-saved"
               data-focus-id={`meal-day-${day.localDate}`}
               data-focus-left={
@@ -114,7 +117,7 @@ export function MealsScreen({
           className="meal-action focusable"
           data-focus-id="meal-saved"
           data-focus-left="nav-meals"
-          data-focus-up={`meal-day-${selectedDay?.localDate ?? DEMO_DATE}`}
+          data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
           onClick={() =>
             setTvMessage(`${plan.data.savedMeals.length} family favourites are ready on the phone.`)
           }
@@ -130,7 +133,7 @@ export function MealsScreen({
         <button
           className="meal-action focusable"
           data-focus-id="meal-plan-phone"
-          data-focus-up={`meal-day-${selectedDay?.localDate ?? DEMO_DATE}`}
+          data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
           onClick={() => setTvMessage('Open Meals on your phone to change the family plan.')}
           type="button"
         >

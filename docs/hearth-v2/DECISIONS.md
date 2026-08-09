@@ -345,3 +345,28 @@ Record durable choices here. New decisions should include date, status, context,
   the supported connection method. Live iCloud validation still requires the
   owner's app-specific credential and explicit approval, and calendar writes
   remain absent.
+
+## D-030 — Runtime household and dates come from one server bootstrap
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: The polished browser still embedded the fictional household ID and
+  Monday 3 August 2026 in API paths, query keys, focus targets and planning
+  defaults. SQLite repositories also seeded demo records when started for a
+  private household, which made the demo look complete while preventing an
+  honest first-use state.
+- Choice: Expose one browser-safe `GET /api/v1/runtime` contract containing the
+  explicit `demo`, `test` or `private` mode, nullable configured household,
+  household timezone/locale and server-derived local date, Monday week start
+  and current month. Inject the clock and household selection at server
+  composition. Demo and automated test modes use the fixed Perth instant;
+  private mode uses the system clock and never seeds fictional household,
+  member, planning, chore or pocket-money rows. The browser must load this
+  dependency before household queries and derive query keys, routes, screen
+  dates and focus entry from returned data.
+- Consequence: Private startup is an explicit first-use state rather than Ezra
+  and Maya, household renames/timezone changes update the runtime contract, and
+  date boundaries are consistent on TV and phone. The initial adult creation
+  action remains coupled to the private HTTPS/passkey slice; until that exists,
+  an empty private database shows an honest setup-required surface and accepts
+  no demo bootstrap command.

@@ -475,8 +475,11 @@ export class InMemoryAdminRepository implements AdminRepository {
 }
 
 export class SqliteAdminRepository implements AdminRepository {
-  constructor(private readonly database: InstanceType<typeof Database>) {
-    this.seedDemo();
+  constructor(
+    private readonly database: InstanceType<typeof Database>,
+    options: { seedDemo?: boolean } = {},
+  ) {
+    if (options.seedDemo ?? true) this.seedDemo();
   }
 
   async getHousehold(householdId: string): Promise<HouseholdSummary> {

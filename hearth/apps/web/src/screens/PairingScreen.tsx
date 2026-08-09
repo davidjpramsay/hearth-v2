@@ -58,7 +58,12 @@ export function PairingScreen() {
           </div>
         )}
         {approved ? (
-          <Link className="pairing-primary focusable" data-focus-id="pair-continue" to="/today">
+          <Link
+            className="pairing-primary focusable"
+            data-focus-entry="true"
+            data-focus-id="pair-continue"
+            to="/today"
+          >
             Continue to Hearth
           </Link>
         ) : (
@@ -66,6 +71,7 @@ export function PairingScreen() {
             <p className="pairing-expiry">This code expires in under 10 minutes</p>
             <button
               className="pairing-primary focusable"
+              data-focus-entry="true"
               data-focus-id="pair-new-code"
               onClick={() => setRequestId(createRequestId('tv_pair'))}
               type="button"

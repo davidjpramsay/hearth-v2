@@ -23,6 +23,10 @@ Checked read-only on 2026-08-03:
 - The owner intentionally removed the former bargain-finder system; no Python regression suite is applicable.
 - A root `AGENTS.md` and the `hearth/` pnpm application workspace are present.
 - Phases 1–4 run entirely with fictional demo data and make no live Synology or household writes.
+- Runtime mode is explicit: `demo` uses deterministic fictional data, `test`
+  is reserved for deterministic automated harnesses, and `private` uses the
+  real clock and does not seed a household. A new private database therefore
+  opens on the setup-required surface rather than displaying demo family data.
 - Demo calendar data remains fictional. Phase 3 now includes an inert read-only CalDAV/iCloud adapter, but no provider credential, approved live allowlist or event write exists in the workspace.
 - Android command-line tools, platform 36, build-tools 36 and the Gradle 9.5
   wrapper are installed locally. Phase 6 produces verified debug and unsigned
@@ -114,6 +118,13 @@ file through the deployment secret mechanism. Start Hearth in private mode,
 confirm all returned sources are read-only, then revoke the password after the
 validation if the deployment is not proceeding. No calendar write method is
 present.
+
+Set `HEARTH_MODE=private` only with a dedicated private database path. If
+`HEARTH_DATABASE_PATH` is omitted, Hearth chooses `data/hearth-private.sqlite`
+for private mode and `data/hearth-demo.sqlite` for demo/test. Do not point
+private mode at a copied demo database. The adult first-use creation command is
+not yet enabled; the empty private startup state is intentional until the
+private HTTPS/passkey slice is commissioned.
 
 ## Proposed Synology paths
 

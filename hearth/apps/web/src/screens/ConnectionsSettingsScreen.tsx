@@ -19,6 +19,7 @@ export function ConnectionsSettingsScreen() {
       <div className="connection-list">
         <Link
           className="connection-row connection-row--action focusable"
+          data-focus-entry="true"
           data-focus-id="connection-calendar"
           to="/admin/connections/calendar"
         >

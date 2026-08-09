@@ -7,6 +7,7 @@ import {
   assertNoActiveListDuplicate,
   choreRecurrenceRule,
   choreRepeatFromRule,
+  localDateInTimezone,
   normaliseListItemText,
   PlanningDomainError,
   reverseRewardEntry,
@@ -60,6 +61,7 @@ import {
 
 import { createDemoSeed, DEMO_HOUSEHOLD_ID, DEMO_LOCAL_DATE, DEMO_NOW } from './demo/seed.js';
 import { type CommandActor, RepositoryError } from './repository.js';
+import { FixedClock, type HearthClock } from './runtime-context.js';
 
 interface AuditedResult {
   audit: AuditSummary;
@@ -579,9 +581,16 @@ export class InMemoryPlanningRepository implements PlanningRepository {
 
 export class SqlitePlanningRepository implements PlanningRepository {
   private scenario: DemoScenario = 'healthy';
+  private readonly demoSeedEnabled: boolean;
+  private readonly clock: HearthClock;
 
-  constructor(private readonly database: InstanceType<typeof Database>) {
-    this.seedDemo();
+  constructor(
+    private readonly database: InstanceType<typeof Database>,
+    options: { seedDemo?: boolean; clock?: HearthClock } = {},
+  ) {
+    this.demoSeedEnabled = options.seedDemo ?? true;
+    this.clock = options.clock ?? new FixedClock(DEMO_NOW);
+    if (this.demoSeedEnabled) this.seedDemo();
   }
 
   async getLists(householdId: string): Promise<HouseholdLists> {
@@ -684,6 +693,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
       startDate,
       this.scenario === 'empty' ? [] : entries.map(mealFromRow),
       this.scenario === 'empty' ? [] : this.readSavedMeals(householdId),
+      this.currentLocalDate(householdId),
     );
   }
 
@@ -1050,7 +1060,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
        DELETE FROM list_items;
        DELETE FROM household_lists;`,
     );
-    this.seedDemo();
+    if (this.demoSeedEnabled) this.seedDemo();
     this.scenario = 'healthy';
   }
 
@@ -1498,6 +1508,14 @@ export class SqlitePlanningRepository implements PlanningRepository {
         .run(JSON.stringify([...scopes]), 'device_living_room_tv');
     }
   }
+
+  private currentLocalDate(householdId: string): string {
+    const row = this.database
+      .prepare('SELECT timezone FROM households WHERE id = ?')
+      .get(householdId) as { timezone: string } | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That household was not found.');
+    return localDateInTimezone(this.clock.now().toISOString(), row.timezone);
+  }
 }
 
 function demoLists(): HouseholdList[] {
@@ -1648,6 +1666,7 @@ function mealPlan(
   startDate: string,
   entries: readonly ReturnType<typeof mealFromRow>[],
   savedMeals: readonly SavedMeal[],
+  today = DEMO_LOCAL_DATE,
 ): MealPlan {
   const endDate = addLocalDays(startDate, 6);
   const start = new Date(`${startDate}T12:00:00Z`);
@@ -1673,7 +1692,7 @@ function mealPlan(
           day: 'numeric',
           timeZone: 'UTC',
         }).format(date),
-        isToday: localDate === DEMO_LOCAL_DATE,
+        isToday: localDate === today,
         entries: entries.filter((entry) => entry.localDate === localDate),
       };
     }),

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { hearthApi, queryKeys } from '../api/client';
+import { getHearthRuntime, hearthApi, queryKeys } from '../api/client';
 
 export function useTodayQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.today, queryFn: hearthApi.getToday, enabled });
@@ -10,7 +10,7 @@ export function useWeekQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.week, queryFn: hearthApi.getWeek, enabled });
 }
 
-export function useMonthQuery(month = '2026-08', enabled = true) {
+export function useMonthQuery(month = getHearthRuntime().currentMonth, enabled = true) {
   return useQuery({
     queryKey: queryKeys.month(month),
     queryFn: () => hearthApi.getMonth(month),
@@ -53,7 +53,7 @@ export function useListsQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.lists, queryFn: hearthApi.getLists, enabled });
 }
 
-export function useMealPlanQuery(startDate = '2026-08-03', enabled = true) {
+export function useMealPlanQuery(startDate = getHearthRuntime().weekStart, enabled = true) {
   return useQuery({
     queryKey: queryKeys.meals(startDate),
     queryFn: () => hearthApi.getMealPlan(startDate),
