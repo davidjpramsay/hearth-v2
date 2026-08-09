@@ -970,6 +970,8 @@ export const AuditSummarySchema = z.object({
     'pocket-money.payment.void',
     'calendar.connection.save',
     'calendar.connection.remove',
+    'home-assistant.connection.save',
+    'home-assistant.connection.remove',
     'photo.source.refresh',
     'auth.passkey.register',
     'home.action.execute',
@@ -1228,6 +1230,167 @@ export const CalendarConnectionCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
+export const HomeAssistantConnectionSettingsSchema = z.object({
+  id: OpaqueIdSchema,
+  provider: z.literal('home-assistant'),
+  label: z.string().trim().min(1).max(80),
+  serverHost: z.string().trim().min(1).max(253),
+  instanceName: z.string().trim().min(1).max(100),
+  version: z.string().trim().min(1).max(40),
+  status: z.enum(['ready', 'needs-attention']),
+  stateMappings: z.object({
+    occupancy: z.string().trim().min(1).max(100),
+    televisionPower: z.string().trim().min(1).max(100),
+    hearthForeground: z.string().trim().min(1).max(100),
+    protectedMedia: z.string().trim().min(1).max(100),
+  }),
+  actionMappings: z.object({
+    evening: z.string().trim().min(1).max(100),
+    goodnight: z.string().trim().min(1).max(100),
+    screenOff: z.string().trim().min(1).max(100),
+  }),
+  lastCheckedAt: TimestampSchema,
+  lastSuccessfulAt: TimestampSchema.nullable(),
+  message: z.string().trim().min(1).max(180),
+});
+
+const HomeAssistantServerUrlSchema = z
+  .url()
+  .max(500)
+  .superRefine((value, context) => {
+    const rootAddress = /^(https?):\/\/([^/@:#?]+|\[[^\]]+\])(?::\d+)?\/?$/i.exec(value);
+    if (rootAddress === null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Use the Home Assistant root address without credentials, a path or query',
+      });
+      return;
+    }
+    const [, protocol = '', hostname = ''] = rootAddress;
+    if (protocol.toLowerCase() === 'http' && !isPrivateHomeAssistantHost(hostname)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Plain HTTP is allowed only for a private local Home Assistant address',
+      });
+    }
+  });
+
+export const HomeAssistantConnectionTestRequestSchema = z
+  .object({
+    serverUrl: HomeAssistantServerUrlSchema,
+    accessToken: z.string().trim().min(20).max(512),
+  })
+  .strict();
+
+export const HomeAssistantConnectionOptionSchema = z.object({
+  id: OpaqueIdSchema,
+  displayName: z.string().trim().min(1).max(100),
+  kindLabel: z.string().trim().min(1).max(60),
+});
+
+const HomeAssistantConnectionOptionsSchema = z.object({
+  occupancy: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  televisionPower: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  hearthForeground: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  protectedMedia: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  scripts: z.array(HomeAssistantConnectionOptionSchema).max(80),
+});
+
+export const HomeAssistantConnectionTestResultSchema = z.object({
+  testId: OpaqueIdSchema,
+  provider: z.literal('home-assistant'),
+  serverHost: z.string().trim().min(1).max(253),
+  instanceName: z.string().trim().min(1).max(100),
+  version: z.string().trim().min(1).max(40),
+  options: HomeAssistantConnectionOptionsSchema,
+  expiresAt: TimestampSchema,
+});
+
+const HomeAssistantMappingSelectionSchema = z.object({
+  occupancyId: OpaqueIdSchema,
+  televisionPowerId: OpaqueIdSchema,
+  hearthForegroundId: OpaqueIdSchema,
+  protectedMediaId: OpaqueIdSchema,
+  eveningScriptId: OpaqueIdSchema,
+  goodnightScriptId: OpaqueIdSchema,
+  screenOffScriptId: OpaqueIdSchema,
+});
+
+export const SaveHomeAssistantConnectionRequestSchema = CommandRequestSchema.extend({
+  testId: OpaqueIdSchema,
+  label: z.string().trim().min(1).max(80),
+  mappings: HomeAssistantMappingSelectionSchema,
+}).superRefine((value, context) => {
+  const states = [
+    value.mappings.occupancyId,
+    value.mappings.televisionPowerId,
+    value.mappings.hearthForegroundId,
+    value.mappings.protectedMediaId,
+  ];
+  const scripts = [
+    value.mappings.eveningScriptId,
+    value.mappings.goodnightScriptId,
+    value.mappings.screenOffScriptId,
+  ];
+  if (new Set(states).size !== states.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['mappings'],
+      message: 'Choose a different state for each safety signal',
+    });
+  }
+  if (new Set(scripts).size !== scripts.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['mappings'],
+      message: 'Choose a different script for each Home action',
+    });
+  }
+});
+
+export const RemoveHomeAssistantConnectionRequestSchema = CommandRequestSchema;
+
+export const HomeAssistantConnectionCommandResultSchema = z.object({
+  connection: HomeAssistantConnectionSettingsSchema.nullable(),
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+function isPrivateHomeAssistantHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (
+    host === 'localhost' ||
+    host.endsWith('.local') ||
+    host.endsWith('.home.arpa') ||
+    host === '::1'
+  ) {
+    return true;
+  }
+  if (host.includes(':')) {
+    const firstHextet = Number.parseInt(host.split(':', 1)[0] ?? '', 16);
+    return (
+      Number.isInteger(firstHextet) &&
+      ((firstHextet >= 0xfc00 && firstHextet <= 0xfdff) ||
+        (firstHextet >= 0xfe80 && firstHextet <= 0xfebf))
+    );
+  }
+  const octets = host.split('.').map(Number);
+  if (
+    octets.length !== 4 ||
+    octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
+  )
+    return false;
+  const [first = -1, second = -1] = octets;
+  return (
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 100 && second >= 64 && second <= 127)
+  );
+}
+
 export const UpdateHouseholdRequestSchema = CommandRequestSchema.extend({
   name: z.string().trim().min(1).max(100),
   timezone: TimezoneSchema,
@@ -1474,6 +1637,23 @@ export type CalendarConnectionTestResult = z.infer<typeof CalendarConnectionTest
 export type SaveCalendarConnectionRequest = z.infer<typeof SaveCalendarConnectionRequestSchema>;
 export type RemoveCalendarConnectionRequest = z.infer<typeof RemoveCalendarConnectionRequestSchema>;
 export type CalendarConnectionCommandResult = z.infer<typeof CalendarConnectionCommandResultSchema>;
+export type HomeAssistantConnectionSettings = z.infer<typeof HomeAssistantConnectionSettingsSchema>;
+export type HomeAssistantConnectionTestRequest = z.infer<
+  typeof HomeAssistantConnectionTestRequestSchema
+>;
+export type HomeAssistantConnectionOption = z.infer<typeof HomeAssistantConnectionOptionSchema>;
+export type HomeAssistantConnectionTestResult = z.infer<
+  typeof HomeAssistantConnectionTestResultSchema
+>;
+export type SaveHomeAssistantConnectionRequest = z.infer<
+  typeof SaveHomeAssistantConnectionRequestSchema
+>;
+export type RemoveHomeAssistantConnectionRequest = z.infer<
+  typeof RemoveHomeAssistantConnectionRequestSchema
+>;
+export type HomeAssistantConnectionCommandResult = z.infer<
+  typeof HomeAssistantConnectionCommandResultSchema
+>;
 export type UpdateHouseholdRequest = z.infer<typeof UpdateHouseholdRequestSchema>;
 export type CreateMemberRequest = z.infer<typeof CreateMemberRequestSchema>;
 export type UpdateMemberRequest = z.infer<typeof UpdateMemberRequestSchema>;

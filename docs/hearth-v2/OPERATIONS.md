@@ -129,6 +129,23 @@ confirm all returned sources are read-only, then revoke the password after the
 validation if the deployment is not proceeding. No calendar write method is
 present.
 
+The Home Assistant REST adapter likewise remains inert unless private mode sets
+`HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.
+Do not place the URL, token or entity IDs in `.env`, Compose values, source, SQLite, logs, chat or a
+command line. After a current Home Assistant backup and rollback path are verified, an adult uses
+**Connections > Home Assistant** to test the server-reachable private root address and a dedicated
+long-lived token. The browser receives only opaque choices and friendly labels. Save maps exactly
+occupancy, television power, Hearth foreground, protected playback, Evening, Goodnight and Screen
+off; the server atomically writes the raw JSON with mode `0600` and activates it without restart.
+Removal deletes that file and returns the provider to the explicit unconfigured state.
+
+Commission the three scripts and four helper/state entities in Home Assistant before saving the
+mapping. Confirm the generic protected-playback helper covers native Google TV and Cast playback,
+then exercise each Hearth Home action while watching the actual device. Hearth makes no arbitrary
+service call and has no Jellyfin, Music Assistant or Cast control. If validation does not proceed,
+remove the connection through Admin and revoke the dedicated token. Take a fresh Home Assistant
+backup only after the verified mapping/hardware test.
+
 Set `HEARTH_MODE=private` only with a dedicated private database path. If
 `HEARTH_DATABASE_PATH` is omitted, Hearth chooses `data/hearth-private.sqlite`
 for private mode and `data/hearth-demo.sqlite` for demo/test. Do not point
@@ -156,7 +173,7 @@ Deployment files belong in `hearth/deploy/synology`; live secrets never return t
 As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffold: a multi-stage
 Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
 Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
-ignored runtime directory template. The server production build includes all 17 forward migrations
+ignored runtime directory template. The server production build includes all 19 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 
 Both native ARM64 development images and emulated `linux/amd64` images for the DS920+ were built and

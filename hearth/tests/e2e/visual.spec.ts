@@ -376,6 +376,7 @@ test('@visual Phase 3 calendar projection at TV and phone viewports', async ({ p
 
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.reload();
+  await expect(page.getByRole('button', { name: /School drop-off, Ezra$/ }).first()).toBeVisible();
   await page.screenshot({
     path: resolve(phaseThreeEvidence, 'week-tv-1366.png'),
     animations: 'disabled',
@@ -391,6 +392,7 @@ test('@visual Phase 3 calendar projection at TV and phone viewports', async ({ p
 
   await page.setViewportSize({ width: 844, height: 390 });
   await page.reload();
+  await expect(page.locator('.week-agenda')).toBeVisible();
   await page.screenshot({
     path: resolve(phaseThreeEvidence, 'week-phone-landscape.png'),
     animations: 'disabled',
@@ -412,7 +414,10 @@ test('@visual Phase 3 CalDAV connection boundary on phone', async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/connections');
   await expect(page.getByRole('link', { name: /Calendar/ })).toBeVisible();
-  await expect(page.getByText('Calendar passwords stay on the Hearth server')).toBeVisible();
+  await expect(page.getByText(/Connection secrets stay on the Hearth server/)).toBeVisible();
+  await expect(page.getByRole('link', { name: /Home Assistant/ })).toContainText(
+    'four household states and three approved Home actions',
+  );
   await expect(page.getByText('Jellyfin', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Music Assistant', { exact: true })).toHaveCount(0);
   await page.screenshot({

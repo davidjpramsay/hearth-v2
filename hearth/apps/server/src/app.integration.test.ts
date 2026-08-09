@@ -571,6 +571,7 @@ describe('Hearth v2 API', () => {
         '*.token',
         '*.password',
         '*.appPassword',
+        '*.accessToken',
         '*.dataBase64',
         '*.setupCode',
       ]),
@@ -730,6 +731,138 @@ describe('Hearth v2 API', () => {
         serverUrl: 'https://caldav.icloud.com',
         username: 'fictional@example.com',
         appPassword: 'wrong-password',
+      },
+    });
+    expect(insecure.statusCode).toBe(400);
+    expect(insecure.json().error.code).toBe('VALIDATION_ERROR');
+    expect(rejected.statusCode).toBe(503);
+    expect(rejected.json().error).toMatchObject({
+      code: 'INTEGRATION_UNAVAILABLE',
+      retryable: false,
+    });
+  });
+
+  it('tests, maps, replays and removes a credential-safe Home Assistant connection', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const accessToken = 'private-home-assistant-token';
+    const tested = await app.inject({
+      method: 'POST',
+      url: `${root}/home-assistant-connection-tests`,
+      headers,
+      payload: {
+        serverUrl: 'http://homeassistant.local:8123',
+        accessToken,
+      },
+    });
+    expect(tested.statusCode).toBe(200);
+    expect(tested.json()).toMatchObject({
+      provider: 'home-assistant',
+      serverHost: 'homeassistant.local',
+      instanceName: 'Hearth Demo Home',
+    });
+    expect(JSON.stringify(tested.json())).not.toContain(accessToken);
+    expect(JSON.stringify(tested.json())).not.toContain('binary_sensor.family_home');
+    const options = tested.json().options as Record<string, Array<{ id: string }>>;
+    const payload = {
+      requestId: 'request_home_assistant_http_save',
+      testId: tested.json().testId as string,
+      label: 'Living room',
+      mappings: {
+        occupancyId: requiredOptionId(options, 'occupancy'),
+        televisionPowerId: requiredOptionId(options, 'televisionPower'),
+        hearthForegroundId: requiredOptionId(options, 'hearthForeground'),
+        protectedMediaId: requiredOptionId(options, 'protectedMedia'),
+        eveningScriptId: requiredOptionId(options, 'scripts', 0),
+        goodnightScriptId: requiredOptionId(options, 'scripts', 1),
+        screenOffScriptId: requiredOptionId(options, 'scripts', 2),
+      },
+    };
+    const saved = await app.inject({
+      method: 'PUT',
+      url: `${root}/home-assistant-connection`,
+      headers,
+      payload,
+    });
+    const replay = await app.inject({
+      method: 'PUT',
+      url: `${root}/home-assistant-connection`,
+      headers,
+      payload,
+    });
+    const read = await app.inject({
+      method: 'GET',
+      url: `${root}/home-assistant-connection`,
+      headers,
+    });
+    const child = await app.inject({
+      method: 'GET',
+      url: `${root}/home-assistant-connection`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({
+      replayed: false,
+      connection: {
+        provider: 'home-assistant',
+        serverHost: 'homeassistant.local',
+        stateMappings: { occupancy: 'Family home' },
+        actionMappings: { screenOff: 'Screen off' },
+      },
+      audit: { action: 'home-assistant.connection.save' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+    expect(read.json()).toEqual(saved.json().connection);
+    expect(JSON.stringify(read.json())).not.toContain(accessToken);
+    expect(child.statusCode).toBe(403);
+
+    const removed = await app.inject({
+      method: 'POST',
+      url: `${root}/home-assistant-connection/removals`,
+      headers,
+      payload: { requestId: 'request_home_assistant_http_remove' },
+    });
+    const removeReplay = await app.inject({
+      method: 'POST',
+      url: `${root}/home-assistant-connection/removals`,
+      headers,
+      payload: { requestId: 'request_home_assistant_http_remove' },
+    });
+    const after = await app.inject({
+      method: 'GET',
+      url: `${root}/home-assistant-connection`,
+      headers,
+    });
+    expect(removed.json()).toMatchObject({
+      connection: null,
+      replayed: false,
+      audit: { action: 'home-assistant.connection.remove', result: 'reversed' },
+    });
+    expect(removeReplay.json()).toMatchObject({ connection: null, replayed: true });
+    expect(after.json()).toBeNull();
+  });
+
+  it('returns stable Home Assistant setup validation and authentication errors', async () => {
+    const app = server();
+    const url = '/api/v1/households/household_hearth_demo/home-assistant-connection-tests';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const insecure = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'http://home-assistant.example.com:8123',
+        accessToken: 'private-home-assistant-token',
+      },
+    });
+    const rejected = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'http://homeassistant.local:8123',
+        accessToken: 'wrong-home-assistant-token',
       },
     });
     expect(insecure.statusCode).toBe(400);
@@ -1829,3 +1962,13 @@ describe('Hearth v2 API', () => {
     expect(assist.json().error.code).toBe('UNAUTHENTICATED');
   });
 });
+
+function requiredOptionId(
+  options: Record<string, Array<{ id: string }>>,
+  group: string,
+  index = 0,
+): string {
+  const option = options[group]?.[index];
+  if (option === undefined) throw new Error(`Expected a ${group} Home Assistant option.`);
+  return option.id;
+}

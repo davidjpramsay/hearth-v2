@@ -15,6 +15,7 @@ services:
       HEARTH_TRUST_PROXY_HOPS: 1
       HEARTH_DATABASE_PATH: /data/hearth.sqlite
       HEARTH_CALENDAR_CONFIG_PATH: /run/hearth-secrets/calendar.json
+      HEARTH_HOME_ASSISTANT_CONFIG_PATH: /run/hearth-secrets/home-assistant.json
       HEARTH_PHOTO_SOURCE_DIR: ${HEARTH_PHOTO_SOURCE_DIR:-}
       HEARTH_PHOTO_DERIVATIVE_DIR: /data/photo-derivatives
       HEARTH_PHOTO_COLLECTION_NAME: ${HEARTH_PHOTO_COLLECTION_NAME:-Family photos}

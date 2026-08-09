@@ -53,6 +53,10 @@ import {
   HouseholdListSettingsSchema,
   HomeActionIdSchema,
   HomeActionResultSchema,
+  HomeAssistantConnectionCommandResultSchema,
+  HomeAssistantConnectionSettingsSchema,
+  HomeAssistantConnectionTestRequestSchema,
+  HomeAssistantConnectionTestResultSchema,
   HomeStatusSchema,
   ListItemCommandResultSchema,
   ListSettingsCommandResultSchema,
@@ -89,12 +93,14 @@ import {
   RealtimeEventSchema,
   RecordPocketMoneyPaymentRequestSchema,
   RemoveCalendarConnectionRequestSchema,
+  RemoveHomeAssistantConnectionRequestSchema,
   ResetMemberAvatarRequestSchema,
   RevokeDeviceRequestSchema,
   RuntimeContextSchema,
   SavedMealCommandResultSchema,
   SavedMealLibrarySchema,
   SaveCalendarConnectionRequestSchema,
+  SaveHomeAssistantConnectionRequestSchema,
   TodaySummarySchema,
   TodayConfigurationCommandResultSchema,
   TodayConfigurationSchema,
@@ -128,6 +134,11 @@ import {
   type CalendarConnectionRepository,
 } from './calendar-connection-repository.js';
 import { HEARTH_COMPANION_COOKIE, type CompanionAuthRepository } from './companion-auth.js';
+import {
+  FakeHomeAssistantConnectionVerifier,
+  HomeAssistantConnectionService,
+  type HomeAssistantConnectionRepository,
+} from './home-assistant-connection-repository.js';
 import { RealtimeHub } from './realtime.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
@@ -183,6 +194,7 @@ export const LOGGER_REDACT_PATHS = [
   '*.password',
   '*.dataBase64',
   '*.appPassword',
+  '*.accessToken',
   '*.setupCode',
 ] as const;
 
@@ -199,6 +211,7 @@ export interface BuildServerOptions {
   photoRepository?: PhotoRepository;
   pocketMoneyRepository?: PocketMoneyRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
+  homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
   companionAuth?: CompanionAuthRepository;
   todayContentRepository?: TodayContentRepository;
   runtime?: RuntimeConfiguration;
@@ -249,6 +262,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             credentialStore: {
               save: async () => {
                 throw new Error('Private calendar secret storage is not configured.');
+              },
+              remove: async () => undefined,
+            },
+          },
+    );
+  const homeAssistantConnectionRepository =
+    options.homeAssistantConnectionRepository ??
+    new HomeAssistantConnectionService(
+      adminRepository,
+      new FakeHomeAssistantConnectionVerifier(),
+      demoMode
+        ? { now: () => runtime.clock.now() }
+        : {
+            now: () => runtime.clock.now(),
+            credentialStore: {
+              save: async () => {
+                throw new Error('Private Home Assistant secret storage is not configured.');
               },
               remove: async () => undefined,
             },
@@ -563,6 +593,79 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ),
         );
         realtime.publish(params.householdId, 'calendar.changed', result.audit.targetId);
+        return result;
+      });
+    },
+  );
+
+  server.get(
+    '/api/v1/households/:householdId/home-assistant-connection',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () => {
+        const connection = await homeAssistantConnectionRepository.get(
+          params.householdId,
+          actorId(request.headers, options),
+        );
+        return connection === null ? null : HomeAssistantConnectionSettingsSchema.parse(connection);
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/home-assistant-connection-tests',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(HomeAssistantConnectionTestRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        HomeAssistantConnectionTestResultSchema.parse(
+          await homeAssistantConnectionRepository.test(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.put(
+    '/api/v1/households/:householdId/home-assistant-connection',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(SaveHomeAssistantConnectionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = HomeAssistantConnectionCommandResultSchema.parse(
+          await homeAssistantConnectionRepository.save(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        );
+        realtime.publish(params.householdId, 'home.changed', result.audit.targetId);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/home-assistant-connection/removals',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(RemoveHomeAssistantConnectionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = HomeAssistantConnectionCommandResultSchema.parse(
+          await homeAssistantConnectionRepository.remove(
+            params.householdId,
+            actorId(request.headers, options),
+            body.requestId,
+          ),
+        );
+        realtime.publish(params.householdId, 'home.changed', result.audit.targetId);
         return result;
       });
     },
@@ -1792,6 +1895,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       photoRepository.reset();
       pocketMoneyRepository.reset();
       calendarConnectionRepository.reset();
+      homeAssistantConnectionRepository.reset();
       todayContentRepository.reset();
       return reply.send({ reset: true });
     });
@@ -1814,6 +1918,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     adminRepository.close();
     pocketMoneyRepository.close();
     calendarConnectionRepository.close();
+    homeAssistantConnectionRepository.close();
     todayContentRepository.close();
   });
 

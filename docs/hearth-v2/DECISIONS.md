@@ -605,3 +605,27 @@ Record durable choices here. New decisions should include date, status, context,
   completions and historical views remain stable after future edits. Migration
   `0018_chore_windows_and_order.sql` backfills deterministic template order and occurrence snapshots
   and adds the household/order index.
+
+## D-042 — Home Assistant setup uses opaque discovery and an external secret
+
+- Date: 2026-08-10
+- Status: accepted
+- Context: The curated Home and Assist contracts already enforced Hearth's narrow product boundary,
+  but private deployment still needed a usable way for an adult to connect Home Assistant and map
+  household-specific entities. Returning raw discovery IDs or storing a long-lived token in the
+  browser/SQLite would unnecessarily widen the credential boundary, while a restart-only config
+  file would make safe setup difficult on a phone.
+- Choice: Use a two-step adult-only test/save workflow. Test the private root address and long-lived
+  token through Home Assistant's supported REST API, retain the credential and raw discovery result
+  for at most ten minutes in process, and return only opaque option IDs with friendly labels/kinds.
+  Save exactly four state mappings (occupancy, television power, Hearth foreground and generic
+  protected playback) plus three scripts (Evening, Goodnight and Screen off). Atomically write the
+  root URL, token and raw entity IDs to an external mode-`0600` JSON file and activate a managed
+  provider without restart. Store only hostname, instance/version, friendly labels, readiness and
+  timestamps in SQLite. Permit runtime reads only for the four mapped state endpoints and commands
+  only through `script.turn_on` for a server-mapped script. Keep demo discovery fictional; require a
+  current approved Home Assistant backup before live commissioning.
+- Consequence: Companion setup is usable and auditable without exposing secrets or creating a
+  general Home Assistant dashboard. Migration `0019_home_assistant_connection_setup.sql` contains
+  credential-free metadata only. Hearth still has no media-player, Jellyfin, Music Assistant, Cast,
+  arbitrary entity/service, microphone or speech surface; D-019, D-020 and D-022 remain authoritative.

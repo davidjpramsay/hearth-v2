@@ -154,6 +154,8 @@ summaries and stable family-safe API errors. The implemented routes are:
   `POST .../:templateId/restorations` with a validated `resumeFrom` local date)
 - `GET /api/v1/households/:id/home` for curated presence, television power and power-safety state
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
+- adult-only `GET /api/v1/households/:id/home-assistant-connection`, separate connection-test and
+  save commands, and an idempotent removal command for the bounded Home Assistant mapping workflow
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist
 - `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
 - adult-only `GET /api/v1/households/:id/photo-source` and idempotent
@@ -230,6 +232,15 @@ and publishes `calendar.changed`. Removal deletes the credential file and
 disconnects the managed provider. No browser contract returns a username,
 password, collection URL or event payload from discovery.
 
+Home Assistant setup follows the same two-step boundary. A test calls only the supported
+`/api/config` and `/api/states` REST endpoints, keeps the URL, token and raw discovered entity IDs
+inside a ten-minute in-process record, and returns opaque option IDs with friendly labels. Save
+resolves exactly four state mappings and three script mappings, atomically writes the raw values to
+the external mode-`0600` secret file, persists only hostname/instance/version/friendly labels in
+SQLite, activates the managed provider without restart and publishes `home.changed`. Removal
+deletes the external file and disconnects the provider. Demo/test use deterministic fictional
+discovery; the private browser contract never returns the token, root URL or raw entity IDs.
+
 Phase 4 uses the same command envelope, actor/source resolution, audit summaries,
 idempotency receipts and SSE invalidation path as chores. The television may
 check list items, but recurring-chore, meal and pocket-money editing stays in the
@@ -275,11 +286,12 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0018` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0019` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
-management history, and snapshotted chore windows/order. The live demo server uses the SQLite
+management history, snapshotted chore windows/order, and credential-free Home Assistant connection
+metadata. The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
@@ -321,7 +333,8 @@ During the isolated demo, a server-resolved Maya administrator session exercises
 
 ### Service integrations
 
-- Calendar credentials and Home Assistant tokens remain server-side.
+- Calendar credentials and Home Assistant URL/token/raw mappings remain in access-restricted,
+  external server files; SQLite, browser contracts and audit summaries retain only safe metadata.
 - Secrets enter containers through environment/secret files excluded from source control.
 - Tokens are scoped as narrowly as the provider allows.
 - Device and service credentials are independently revocable.
@@ -344,10 +357,13 @@ Hearth is permitted to call only configured Home Assistant scripts/services thro
 Never expose an arbitrary service-call form to a child/guest surface or an LLM.
 
 The Phase 5 adapter accepts only `evening-mode`, `goodnight` and `screen-off`.
-Those IDs map server-side to fixed script targets; request payloads cannot name
-a Home Assistant domain, service or entity. The cached projection stores only
-presence, television power, whether Hearth is foreground and a generic
-protected-media boolean. It stores no current app, title, track or player.
+Those IDs map server-side to one of exactly three selected script entities and call only Home
+Assistant's `script.turn_on` service; request payloads cannot name a Home Assistant domain, service
+or entity. Runtime reads fetch only the four selected state endpoints. The cached projection stores
+only presence, television power, whether Hearth is foreground and a generic protected-media
+boolean. It stores no current app, title, track or player. The adult setup workflow exposes only
+opaque discovery choices and family-readable saved labels, so it does not become a general Home
+Assistant dashboard.
 
 Home Assistant is also the complete local-voice host. Voice Preview Edition or
 an iPhone sends speech to Assist; Assist calls Hearth's authenticated `/assist`

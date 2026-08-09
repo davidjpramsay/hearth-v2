@@ -782,4 +782,49 @@ describe('0001 household core migration', () => {
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
+
+  it('adds credential-free Home Assistant setup metadata with strict mapping JSON', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 19').get()).toEqual(
+      { name: 'home_assistant_connection_setup' },
+    );
+    const columns = database
+      .prepare('PRAGMA table_info(home_assistant_connection_settings)')
+      .all() as Array<{ name: string }>;
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        'server_host',
+        'instance_name',
+        'state_mappings_json',
+        'action_mappings_json',
+      ]),
+    );
+    expect(columns.map((column) => column.name)).not.toEqual(
+      expect.arrayContaining(['token', 'server_url', 'entity_id', 'credential']),
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_ha_setup', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO home_assistant_connection_settings VALUES (
+        'household_ha_setup', 'home_assistant_setup_test', 'home-assistant', 'Living room',
+        'homeassistant.local', 'Ramsay Home', '2026.8.1', 'ready',
+        '{"occupancy":"Family home","televisionPower":"Living room television","hearthForeground":"Hearth app active","protectedMedia":"Protected playback active"}',
+        '{"evening":"Evening","goodnight":"Goodnight","screenOff":"Screen off"}',
+        'now', 'now', NULL, 'now', 'now'
+      );
+    `);
+    expect(() =>
+      database.exec(`
+        UPDATE home_assistant_connection_settings
+        SET action_mappings_json = 'not-json'
+        WHERE household_id = 'household_ha_setup';
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
 });

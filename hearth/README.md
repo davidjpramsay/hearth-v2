@@ -6,8 +6,8 @@ navigation, persistent recurring chore occurrences, completion/undo/skip,
 idempotent audit-safe commands, live invalidation, a companion Admin area, and
 a durable provider-neutral calendar projection with cached outage recovery and
 an opt-in read-only CalDAV/iCloud adapter,
-shared lists, dinner planning, recurring-routine administration and an
-append-only star ledger, a curated Home Assistant screen and structured Assist
+shared lists, dinner planning, recurring-routine administration and proportional
+weekly pocket money, a curated Home Assistant screen and structured Assist
 command endpoints. Home Assistant owns the microphone, wake word, recognition
 and Piper speech; Hearth does not listen or speak. Separately, the household
 deployment may later use Music Assistant to search Jellyfin music and cast it
@@ -20,14 +20,15 @@ Google TV emulator run is retained; the selected-TCL lifecycle run remains
 required before Phase 6 is complete. Phase 7 is in progress with an original
 responsive Photos gallery, an injected path-safe photo-source contract, mixed
 orientation demo derivatives, offline/cached/error states and an ambient
-slideshow that exits on any remote key. Live Synology indexing and
-presence/quiet-hours coordination remain unconfigured. Hearth also provides
+slideshow that exits on any remote key, plus a read-only Synology folder indexer
+and Admin scan status. Live folder selection/mount and presence/quiet-hours
+coordination remain unconfigured. Hearth also provides
 per-display Light, Dark and Automatic themes plus independent evening dimming;
 Automatic follows that device's system colour setting and does not invoke a
 Home Assistant scene.
 
 No real calendar, Home Assistant, Synology or household credential is required.
-Admin, chore, list, meal, reward and normalized fake-calendar state persist in
+Admin, chore, list, meal, pocket-money and normalized fake-calendar state persist in
 `data/hearth-demo.sqlite` through a migrated WAL-mode SQLite repository. Demo
 reset/scenario routes remain deliberately isolated from non-demo mode.
 
@@ -49,10 +50,11 @@ pnpm dev
 
 Open `http://127.0.0.1:4320/today`. On a phone viewport, **More** opens the
 Admin area for household name/timezone, people/roles, televisions, connection
-readiness and Family Planning. Recurring chore, meal and reward editing is
+readiness and Family Planning. Recurring chore, meal and pocket-money editing is
 phone-first; Lists and Meals remain readable and actionable on television.
 `http://127.0.0.1:4320/home` opens the curated living-room status and three
-fake-adapter Home Assistant actions.
+fake-adapter Home Assistant actions. `http://127.0.0.1:4320/admin/connections/home-assistant`
+opens the fictional connection and allowlist-mapping flow without contacting a live system.
 `http://127.0.0.1:4320/photos` opens the demo gallery and ambient mode. The
 phone More screen also links to Photos.
 `http://127.0.0.1:4320/admin/appearance` opens the per-display theme and evening
@@ -107,11 +109,28 @@ Never place this JSON in the workspace, `.env`, a browser `VITE_`
 variable, image layer or shell command. Without the path, private mode reports
 calendar as not configured and continues serving local Hearth data.
 
-The Admin UI uses a demo-only Maya adult session. This exercises real
-server-side capability checks, including child rejection, but is not a login
-mechanism. D-014 selects named adult passkeys once the private deployment has a
-stable HTTPS hostname. No raw device credential or passkey is stored in this
-workspace.
+## Optional private Home Assistant connection
+
+The live REST adapter is inert unless `HEARTH_MODE=private` and
+`HEARTH_HOME_ASSISTANT_CONFIG_PATH` points to an access-restricted, writable file outside this
+repository. After the private HTTPS/passkey setup is commissioned, an adult uses **More →
+Connections → Home Assistant** to enter the private Home Assistant root address and a dedicated
+long-lived access token. Testing returns only opaque candidate IDs and friendly labels; saving maps
+four safety signals and exactly three scripts. Hearth atomically writes the URL, token and raw
+entity IDs to the external file with mode `0600`, activates the adapter without restart and stores
+only safe labels/status in SQLite. Demo mode always uses fictional discovery.
+
+The adapter calls Home Assistant only for the four mapped state reads and `script.turn_on` for
+Evening, Goodnight and Screen off. It has no generic service, dashboard, Jellyfin, Music Assistant
+or Cast control surface. Live connection and hardware commissioning still requires an approved
+Home Assistant backup/rollback check; no real token belongs in this workspace, `.env`, a Vite
+variable, image layer or command line.
+
+The demo Admin UI uses a fictional Maya adult session. This exercises real server-side capability
+checks, including child rejection, but is not a login mechanism. Private mode implements named
+adult passkey enrolment and revocable secure sessions; it remains inert until the stable private
+HTTPS hostname and external one-time setup code are commissioned. No raw device credential or
+passkey is stored in this workspace.
 
 ## Verification
 

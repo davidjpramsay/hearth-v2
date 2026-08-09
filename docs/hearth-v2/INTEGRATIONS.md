@@ -67,18 +67,38 @@ Do not scrape calendar web interfaces or ingest private ICS links into client co
 
 ## Home Assistant
 
-Hearth talks to Home Assistant from the server, using its supported REST/WebSocket APIs as appropriate. The television/web client never receives the Home Assistant long-lived token.
+Hearth talks to Home Assistant from the server through its supported REST API. The television/web
+client never receives the Home Assistant long-lived token, root URL or raw entity IDs.
+
+The responsive **Connections > Home Assistant** workflow implements a two-step test/save boundary.
+An authenticated adult supplies the private root address and a long-lived token. The server checks
+`GET /api/config` and `GET /api/states`, retains the secret discovery result only in process for ten
+minutes and returns opaque option IDs plus friendly labels/kinds. Save resolves those opaque IDs,
+atomically writes the URL, token and raw mappings to the external
+`HEARTH_HOME_ASSISTANT_CONFIG_PATH` file with mode `0600`, and activates the managed adapter without
+a restart. SQLite stores only hostname, instance/version, friendly mapping labels, readiness and
+timestamps. Save/remove use normal adult authorisation, idempotency receipts, audits and
+`home.changed` invalidation. Demo/test mode uses deterministic fictional discovery and never contacts
+Home Assistant.
+
+Home Assistant documents Bearer authentication, `GET /api/config`, state reads and service calls in
+its [REST API](https://developers.home-assistant.io/docs/api/rest/); its
+[authentication documentation](https://developers.home-assistant.io/docs/auth_api/) describes
+creating long-lived tokens from a user profile. Live token creation and connection remain an
+owner-approved commissioning step after a current Home Assistant backup is verified.
 
 ### Read path
 
-Expose a curated projection of selected states:
+The first adapter reads exactly four mapped states in parallel:
 
-- television power and a generic protected-media-active state for safe automation
-- room presence
-- selected climate/weather/door state
-- availability of Hearth scenes/scripts
+- household occupancy
+- living-room television power
+- whether Hearth is the foreground television app
+- one generic protected-media-active state covering native and Cast playback
 
 Translate entity IDs and raw states into family-readable Hearth models.
+Weather, climate and door sensors are not part of this first allowlist; weather remains a separate
+provider decision rather than an excuse to expose a general Home Assistant dashboard.
 
 ### Command path
 
@@ -88,7 +108,9 @@ Commands resolve a Hearth action ID through a server-side allowlist. Initial act
 - `goodnight`
 - `screen-off`
 
-Each definition includes argument validation, allowed roles and confirmation level. Reject arbitrary domain/service/entity input from clients.
+Each definition includes argument validation, allowed roles and confirmation level. The REST
+adapter calls only `POST /api/services/script/turn_on` with the server-mapped script for that action.
+Reject arbitrary domain/service/entity input from clients.
 
 ### Home Assistant to Hearth
 
@@ -113,9 +135,11 @@ Home Assistant Assist is the voice orchestrator. The initial fully local pipelin
 
 Hearth supplies neither the microphone nor a speech pipeline. It exposes
 narrowly scoped, authenticated `/assist` endpoints and returns deterministic
-text for Home Assistant/Piper to speak. The Phase 5 fake adapter exercises this
-contract without a Home Assistant credential; live token provisioning and
-entity mapping are deployment work and remain outside the browser bundle.
+text for Home Assistant/Piper to speak. Phase 5 tests exercise this contract with
+the fake provider, while the private REST adapter and adult mapping workflow now
+prepare the live connection without placing a token or entity ID in the browser
+bundle. Actual Home Assistant/Piper sentence and hardware testing remains
+deployment work.
 
 This section governs household commands that call Hearth. Voice-requested
 music follows the separate Music Assistant flow below and never calls a Hearth

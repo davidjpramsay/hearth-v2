@@ -47,8 +47,9 @@ Before any approved Synology commissioning:
 3. Set `HEARTH_UID` and `HEARTH_GID` to a dedicated, non-root Synology service account.
 4. Create the separate v2 data and secret directories described in `OPERATIONS.md`; grant only that
    service account read/write access and never use world-writable permissions.
-5. Keep the calendar secret directory writable by the server because approved companion setup uses
-   an atomic `0600` write. Never place the resulting JSON in Compose, Git, an image or a command line.
+5. Keep the secret directory writable by the server because approved Calendar and Home Assistant
+   companion setup uses atomic `0600` writes. Never place either resulting JSON file in Compose,
+   Git, an image or a command line.
 6. Select one stable private hostname and a certificate trusted by both iPhone and Google TV.
 7. Set `HEARTH_AUTH_RP_ID` to that hostname and `HEARTH_AUTH_ORIGIN` to its exact HTTPS origin.
    They are validated together at startup and must not be temporary addresses.
@@ -73,6 +74,12 @@ Before any approved Synology commissioning:
     corrected WebP display copies and thumbnails under `/data/photo-derivatives`, and returns only
     opaque asset URLs. It never sends the mounted path or original bytes to the browser. Leave
     `HEARTH_PHOTO_SOURCE_DIR` blank to keep Photos safely unconfigured.
+
+11. Leave Home Assistant unconfigured until its current backup and rollback path are verified. An
+    adult can then use **More → Connections → Home Assistant** to test the private root address and
+    a dedicated long-lived access token, and map exactly four safety states plus Evening,
+    Goodnight and Screen off. The browser receives only opaque choices and friendly labels; the
+    resulting URL, token and raw entity IDs remain in `/run/hearth-secrets/home-assistant.json`.
 
 The hostname and certificate mechanism are intentionally unresolved deployment inputs. The passkey
 contract is implemented, but enrolment remains inert until those values and the first-use code file
@@ -101,6 +108,8 @@ Expected checks:
 - Admin → Photos reports the approved folder index without revealing its path; “Scan now” creates
   an adult audit event and the gallery keeps its last safe derivatives if the NAS is temporarily
   unavailable.
+- Admin → Connections can test and save Home Assistant without returning the token, URL or raw
+  entity IDs to the browser, SQLite, receipts or audit summaries.
 
 Do not enter real family or provider data yet. Real-device passkey enrolment, a second-adult recovery
 path, online backup/restore tooling, the exact HTTPS origin and a focused security review remain

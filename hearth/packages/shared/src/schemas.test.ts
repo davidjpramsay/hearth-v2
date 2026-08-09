@@ -4,7 +4,9 @@ import {
   ApiErrorSchema,
   CalendarEventSchema,
   CalendarConnectionTestRequestSchema,
+  HomeAssistantConnectionTestRequestSchema,
   SaveCalendarConnectionRequestSchema,
+  SaveHomeAssistantConnectionRequestSchema,
   CalendarSourceSchema,
   CreateMemberRequestSchema,
   DailyForecastSchema,
@@ -231,6 +233,55 @@ describe('shared wire schemas', () => {
           { calendarId: 'calendar_option_family', ownerMemberId: null },
           { calendarId: 'calendar_option_family', ownerMemberId: 'member_ezra' },
         ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts private Home Assistant roots and rejects unsafe or ambiguous mappings', () => {
+    for (const serverUrl of [
+      'http://homeassistant.local:8123',
+      'http://192.168.1.24:8123',
+      'http://100.100.20.30:8123',
+      'http://[fd12:3456::1]:8123',
+      'http://[febf::1]:8123',
+      'https://ha.hearth.example',
+    ]) {
+      expect(
+        HomeAssistantConnectionTestRequestSchema.parse({
+          serverUrl,
+          accessToken: 'long-lived-demo-token',
+        }).serverUrl,
+      ).toBe(serverUrl);
+    }
+    for (const serverUrl of [
+      'http://home-assistant.example.com:8123',
+      'http://fcastle.example:8123',
+      'http://[fec0::1]:8123',
+      'https://ha.hearth.example/api',
+      'https://user:secret@ha.hearth.example',
+      'ftp://homeassistant.local',
+    ]) {
+      expect(
+        HomeAssistantConnectionTestRequestSchema.safeParse({
+          serverUrl,
+          accessToken: 'long-lived-demo-token',
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      SaveHomeAssistantConnectionRequestSchema.safeParse({
+        requestId: 'request_home_assistant_save',
+        testId: 'home_assistant_test_demo',
+        label: 'Living room',
+        mappings: {
+          occupancyId: 'home_assistant_state_one',
+          televisionPowerId: 'home_assistant_state_one',
+          hearthForegroundId: 'home_assistant_state_three',
+          protectedMediaId: 'home_assistant_state_four',
+          eveningScriptId: 'home_assistant_script_one',
+          goodnightScriptId: 'home_assistant_script_two',
+          screenOffScriptId: 'home_assistant_script_three',
+        },
       }).success,
     ).toBe(false);
   });

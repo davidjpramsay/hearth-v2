@@ -7,11 +7,13 @@ import { expect, test } from '@playwright/test';
 const evidence = resolve('docs/evidence/phase-2/screenshots');
 const peopleEvidence = resolve('docs/evidence/admin-people');
 const calendarEvidence = resolve('docs/evidence/calendar-connection');
+const homeAssistantEvidence = resolve('docs/evidence/home-assistant-connection');
 
 test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
   await mkdir(peopleEvidence, { recursive: true });
   await mkdir(calendarEvidence, { recursive: true });
+  await mkdir(homeAssistantEvidence, { recursive: true });
 });
 
 test.beforeEach(async ({ request }) => {
@@ -120,6 +122,99 @@ test('calendar setup exposes a family-safe sign-in error and supports keyboard B
   await page.keyboard.press('Escape');
   await expect(page).toHaveURL(/\/admin\/connections$/);
   await expect(page.locator('[data-focus-id="connection-calendar"]')).toBeFocused();
+});
+
+test('adult can test, map, save and remove a tightly scoped Home Assistant connection', async ({
+  page,
+}) => {
+  const consoleProblems: string[] = [];
+  page.on('console', (message) => {
+    if (['warning', 'error'].includes(message.type())) consoleProblems.push(message.text());
+  });
+  page.on('pageerror', (error) => consoleProblems.push(error.message));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/connections');
+  await page.locator('[data-focus-id="connection-home-assistant"]').click();
+  await expect(page).toHaveURL(/\/admin\/connections\/home-assistant$/);
+  await expect(page.getByRole('heading', { name: 'Home Assistant' })).toBeVisible();
+  await expect(page.getByText('Strictly limited')).toBeVisible();
+
+  const token = 'private-home-assistant-token';
+  await page.getByLabel('Long-lived access token').fill(token);
+  await page.getByRole('button', { name: 'Test connection' }).click();
+  await expect(page.getByText('Connection works')).toBeVisible();
+  await expect(page.getByLabel('Long-lived access token')).toHaveCount(0);
+  await expect(page.getByRole('combobox')).toHaveCount(7);
+  await expect(page.getByLabel('Evening', { exact: true })).toContainText('Evening · Script');
+  await expect(page.getByLabel('Goodnight', { exact: true })).toContainText('Goodnight · Script');
+  await expect(page.getByLabel('Screen off', { exact: true })).toContainText('Screen off · Script');
+  await page.screenshot({
+    path: resolve(homeAssistantEvidence, 'home-assistant-mapping-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  const mappingA11y = await new AxeBuilder({ page }).analyze();
+  expect(
+    mappingA11y.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+
+  await page.getByLabel('Connection name').fill('Living room');
+  const saveConnection = page.getByRole('button', { name: 'Save connection' });
+  await saveConnection.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: resolve(homeAssistantEvidence, 'home-assistant-mapping-actions-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  await saveConnection.click();
+  await expect(page.getByRole('heading', { name: 'Living room' })).toBeVisible();
+  await expect(page.getByText('4 safety states · 3 approved actions')).toBeVisible();
+  await expect(page.getByText('Protected playback active')).toBeVisible();
+  await expect(
+    page.getByText('homeassistant.local · Last checked 3 Aug 2026, 7:42 am'),
+  ).toBeVisible();
+  await expect(page.getByText(token)).toHaveCount(0);
+  await page.screenshot({
+    path: resolve(homeAssistantEvidence, 'home-assistant-connected-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  const removeConnection = page.getByRole('button', { name: 'Remove connection' });
+  await removeConnection.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: resolve(homeAssistantEvidence, 'home-assistant-connected-actions-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Living room' })).toBeVisible();
+  await page.getByRole('button', { name: 'Replace connection' }).click();
+  await page.getByLabel('Long-lived access token').fill('replacement-token-that-must-be-forgotten');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Replace connection' }).click();
+  await expect(page.getByLabel('Long-lived access token')).toHaveValue('');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Remove connection' }).click();
+  await page.getByRole('button', { name: 'Yes, remove' }).click();
+  await expect(page.getByRole('button', { name: 'Test connection' })).toBeVisible();
+  expect(consoleProblems).toEqual([]);
+});
+
+test('Home Assistant setup has family-safe authentication errors and keyboard Back', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/connections');
+  await page.locator('[data-focus-id="connection-home-assistant"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-focus-id="home-assistant-server-url"]')).toBeFocused();
+  await page.getByLabel('Long-lived access token').fill('wrong-home-assistant-token');
+  await page.getByRole('button', { name: 'Test connection' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'Home Assistant did not accept that access token',
+  );
+  await expect(page.getByRole('alert')).not.toContainText('wrong-home-assistant-token');
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/admin\/connections$/);
+  await expect(page.locator('[data-focus-id="connection-home-assistant"]')).toBeFocused();
 });
 
 test('Home controls are not presented as an administration setting', async ({ page }) => {
@@ -284,6 +379,7 @@ for (const path of [
   '/admin/televisions',
   '/admin/connections',
   '/admin/connections/calendar',
+  '/admin/connections/home-assistant',
 ]) {
   test(`@a11y ${path} has no serious accessibility violations`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -327,6 +423,21 @@ test('@visual calendar selection at phone portrait', async ({ page }) => {
     fullPage: true,
   });
 });
+
+for (const viewport of [
+  { name: 'phone-portrait', width: 390, height: 844 },
+  { name: 'phone-landscape', width: 844, height: 390 },
+] as const) {
+  test(`@visual Home Assistant setup at ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/admin/connections/home-assistant');
+    await expect(page.getByRole('heading', { name: 'Home Assistant' })).toBeVisible();
+    await page.screenshot({
+      path: resolve(homeAssistantEvidence, `home-assistant-setup-${viewport.name}.png`),
+      animations: 'disabled',
+    });
+  });
+}
 
 test('@a11y television pairing has no serious accessibility violations', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });

@@ -2,17 +2,20 @@ import { Link } from 'react-router-dom';
 
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useAdminQuery, useCalendarConnectionQuery } from '../hooks/useHearthQueries';
+import {
+  useAdminQuery,
+  useCalendarConnectionQuery,
+  useHomeAssistantConnectionQuery,
+} from '../hooks/useHearthQueries';
 
 export function ConnectionsSettingsScreen() {
   const admin = useAdminQuery();
   const calendar = useCalendarConnectionQuery();
-  if (admin.isPending || calendar.isPending) return <AdminLoading />;
+  const homeAssistant = useHomeAssistantConnectionQuery();
+  if (admin.isPending || calendar.isPending || homeAssistant.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;
   if (calendar.isError) return <AdminError message={calendar.error.message} />;
-  const homeAssistant = admin.data.integrations.find(
-    (integration) => integration.kind === 'home-assistant',
-  );
+  if (homeAssistant.isError) return <AdminError message={homeAssistant.error.message} />;
 
   return (
     <AdminPage title="Connections" subtitle="Private services Hearth reads from">
@@ -41,23 +44,36 @@ export function ConnectionsSettingsScreen() {
           </span>
           <Icon className="connection-row__chevron" name="chevron-right" />
         </Link>
-        <article className="connection-row">
+        <Link
+          className="connection-row connection-row--action focusable"
+          data-focus-id="connection-home-assistant"
+          to="/admin/connections/home-assistant"
+        >
           <span className="admin-setting-row__icon">
             <Icon name="home" />
           </span>
           <div>
             <strong>Home Assistant</strong>
-            <p>{homeAssistant?.message ?? 'Home Assistant is not connected.'}</p>
+            <p>
+              {homeAssistant.data === null
+                ? 'Connect four household states and three approved Home actions.'
+                : `${homeAssistant.data.label} · ${homeAssistant.data.message}`}
+            </p>
           </div>
-          <span className="connection-badge">Not connected</span>
-        </article>
+          <span
+            className={`connection-badge${homeAssistant.data === null ? '' : ' connection-badge--healthy'}`}
+          >
+            {homeAssistant.data === null ? 'Set up' : 'Connected'}
+          </span>
+          <Icon className="connection-row__chevron" name="chevron-right" />
+        </Link>
       </div>
       <div className="phase-note">
-        <strong>Private and read-only</strong>
+        <strong>Private and tightly scoped</strong>
         <p>
-          Calendar passwords stay on the Hearth server and are never returned to this screen. Hearth
-          reads only the calendars an adult selects. It does not create, edit or delete calendar
-          events.
+          Connection secrets stay on the Hearth server and never return to this screen. Calendar is
+          read-only. Home Assistant is limited to four safety states and the three actions shown on
+          Hearth’s Home screen.
         </p>
       </div>
     </AdminPage>

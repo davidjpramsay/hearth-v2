@@ -3916,6 +3916,104 @@
   outline-offset: 3px;
 }
 
+.home-assistant-label-field {
+  margin-top: 20px;
+  display: grid;
+  gap: 7px;
+  color: var(--ink);
+  font-weight: 700;
+}
+.home-assistant-label-field input {
+  min-height: 50px;
+  padding: 0 13px;
+  border: 1px solid #cfc5bd;
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--input-surface, white);
+  font: inherit;
+}
+.home-assistant-mapping-group {
+  min-width: 0;
+  margin: 24px 0 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid #e2d9d0;
+}
+.home-assistant-mapping-group legend {
+  padding: 18px 0 4px;
+  color: var(--plum);
+  font-size: 18px;
+  font-weight: 760;
+}
+.home-assistant-mapping-row {
+  min-height: 78px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2d9d0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  align-items: center;
+  gap: 18px;
+}
+.home-assistant-mapping-row > span,
+.home-assistant-mapping-row strong,
+.home-assistant-mapping-row small {
+  display: block;
+}
+.home-assistant-mapping-row small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.home-assistant-mapping-row select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 11px;
+  border: 1px solid #cfc5bd;
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--input-surface, white);
+  font: inherit;
+  font-size: 15px;
+}
+.home-assistant-mapping .admin-submit {
+  margin-top: 22px;
+}
+.home-assistant-saved-mappings {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.home-assistant-saved-mappings > section {
+  padding: 15px;
+  border: 1px solid var(--hairline);
+  border-radius: 15px;
+  background: var(--surface-muted);
+}
+.home-assistant-saved-mappings h3 {
+  margin: 0 0 8px;
+  color: var(--plum);
+  font-size: 16px;
+}
+.home-assistant-saved-mappings section > div {
+  min-height: 42px;
+  padding: 7px 0;
+  border-top: 1px solid var(--hairline);
+  display: grid;
+  grid-template-columns: minmax(110px, 0.75fr) minmax(0, 1.25fr);
+  align-items: center;
+  gap: 10px;
+}
+.home-assistant-saved-mappings span {
+  color: var(--muted);
+  font-size: 14px;
+}
+.home-assistant-saved-mappings strong {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+
 @media (max-width: 900px) {
   .calendar-tested-account {
     align-items: stretch;
@@ -3952,6 +4050,13 @@
   .calendar-remove-confirmation button:last-child {
     grid-row: auto;
     grid-column: auto;
+  }
+  .home-assistant-mapping-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .home-assistant-saved-mappings {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -8005,6 +8110,20 @@
   border-color: var(--hairline);
   color: var(--ink);
   background: var(--input-surface);
+}
+:root[data-theme='dark'] .home-assistant-label-field input,
+:root[data-theme='dark'] .home-assistant-mapping-row select {
+  border-color: var(--hairline);
+  color: var(--ink);
+  background: var(--input-surface);
+}
+:root[data-theme='dark'] .home-assistant-mapping-group,
+:root[data-theme='dark'] .home-assistant-mapping-row {
+  border-color: var(--hairline);
+}
+:root[data-theme='dark'] .home-assistant-saved-mappings h3,
+:root[data-theme='dark'] .home-assistant-mapping-group legend {
+  color: var(--eucalyptus);
 }
 :root[data-theme='dark'] .list-choice--selected {
   border-color: var(--eucalyptus);

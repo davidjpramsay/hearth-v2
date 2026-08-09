@@ -71,6 +71,15 @@ export function useCalendarConnectionQuery(enabled = true) {
   });
 }
 
+export function useHomeAssistantConnectionQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.homeAssistantConnection,
+    queryFn: hearthApi.getHomeAssistantConnection,
+    enabled,
+    retry: false,
+  });
+}
+
 export function useListsQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.lists, queryFn: hearthApi.getLists, enabled });
 }

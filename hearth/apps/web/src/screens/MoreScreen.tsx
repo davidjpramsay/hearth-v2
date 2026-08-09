@@ -40,10 +40,10 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
         path: '/admin/today',
       },
       {
-        title: 'Calendars & sources',
-        description: 'Connect and choose read-only calendars',
-        icon: 'calendar',
-        path: '/admin/connections/calendar',
+        title: 'Connections',
+        description: 'Calendar and Home Assistant',
+        icon: 'link',
+        path: '/admin/connections',
       },
       {
         title: 'Family planning',

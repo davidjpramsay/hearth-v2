@@ -14,6 +14,9 @@ import {
   ChoreTemplateOrderCommandResultSchema,
   HouseholdListSettingsSchema,
   HouseholdListsSchema,
+  HomeAssistantConnectionCommandResultSchema,
+  HomeAssistantConnectionSettingsSchema,
+  HomeAssistantConnectionTestResultSchema,
   HomeActionResultSchema,
   HomeStatusSchema,
   ListItemCommandResultSchema,
@@ -61,6 +64,9 @@ import {
   type HouseholdLists,
   type HouseholdListSettings,
   type HouseholdListType,
+  type HomeAssistantConnectionCommandResult,
+  type HomeAssistantConnectionSettings,
+  type HomeAssistantConnectionTestResult,
   type HomeActionId,
   type HomeActionResult,
   type HomeStatus,
@@ -139,6 +145,9 @@ export const queryKeys = {
   },
   get calendarConnection() {
     return [householdId(getHearthRuntime()), 'calendar-connection'] as const;
+  },
+  get homeAssistantConnection() {
+    return [householdId(getHearthRuntime()), 'home-assistant-connection'] as const;
   },
   get lists() {
     return [householdId(getHearthRuntime()), 'lists'] as const;
@@ -603,6 +612,48 @@ export const hearthApi = {
     request(
       `${householdApiBase()}/calendar-connection/removals`,
       CalendarConnectionCommandResultSchema,
+      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify({ requestId }) },
+    ),
+  getHomeAssistantConnection: (): Promise<HomeAssistantConnectionSettings | null> =>
+    request(
+      `${householdApiBase()}/home-assistant-connection`,
+      HomeAssistantConnectionSettingsSchema.nullable(),
+      { headers: demoAdminHeaders },
+    ),
+  testHomeAssistantConnection: (input: {
+    serverUrl: string;
+    accessToken: string;
+  }): Promise<HomeAssistantConnectionTestResult> =>
+    request(
+      `${householdApiBase()}/home-assistant-connection-tests`,
+      HomeAssistantConnectionTestResultSchema,
+      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
+    ),
+  saveHomeAssistantConnection: (input: {
+    requestId: string;
+    testId: string;
+    label: string;
+    mappings: {
+      occupancyId: string;
+      televisionPowerId: string;
+      hearthForegroundId: string;
+      protectedMediaId: string;
+      eveningScriptId: string;
+      goodnightScriptId: string;
+      screenOffScriptId: string;
+    };
+  }): Promise<HomeAssistantConnectionCommandResult> =>
+    request(
+      `${householdApiBase()}/home-assistant-connection`,
+      HomeAssistantConnectionCommandResultSchema,
+      { method: 'PUT', headers: demoAdminHeaders, body: JSON.stringify(input) },
+    ),
+  removeHomeAssistantConnection: (
+    requestId: string,
+  ): Promise<HomeAssistantConnectionCommandResult> =>
+    request(
+      `${householdApiBase()}/home-assistant-connection/removals`,
+      HomeAssistantConnectionCommandResultSchema,
       { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify({ requestId }) },
     ),
   updateHousehold: (input: { requestId: string; name: string; timezone: string }) =>

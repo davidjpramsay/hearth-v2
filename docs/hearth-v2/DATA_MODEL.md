@@ -303,6 +303,13 @@ generic protected-media boolean and observation/cache timestamps. Home action
 receipts and audits reuse the generic command/audit tables. Raw entity IDs,
 service payloads and media metadata are deliberately absent.
 
+Migration `0019_home_assistant_connection_setup.sql` stores one credential-free connection
+projection per household: opaque connection ID, family label, hostname, instance/version, status,
+friendly state/action mapping labels and check timestamps. The Home Assistant root URL, long-lived
+token and seven raw entity IDs exist only in the separate mode-`0600` server secret file. Test
+discovery retains them for at most ten minutes in process and exposes only opaque option IDs; save
+and removal are normal adult-authorised, idempotent and audited commands.
+
 ## Devices and sessions
 
 ### Paired device
@@ -363,7 +370,7 @@ Sensitive descriptions, provider tokens and full external payloads do not belong
 - Foreign keys and uniqueness constraints enforce invariants already checked in code.
 - Schema changes use reviewed migrations and backup/restore tests.
 
-## Phase 1–4 migration and runtime boundary
+## Current migration and runtime boundary
 
 Migration `apps/server/src/migrations/0001_household_core.sql` establishes the
 forward-only household/member, calendar connection/projection, chore
@@ -407,6 +414,9 @@ Migration `0018_chore_windows_and_order.sql` adds optional available-from time a
 order to chore templates, snapshots both window boundaries and order onto occurrences, and backfills
 existing rows without rewriting completion state. A household/order index supports the adult
 schedule and occurrence queries.
+Migration `0019_home_assistant_connection_setup.sql` adds only the safe Home Assistant connection
+projection described above. JSON validity and provider/status checks are enforced in SQLite; raw
+provider secrets and entity IDs remain outside the database.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported one-off, daily and weekly occurrences on

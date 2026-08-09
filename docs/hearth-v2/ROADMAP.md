@@ -208,9 +208,9 @@ criteria.
 
 ## Phase 5 — Home Assistant integration and Assist command API
 
-Status: complete and locally verified with a fake Home Assistant adapter. Live
-Home Assistant credentials, entity mapping and hardware presence/IR tuning are
-deployment validation work and were not performed.
+Status: complete and locally verified with fake and private REST adapter contracts plus the adult
+connection/mapping workflow. Live credentials, actual entity selection, Assist/Piper hardware and
+presence/IR tuning are deployment validation work and were not performed.
 
 ### Work
 
@@ -236,6 +236,16 @@ day-summary, list-item and chore-completion routes are structured entry points
 for Home Assistant; Hearth contains no listening or speaking UI. Browser,
 Fastify, SQLite, migration, focus/Back, accessibility and protected-playback
 tests cover the completion criteria using the fake adapter.
+
+Connection extension (2026-08-10): responsive **Connections > Home Assistant** administration now
+tests `/api/config` and `/api/states`, presents only opaque friendly discovery choices, maps exactly
+four safety states and three scripts, and can save/remove the connection without restart. The raw
+URL, token and entity IDs are atomically stored only in an external mode-`0600` file; migration
+`0019_home_assistant_connection_setup.sql` stores safe labels/status only. The live adapter reads
+only the mapped state endpoints and calls only mapped scripts through `script.turn_on`. Shared,
+runtime, repository, Fastify, migration, secret-redaction, phone, keyboard-Back and accessibility
+tests cover this local boundary. Actual household commissioning still requires an approved current
+Home Assistant backup and remains deliberately unperformed.
 
 ## Phase 6 — Android TV shell
 

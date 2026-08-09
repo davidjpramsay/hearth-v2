@@ -1,12 +1,11 @@
 # Hearth v2 specification index
 
 Status: **Phases 0–5 are implemented and locally verified. Phase 6 source,
-pairing contracts and Android builds are implemented; emulator and selected-TCL
-lifecycle evidence is still required. Phase 3 includes the first read-only
-CalDAV/iCloud adapter; Phase 5 uses a fake Home Assistant adapter. No live
-credential, calendar write or household automation was used. The separate
-Music Assistant/Jellyfin/Cast voice-music workstream is planned but not
-installed or verified.**
+pairing contracts, Android builds and emulator lifecycle evidence are implemented; selected-TCL
+evidence is still required. Phase 3 includes the first read-only CalDAV/iCloud adapter. Phase 5
+includes fake and private REST Home Assistant contracts plus an adult connection/mapping workflow;
+no live credential, calendar write or household automation was used. The separate Music
+Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or verified.**
 
 ## Product statement
 

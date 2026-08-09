@@ -14,16 +14,26 @@ import {
 import { CompanionAuthService, type CompanionAuthConfiguration } from './companion-auth.js';
 import { LATEST_MIGRATION_VERSION, openHearthDatabase } from './database.js';
 import {
+  FakeHomeAssistantConnectionVerifier,
+  HomeAssistantConnectionService,
+  RestHomeAssistantConnectionVerifier,
+  type HomeAssistantCredentialStore,
+} from './home-assistant-connection-repository.js';
+import {
   ManagedCalendarProvider,
   createCalendarRuntime,
   removeCalendarRuntimeConfig,
   resolveCalendarRuntime,
   writeCalendarRuntimeConfig,
 } from './integrations/calendar-runtime.js';
+import { FakeHomeAssistantProvider } from './integrations/home-assistant-provider.js';
 import {
-  FakeHomeAssistantProvider,
-  UnconfiguredHomeAssistantProvider,
-} from './integrations/home-assistant-provider.js';
+  ManagedHomeAssistantProvider,
+  createHomeAssistantProvider,
+  removeHomeAssistantRuntimeConfig,
+  resolveHomeAssistantProvider,
+  writeHomeAssistantRuntimeConfig,
+} from './integrations/home-assistant-runtime.js';
 import {
   FakePhotoSourceProvider,
   UnconfiguredPhotoSourceProvider,
@@ -58,6 +68,11 @@ const databasePath =
   );
 const calendarConfigPath = process.env.HEARTH_CALENDAR_CONFIG_PATH;
 const calendarRuntime = await resolveCalendarRuntime({ demoMode, configPath: calendarConfigPath });
+const homeAssistantConfigPath = process.env.HEARTH_HOME_ASSISTANT_CONFIG_PATH;
+const homeAssistantRuntime = await resolveHomeAssistantProvider({
+  demoMode,
+  configPath: homeAssistantConfigPath,
+});
 const database = await openHearthDatabase(databasePath);
 const adminRepository = new SqliteAdminRepository(database, { seedDemo: demoMode });
 const privateHouseholdId = () =>
@@ -69,6 +84,8 @@ const runtimeHouseholdId = demoMode ? DEMO_HOUSEHOLD_ID : privateHouseholdId;
 const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
 const managedCalendarProvider = new ManagedCalendarProvider();
 if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);
+const managedHomeAssistantProvider = new ManagedHomeAssistantProvider();
+if (homeAssistantRuntime !== null) managedHomeAssistantProvider.configure(homeAssistantRuntime);
 const repository = new SqliteHearthRepository(
   database,
   demoMode
@@ -83,7 +100,7 @@ const repository = new SqliteHearthRepository(
 const planningRepository = new SqlitePlanningRepository(database, { seedDemo: demoMode, clock });
 const todayContentRepository = new TodayContentService(database, { seedDemo: demoMode, clock });
 const homeRepository = new HomeService(
-  demoMode ? new FakeHomeAssistantProvider() : new UnconfiguredHomeAssistantProvider(),
+  demoMode ? new FakeHomeAssistantProvider() : managedHomeAssistantProvider,
   database,
   { householdId: runtimeHouseholdId, clock },
 );
@@ -126,6 +143,33 @@ const calendarConnectionRepository = new CalendarConnectionService(
     ...(calendarCredentialStore === undefined ? {} : { credentialStore: calendarCredentialStore }),
   },
 );
+const homeAssistantCredentialStore: HomeAssistantCredentialStore | undefined = demoMode
+  ? undefined
+  : {
+      save: async (config) => {
+        if (homeAssistantConfigPath === undefined) {
+          throw new Error('HEARTH_HOME_ASSISTANT_CONFIG_PATH is not configured.');
+        }
+        await writeHomeAssistantRuntimeConfig(homeAssistantConfigPath, config);
+        managedHomeAssistantProvider.configure(createHomeAssistantProvider(config));
+      },
+      remove: async () => {
+        if (homeAssistantConfigPath === undefined) return;
+        await removeHomeAssistantRuntimeConfig(homeAssistantConfigPath);
+        managedHomeAssistantProvider.disconnect();
+      },
+    };
+const homeAssistantConnectionRepository = new HomeAssistantConnectionService(
+  adminRepository,
+  demoMode ? new FakeHomeAssistantConnectionVerifier() : new RestHomeAssistantConnectionVerifier(),
+  {
+    database,
+    now: () => clock.now(),
+    ...(homeAssistantCredentialStore === undefined
+      ? {}
+      : { credentialStore: homeAssistantCredentialStore }),
+  },
+);
 const companionAuthConfiguration = demoMode ? null : resolveCompanionAuthConfiguration();
 const companionAuth =
   companionAuthConfiguration === null
@@ -143,6 +187,7 @@ const server = buildServer({
   photoRepository,
   pocketMoneyRepository,
   calendarConnectionRepository,
+  homeAssistantConnectionRepository,
   ...(companionAuth === undefined ? {} : { companionAuth }),
   ...(trustProxyHops === undefined ? {} : { trustProxyHops }),
   readiness: () => {
