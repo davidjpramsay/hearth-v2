@@ -55,6 +55,25 @@ test('phone More opens setup and household/member changes survive reload', async
   await expect(reloadedAlex.getByRole('radio', { name: 'Berry' })).toBeChecked();
 });
 
+test('Hearth settings groups household tasks and keeps remote movement continuous', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin');
+  await expect(page.locator('.admin-setting-group > h2')).toHaveText([
+    'Household',
+    'Family setup',
+    'Connections',
+    'Displays',
+    'System',
+  ]);
+  await expect(page.locator('[data-focus-id="admin-household"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="admin-people"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="admin-today"]')).toBeFocused();
+});
+
 test('Connections contains only services used directly by Hearth', async ({ page }) => {
   const consoleProblems: string[] = [];
   page.on('console', (message) => {
@@ -243,6 +262,15 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await expect(
     page.getByText('Provider tokens stay in the separate protected secrets folder.'),
   ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connections and photos' })).toBeVisible();
+  const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });
+  await expect(calendar).toContainText('Not set up');
+  const homeAssistant = page
+    .locator('.system-connection-row')
+    .filter({ hasText: 'Home Assistant' });
+  await expect(homeAssistant).toContainText('Not set up');
+  const photos = page.locator('.system-connection-row').filter({ hasText: 'Family photos' });
+  await expect(photos).toContainText('Ready');
   const create = page.getByRole('button', { name: 'Create backup now' });
   await create.scrollIntoViewIfNeeded();
   await create.click();
@@ -281,6 +309,56 @@ test('system backup retry keeps the same command identity after a lost response'
   await expect(page.getByRole('status')).toContainText('Recovery copy created and checked');
   expect(requestIds).toHaveLength(2);
   expect(requestIds[1]).toBe(requestIds[0]);
+});
+
+test('one unavailable connection does not hide the remaining system status', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/calendar-connection', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          code: 'INTEGRATION_UNAVAILABLE',
+          message: 'Calendar setup could not be checked just now.',
+          retryable: true,
+          requestId: null,
+        },
+      }),
+    });
+  });
+
+  await page.goto('/admin/system');
+  const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });
+  await expect(calendar).toContainText('Unavailable');
+  await expect(calendar).toContainText('Hearth could not read calendar setup just now.');
+  await expect(
+    page.locator('.system-connection-row').filter({ hasText: 'Home Assistant' }),
+  ).toContainText('Not set up');
+  await expect(
+    page.locator('.system-connection-row').filter({ hasText: 'Family photos' }),
+  ).toContainText('Ready');
+  await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
+});
+
+test('system connections have deterministic D-pad movement and Back restoration', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/system');
+  await expect(page.locator('[data-focus-id="system-create-backup"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('[data-focus-id="system-photo-health"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('[data-focus-id="system-home-assistant-health"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  const calendar = page.locator('[data-focus-id="system-calendar-health"]');
+  await expect(calendar).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/admin\/connections\/calendar$/);
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/admin\/system$/);
+  await expect(calendar).toBeFocused();
 });
 
 test('People palette supports native keyboard selection', async ({ page }) => {
@@ -471,6 +549,28 @@ test('@visual System health recovery action at phone portrait', async ({ page })
   await create.scrollIntoViewIfNeeded();
   await page.screenshot({
     path: resolve(systemEvidence, 'system-health-actions-phone-portrait.png'),
+    animations: 'disabled',
+  });
+});
+
+test('@visual @a11y dark System health at phone portrait', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'hearth.appearance.v1',
+      JSON.stringify({ theme: 'dark', eveningDimming: false }),
+    );
+  });
+  await page.goto('/admin/system');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  await page.screenshot({
+    path: resolve(systemEvidence, 'system-health-dark-phone-portrait.png'),
     animations: 'disabled',
   });
 });

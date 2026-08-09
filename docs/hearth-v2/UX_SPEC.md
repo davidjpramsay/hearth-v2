@@ -190,6 +190,11 @@ the phone More hub.
   root is named Hearth settings so it cannot be confused with the Home Assistant
   action surface. Television pairing is one row/action inside Televisions, not a
   duplicate call to action on the settings root.
+- Hearth settings groups destinations by household, family setup, connections,
+  displays and system while preserving one continuous remote-focus order. System
+  Health combines database/backup state with path-free Calendar, Home Assistant
+  and Photos setup status; it links to the dedicated setup screen instead of
+  exposing credentials or raw provider details.
 - Today & notices lets an adult publish, edit and remove concise notices, choose
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
   and see which eligible notice currently wins. It also owns the four optional

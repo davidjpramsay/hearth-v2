@@ -1,19 +1,28 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
+import { Link } from 'react-router-dom';
 
 import type { SystemBackupStatus } from '@hearth/shared';
 
 import { HearthApiError, hearthApi, queryKeys } from '../api/client';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
 import { focusById } from '../focus/focusGraph';
-import { useSystemStatusQuery } from '../hooks/useHearthQueries';
+import {
+  useCalendarConnectionQuery,
+  useHomeAssistantConnectionQuery,
+  usePhotoSourceQuery,
+  useSystemStatusQuery,
+} from '../hooks/useHearthQueries';
 import { useHearthRuntime } from '../runtime/context';
 
 export function SystemHealthScreen() {
   const runtime = useHearthRuntime();
   const queryClient = useQueryClient();
   const query = useSystemStatusQuery();
+  const calendar = useCalendarConnectionQuery();
+  const homeAssistant = useHomeAssistantConnectionQuery();
+  const photos = usePhotoSourceQuery();
   const pendingRequestId = useRef<string | null>(null);
   const createBackup = useMutation({
     mutationFn: () => {
@@ -83,6 +92,61 @@ export function SystemHealthScreen() {
         </HealthCard>
       </div>
 
+      <section className="system-connection-health" aria-labelledby="connection-health-title">
+        <div className="system-section-heading">
+          <div>
+            <h2 id="connection-health-title">Connections and photos</h2>
+            <p>Safe setup state for the services Hearth uses directly.</p>
+          </div>
+          <Link
+            className="system-section-link focusable"
+            data-focus-down="system-calendar-health"
+            data-focus-id="system-manage-connections"
+            data-focus-left="system-manage-connections"
+            data-focus-right="system-manage-connections"
+            data-focus-up="system-manage-connections"
+            to="/admin/connections"
+          >
+            Manage connections
+          </Link>
+        </div>
+        <div className="system-connection-list">
+          <IntegrationHealthRow
+            detail={calendarDetail(calendar)}
+            focusId="system-calendar-health"
+            icon="calendar"
+            label={calendarLabel(calendar)}
+            nextFocusId="system-home-assistant-health"
+            priorFocusId="system-manage-connections"
+            title="Calendar"
+            tone={calendarTone(calendar)}
+            to="/admin/connections/calendar"
+          />
+          <IntegrationHealthRow
+            detail={homeAssistantDetail(homeAssistant)}
+            focusId="system-home-assistant-health"
+            icon="home"
+            label={homeAssistantLabel(homeAssistant)}
+            nextFocusId="system-photo-health"
+            priorFocusId="system-calendar-health"
+            title="Home Assistant"
+            tone={homeAssistantTone(homeAssistant)}
+            to="/admin/connections/home-assistant"
+          />
+          <IntegrationHealthRow
+            detail={photoDetail(photos)}
+            focusId="system-photo-health"
+            icon="image"
+            label={photoLabel(photos)}
+            nextFocusId="system-create-backup"
+            priorFocusId="system-home-assistant-health"
+            title="Family photos"
+            tone={photoTone(photos)}
+            to="/admin/photos"
+          />
+        </div>
+      </section>
+
       <section className="system-backup-actions" aria-labelledby="system-backup-actions-title">
         <div>
           <h2 id="system-backup-actions-title">Create a recovery copy</h2>
@@ -95,7 +159,11 @@ export function SystemHealthScreen() {
           <button
             className="button button--primary focusable"
             data-focus-entry="true"
+            data-focus-down="system-create-backup"
             data-focus-id="system-create-backup"
+            data-focus-left="system-create-backup"
+            data-focus-right="system-create-backup"
+            data-focus-up="system-photo-health"
             disabled={createBackup.isPending}
             onClick={() => createBackup.mutate()}
             type="button"
@@ -118,7 +186,11 @@ export function SystemHealthScreen() {
             <p>{backupErrorMessage(createBackup.error)}</p>
             <button
               className="button focusable"
+              data-focus-down="system-backup-retry"
               data-focus-id="system-backup-retry"
+              data-focus-left="system-backup-retry"
+              data-focus-right="system-backup-retry"
+              data-focus-up="system-create-backup"
               onClick={() => createBackup.mutate()}
               type="button"
             >
@@ -148,6 +220,125 @@ export function SystemHealthScreen() {
       </footer>
     </AdminPage>
   );
+}
+
+type HealthTone = 'healthy' | 'attention' | 'neutral';
+type ConnectionQuery = ReturnType<typeof useCalendarConnectionQuery>;
+type HomeAssistantQuery = ReturnType<typeof useHomeAssistantConnectionQuery>;
+type PhotoQuery = ReturnType<typeof usePhotoSourceQuery>;
+
+function IntegrationHealthRow({
+  detail,
+  focusId,
+  icon,
+  label,
+  nextFocusId,
+  priorFocusId,
+  title,
+  tone,
+  to,
+}: {
+  detail: string;
+  focusId: string;
+  icon: IconName;
+  label: string;
+  nextFocusId: string;
+  priorFocusId: string;
+  title: string;
+  tone: HealthTone;
+  to: string;
+}) {
+  return (
+    <Link
+      className="system-connection-row focusable"
+      data-focus-down={nextFocusId}
+      data-focus-id={focusId}
+      data-focus-left={focusId}
+      data-focus-right={focusId}
+      data-focus-up={priorFocusId}
+      to={to}
+    >
+      <span className={`system-connection-row__icon system-connection-row__icon--${tone}`}>
+        <Icon name={icon} />
+      </span>
+      <span className="system-connection-row__copy">
+        <strong>{title}</strong>
+        <small>{detail}</small>
+      </span>
+      <span
+        className={`connection-badge${
+          tone === 'healthy'
+            ? ' connection-badge--healthy'
+            : tone === 'attention'
+              ? ' connection-badge--unavailable'
+              : ''
+        }`}
+      >
+        {label}
+      </span>
+      <Icon name="chevron-right" />
+    </Link>
+  );
+}
+
+function calendarTone(query: ConnectionQuery): HealthTone {
+  if (query.isPending) return 'neutral';
+  if (query.isError || query.data?.status === 'needs-attention') return 'attention';
+  return query.data === null ? 'neutral' : 'healthy';
+}
+
+function calendarLabel(query: ConnectionQuery): string {
+  if (query.isPending) return 'Checking';
+  if (query.isError) return 'Unavailable';
+  if (query.data === null) return 'Not set up';
+  return query.data.status === 'ready' ? 'Connected' : 'Check needed';
+}
+
+function calendarDetail(query: ConnectionQuery): string {
+  if (query.isPending) return 'Checking the saved read-only calendar setup.';
+  if (query.isError) return 'Hearth could not read calendar setup just now.';
+  if (query.data === null) return 'Add a read-only calendar connection when you are ready.';
+  return `${query.data.label} · ${query.data.calendars.length} calendar${query.data.calendars.length === 1 ? '' : 's'}`;
+}
+
+function homeAssistantTone(query: HomeAssistantQuery): HealthTone {
+  if (query.isPending) return 'neutral';
+  if (query.isError || query.data?.status === 'needs-attention') return 'attention';
+  return query.data === null ? 'neutral' : 'healthy';
+}
+
+function homeAssistantLabel(query: HomeAssistantQuery): string {
+  if (query.isPending) return 'Checking';
+  if (query.isError) return 'Unavailable';
+  if (query.data === null) return 'Not set up';
+  return query.data.status === 'ready' ? 'Connected' : 'Check needed';
+}
+
+function homeAssistantDetail(query: HomeAssistantQuery): string {
+  if (query.isPending) return 'Checking the approved household-action setup.';
+  if (query.isError) return 'Hearth could not read Home Assistant setup just now.';
+  if (query.data === null) return 'Connect approved states and actions when you are ready.';
+  return `${query.data.label} · ${query.data.instanceName}`;
+}
+
+function photoTone(query: PhotoQuery): HealthTone {
+  if (query.isPending) return 'neutral';
+  if (query.isError || query.data.collection.source.status === 'unavailable') return 'attention';
+  return query.data.collection.source.status === 'ready' ? 'healthy' : 'neutral';
+}
+
+function photoLabel(query: PhotoQuery): string {
+  if (query.isPending) return 'Checking';
+  if (query.isError) return 'Unavailable';
+  if (query.data.collection.source.status === 'ready') return 'Ready';
+  if (query.data.collection.source.status === 'unavailable') return 'Unavailable';
+  return 'Needs selection';
+}
+
+function photoDetail(query: PhotoQuery): string {
+  if (query.isPending) return 'Checking the approved photo source.';
+  if (query.isError) return 'Hearth could not read photo source status just now.';
+  return `${query.data.collection.name} · ${query.data.visiblePhotoCount} ready`;
 }
 
 function HealthCard({

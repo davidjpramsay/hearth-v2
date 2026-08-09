@@ -2737,8 +2737,21 @@
   margin-top: 2px;
   font-size: 14px;
 }
-.admin-setting-list {
+.admin-setting-groups {
   margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.admin-setting-group h2 {
+  margin: 0 0 8px 4px;
+  color: var(--eucalyptus);
+  font-size: 14px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.admin-setting-list {
   display: flex;
   flex-direction: column;
   gap: 11px;
@@ -3759,6 +3772,7 @@
   font-size: 13px;
 }
 .system-backup-actions,
+.system-connection-health,
 .system-recovery-boundary,
 .system-version {
   margin-top: 14px;
@@ -3766,6 +3780,104 @@
   border: 1px solid var(--hairline);
   border-radius: 17px;
   background: var(--surface);
+}
+.system-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.system-section-heading h2,
+.system-section-heading p {
+  margin: 0;
+}
+.system-section-heading h2 {
+  font-size: 20px;
+}
+.system-section-heading p {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.system-section-link {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border-radius: 10px;
+  color: var(--plum);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.system-section-link:focus-visible,
+.system-section-link:hover {
+  background: var(--plum-soft);
+}
+.system-connection-list {
+  margin-top: 13px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.system-connection-row {
+  min-height: 72px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.system-connection-row + .system-connection-row {
+  border-top: 1px solid var(--hairline);
+}
+.system-connection-row:focus-visible,
+.system-connection-row:hover {
+  background: var(--surface-muted);
+}
+.system-connection-row__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+.system-connection-row__icon--healthy {
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+}
+.system-connection-row__icon--attention {
+  color: var(--brick);
+  background: var(--brick-soft);
+}
+.system-connection-row__icon svg {
+  width: 22px;
+  height: 22px;
+}
+.system-connection-row__copy {
+  min-width: 0;
+}
+.system-connection-row__copy strong,
+.system-connection-row__copy small {
+  display: block;
+}
+.system-connection-row__copy strong {
+  font-size: 17px;
+}
+.system-connection-row__copy small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.system-connection-row > svg {
+  width: 18px;
+  color: var(--muted);
 }
 .system-backup-actions .button {
   width: 100%;
@@ -3848,6 +3960,21 @@
 @media (max-width: 560px) {
   .system-health-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .system-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .system-section-link {
+    align-self: flex-start;
+    margin-left: -9px;
+  }
+  .system-connection-row {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+  .system-connection-row > svg {
+    display: none;
   }
 }
 .photo-source-detail {
@@ -4792,8 +4919,11 @@
     min-height: 80px;
     padding: 12px 14px;
   }
-  .admin-home .admin-setting-list {
+  .admin-home .admin-setting-groups {
     margin-top: 14px;
+    gap: 16px;
+  }
+  .admin-home .admin-setting-list {
     gap: 8px;
   }
   .admin-home .admin-setting-row {
@@ -8274,6 +8404,7 @@
 :root[data-theme='dark'] .system-health-summary,
 :root[data-theme='dark'] .system-health-card,
 :root[data-theme='dark'] .system-backup-actions,
+:root[data-theme='dark'] .system-connection-health,
 :root[data-theme='dark'] .system-recovery-boundary,
 :root[data-theme='dark'] .system-version {
   border-color: var(--hairline);

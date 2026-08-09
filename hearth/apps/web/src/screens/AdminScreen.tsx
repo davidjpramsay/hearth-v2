@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useHearthQueries';
 import { useHearthRuntime } from '../runtime/context';
 
-const settings: {
+interface Setting {
   title: string;
   description: (
     members: number,
@@ -19,64 +19,93 @@ const settings: {
   ) => string;
   icon: IconName;
   path: string;
-}[] = [
+}
+
+const settingGroups: Array<{ title: string; settings: Setting[] }> = [
   {
     title: 'Household',
-    description: (_members, _televisions, householdName, timezone) =>
-      `${householdName} · ${timezoneLabel(timezone)}`,
-    icon: 'home',
-    path: '/admin/household',
+    settings: [
+      {
+        title: 'Household',
+        description: (_members, _televisions, householdName, timezone) =>
+          `${householdName} · ${timezoneLabel(timezone)}`,
+        icon: 'home',
+        path: '/admin/household',
+      },
+      {
+        title: 'People',
+        description: (members) => `${members} members · Roles and permissions`,
+        icon: 'users',
+        path: '/admin/people',
+      },
+    ],
   },
   {
-    title: 'People',
-    description: (members) => `${members} members · Roles and permissions`,
-    icon: 'users',
-    path: '/admin/people',
-  },
-  {
-    title: 'Today & notices',
-    description: () => 'Overview sections and household notices',
-    icon: 'today',
-    path: '/admin/today',
-  },
-  {
-    title: 'Family planning',
-    description: () => 'Routines, meals, lists and pocket money',
-    icon: 'wallet',
-    path: '/admin/planning',
+    title: 'Family setup',
+    settings: [
+      {
+        title: 'Today & notices',
+        description: () => 'Overview sections and household notices',
+        icon: 'today',
+        path: '/admin/today',
+      },
+      {
+        title: 'Family planning',
+        description: () => 'Routines, meals, lists and pocket money',
+        icon: 'wallet',
+        path: '/admin/planning',
+      },
+    ],
   },
   {
     title: 'Connections',
-    description: () => 'Calendar and Home Assistant',
-    icon: 'link',
-    path: '/admin/connections',
+    settings: [
+      {
+        title: 'Connections',
+        description: () => 'Calendar and Home Assistant',
+        icon: 'link',
+        path: '/admin/connections',
+      },
+    ],
   },
   {
-    title: 'Photos',
-    description: () => 'Approved album and source',
-    icon: 'image',
-    path: '/admin/photos',
+    title: 'Displays',
+    settings: [
+      {
+        title: 'Photos',
+        description: () => 'Approved album and source',
+        icon: 'image',
+        path: '/admin/photos',
+      },
+      {
+        title: 'Paired televisions',
+        description: (_members, televisions) =>
+          `${televisions} connected · Approve, pair or revoke a television`,
+        icon: 'television',
+        path: '/admin/televisions',
+      },
+      {
+        title: 'Appearance',
+        description: () => 'Light, dark and evening comfort',
+        icon: 'moon',
+        path: '/admin/appearance',
+      },
+    ],
   },
   {
-    title: 'Paired televisions',
-    description: (_members, televisions) =>
-      `${televisions} connected · Approve, pair or revoke a television`,
-    icon: 'television',
-    path: '/admin/televisions',
-  },
-  {
-    title: 'Appearance',
-    description: () => 'Light, dark and evening comfort',
-    icon: 'moon',
-    path: '/admin/appearance',
-  },
-  {
-    title: 'System health',
-    description: () => 'Backups, storage and version',
-    icon: 'shield',
-    path: '/admin/system',
+    title: 'System',
+    settings: [
+      {
+        title: 'System health',
+        description: () => 'Backups, storage and version',
+        icon: 'shield',
+        path: '/admin/system',
+      },
+    ],
   },
 ];
+
+const settings = settingGroups.flatMap((group) => group.settings);
 
 function settingFocusId(title: string): string {
   return `admin-${title.toLowerCase().split(' ')[0]}`;
@@ -141,35 +170,48 @@ export function AdminScreen() {
           <span>Private to this home and its Tailscale network</span>
         </div>
       </div>
-      <div className="admin-setting-list">
-        {settings.map((setting, index) => (
-          <Link
-            className="admin-setting-row focusable"
-            data-focus-entry={index === 0 ? 'true' : undefined}
-            data-focus-down={adjacentSettingFocusId(index + 1, settingFocusId(setting.title))}
-            data-focus-id={settingFocusId(setting.title)}
-            data-focus-left={settingFocusId(setting.title)}
-            data-focus-right={settingFocusId(setting.title)}
-            data-focus-up={adjacentSettingFocusId(index - 1, settingFocusId(setting.title))}
-            to={setting.path}
-            key={setting.title}
-          >
-            <span className="admin-setting-row__icon">
-              <Icon name={setting.icon} />
-            </span>
-            <span className="admin-setting-row__copy">
-              <strong>{setting.title}</strong>
-              <small>
-                {setting.description(
-                  admin.data.household.members.length,
-                  connected,
-                  admin.data.household.name,
-                  admin.data.household.timezone,
-                )}
-              </small>
-            </span>
-            <Icon name="chevron-right" />
-          </Link>
+      <div className="admin-setting-groups">
+        {settingGroups.map((group) => (
+          <section className="admin-setting-group" key={group.title}>
+            <h2>{group.title}</h2>
+            <div className="admin-setting-list">
+              {group.settings.map((setting) => {
+                const index = settings.indexOf(setting);
+                return (
+                  <Link
+                    className="admin-setting-row focusable"
+                    data-focus-entry={index === 0 ? 'true' : undefined}
+                    data-focus-down={adjacentSettingFocusId(
+                      index + 1,
+                      settingFocusId(setting.title),
+                    )}
+                    data-focus-id={settingFocusId(setting.title)}
+                    data-focus-left={settingFocusId(setting.title)}
+                    data-focus-right={settingFocusId(setting.title)}
+                    data-focus-up={adjacentSettingFocusId(index - 1, settingFocusId(setting.title))}
+                    to={setting.path}
+                    key={setting.title}
+                  >
+                    <span className="admin-setting-row__icon">
+                      <Icon name={setting.icon} />
+                    </span>
+                    <span className="admin-setting-row__copy">
+                      <strong>{setting.title}</strong>
+                      <small>
+                        {setting.description(
+                          admin.data.household.members.length,
+                          connected,
+                          admin.data.household.name,
+                          admin.data.household.timezone,
+                        )}
+                      </small>
+                    </span>
+                    <Icon name="chevron-right" />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
         ))}
       </div>
       {runtime.mode === 'private' ? null : (

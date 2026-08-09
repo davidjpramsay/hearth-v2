@@ -9,6 +9,8 @@ Assistant backup was changed.
 - `system-health-actions-phone-portrait.png` — focused manual recovery-copy action and explicit
   boundary between Hearth data, provider secrets, photo originals and Home Assistant backups.
 - `system-health-phone-landscape.png` — responsive companion header/summary at 844×390.
+- `system-health-dark-phone-portrait.png` — the same status hierarchy in the warm dark theme at
+  390×844.
 
 ## Behaviour verified
 
@@ -25,13 +27,19 @@ Assistant backup was changed.
 - Restore accepts absolute paths only and refuses to overwrite an existing destination or work file.
 - Browser responses contain no host backup path or downloadable database.
 - Phone flow, keyboard focus and automated serious/critical accessibility checks.
+- Calendar, Home Assistant and Photos setup states are summarised without credentials, raw entity
+  IDs or host paths, with direct links back to their dedicated setup screens.
+- One unavailable connection remains an isolated family-readable row; database, backup and other
+  connection states continue to render.
+- Explicit D-pad movement runs from the backup action through Photos, Home Assistant and Calendar;
+  Back restores the exact connection row.
 
 ## Fidelity ledger
 
 | Area        | Result                                                                                  |
 | ----------- | --------------------------------------------------------------------------------------- |
 | Copy        | Household language leads; implementation details are confined to the recovery boundary. |
-| Composition | One calm summary, two status cards, one primary action and one explanatory boundary.    |
+| Composition | One calm summary, status cards, three connection rows, one action and one boundary.     |
 | Palette     | Existing sage healthy state, ochre demo/setup state and plum primary action.            |
 | Focus       | “Create backup now” uses the standard outline plus colour and elevation.                |
 | Responsive  | Single-column portrait and two-column landscape cards without horizontal overflow.      |
