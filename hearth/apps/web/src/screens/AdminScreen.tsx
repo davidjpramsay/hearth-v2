@@ -70,6 +70,12 @@ const settings: {
     icon: 'moon',
     path: '/admin/appearance',
   },
+  {
+    title: 'System health',
+    description: () => 'Backups, storage and version',
+    icon: 'shield',
+    path: '/admin/system',
+  },
 ];
 
 function settingFocusId(title: string): string {

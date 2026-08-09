@@ -65,6 +65,17 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
       },
     ],
   },
+  {
+    title: 'System',
+    links: [
+      {
+        title: 'System health',
+        description: 'Backups, storage and version',
+        icon: 'shield',
+        path: '/admin/system',
+      },
+    ],
+  },
 ];
 
 const flattened = groups.flatMap((group) => group.links);

@@ -416,13 +416,21 @@ target CPU architecture, rather than trusting a prebuilt binary from a different
 migration. The stable private hostname and trusted certificate remain commissioning inputs because
 adult passkeys bind to that origin. See D-031.
 
+The server is also the sole process allowed to create database recovery copies. In private mode it
+uses SQLite online backup into the restricted data volume, verifies and prunes those files, and
+serves only a typed aggregate status to authenticated adults. Restore is intentionally outside the
+HTTP application: the production image contains a CLI that verifies a retained copy and writes it
+to a new clean destination without overwriting an existing database. See D-043.
+
 ## Observability
 
 - Structured server logs with request ID and actor/device ID, excluding secrets and sensitive event bodies by default.
-- Health endpoints distinguish process health, database readiness and integration health.
+- Public health endpoints distinguish process liveness and database readiness. Authenticated adult
+  System Health adds safe migration, application-version and recovery-copy state.
 - Audit events are household records, not merely logs.
 - Home Assistant may monitor Hearth health and notify an adult after persistent failure.
-- Retention and backup behaviour must be documented before production use.
+- Retention and backup behaviour is configured and documented; actual Synology capacity/off-device
+  monitoring and the live restore drill remain required before production use.
 
 ## Performance strategy
 

@@ -7,6 +7,8 @@ import {
   HomeAssistantConnectionTestRequestSchema,
   SaveCalendarConnectionRequestSchema,
   SaveHomeAssistantConnectionRequestSchema,
+  SystemBackupCommandResultSchema,
+  SystemStatusSchema,
   CalendarSourceSchema,
   CreateMemberRequestSchema,
   DailyForecastSchema,
@@ -282,6 +284,49 @@ describe('shared wire schemas', () => {
           goodnightScriptId: 'home_assistant_script_two',
           screenOffScriptId: 'home_assistant_script_three',
         },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('keeps system health bounded and path-free', () => {
+    const status = SystemStatusSchema.parse({
+      version: 'release-be956b6',
+      mode: 'private',
+      generatedAt: '2026-08-10T05:00:00.000Z',
+      database: {
+        state: 'ready',
+        migrationVersion: 19,
+        message: 'Household data is ready.',
+      },
+      backup: {
+        state: 'ready',
+        scheduled: true,
+        retentionCount: 14,
+        lastSuccessfulAt: '2026-08-10T04:00:00.000Z',
+        sizeBytes: 2_457_600,
+        message: 'The latest local recovery copy is ready.',
+      },
+    });
+    const result = SystemBackupCommandResultSchema.parse({
+      status,
+      audit: {
+        id: 'audit_system_backup',
+        actorType: 'member',
+        actorId: 'member_adult',
+        source: 'companion',
+        action: 'system.backup.create',
+        targetId: 'backup_safe_identifier',
+        occurredAt: '2026-08-10T05:00:00.000Z',
+        result: 'succeeded',
+      },
+      replayed: false,
+    });
+    expect(result.status.backup.retentionCount).toBe(14);
+    expect(JSON.stringify(result)).not.toMatch(/volume1|backupDirectory|\.sqlite/);
+    expect(
+      SystemStatusSchema.safeParse({
+        ...status,
+        backup: { ...status.backup, retentionCount: 0 },
       }).success,
     ).toBe(false);
   });

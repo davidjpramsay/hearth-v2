@@ -80,6 +80,15 @@ export function useHomeAssistantConnectionQuery(enabled = true) {
   });
 }
 
+export function useSystemStatusQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.systemStatus,
+    queryFn: hearthApi.getSystemStatus,
+    enabled,
+    retry: false,
+  });
+}
+
 export function useListsQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.lists, queryFn: hearthApi.getLists, enabled });
 }

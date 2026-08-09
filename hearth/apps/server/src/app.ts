@@ -101,6 +101,8 @@ import {
   SavedMealLibrarySchema,
   SaveCalendarConnectionRequestSchema,
   SaveHomeAssistantConnectionRequestSchema,
+  SystemBackupCommandResultSchema,
+  SystemStatusSchema,
   TodaySummarySchema,
   TodayConfigurationCommandResultSchema,
   TodayConfigurationSchema,
@@ -147,6 +149,7 @@ import { PhotoService, type PhotoRepository } from './photo-repository.js';
 import { InMemoryPlanningRepository, type PlanningRepository } from './planning-repository.js';
 import { PocketMoneyService, type PocketMoneyRepository } from './pocket-money-repository.js';
 import { TodayContentService, type TodayContentRepository } from './today-content-repository.js';
+import { InMemorySystemOperations, type SystemOperationsRepository } from './system-operations.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import {
   DEMO_TV_ACTOR,
@@ -212,6 +215,7 @@ export interface BuildServerOptions {
   pocketMoneyRepository?: PocketMoneyRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
   homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
+  systemOperations?: SystemOperationsRepository;
   companionAuth?: CompanionAuthRepository;
   todayContentRepository?: TodayContentRepository;
   runtime?: RuntimeConfiguration;
@@ -284,6 +288,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             },
           },
     );
+  const systemOperations =
+    options.systemOperations ??
+    new InMemorySystemOperations(adminRepository, {
+      version: process.env.HEARTH_VERSION ?? 'development',
+      mode: runtime.mode,
+      clock: runtime.clock,
+    });
   const server = Fastify({
     bodyLimit: 1_500_000,
     trustProxy: options.trustProxyHops ?? false,
@@ -448,6 +459,31 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return run(reply, async () =>
       AdminOverviewSchema.parse(
         await adminRepository.getOverview(params.householdId, actorId(request.headers, options)),
+      ),
+    );
+  });
+
+  server.get('/api/v1/households/:householdId/system-status', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      SystemStatusSchema.parse(
+        await systemOperations.getStatus(params.householdId, actorId(request.headers, options)),
+      ),
+    );
+  });
+
+  server.post('/api/v1/households/:householdId/system-backups', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CommandRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () =>
+      SystemBackupCommandResultSchema.parse(
+        await systemOperations.createBackup(
+          params.householdId,
+          actorId(request.headers, options),
+          body.requestId,
+        ),
       ),
     );
   });
@@ -1896,6 +1932,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       pocketMoneyRepository.reset();
       calendarConnectionRepository.reset();
       homeAssistantConnectionRepository.reset();
+      systemOperations.reset();
       todayContentRepository.reset();
       return reply.send({ reset: true });
     });
@@ -1919,6 +1956,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     pocketMoneyRepository.close();
     calendarConnectionRepository.close();
     homeAssistantConnectionRepository.close();
+    systemOperations.close();
     todayContentRepository.close();
   });
 

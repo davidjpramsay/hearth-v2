@@ -60,6 +60,54 @@ describe('Hearth v2 API', () => {
     expect(response.json()).toMatchObject({ status: 'not-ready', database: 'unavailable' });
   });
 
+  it('reports calm adult-only system health and creates idempotent recovery copies', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const status = await app.inject({ method: 'GET', url: `${base}/system-status`, headers });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({
+      mode: 'test',
+      generatedAt: '2026-08-02T23:42:00.000Z',
+      database: { state: 'ready', migrationVersion: 19 },
+      backup: { state: 'ready', scheduled: true, retentionCount: 14 },
+    });
+
+    const first = await app.inject({
+      method: 'POST',
+      url: `${base}/system-backups`,
+      headers,
+      payload: { requestId: 'request_system_backup_http' },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({
+      replayed: false,
+      status: { backup: { lastSuccessfulAt: '2026-08-02T23:42:00.000Z' } },
+      audit: { action: 'system.backup.create' },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${base}/system-backups`,
+      headers,
+      payload: { requestId: 'request_system_backup_http' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+
+    const forbidden = await app.inject({
+      method: 'GET',
+      url: `${base}/system-status`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(forbidden.statusCode).toBe(403);
+    const invalid = await app.inject({
+      method: 'POST',
+      url: `${base}/system-backups`,
+      headers,
+      payload: {},
+    });
+    expect(invalid.statusCode).toBe(400);
+  });
+
   it('publishes deterministic test runtime dates and the current household name', async () => {
     const app = server();
     const initial = await app.inject({ method: 'GET', url: '/api/v1/runtime' });

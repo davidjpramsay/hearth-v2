@@ -972,6 +972,7 @@ export const AuditSummarySchema = z.object({
     'calendar.connection.remove',
     'home-assistant.connection.save',
     'home-assistant.connection.remove',
+    'system.backup.create',
     'photo.source.refresh',
     'auth.passkey.register',
     'home.action.execute',
@@ -1356,6 +1357,35 @@ export const HomeAssistantConnectionCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
+export const SystemBackupStatusSchema = z.object({
+  state: z.enum(['ready', 'never-run', 'not-configured', 'failed']),
+  scheduled: z.boolean(),
+  retentionCount: z.number().int().min(1).max(90),
+  lastSuccessfulAt: TimestampSchema.nullable(),
+  sizeBytes: z.number().int().nonnegative().nullable(),
+  message: z.string().trim().min(1).max(180),
+});
+
+export const SystemStatusSchema = z.object({
+  version: z.string().trim().min(1).max(80),
+  mode: RuntimeModeSchema,
+  generatedAt: TimestampSchema,
+  database: z.object({
+    state: z.enum(['ready', 'needs-attention']),
+    migrationVersion: z.number().int().positive(),
+    message: z.string().trim().min(1).max(180),
+  }),
+  backup: SystemBackupStatusSchema,
+});
+
+export const CreateSystemBackupRequestSchema = CommandRequestSchema;
+
+export const SystemBackupCommandResultSchema = z.object({
+  status: SystemStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
 function isPrivateHomeAssistantHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (
@@ -1654,6 +1684,10 @@ export type RemoveHomeAssistantConnectionRequest = z.infer<
 export type HomeAssistantConnectionCommandResult = z.infer<
   typeof HomeAssistantConnectionCommandResultSchema
 >;
+export type SystemBackupStatus = z.infer<typeof SystemBackupStatusSchema>;
+export type SystemStatus = z.infer<typeof SystemStatusSchema>;
+export type CreateSystemBackupRequest = z.infer<typeof CreateSystemBackupRequestSchema>;
+export type SystemBackupCommandResult = z.infer<typeof SystemBackupCommandResultSchema>;
 export type UpdateHouseholdRequest = z.infer<typeof UpdateHouseholdRequestSchema>;
 export type CreateMemberRequest = z.infer<typeof CreateMemberRequestSchema>;
 export type UpdateMemberRequest = z.infer<typeof UpdateMemberRequestSchema>;

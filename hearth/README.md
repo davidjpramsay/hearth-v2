@@ -25,7 +25,9 @@ and Admin scan status. Live folder selection/mount and presence/quiet-hours
 coordination remain unconfigured. Hearth also provides
 per-display Light, Dark and Automatic themes plus independent evening dimming;
 Automatic follows that device's system colour setting and does not invoke a
-Home Assistant scene.
+Home Assistant scene. Private deployment also includes scheduled and
+adult-requested SQLite online backups, integrity-checked clean-location restore tooling and a calm
+System Health page. The live Synology restore drill is still required.
 
 No real calendar, Home Assistant, Synology or household credential is required.
 Admin, chore, list, meal, pocket-money and normalized fake-calendar state persist in
@@ -55,6 +57,8 @@ phone-first; Lists and Meals remain readable and actionable on television.
 `http://127.0.0.1:4320/home` opens the curated living-room status and three
 fake-adapter Home Assistant actions. `http://127.0.0.1:4320/admin/connections/home-assistant`
 opens the fictional connection and allowlist-mapping flow without contacting a live system.
+`http://127.0.0.1:4320/admin/system` previews database, backup and version health; demo backup
+actions are explicitly simulated.
 `http://127.0.0.1:4320/photos` opens the demo gallery and ambient mode. The
 phone More screen also links to Photos.
 `http://127.0.0.1:4320/admin/appearance` opens the per-display theme and evening
@@ -125,6 +129,26 @@ Evening, Goodnight and Screen off. It has no generic service, dashboard, Jellyfi
 or Cast control surface. Live connection and hardware commissioning still requires an approved
 Home Assistant backup/rollback check; no real token belongs in this workspace, `.env`, a Vite
 variable, image layer or command line.
+
+## Private backup and recovery
+
+Set an absolute `HEARTH_BACKUP_DIR` only in private server configuration. The service creates
+consistent online SQLite copies, verifies their integrity, foreign keys and migration version,
+uses mode-restricted files and keeps the newest configured count. Admin → System Health can request
+one copy without exposing a path or database download. `HEARTH_BACKUP_RETENTION` defaults to 14 and
+`HEARTH_BACKUP_INTERVAL_HOURS` defaults to 24.
+
+After `pnpm build`, operators can verify a retained file or restore it to a new clean location:
+
+```sh
+node apps/server/dist/recovery-cli.js verify /absolute/path/to/backup.sqlite
+node apps/server/dist/recovery-cli.js restore /absolute/path/to/backup.sqlite \
+  /absolute/new/test-location/hearth.sqlite
+```
+
+Restore refuses an existing destination or work file. Provider secrets, original photos and Home
+Assistant backups stay outside this database recovery copy; use encrypted Synology backup for those
+separate directories and perform a real restore drill before household use.
 
 The demo Admin UI uses a fictional Maya adult session. This exercises real server-side capability
 checks, including child rejection, but is not a login mechanism. Private mode implements named

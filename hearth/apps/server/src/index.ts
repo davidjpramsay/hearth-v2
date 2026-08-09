@@ -50,6 +50,12 @@ import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 import { TodayContentService } from './today-content-repository.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import { FixedClock, SystemClock } from './runtime-context.js';
+import {
+  InMemorySystemOperations,
+  SqliteSystemOperations,
+  resolveSystemOperationsConfiguration,
+  type SystemOperationsRepository,
+} from './system-operations.js';
 
 const host = process.env.HEARTH_HOST ?? '127.0.0.1';
 const port = Number.parseInt(process.env.HEARTH_PORT ?? '4310', 10);
@@ -82,6 +88,7 @@ const privateHouseholdId = () =>
   )?.id ?? null;
 const runtimeHouseholdId = demoMode ? DEMO_HOUSEHOLD_ID : privateHouseholdId;
 const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
+const systemOperationsConfiguration = resolveSystemOperationsConfiguration(process.env);
 const managedCalendarProvider = new ManagedCalendarProvider();
 if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);
 const managedHomeAssistantProvider = new ManagedHomeAssistantProvider();
@@ -119,6 +126,19 @@ const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository
   seedDemo: demoMode,
   clock,
 });
+const systemOperations: SystemOperationsRepository = demoMode
+  ? new InMemorySystemOperations(adminRepository, {
+      version: systemOperationsConfiguration.version,
+      mode: runtimeMode,
+      clock,
+      retentionCount: systemOperationsConfiguration.retentionCount,
+    })
+  : new SqliteSystemOperations(adminRepository, {
+      database,
+      mode: runtimeMode,
+      clock,
+      ...systemOperationsConfiguration,
+    });
 const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
   ? undefined
   : {
@@ -188,6 +208,7 @@ const server = buildServer({
   pocketMoneyRepository,
   calendarConnectionRepository,
   homeAssistantConnectionRepository,
+  systemOperations,
   ...(companionAuth === undefined ? {} : { companionAuth }),
   ...(trustProxyHops === undefined ? {} : { trustProxyHops }),
   readiness: () => {
@@ -216,6 +237,9 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 
 try {
   await server.listen({ host, port });
+  if (systemOperations instanceof SqliteSystemOperations) {
+    systemOperations.startScheduler(privateHouseholdId);
+  }
 } catch (error) {
   server.log.error(error);
   if (database.open) database.close();

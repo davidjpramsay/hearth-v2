@@ -629,3 +629,25 @@ Record durable choices here. New decisions should include date, status, context,
   general Home Assistant dashboard. Migration `0019_home_assistant_connection_setup.sql` contains
   credential-free metadata only. Hearth still has no media-player, Jellyfin, Music Assistant, Cast,
   arbitrary entity/service, microphone or speech surface; D-019, D-020 and D-022 remain authoritative.
+
+## D-043 — Recovery copies use SQLite online backup and fail-safe restore tooling
+
+- Date: 2026-08-10
+- Status: accepted
+- Context: Copying an active WAL database is not a reliable household backup, while exposing a
+  generic filesystem or restore action in the browser would make an operational safeguard
+  unnecessarily dangerous. Adults also needed calm visibility of database and recovery state
+  without turning Hearth into a developer console.
+- Choice: In private mode, create scheduled and adult-requested recovery copies with SQLite's
+  online backup API inside a mode-`0700` directory, verify `quick_check`, foreign keys and schema
+  version, make each retained database mode `0600`, and prune to a bounded configured count. Keep
+  commands adult-only, request-idempotent and audited. Expose only state, time, size, retention and
+  application/migration version to the browser—never a host path or downloadable database. Restore
+  is an operator-only CLI operation that accepts absolute paths, verifies the source, writes only
+  to a new destination and refuses to overwrite an existing database. Secrets and original photos
+  remain separate recovery domains.
+- Consequence: Hearth can stay in use while a consistent local database recovery copy is made, and
+  a clean-location restore can be mechanically proved before live deployment. Admin gains a calm
+  System Health surface, but swapping a restored database, Synology Hyper Backup, Home Assistant
+  recovery and the real NAS restore drill remain explicit operator/approval work rather than web
+  buttons.

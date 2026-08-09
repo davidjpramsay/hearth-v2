@@ -81,10 +81,45 @@ Before any approved Synology commissioning:
     Goodnight and Screen off. The browser receives only opaque choices and friendly labels; the
     resulting URL, token and raw entity IDs remain in `/run/hearth-secrets/home-assistant.json`.
 
+12. Keep `HEARTH_BACKUP_RETENTION=14` and `HEARTH_BACKUP_INTERVAL_HOURS=24` initially. The server
+    writes consistent SQLite online backups under `/data/backups`; this directory is already inside
+    the restricted data mount. Configure encrypted Synology Hyper Backup for the host data and
+    secrets directories so a NAS-volume failure does not remove both the live database and every
+    local copy. The Hearth backup button does not copy provider secrets, photo originals or the
+    separate Home Assistant appliance.
+
 The hostname and certificate mechanism are intentionally unresolved deployment inputs. The passkey
 contract is implemented, but enrolment remains inert until those values and the first-use code file
 are supplied. Changing the WebAuthn relying-party origin later invalidates the intended trust
 boundary.
+
+## Backup verification and clean-location restore
+
+The Admin **System Health** page reports only safe database, backup and version state. An adult may
+request a new online copy there. It never exposes a filename or downloadable household database.
+
+From a restricted Synology administrator shell, choose one retained file and verify it inside the
+server image:
+
+```sh
+docker compose --env-file /volume1/docker/hearth-v2/env/hearth.env \
+  -f /volume1/docker/hearth-v2/compose.yaml exec server \
+  node dist/recovery-cli.js verify /data/backups/<backup-file>.sqlite
+```
+
+For the required drill, restore to a new location only:
+
+```sh
+docker compose --env-file /volume1/docker/hearth-v2/env/hearth.env \
+  -f /volume1/docker/hearth-v2/compose.yaml exec server \
+  node dist/recovery-cli.js restore /data/backups/<backup-file>.sqlite \
+  /data/restore-drill/hearth.sqlite
+```
+
+The tool verifies the source and restored database and refuses to overwrite any existing
+destination or restore work file. Confirm the migration version and inspect the isolated database
+before considering a live swap. Replacing the active database requires a stopped server,
+preservation of the current file and explicit approval; it is deliberately not an Admin button.
 
 ## Start and inspect
 
@@ -110,7 +145,9 @@ Expected checks:
   unavailable.
 - Admin → Connections can test and save Home Assistant without returning the token, URL or raw
   entity IDs to the browser, SQLite, receipts or audit summaries.
+- Admin → System Health reports migration, version and recovery-copy state; “Create backup now”
+  creates an adult audit event and the chosen copy passes the clean-location restore command above.
 
 Do not enter real family or provider data yet. Real-device passkey enrolment, a second-adult recovery
-path, online backup/restore tooling, the exact HTTPS origin and a focused security review remain
-required before household use.
+path, the exact HTTPS origin, encrypted off-device backup, an actual restore drill and a focused
+security review remain required before household use.

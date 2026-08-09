@@ -8,12 +8,14 @@ const evidence = resolve('docs/evidence/phase-2/screenshots');
 const peopleEvidence = resolve('docs/evidence/admin-people');
 const calendarEvidence = resolve('docs/evidence/calendar-connection');
 const homeAssistantEvidence = resolve('docs/evidence/home-assistant-connection');
+const systemEvidence = resolve('docs/evidence/system-health');
 
 test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
   await mkdir(peopleEvidence, { recursive: true });
   await mkdir(calendarEvidence, { recursive: true });
   await mkdir(homeAssistantEvidence, { recursive: true });
+  await mkdir(systemEvidence, { recursive: true });
 });
 
 test.beforeEach(async ({ request }) => {
@@ -229,6 +231,58 @@ test('Home controls are not presented as an administration setting', async ({ pa
   await expect(page.getByLabel('Living room status')).toBeVisible();
 });
 
+test('adult sees calm system health and creates a checked recovery copy', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/more');
+  await expect(page.getByRole('heading', { name: 'System' })).toBeVisible();
+  await page.getByRole('link', { name: /System health/ }).click();
+  await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
+  await expect(page.getByText('Migration 19 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
+  await expect(
+    page.getByText('Provider tokens stay in the separate protected secrets folder.'),
+  ).toBeVisible();
+  const create = page.getByRole('button', { name: 'Create backup now' });
+  await create.scrollIntoViewIfNeeded();
+  await create.click();
+  await expect(page.getByRole('status')).toContainText('Recovery copy created and checked');
+  await expect(page.getByText(/Last backup 3 Aug 2026, 7:42 am · 2.5 MB/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/Last backup 3 Aug 2026, 7:42 am · 2.5 MB/)).toBeVisible();
+});
+
+test('system backup retry keeps the same command identity after a lost response', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const requestIds: string[] = [];
+  let attempt = 0;
+  await page.route('**/system-backups', async (route) => {
+    const body = route.request().postDataJSON() as { requestId: string };
+    requestIds.push(body.requestId);
+    attempt += 1;
+    if (attempt === 1) {
+      await route.fetch();
+      await route.abort('failed');
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/admin/system');
+  const create = page.getByRole('button', { name: 'Create backup now' });
+  await create.scrollIntoViewIfNeeded();
+  await create.click();
+  await expect(page.getByRole('alert')).toContainText('Hearth could not confirm the recovery copy');
+  const retry = page.getByRole('button', { name: 'Try again' });
+  await expect(retry).toBeFocused();
+  await retry.press('Enter');
+  await expect(page.getByRole('status')).toContainText('Recovery copy created and checked');
+  expect(requestIds).toHaveLength(2);
+  expect(requestIds[1]).toBe(requestIds[0]);
+});
+
 test('People palette supports native keyboard selection', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/people');
@@ -380,6 +434,7 @@ for (const path of [
   '/admin/connections',
   '/admin/connections/calendar',
   '/admin/connections/home-assistant',
+  '/admin/system',
 ]) {
   test(`@a11y ${path} has no serious accessibility violations`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -393,6 +448,32 @@ for (const path of [
     ).toEqual([]);
   });
 }
+
+for (const viewport of [
+  { name: 'phone-portrait', width: 390, height: 844 },
+  { name: 'phone-landscape', width: 844, height: 390 },
+] as const) {
+  test(`@visual System health at ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/admin/system');
+    await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
+    await page.screenshot({
+      path: resolve(systemEvidence, `system-health-${viewport.name}.png`),
+      animations: 'disabled',
+    });
+  });
+}
+
+test('@visual System health recovery action at phone portrait', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/system');
+  const create = page.getByRole('button', { name: 'Create backup now' });
+  await create.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: resolve(systemEvidence, 'system-health-actions-phone-portrait.png'),
+    animations: 'disabled',
+  });
+});
 
 for (const viewport of [
   { name: 'phone-portrait', width: 390, height: 844 },

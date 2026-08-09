@@ -43,6 +43,8 @@ import {
   RuntimeContextSchema,
   SavedMealCommandResultSchema,
   SavedMealLibrarySchema,
+  SystemBackupCommandResultSchema,
+  SystemStatusSchema,
   TodaySummarySchema,
   TodayConfigurationCommandResultSchema,
   TodayConfigurationSchema,
@@ -96,6 +98,8 @@ import {
   type SavedMealCommandResult,
   type SavedMealLibrary,
   type RuntimeContext,
+  type SystemBackupCommandResult,
+  type SystemStatus,
   type TodaySummary,
   type TodaySectionVisibility,
   type WeekSchedule,
@@ -148,6 +152,9 @@ export const queryKeys = {
   },
   get homeAssistantConnection() {
     return [householdId(getHearthRuntime()), 'home-assistant-connection'] as const;
+  },
+  get systemStatus() {
+    return [householdId(getHearthRuntime()), 'system-status'] as const;
   },
   get lists() {
     return [householdId(getHearthRuntime()), 'lists'] as const;
@@ -656,6 +663,16 @@ export const hearthApi = {
       HomeAssistantConnectionCommandResultSchema,
       { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify({ requestId }) },
     ),
+  getSystemStatus: (): Promise<SystemStatus> =>
+    request(`${householdApiBase()}/system-status`, SystemStatusSchema, {
+      headers: demoAdminHeaders,
+    }),
+  createSystemBackup: (requestId: string): Promise<SystemBackupCommandResult> =>
+    request(`${householdApiBase()}/system-backups`, SystemBackupCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId }),
+    }),
   updateHousehold: (input: { requestId: string; name: string; timezone: string }) =>
     request(`${householdApiBase()}/settings`, AdminOverviewSchema, {
       method: 'PATCH',

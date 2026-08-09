@@ -354,7 +354,8 @@ checks pass; physical-TCL comfort assessment remains part of the household pilot
 - Commission the implemented Synology photo source against one explicitly approved read-only folder.
 - Add ambient slideshow and screen/presence coordination.
 - Commission the verified Docker/Compose scaffold on the approved private Synology HTTPS origin.
-- Implement health monitoring, backup, restore and update procedures.
+- Commission the implemented System Health and online-backup service, configure Synology's
+  encrypted off-device copy, and perform the documented clean-location restore drill on the NAS.
 - Conduct a household pilot and tune television readability/presence rules.
 
 ### Completion criteria

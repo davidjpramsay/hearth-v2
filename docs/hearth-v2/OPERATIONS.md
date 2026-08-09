@@ -196,19 +196,29 @@ docker build --platform linux/amd64 --target web \
 
 Live commissioning remains blocked on an owner-approved private hostname/certificate, dedicated
 Synology service UID/GID and folders, real-device passkey enrolment plus second-adult recovery,
-backup/restore tooling and a focused security review. Do not enter real household or provider data
-before those controls are complete.
+an actual Synology restore drill and a focused security review. Do not enter real household or
+provider data before those controls are complete.
 
 ## Backup design
 
 ### Hearth
 
-- Daily consistent SQLite backup using the SQLite backup mechanism, not a casual copy of an active WAL database.
-- Retain a practical rolling set, for example 7 daily and 4 weekly copies, subject to final household policy.
+- The implemented private service uses SQLite's online backup mechanism, not a casual copy of an
+  active WAL database. `HEARTH_BACKUP_DIR` must be absolute; Compose sets it to `/data/backups`.
+- `HEARTH_BACKUP_INTERVAL_HOURS` defaults to 24 and `HEARTH_BACKUP_RETENTION` defaults to 14.
+  The first scheduled check runs after startup, skips a still-current copy and retries later after
+  a family-safe failure. An adult may also choose **System Health → Create backup now**.
+- Every copy is verified with SQLite `quick_check`, foreign-key checks and a schema-version read,
+  retained as one mode-`0600` database file inside a mode-`0700` directory and pruned to the
+  configured count. The browser sees only status, time, size and retention—not a path or download.
 - Back up deployment configuration excluding renewable/cache content.
 - Perform a restore into an isolated test location before production acceptance.
 
-Phase 2 development evidence closes the database, copies it, opens the copy in an isolated location and verifies both Admin and completed chore state. Production still requires the SQLite online-backup mechanism above because copying a live WAL file is not an acceptable operational backup.
+The repository integration test now creates three online backups while the source database is open,
+proves idempotency/audit records and retention, verifies the latest copy, restores it to a new clean
+path and reads the household from that restored database. `node apps/server/dist/recovery-cli.js
+verify …` validates one copy; `restore … <new-destination>` writes only to a path that does not
+already exist. This is strong local tooling evidence, not the required live Synology restore drill.
 
 The same database now contains the calendar projection cursor, bounded sync
 window, source mappings, normalized events and tombstones. A restore drill for

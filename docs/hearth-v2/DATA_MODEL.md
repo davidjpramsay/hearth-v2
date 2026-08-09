@@ -369,6 +369,9 @@ Sensitive descriptions, provider tokens and full external payloads do not belong
 - Transactions encompass domain mutation plus audit creation.
 - Foreign keys and uniqueness constraints enforce invariants already checked in code.
 - Schema changes use reviewed migrations and backup/restore tests.
+- Online recovery copies are external mode-restricted SQLite files, not rows or downloadable
+  assets. Only the manual/scheduled command receipt and safe audit summary live in the database;
+  backup host paths never enter a browser contract, receipt or audit event.
 
 ## Current migration and runtime boundary
 

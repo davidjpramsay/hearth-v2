@@ -4,7 +4,9 @@ Status: **Phases 0–5 are implemented and locally verified. Phase 6 source,
 pairing contracts, Android builds and emulator lifecycle evidence are implemented; selected-TCL
 evidence is still required. Phase 3 includes the first read-only CalDAV/iCloud adapter. Phase 5
 includes fake and private REST Home Assistant contracts plus an adult connection/mapping workflow;
-no live credential, calendar write or household automation was used. The separate Music
+the private deployment now also has integrity-checked online database backups, fail-safe restore
+tooling and a calm adult System Health surface. No live credential, calendar write, restore or
+household automation was used. The separate Music
 Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or verified.**
 
 ## Product statement
@@ -62,7 +64,9 @@ Use typed provider interfaces and seeded demo data until these choices are suppl
 Phase 7 is active: the path-safe Photos gallery, mixed-orientation demo source
 and immediate-exit ambient mode now run in the web product, while the exact
 approved Synology folder, live indexing, presence/quiet-hours coordination and
-production operations remain open. Repeat the Phase 6 launcher, pairing,
+live operations commissioning remain open. Configure the implemented backup service only inside
+the approved private Synology deployment, copy it off-device with encrypted Synology tooling and
+perform the clean-location restore drill. Repeat the Phase 6 launcher, pairing,
 D-pad/Back, app switching, standby/resume and outage-recovery checks on the
 selected TCL television. In a separate live-system
 workstream, and only after approval and backup, commission Music Assistant on

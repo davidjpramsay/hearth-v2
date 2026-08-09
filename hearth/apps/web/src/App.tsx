@@ -74,6 +74,9 @@ const TelevisionsSettingsScreen = lazy(async () => ({
 const TodaySettingsScreen = lazy(async () => ({
   default: (await import('./screens/TodaySettingsScreen')).TodaySettingsScreen,
 }));
+const SystemHealthScreen = lazy(async () => ({
+  default: (await import('./screens/SystemHealthScreen')).SystemHealthScreen,
+}));
 
 export function App() {
   const location = useLocation();
@@ -158,6 +161,7 @@ export function App() {
             <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
             <Route path="/admin/chore-day" element={<ChoreDaySettingsScreen />} />
             <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
+            <Route path="/admin/system" element={<SystemHealthScreen />} />
             <Route path="/admin/rewards" element={<Navigate replace to="/admin/pocket-money" />} />
           </Route>
           <Route path="/pair" element={<PairingScreen />} />
