@@ -105,11 +105,19 @@ the phone More hub.
 - The phone schedule editor uses an explicit multi-person picker. Selecting several people creates
   one separately completable occurrence for each selected person; summaries name the full assignee
   set rather than implying that one shared completion satisfies everyone.
+- The phone schedule editor lets an adult move active schedules earlier or later with substantial,
+  labelled controls. That explicit top-to-bottom order is the television order; drag, touch or
+  hidden heuristics are never required. New schedules append to the end.
+- An optional **Available from** and **Due by** pair forms a household-local time window. Either end
+  may be used independently; when both are present, the start must be earlier than the due time.
+  Previously generated occurrences keep the window and order they were created with.
 - A separate phone-first **Today’s chores** surface opens one occurrence at a time. It shows the
   snapshotted description and due time, requires an adult reason before Skip, Excuse or Reassign,
   explains the pocket-money consequence in family language and keeps newest-first history visible.
-- The television shows due time as quiet secondary metadata and retains one-Select completion/undo;
-  it does not expose exception forms or an audit timeline.
+- The television shows a compact time window such as **7:00–7:30 am**, **From 4:00 pm** or
+  **Due 6:30 pm** as quiet secondary metadata. Rows follow the adult-defined schedule order and
+  retain one-Select completion/undo; the television does not expose ordering, exception forms or an
+  audit timeline.
 
 ### Lists
 

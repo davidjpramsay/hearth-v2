@@ -38,6 +38,10 @@ const migrations = [
     version: 17,
     url: new URL('./migrations/0017_chore_occurrence_management.sql', import.meta.url),
   },
+  {
+    version: 18,
+    url: new URL('./migrations/0018_chore_windows_and_order.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

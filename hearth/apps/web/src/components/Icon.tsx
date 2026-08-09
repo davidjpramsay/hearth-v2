@@ -3,8 +3,10 @@ import type { SVGProps } from 'react';
 export type IconName =
   | 'calendar'
   | 'check'
+  | 'chevron-down'
   | 'chevron-left'
   | 'chevron-right'
+  | 'chevron-up'
   | 'chores'
   | 'cloud'
   | 'cloud-rain'
@@ -42,8 +44,10 @@ const paths: Record<IconName, React.ReactNode> = {
     </>
   ),
   check: <path d="m5 12 4 4L19 6" />,
+  'chevron-down': <path d="m6 9 6 6 6-6" />,
   'chevron-left': <path d="m15 18-6-6 6-6" />,
   'chevron-right': <path d="m9 18 6-6-6-6" />,
+  'chevron-up': <path d="m18 15-6-6-6 6" />,
   chores: (
     <>
       <path d="M9 11l3 3L22 4" />

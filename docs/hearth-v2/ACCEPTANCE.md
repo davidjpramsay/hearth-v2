@@ -98,13 +98,20 @@ Chromium fallback produced the retained evidence.
 - An adult can create a one-off chore for a household-local date, archive any active chore only
   after confirmation and restore it from today. Command retries replay safely, past occurrences
   remain visible and the archived interval does not produce retroactive jobs.
-- An adult can add an optional due time to future schedules, then reasonedly skip, excuse or
+- An adult can add an optional available-from time, due time or valid two-ended window to future
+  schedules. Reversed windows are rejected with a stable validation error.
+- An adult can move active schedules earlier or later from the phone. The saved order includes every
+  active template exactly once, appends newly created schedules and survives restart/retry.
+- Generated occurrences retain their snapshotted window and order after a later template edit or
+  reorder; future ungenerated days use the new values.
+- An adult can then reasonedly skip, excuse or
   reassign a pending occurrence from the phone. The occurrence detail shows its snapshotted
-  description, due time and newest-first immutable history after restart.
+  description, time window and newest-first immutable history after restart.
 - Skip remains incomplete and eligible for pocket money, excuse is excluded, and reassignment moves
   responsibility. Retrying the same request cannot apply the change or create history twice.
-- The television renders due time as secondary row metadata but keeps completion/undo as the only
-  ordinary chore actions; exception and history controls remain phone-first.
+- The television renders compact available/due metadata in the saved order but keeps
+  completion/undo as the only ordinary chore actions; ordering, exception and history controls
+  remain phone-first.
 - An adult can reverse an accidental completion with an audit trail.
 - A child cannot modify another person's history or household rules without permission.
 - Every participating child has a required weekly amount and payday in phone administration.

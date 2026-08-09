@@ -1506,6 +1506,7 @@ describe('Hearth v2 API', () => {
       description: null,
       assigneeIds: ['member_ezra', 'member_maya'],
       routineLabel: 'Extra jobs',
+      availableFromTime: '15:45',
       dueTime: '16:30',
       repeat: 'once',
       repeatDays: [],
@@ -1560,6 +1561,38 @@ describe('Hearth v2 API', () => {
         assigneeIds: ['member_missing'],
       },
     });
+    const invalidWindow = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_invalid_chore_window',
+        availableFromTime: '17:00',
+      },
+    });
+    const orderedTemplateIds = [
+      templateId,
+      ...adult.json().templates.map((template: { id: string }) => template.id),
+    ];
+    const reordered = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/chore-template-order',
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_reorder_chores', orderedTemplateIds },
+    });
+    const reorderReplay = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/chore-template-order',
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_reorder_chores', orderedTemplateIds },
+    });
+    const childReorder = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/chore-template-order',
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: { requestId: 'request_child_reorder_chores', orderedTemplateIds },
+    });
     const archiveUrl = `${url}/${templateId}/archivals`;
     const archived = await app.inject({
       method: 'POST',
@@ -1589,6 +1622,8 @@ describe('Hearth v2 API', () => {
         assignees: [{ id: 'member_ezra' }, { id: 'member_maya' }],
         repeat: 'once',
         repeatDays: [],
+        availableFromTime: '15:45',
+        dueTime: '16:30',
         activeFrom: '2026-08-04',
         activeUntil: '2026-08-04',
       },
@@ -1603,6 +1638,15 @@ describe('Hearth v2 API', () => {
     expect(duplicateAssignee.json().error.code).toBe('VALIDATION_ERROR');
     expect(missingAssignee.statusCode).toBe(404);
     expect(missingAssignee.json().error.code).toBe('NOT_FOUND');
+    expect(invalidWindow.statusCode).toBe(400);
+    expect(invalidWindow.json().error.code).toBe('VALIDATION_ERROR');
+    expect(reordered.json()).toMatchObject({
+      audit: { action: 'chore-template.reorder' },
+      replayed: false,
+    });
+    expect(reordered.json().list.templates[0].id).toBe(templateId);
+    expect(reorderReplay.json().replayed).toBe(true);
+    expect(childReorder.statusCode).toBe(403);
     expect(archived.json()).toMatchObject({
       template: { archived: true },
       audit: { action: 'chore-template.archive' },

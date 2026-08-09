@@ -18,6 +18,7 @@ import {
   useChoreOccurrenceDetailQuery,
   useChoresQuery,
 } from '../hooks/useHearthQueries';
+import { formatChoreTiming } from '../utils/choreTiming';
 
 type ManagementAction = 'skip' | 'excuse' | 'reassign';
 
@@ -141,6 +142,7 @@ function ChoreOccurrenceManager({
   const changeable = occurrence.state === 'pending' || occurrence.state === 'skipped';
   const busy = mutation.isPending && mutation.variables?.occurrence.id === occurrence.id;
   const reasonReady = reason.trim().length >= 2;
+  const timing = formatChoreTiming(occurrence.availableFromTime, occurrence.dueTime);
 
   function change(action: ManagementAction) {
     mutation.reset();
@@ -164,7 +166,7 @@ function ChoreOccurrenceManager({
           <strong>{occurrence.title}</strong>
           <small>
             {occurrence.assignee.displayName} · {occurrence.routineLabel}
-            {occurrence.dueTime === null ? '' : ` · Due ${formatDueTime(occurrence.dueTime)}`}
+            {timing === null ? '' : ` · ${timing}`}
           </small>
         </span>
         <span className={`chore-management-state chore-management-state--${occurrence.state}`}>
@@ -272,14 +274,6 @@ function stateLabel(state: ChoreOccurrence['state']): string {
   if (state === 'excused') return 'Excused';
   if (state === 'cancelled') return 'Cancelled';
   return 'Waiting';
-}
-
-function formatDueTime(localTime: string): string {
-  return new Intl.DateTimeFormat('en-AU', {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'UTC',
-  }).format(new Date(`2000-01-01T${localTime}:00.000Z`));
 }
 
 function formatHistoryTime(timestamp: string): string {

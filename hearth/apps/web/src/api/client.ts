@@ -11,6 +11,7 @@ import {
   ChoreSkipResultSchema,
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
+  ChoreTemplateOrderCommandResultSchema,
   HouseholdListSettingsSchema,
   HouseholdListsSchema,
   HomeActionResultSchema,
@@ -55,6 +56,7 @@ import {
   type ChoreSkipResult,
   type ChoreTemplateCommandResult,
   type ChoreTemplateList,
+  type ChoreTemplateOrderCommandResult,
   type DemoScenario,
   type HouseholdLists,
   type HouseholdListSettings,
@@ -544,6 +546,12 @@ export const hearthApi = {
       ChoreTemplateCommandResultSchema,
       { method: 'PATCH', headers: demoAdminHeaders, body: JSON.stringify(input) },
     ),
+  reorderChoreTemplates: (orderedTemplateIds: string[], requestId: string) =>
+    request(`${householdApiBase()}/chore-template-order`, ChoreTemplateOrderCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId, orderedTemplateIds }),
+    }),
   archiveChoreTemplate: (templateId: string, requestId: string) =>
     request(
       `${householdApiBase()}/chore-templates/${templateId}/archivals`,
@@ -765,6 +773,7 @@ export type HearthPocketMoneyPaymentCommandResult = PocketMoneyPaymentCommandRes
 export type HearthPocketMoneyPaymentVoidCommandResult = PocketMoneyPaymentVoidCommandResult;
 export type HearthChoreTemplates = ChoreTemplateList;
 export type HearthChoreTemplateCommandResult = ChoreTemplateCommandResult;
+export type HearthChoreTemplateOrderCommandResult = ChoreTemplateOrderCommandResult;
 export type HearthChoreOccurrenceDetail = ChoreOccurrenceDetail;
 export type HearthChoreOccurrenceChangeResult = ChoreOccurrenceChangeResult;
 
@@ -773,6 +782,7 @@ export interface ChoreTemplateInput {
   description: string | null;
   assigneeIds: string[];
   routineLabel: string;
+  availableFromTime: string | null;
   dueTime: string | null;
   repeat: 'once' | 'daily' | 'weekdays' | 'weekly';
   repeatDays: Array<'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'>;

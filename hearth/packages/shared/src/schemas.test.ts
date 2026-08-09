@@ -35,6 +35,7 @@ import {
   CreateHouseholdListRequestSchema,
   HouseholdListSettingsSchema,
   ReorderHouseholdListsRequestSchema,
+  ReorderChoreTemplatesRequestSchema,
   CreateHouseholdNoticeRequestSchema,
   TodaySectionVisibilitySchema,
   ChoreTemplateSchema,
@@ -104,6 +105,8 @@ describe('shared wire schemas', () => {
     };
     const normalizedTemplate = ChoreTemplateSchema.parse(template);
     expect(normalizedTemplate.activeUntil).toBe('2026-08-04');
+    expect(normalizedTemplate.availableFromTime).toBeNull();
+    expect(normalizedTemplate.sortOrder).toBe(0);
     expect(normalizedTemplate.assignees.map((member) => member.id)).toEqual(['member_ezra']);
     expect(
       CreateChoreTemplateRequestSchema.parse({
@@ -130,6 +133,33 @@ describe('shared wire schemas', () => {
     expect(ChoreTemplateSchema.safeParse({ ...template, activeUntil: null }).success).toBe(false);
     expect(
       CreateChoreTemplateRequestSchema.safeParse({ ...once, dueTime: '4:30 pm' }).success,
+    ).toBe(false);
+    expect(
+      CreateChoreTemplateRequestSchema.parse({
+        ...once,
+        availableFromTime: '15:30',
+        dueTime: '16:30',
+      }),
+    ).toMatchObject({ availableFromTime: '15:30', dueTime: '16:30' });
+    expect(
+      CreateChoreTemplateRequestSchema.safeParse({
+        ...once,
+        availableFromTime: '16:30',
+        dueTime: '16:30',
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateChoreTemplateRequestSchema.safeParse({
+        ...once,
+        availableFromTime: '17:00',
+        dueTime: '16:30',
+      }).success,
+    ).toBe(false);
+    expect(
+      ReorderChoreTemplatesRequestSchema.safeParse({
+        requestId: 'request_chore_order_001',
+        orderedTemplateIds: ['template_one', 'template_one'],
+      }).success,
     ).toBe(false);
     expect(
       CreateChoreTemplateRequestSchema.safeParse({ ...once, repeat: 'weekly', repeatDays: [] })

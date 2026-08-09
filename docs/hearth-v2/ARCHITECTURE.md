@@ -235,6 +235,12 @@ idempotency receipts and SSE invalidation path as chores. The television may
 check list items, but recurring-chore, meal and pocket-money editing stays in the
 responsive companion presentation.
 
+`PUT /api/v1/households/:householdId/chore-template-order` accepts one idempotent adult command with
+every active template ID exactly once. Template create/update commands carry optional
+`availableFromTime` and `dueTime` values; shared validation rejects a reversed window. The
+repository updates active order transactionally and occurrence generation snapshots both time
+boundaries and `sortOrder`, keeping previously generated days stable after later edits.
+
 Demo-only reset/scenario routes exist only when the server is started in demo
 mode. Demo actor/source headers exercise the server-side permission matrix and
 are rejected outside demo mode; they are not production authentication.
@@ -269,12 +275,12 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0017` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0018` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
-history, the Synology photo index, saved-meal preparation metadata and reasoned chore-occurrence
-management history. The live demo server uses the SQLite repository; its in-memory adapter remains
-only for isolated contract tests.
+history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
+management history, and snapshotted chore windows/order. The live demo server uses the SQLite
+repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
 

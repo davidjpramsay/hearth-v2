@@ -34,6 +34,7 @@ import {
   ChoreSkipResultSchema,
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
+  ChoreTemplateOrderCommandResultSchema,
   CommandRequestSchema,
   CompletionReversalRequestSchema,
   CopyMealPlanWeekRequestSchema,
@@ -79,6 +80,7 @@ import {
   RefreshPhotoSourceRequestSchema,
   RestoreChoreTemplateRequestSchema,
   ReorderHouseholdListsRequestSchema,
+  ReorderChoreTemplatesRequestSchema,
   ReorderListItemsRequestSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
@@ -1540,6 +1542,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         ),
       );
       realtime.publish(params.householdId, 'chore-template.changed', result.template.id);
+      return result;
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/chore-template-order', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(ReorderChoreTemplatesRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ChoreTemplateOrderCommandResultSchema.parse(
+        await planningRepository.reorderChoreTemplates(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'chore-template.changed', params.householdId);
       return result;
     });
   });

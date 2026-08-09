@@ -14,6 +14,7 @@ import {
 import {
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
+  ChoreTemplateOrderCommandResultSchema,
   ChoreTemplateSchema,
   HouseholdListSettingsSchema,
   HouseholdListSchema,
@@ -34,6 +35,7 @@ import {
   type ChoreTemplate,
   type ChoreTemplateCommandResult,
   type ChoreTemplateList,
+  type ChoreTemplateOrderCommandResult,
   type CreateHouseholdListRequest,
   type CreateChoreTemplateRequest,
   type CreateSavedMealRequest,
@@ -57,6 +59,7 @@ import {
   type UpdateHouseholdListRequest,
   type UpdateListItemRequest,
   type ReorderHouseholdListsRequest,
+  type ReorderChoreTemplatesRequest,
   type ReorderListItemsRequest,
   type RestoreChoreTemplateRequest,
   type UpsertMealPlanRequest,
@@ -203,6 +206,11 @@ export interface PlanningRepository {
     input: UpdateChoreTemplateRequest,
     actor: CommandActor,
   ): Promise<ChoreTemplateCommandResult>;
+  reorderChoreTemplates(
+    householdId: string,
+    input: ReorderChoreTemplatesRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateOrderCommandResult>;
   archiveChoreTemplate(
     householdId: string,
     templateId: string,
@@ -766,7 +774,15 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     this.assertAdmin(actor);
     return ChoreTemplateListSchema.parse({
       householdId,
-      templates: this.scenario === 'empty' ? [] : this.templates,
+      templates:
+        this.scenario === 'empty'
+          ? []
+          : [...this.templates].sort(
+              (left, right) =>
+                Number(left.archived) - Number(right.archived) ||
+                left.sortOrder - right.sortOrder ||
+                left.id.localeCompare(right.id),
+            ),
     });
   }
 
@@ -782,7 +798,9 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       input.requestId,
       ChoreTemplateCommandResultSchema,
       () => {
-        const template = templateFromInput(this.id('template'), input);
+        const nextSortOrder =
+          Math.max(-1, ...this.templates.map((template) => template.sortOrder)) + 1;
+        const template = templateFromInput(this.id('template'), input, false, nextSortOrder);
         this.templates.push(template);
         return {
           template,
@@ -810,11 +828,57 @@ export class InMemoryPlanningRepository implements PlanningRepository {
         const current = this.templates[index];
         if (current === undefined)
           throw new RepositoryError('NOT_FOUND', 'That recurring chore was not found.');
-        const template = templateFromInput(templateId, input, current.archived);
+        const template = templateFromInput(templateId, input, current.archived, current.sortOrder);
         this.templates[index] = template;
         return {
           template,
           audit: this.audit('chore-template.update', template.id, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async reorderChoreTemplates(
+    householdId: string,
+    input: ReorderChoreTemplatesRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateOrderCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'chore-template-reorder',
+      input.requestId,
+      ChoreTemplateOrderCommandResultSchema,
+      () => {
+        const active = this.templates.filter((template) => !template.archived);
+        assertExactOrder(
+          active.map((template) => template.id),
+          input.orderedTemplateIds,
+          'Chore order must include every active schedule exactly once.',
+        );
+        const positions = new Map(
+          input.orderedTemplateIds.map((templateId, index) => [templateId, index]),
+        );
+        this.templates = this.templates.map((template) =>
+          template.archived
+            ? template
+            : ChoreTemplateSchema.parse({
+                ...template,
+                sortOrder: positions.get(template.id),
+              }),
+        );
+        return {
+          list: ChoreTemplateListSchema.parse({
+            householdId,
+            templates: [...this.templates].sort(
+              (left, right) =>
+                Number(left.archived) - Number(right.archived) ||
+                left.sortOrder - right.sortOrder ||
+                left.id.localeCompare(right.id),
+            ),
+          }),
+          audit: this.audit('chore-template.reorder', householdId, actor),
           replayed: false,
         };
       },
@@ -1811,21 +1875,10 @@ export class SqlitePlanningRepository implements PlanningRepository {
 
   async getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList> {
     this.assertAdmin(householdId, actor);
-    const rows = this.database
-      .prepare(
-        `SELECT t.*, a.member_id, m.display_name, m.colour, m.avatar_key, m.role,
-                m.capabilities_json
-         FROM chore_templates t
-         JOIN chore_template_assignees a ON a.template_id = t.id
-         JOIN members m ON m.id = a.member_id
-         WHERE t.household_id = ?
-         ORDER BY t.archived_at IS NOT NULL, t.created_at, t.id, m.created_at, m.id`,
-      )
-      .all(householdId) as ChoreTemplateRow[];
-    return ChoreTemplateListSchema.parse({
-      householdId,
-      templates: this.scenario === 'empty' ? [] : choreTemplatesFromRows(rows),
-    });
+    const list = this.readChoreTemplateList(householdId);
+    return this.scenario === 'empty'
+      ? ChoreTemplateListSchema.parse({ householdId, templates: [] })
+      : list;
   }
 
   async createChoreTemplate(
@@ -1844,12 +1897,14 @@ export class SqlitePlanningRepository implements PlanningRepository {
       () => {
         const templateId = id('template');
         const now = new Date().toISOString();
+        const sortOrder = this.nextChoreSortOrder(householdId);
         this.database
           .prepare(
             `INSERT INTO chore_templates
-              (id, household_id, title, description, recurrence_rule, routine_label, due_time,
-               points_value, active_from, active_until, archived_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+              (id, household_id, title, description, recurrence_rule, routine_label,
+               available_from_time, due_time, sort_order, points_value, active_from, active_until,
+               archived_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
           )
           .run(
             templateId,
@@ -1858,7 +1913,9 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
+            input.availableFromTime,
             input.dueTime,
+            sortOrder,
             0,
             input.activeFrom,
             input.repeat === 'once' ? input.activeFrom : null,
@@ -1898,7 +1955,8 @@ export class SqlitePlanningRepository implements PlanningRepository {
           .prepare(
             `UPDATE chore_templates
              SET title = ?, description = ?, recurrence_rule = ?, routine_label = ?,
-                 due_time = ?, points_value = ?, active_from = ?, active_until = ?, updated_at = ?
+                 available_from_time = ?, due_time = ?, points_value = ?, active_from = ?,
+                 active_until = ?, updated_at = ?
              WHERE id = ? AND household_id = ?`,
           )
           .run(
@@ -1906,6 +1964,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
+            input.availableFromTime,
             input.dueTime,
             0,
             input.activeFrom,
@@ -1924,6 +1983,49 @@ export class SqlitePlanningRepository implements PlanningRepository {
         return {
           template: this.readChoreTemplate(householdId, templateId),
           audit: audit('chore-template.update', templateId, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async reorderChoreTemplates(
+    householdId: string,
+    input: ReorderChoreTemplatesRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateOrderCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'chore-template-reorder',
+      'chore_template',
+      ChoreTemplateOrderCommandResultSchema,
+      () => {
+        const activeIds = (
+          this.database
+            .prepare(
+              `SELECT id FROM chore_templates
+               WHERE household_id = ? AND archived_at IS NULL ORDER BY sort_order, id`,
+            )
+            .all(householdId) as Array<{ id: string }>
+        ).map((row) => row.id);
+        assertExactOrder(
+          activeIds,
+          input.orderedTemplateIds,
+          'Chore order must include every active schedule exactly once.',
+        );
+        const update = this.database.prepare(
+          `UPDATE chore_templates SET sort_order = ?, updated_at = ?
+           WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+        );
+        const now = this.now();
+        input.orderedTemplateIds.forEach((templateId, index) =>
+          update.run(index, now, templateId, householdId),
+        );
+        return {
+          list: this.readChoreTemplateList(householdId),
+          audit: audit('chore-template.reorder', householdId, actor, 'succeeded', now),
           replayed: false,
         };
       },
@@ -2388,6 +2490,35 @@ export class SqlitePlanningRepository implements PlanningRepository {
     return choreTemplateFromRows(rows);
   }
 
+  private readChoreTemplateList(householdId: string): ChoreTemplateList {
+    const rows = this.database
+      .prepare(
+        `SELECT t.*, a.member_id, m.display_name, m.colour, m.avatar_key, m.role,
+                m.capabilities_json
+         FROM chore_templates t
+         JOIN chore_template_assignees a ON a.template_id = t.id
+         JOIN members m ON m.id = a.member_id
+         WHERE t.household_id = ?
+         ORDER BY t.archived_at IS NOT NULL, t.sort_order, t.id, m.created_at, m.id`,
+      )
+      .all(householdId) as ChoreTemplateRow[];
+    return ChoreTemplateListSchema.parse({
+      householdId,
+      templates: choreTemplatesFromRows(rows),
+    });
+  }
+
+  private nextChoreSortOrder(householdId: string): number {
+    return (
+      this.database
+        .prepare(
+          `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next
+           FROM chore_templates WHERE household_id = ? AND archived_at IS NULL`,
+        )
+        .get(householdId) as { next: number }
+    ).next;
+  }
+
   private readMember(householdId: string, memberId: string): Member {
     const row = this.database
       .prepare(
@@ -2667,7 +2798,7 @@ function demoChoreTemplates(): ChoreTemplate[] {
       'Straighten the sheets, pull up the doona and place pillows at the top.',
     ],
   ]);
-  return seed.chores.map((occurrence) => {
+  return seed.chores.map((occurrence, index) => {
     const parsed = choreRepeatFromRule(rules.get(occurrence.id) ?? 'FREQ=DAILY');
     return ChoreTemplateSchema.parse({
       id: `template_${occurrence.id.replace('occurrence_', '')}`,
@@ -2675,7 +2806,9 @@ function demoChoreTemplates(): ChoreTemplate[] {
       description: descriptions.get(occurrence.id) ?? null,
       assignees: [occurrence.assignee],
       routineLabel: occurrence.routineLabel,
+      availableFromTime: occurrence.availableFromTime,
       dueTime: occurrence.dueTime,
+      sortOrder: index,
       ...parsed,
       activeFrom: DEMO_LOCAL_DATE,
       activeUntil: null,
@@ -2727,6 +2860,7 @@ function templateFromInput(
   idValue: string,
   input: CreateChoreTemplateRequest | UpdateChoreTemplateRequest,
   archived = false,
+  sortOrder = 0,
 ): ChoreTemplate {
   return ChoreTemplateSchema.parse({
     id: idValue,
@@ -2734,7 +2868,9 @@ function templateFromInput(
     description: input.description,
     assignees: input.assigneeIds.map(demoMember),
     routineLabel: input.routineLabel,
+    availableFromTime: input.availableFromTime,
     dueTime: input.dueTime,
+    sortOrder,
     repeat: input.repeat,
     repeatDays: input.repeatDays,
     activeFrom: input.activeFrom,
@@ -2915,7 +3051,9 @@ function choreTemplateFromRows(rows: ChoreTemplateRow[]): ChoreTemplate {
     description: row.description,
     assignees: rows.map(memberFromRow),
     routineLabel: row.routine_label,
+    availableFromTime: row.available_from_time,
     dueTime: row.due_time,
+    sortOrder: row.sort_order,
     ...choreRepeatFromRule(row.recurrence_rule),
     activeFrom: row.active_from,
     activeUntil: row.active_until,
@@ -2988,7 +3126,9 @@ interface ChoreTemplateRow extends MemberRow {
   description: string | null;
   recurrence_rule: string;
   routine_label: string;
+  available_from_time: string | null;
   due_time: string | null;
+  sort_order: number;
   points_value: number;
   active_from: string;
   active_until: string | null;

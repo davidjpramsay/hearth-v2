@@ -106,7 +106,11 @@ describe('0001 household core migration', () => {
     database.exec(`
       INSERT INTO households VALUES ('household_chore', 'Chore', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
       INSERT INTO members VALUES ('member_chore', 'household_chore', 'Tester', '#000000', NULL, 'adult', NULL, 'now', 'now', '["chores.complete"]');
-      INSERT INTO chore_templates VALUES ('template_chore', 'household_chore', 'Test chore', NULL, 'FREQ=DAILY', 'Morning', NULL, 0, '2026-08-03', NULL, NULL, 'now', 'now');
+      INSERT INTO chore_templates
+        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
+         points_value, active_from, active_until, archived_at, created_at, updated_at)
+      VALUES ('template_chore', 'household_chore', 'Test chore', NULL, 'FREQ=DAILY',
+              'Morning', NULL, 0, '2026-08-03', NULL, NULL, 'now', 'now');
       INSERT INTO chore_template_assignees VALUES ('template_chore', 'member_chore');
       INSERT INTO chore_occurrences
         (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
@@ -684,6 +688,96 @@ describe('0001 household core migration', () => {
         )
         .get('occurrence_chore_detail'),
     ).toEqual({ description_snapshot: 'Put lunch inside', due_time_snapshot: '07:30' });
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('migrates chore windows and stable household order without rewriting occurrences', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    const beforeOrder = [
+      '0001_household_core.sql',
+      '0002_admin_and_pairing.sql',
+      '0003_chore_runtime.sql',
+      '0004_calendar_projection.sql',
+      '0005_household_planning.sql',
+      '0006_home_assistant_projection.sql',
+      '0007_tv_device_credentials.sql',
+      '0008_photo_library.sql',
+      '0009_pocket_money.sql',
+      '0010_member_avatars.sql',
+      '0011_calendar_connection_setup.sql',
+      '0012_passkey_authentication.sql',
+      '0013_notices_and_today_sections.sql',
+      '0014_pocket_money_payment_history.sql',
+      '0015_synology_photo_index.sql',
+      '0016_meal_planning_polish.sql',
+      '0017_chore_occurrence_management.sql',
+    ];
+    for (const file of beforeOrder) {
+      database.exec(readFileSync(fileURLToPath(new URL(`./${file}`, import.meta.url)), 'utf8'));
+    }
+    database.exec(`
+      INSERT INTO households VALUES ('household_order', 'Order home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_order', 'household_order', 'Child', '#1668b7', NULL, 'child', NULL, 'now', 'now', '["chores.complete"]');
+      INSERT INTO chore_templates
+        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
+         points_value, active_from, active_until, archived_at, created_at, updated_at)
+      VALUES
+        ('template_later', 'household_order', 'Later', NULL, 'FREQ=DAILY', 'Morning', '08:00', 0, '2026-08-10', NULL, NULL, '2026-08-10T08:00:00Z', 'now'),
+        ('template_earlier', 'household_order', 'Earlier', NULL, 'FREQ=DAILY', 'Morning', '07:30', 0, '2026-08-10', NULL, NULL, '2026-08-10T07:00:00Z', 'now');
+      INSERT INTO chore_template_assignees VALUES ('template_later', 'member_order');
+      INSERT INTO chore_template_assignees VALUES ('template_earlier', 'member_order');
+      INSERT INTO chore_occurrences
+        (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
+         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at, description_snapshot, due_time_snapshot)
+      VALUES
+        ('occurrence_later', 'household_order', 'template_later', '2026-08-10', 'default',
+         'Later', 'Morning', 'member_order', 'pending', NULL, NULL, NULL, 'now', 'now', NULL, '08:00'),
+        ('occurrence_earlier', 'household_order', 'template_earlier', '2026-08-10', 'default',
+         'Earlier', 'Morning', 'member_order', 'pending', NULL, NULL, NULL, 'now', 'now', NULL, '07:30');
+    `);
+    database.exec(
+      readFileSync(
+        fileURLToPath(new URL('./0018_chore_windows_and_order.sql', import.meta.url)),
+        'utf8',
+      ),
+    );
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 18').get()).toEqual(
+      { name: 'chore_windows_and_order' },
+    );
+    expect(
+      database.prepare('SELECT id, sort_order FROM chore_templates ORDER BY sort_order').all(),
+    ).toEqual([
+      { id: 'template_earlier', sort_order: 0 },
+      { id: 'template_later', sort_order: 1 },
+    ]);
+    expect(
+      database
+        .prepare(
+          'SELECT id, sort_order_snapshot FROM chore_occurrences ORDER BY sort_order_snapshot',
+        )
+        .all(),
+    ).toEqual([
+      { id: 'occurrence_earlier', sort_order_snapshot: 0 },
+      { id: 'occurrence_later', sort_order_snapshot: 1 },
+    ]);
+    const templateColumns = database.prepare('PRAGMA table_info(chore_templates)').all() as Array<{
+      name: string;
+    }>;
+    const occurrenceColumns = database
+      .prepare('PRAGMA table_info(chore_occurrences)')
+      .all() as Array<{ name: string }>;
+    expect(templateColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['available_from_time', 'sort_order']),
+    );
+    expect(occurrenceColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['available_from_time_snapshot', 'sort_order_snapshot']),
+    );
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();

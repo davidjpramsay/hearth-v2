@@ -181,19 +181,23 @@ week with confirmation, and creates, searches, favourites, updates, archives and
 meals with optional preparation time and notes. Chore administration now creates explicit one-off
 or recurring schedules, keeps the everyday list compact, confirms archive, restores from today's
 local date and retains previously generated occurrence history through idempotent audited commands.
-It also edits future recurring chores and due times. A separate phone-first daily management surface
+It also edits future recurring chores, optional available/due windows and their stable
+top-to-bottom display order. A separate phone-first daily management surface
 supports reasoned skip, excuse and adult reassignment, exposes snapshotted descriptions and
 newest-first immutable history, and preserves the documented pocket-money denominator rules.
 The schedule editor now accepts one or more people through a phone-friendly visual picker. The
 existing template-assignee join table is returned as one grouped template and expands to one
 independently completable occurrence per selected person, with legacy singular receipts normalized
 at the contract boundary.
-Television rows show due time without exposing adult management controls. It also manages child weekly amounts,
+Television rows show compact window metadata in the saved order without exposing adult management
+controls. It also manages child weekly amounts,
 paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted
 idempotency receipts. Migration `0017_chore_occurrence_management.sql` adds the forward-only
-description/due-time snapshots and targeted audit-history index. Migration `0009_pocket_money.sql` supersedes the active
+description/due-time snapshots and targeted audit-history index; migration
+`0018_chore_windows_and_order.sql` adds available-from time, deterministic template order and
+historical occurrence snapshots. Migration `0009_pocket_money.sql` supersedes the active
 reward implementation while retaining the old migration tables as dormant
 history; active reward source contracts and runtime seeds are removed and chore completion/undo no longer writes star awards. Migration
 `0014_pocket_money_payment_history.sql` adds optional payment notes, multiple

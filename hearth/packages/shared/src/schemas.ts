@@ -156,7 +156,9 @@ export const ChoreOccurrenceSchema = z.object({
   title: z.string().min(1).max(140),
   assignee: MemberSchema,
   routineLabel: z.string().min(1).max(80),
+  availableFromTime: LocalTimeSchema.nullable().default(null),
   dueTime: LocalTimeSchema.nullable().default(null),
+  sortOrder: z.number().int().nonnegative().default(0),
   localDate: LocalDateSchema,
   state: ChoreStateSchema,
   completionId: OpaqueIdSchema.nullable(),
@@ -431,10 +433,13 @@ function validateChoreTemplate(
     repeatDays: string[];
     activeFrom: string;
     activeUntil: string | null;
+    availableFromTime: string | null;
+    dueTime: string | null;
   },
   context: z.core.$RefinementCtx,
 ) {
   validateChoreSchedule(value, context);
+  validateChoreWindow(value, context);
   if (value.repeat === 'once' && value.activeUntil !== value.activeFrom) {
     context.addIssue({
       code: 'custom',
@@ -442,6 +447,36 @@ function validateChoreTemplate(
       path: ['activeUntil'],
     });
   }
+}
+
+function validateChoreWindow(
+  value: { availableFromTime: string | null; dueTime: string | null },
+  context: z.core.$RefinementCtx,
+) {
+  if (
+    value.availableFromTime !== null &&
+    value.dueTime !== null &&
+    value.availableFromTime >= value.dueTime
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Due by must be later than available from.',
+      path: ['dueTime'],
+    });
+  }
+}
+
+function validateChoreFields(
+  value: {
+    repeat: z.infer<typeof ChoreRepeatSchema>;
+    repeatDays: string[];
+    availableFromTime: string | null;
+    dueTime: string | null;
+  },
+  context: z.core.$RefinementCtx,
+) {
+  validateChoreSchedule(value, context);
+  validateChoreWindow(value, context);
 }
 
 const ChoreTemplateAssigneesSchema = z
@@ -469,7 +504,9 @@ export const ChoreTemplateSchema = z.preprocess(
       description: z.string().max(320).nullable(),
       assignees: ChoreTemplateAssigneesSchema,
       routineLabel: z.string().min(1).max(80),
+      availableFromTime: LocalTimeSchema.nullable().default(null),
       dueTime: LocalTimeSchema.nullable().default(null),
+      sortOrder: z.number().int().nonnegative().default(0),
       repeat: ChoreRepeatSchema,
       repeatDays: z.array(ChoreDaySchema),
       activeFrom: LocalDateSchema,
@@ -497,6 +534,7 @@ const ChoreTemplateFieldsSchema = CommandRequestSchema.extend({
   description: z.string().trim().max(320).nullable(),
   assigneeIds: ChoreTemplateAssigneeIdsSchema,
   routineLabel: z.string().trim().min(1).max(80),
+  availableFromTime: LocalTimeSchema.nullable().default(null),
   dueTime: LocalTimeSchema.nullable().default(null),
   repeat: ChoreRepeatSchema,
   repeatDays: z.array(ChoreDaySchema),
@@ -513,18 +551,28 @@ function normalizeLegacyChoreTemplateRequest(value: unknown): unknown {
 
 export const CreateChoreTemplateRequestSchema = z.preprocess(
   normalizeLegacyChoreTemplateRequest,
-  ChoreTemplateFieldsSchema.superRefine(validateChoreSchedule),
+  ChoreTemplateFieldsSchema.superRefine(validateChoreFields),
 );
 export const UpdateChoreTemplateRequestSchema = z.preprocess(
   normalizeLegacyChoreTemplateRequest,
-  ChoreTemplateFieldsSchema.superRefine(validateChoreSchedule),
+  ChoreTemplateFieldsSchema.superRefine(validateChoreFields),
 );
 export const RestoreChoreTemplateRequestSchema = CommandRequestSchema.extend({
   resumeFrom: LocalDateSchema,
 });
 
+export const ReorderChoreTemplatesRequestSchema = CommandRequestSchema.extend({
+  orderedTemplateIds: uniqueIdOrder(OpaqueIdSchema),
+});
+
 export const ChoreTemplateCommandResultSchema = z.object({
   template: ChoreTemplateSchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
+export const ChoreTemplateOrderCommandResultSchema = z.object({
+  list: ChoreTemplateListSchema,
   audit: z.lazy(() => AuditSummarySchema),
   replayed: z.boolean(),
 });
@@ -896,6 +944,7 @@ export const AuditSummarySchema = z.object({
     'chore-template.update',
     'chore-template.archive',
     'chore-template.restore',
+    'chore-template.reorder',
     'list.create',
     'list.update',
     'list.archive',
@@ -1346,6 +1395,8 @@ export type CreateChoreTemplateRequest = z.infer<typeof CreateChoreTemplateReque
 export type UpdateChoreTemplateRequest = z.infer<typeof UpdateChoreTemplateRequestSchema>;
 export type RestoreChoreTemplateRequest = z.infer<typeof RestoreChoreTemplateRequestSchema>;
 export type ChoreTemplateCommandResult = z.infer<typeof ChoreTemplateCommandResultSchema>;
+export type ReorderChoreTemplatesRequest = z.infer<typeof ReorderChoreTemplatesRequestSchema>;
+export type ChoreTemplateOrderCommandResult = z.infer<typeof ChoreTemplateOrderCommandResultSchema>;
 export type HouseholdListType = z.infer<typeof HouseholdListTypeSchema>;
 export type ListItem = z.infer<typeof ListItemSchema>;
 export type HouseholdList = z.infer<typeof HouseholdListSchema>;

@@ -218,13 +218,13 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   const schoolBag = page.locator('.routine-editor').filter({ hasText: 'Pack school bag' });
   await schoolBag.locator('summary').click();
   await schoolBag.getByLabel('Routine group').fill('School morning');
-  await schoolBag.getByLabel('Due time').fill('07:45');
+  await schoolBag.getByLabel('Due by').fill('07:45');
   await schoolBag.getByRole('button', { name: 'Save future schedule' }).click();
   await expect(page.getByRole('status')).toContainText('updated from today forward');
   await page.reload();
   await schoolBag.locator('summary').click();
   await expect(schoolBag.getByLabel('Routine group')).toHaveValue('School morning');
-  await expect(schoolBag.getByLabel('Due time')).toHaveValue('07:45');
+  await expect(schoolBag.getByLabel('Due by')).toHaveValue('07:45');
 
   await page.getByRole('button', { name: 'New chore' }).click();
   const addChore = page.locator('.routine-add-form');
@@ -232,7 +232,7 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await addChore.getByLabel('Repeat').selectOption('once');
   await addChore.getByLabel('Routine group').fill('Extra jobs');
   await addChore.getByLabel('Due date').fill('2026-08-03');
-  await addChore.getByLabel('Due time').fill('17:30');
+  await addChore.getByLabel('Due by').fill('17:30');
   await addChore.getByRole('button', { name: 'Add chore' }).click();
   await expect(page.getByRole('status')).toContainText('Bring bins in was scheduled');
   const oneOff = page.locator('.routine-editor').filter({ hasText: 'Bring bins in' });
@@ -328,7 +328,7 @@ test('phone adults reason, skip, excuse and reassign today’s chores with visib
   let schoolBag = page.locator('.chore-management-row').filter({ hasText: 'Pack school bag' });
   await schoolBag.locator('summary').click();
   await expect(schoolBag).toContainText('Pack the lunchbox, water bottle and homework folder.');
-  await expect(schoolBag).toContainText('Due 7:30 am');
+  await expect(schoolBag).toContainText('7:00–7:30 am');
   await schoolBag.getByLabel('Reason for the change').fill('Away at school camp');
   await schoolBag.getByRole('button', { name: 'Skip today' }).click();
   await expect(page.getByRole('status')).toContainText('still counts in this week’s pocket money');
@@ -458,17 +458,42 @@ test('phone routines assign one schedule to several people and TV expands separa
   await alex.check();
   await form.getByLabel('Chore', { exact: true }).fill('Put sports gear away');
   await form.getByLabel('Routine group').fill('After school');
-  await form.getByLabel('Due time').fill('16:15');
+  await form.getByLabel('Available from').fill('15:45');
+  await form.getByLabel('Due by').fill('16:15');
   await form.getByRole('button', { name: 'Add chore' }).click();
   await expect(page.getByRole('status')).toContainText('Put sports gear away was scheduled');
+  const titles = page.locator('.routine-editor summary strong');
+  const beforeOrder = await titles.allTextContents();
+  const beforeIndex = beforeOrder.indexOf('Put sports gear away');
+  const editorItem = page
+    .locator('.routine-editor-item')
+    .filter({ hasText: 'Put sports gear away' });
+  await editorItem.getByRole('button', { name: 'Move Put sports gear away earlier' }).click();
+  await expect(page.getByRole('status')).toContainText('Chore order was updated');
+  expect((await titles.allTextContents()).indexOf('Put sports gear away')).toBe(beforeIndex - 1);
+  await page.reload();
+  await expect(
+    page.locator('.routine-editor').filter({ hasText: 'Put sports gear away' }),
+  ).toBeVisible();
+  expect((await titles.allTextContents()).indexOf('Put sports gear away')).toBe(beforeIndex - 1);
+  await editorItem.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: resolve(evidence, 'routines-order-phone.png'),
+    animations: 'disabled',
+  });
   const editor = page.locator('.routine-editor').filter({ hasText: 'Put sports gear away' });
-  await expect(editor).toContainText('Ezra and Alex · Weekdays · 4:15 pm');
+  await expect(editor).toContainText('Ezra and Alex · After school · Weekdays · 3:45–4:15 pm');
   await editor.locator('summary').click();
   await expect(editor.getByRole('checkbox', { name: /Ezra/ })).toBeChecked();
   await expect(editor.getByRole('checkbox', { name: /Alex/ })).toBeChecked();
   await editor.locator('.routine-assignees').scrollIntoViewIfNeeded();
   await page.screenshot({
     path: resolve(evidence, 'routines-multi-assignee-phone.png'),
+    animations: 'disabled',
+  });
+  await editor.locator('.routine-time-window').scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: resolve(evidence, 'routines-time-window-phone.png'),
     animations: 'disabled',
   });
 
@@ -480,6 +505,8 @@ test('phone routines assign one schedule to several people and TV expands separa
   const alexColumn = board.locator('.chore-group').filter({ hasText: /^Alex/ });
   await expect(ezraColumn.getByText('Put sports gear away')).toBeVisible();
   await expect(alexColumn.getByText('Put sports gear away')).toBeVisible();
+  await expect(ezraColumn.getByText('After school · 3:45–4:15 pm')).toBeVisible();
+  await expect(alexColumn.getByText('After school · 3:45–4:15 pm')).toBeVisible();
   await alexColumn.getByRole('button', { name: 'Complete Put sports gear away' }).click();
   await expect(
     alexColumn.getByRole('button', { name: /Put sports gear away, done/ }),

@@ -594,8 +594,9 @@ export class SqliteHearthRepository implements HearthRepository {
   private generateOccurrences(householdId: string, localDate: string): void {
     const rows = this.database
       .prepare(
-        `SELECT t.id, t.title, t.description, t.recurrence_rule, t.routine_label, t.due_time,
-                t.active_from, t.active_until, a.member_id
+        `SELECT t.id, t.title, t.description, t.recurrence_rule, t.routine_label,
+                t.available_from_time, t.due_time, t.sort_order, t.active_from, t.active_until,
+                a.member_id
          FROM chore_templates t
          JOIN chore_template_assignees a ON a.template_id = t.id
          JOIN members m ON m.id = a.member_id AND m.archived_at IS NULL
@@ -606,9 +607,9 @@ export class SqliteHearthRepository implements HearthRepository {
       `INSERT OR IGNORE INTO chore_occurrences
         (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
          description_snapshot, routine_label_snapshot, due_time_snapshot, assignee_member_id,
-         state, completion_id, completed_at, completed_by_actor_id, created_at, updated_at,
-         skipped_at, skipped_by_actor_id)
-       VALUES (?, ?, ?, ?, 'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+         available_from_time_snapshot, sort_order_snapshot, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at, skipped_at, skipped_by_actor_id)
+       VALUES (?, ?, ?, ?, 'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
     );
     const demoByTitleAndMember = new Map(
       createDemoSeed().chores.map((chore) => [`${chore.title}:${chore.assignee.id}`, chore]),
@@ -635,6 +636,8 @@ export class SqliteHearthRepository implements HearthRepository {
           row.routine_label,
           row.due_time,
           row.member_id,
+          row.available_from_time,
+          row.sort_order,
           isSeedCompletion ? 'completed' : 'pending',
           isSeedCompletion ? demoOccurrence.completionId : null,
           isSeedCompletion ? demoOccurrence.completedAt : null,
@@ -654,9 +657,8 @@ export class SqliteHearthRepository implements HearthRepository {
         `SELECT o.*, m.display_name, m.colour, m.avatar_key, m.role, m.capabilities_json
          FROM chore_occurrences o
          JOIN members m ON m.id = o.assignee_member_id
-         JOIN chore_templates t ON t.id = o.template_id
          WHERE o.household_id = ? AND o.scheduled_local_date = ?
-         ORDER BY t.created_at, o.id`,
+         ORDER BY o.sort_order_snapshot, o.id`,
       )
       .all(householdId, localDate) as OccurrenceRow[];
     return rows.map((row) => this.occurrenceFromRow(row));
@@ -680,7 +682,9 @@ export class SqliteHearthRepository implements HearthRepository {
       title: row.title_snapshot,
       assignee: memberFromOccurrenceRow(row),
       routineLabel: row.routine_label_snapshot,
+      availableFromTime: row.available_from_time_snapshot,
       dueTime: row.due_time_snapshot,
+      sortOrder: row.sort_order_snapshot,
       localDate: row.scheduled_local_date,
       state: row.state,
       completionId: row.completion_id,
@@ -972,9 +976,10 @@ export class SqliteHearthRepository implements HearthRepository {
     }
     const insertTemplate = this.database.prepare(
       `INSERT OR IGNORE INTO chore_templates
-        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
-         points_value, active_from, active_until, archived_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+        (id, household_id, title, description, recurrence_rule, routine_label,
+         available_from_time, due_time, sort_order, points_value, active_from, active_until,
+         archived_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
     );
     const insertAssignee = this.database.prepare(
       'INSERT OR IGNORE INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)',
@@ -989,7 +994,9 @@ export class SqliteHearthRepository implements HearthRepository {
         TEMPLATE_DESCRIPTIONS.get(chore.id) ?? null,
         TEMPLATE_RULES.get(chore.id) ?? 'FREQ=DAILY',
         chore.routineLabel,
+        chore.availableFromTime,
         chore.dueTime,
+        index,
         0,
         DEMO_LOCAL_DATE,
         createdAt,
@@ -1007,7 +1014,9 @@ interface TemplateRow {
   description: string | null;
   recurrence_rule: string;
   routine_label: string;
+  available_from_time: string | null;
   due_time: string | null;
+  sort_order: number;
   active_from: string;
   active_until: string | null;
   member_id: string;
@@ -1029,7 +1038,9 @@ interface OccurrenceRow {
   title_snapshot: string;
   description_snapshot: string | null;
   routine_label_snapshot: string;
+  available_from_time_snapshot: string | null;
   due_time_snapshot: string | null;
+  sort_order_snapshot: number;
   scheduled_local_date: string;
   state: 'pending' | 'completed' | 'skipped' | 'excused' | 'cancelled';
   completion_id: string | null;

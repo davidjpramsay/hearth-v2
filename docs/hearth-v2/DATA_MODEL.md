@@ -121,7 +121,8 @@ The external credential/config file is never stored in SQLite.
 - default assignee set
 - recurrence rule
 - routine/time-of-day grouping
-- due-time policy
+- optional available-from and due-by local times
+- stable household-local display order
 - active date range and archive state
 - creation/update history reference
 
@@ -129,7 +130,8 @@ The external credential/config file is never stored in SQLite.
 
 - stable occurrence ID
 - template reference plus snapshotted title and optional description
-- scheduled local date and due time
+- scheduled local date plus snapshotted available-from and due-by times
+- snapshotted display order
 - exactly one assigned member
 - state: pending, completed, skipped, excused or cancelled
 - completion/skip timestamp and actor where relevant
@@ -143,6 +145,10 @@ template/date/instance. Completion, exception history and pocket-money eligibili
 per person; one child's completion never completes another child's copy. The existing
 `chore_template_assignees` primary key and occurrence uniqueness key already enforce this model, so
 multi-assignee authoring does not require a new migration.
+The active template order is a complete, gap-free logical sequence scoped to a household. Reorder
+commands must name every active template exactly once. Generated occurrences snapshot that order
+and both optional window boundaries, so changing a future schedule never rearranges or retimes
+already materialized household history.
 One-off templates use an explicit once-only recurrence and equal start/end local dates. Archiving
 stops new generation without deleting the template or occurrences. Restoring begins a new active
 window on the supplied household-local date (and moves a restored one-off to that date), so dates
@@ -397,6 +403,10 @@ Migration `0017_chore_occurrence_management.sql` adds nullable description and d
 existing occurrence rows, backfills them from the referenced template and adds the targeted audit
 history index. Skip, excuse and reassignment remain command/audit rows rather than mutable history
 blobs; no reason text is placed in a browser-visible receipt beyond the typed result.
+Migration `0018_chore_windows_and_order.sql` adds optional available-from time and deterministic sort
+order to chore templates, snapshots both window boundaries and order onto occurrences, and backfills
+existing rows without rewriting completion state. A household/order index supports the adult
+schedule and occurrence queries.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported one-off, daily and weekly occurrences on
@@ -419,6 +429,10 @@ receipt-idempotent in both the SQLite runtime and injected in-memory contract te
 Chore-template creation/update accepts one-off or recurring schedules. Archive and restore reuse the
 existing forward-compatible active-range/archive columns, keep generated history intact and write
 their own idempotent receipts and audit events; no migration is required.
+Active template reordering is an adult-only, receipt-idempotent command requiring the exact active
+template set. Creation appends; edits preserve position. The SQLite transaction updates every
+position and its audit event together, while occurrence generation snapshots the active position
+and optional time window.
 Adult occurrence-management commands require a bounded reason. Skip keeps the occurrence eligible
 and incomplete, excuse moves pending/skipped work to `excused`, and reassignment moves pending or
 skipped work to another active member and resets it to pending. Mutation, audit event and receipt

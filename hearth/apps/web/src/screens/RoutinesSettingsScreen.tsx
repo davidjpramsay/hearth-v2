@@ -15,6 +15,7 @@ import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { useAdminQuery, useChoreTemplatesQuery } from '../hooks/useHearthQueries';
 import { useHearthRuntime } from '../runtime/context';
+import { formatChoreTiming } from '../utils/choreTiming';
 
 const weekdayValues = ['MO', 'TU', 'WE', 'TH', 'FR'] as const;
 const everyDayValues = [...weekdayValues, 'SA', 'SU'] as const;
@@ -62,6 +63,19 @@ export function RoutinesSettingsScreen() {
       setConfirmation(`${result.template.title} was updated from today forward.`);
     },
   });
+  const reorder = useMutation({
+    mutationFn: ({
+      orderedTemplateIds,
+      requestId,
+    }: {
+      orderedTemplateIds: string[];
+      requestId: string;
+    }) => hearthApi.reorderChoreTemplates(orderedTemplateIds, requestId),
+    onSuccess: async () => {
+      await refresh();
+      setConfirmation('Chore order was updated on every Hearth screen.');
+    },
+  });
   const archive = useMutation({
     mutationFn: ({ templateId, requestId }: { templateId: string; requestId: string }) =>
       hearthApi.archiveChoreTemplate(templateId, requestId),
@@ -106,7 +120,27 @@ export function RoutinesSettingsScreen() {
       archive.mutate(archive.variables);
       return;
     }
+    if (reorder.isError && reorder.variables !== undefined) {
+      reorder.mutate(reorder.variables);
+      return;
+    }
     if (restore.isError && restore.variables !== undefined) restore.mutate(restore.variables);
+  }
+  const activeTemplates = templates.data.templates.filter((template) => !template.archived);
+  function moveTemplate(templateId: string, offset: -1 | 1) {
+    const currentIndex = activeTemplates.findIndex((template) => template.id === templateId);
+    const targetIndex = currentIndex + offset;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= activeTemplates.length) return;
+    const orderedTemplateIds = activeTemplates.map((template) => template.id);
+    const currentId = orderedTemplateIds[currentIndex];
+    const targetId = orderedTemplateIds[targetIndex];
+    if (currentId === undefined || targetId === undefined) return;
+    orderedTemplateIds[currentIndex] = targetId;
+    orderedTemplateIds[targetIndex] = currentId;
+    reorder.mutate({
+      orderedTemplateIds,
+      requestId: createRequestId('routine_reorder'),
+    });
   }
   return (
     <AdminPage
@@ -124,12 +158,12 @@ export function RoutinesSettingsScreen() {
           {confirmation}
         </p>
       )}
-      {create.isError || update.isError || archive.isError || restore.isError ? (
+      {create.isError || update.isError || archive.isError || restore.isError || reorder.isError ? (
         <div className="routine-settings-error">
           <AdminError
             message={
-              (create.error ?? update.error ?? archive.error ?? restore.error)?.message ??
-              'That chore could not be saved.'
+              (create.error ?? update.error ?? archive.error ?? restore.error ?? reorder.error)
+                ?.message ?? 'That chore could not be saved.'
             }
           />
           <button className="admin-secondary" onClick={retryFailedMutation} type="button">
@@ -140,9 +174,7 @@ export function RoutinesSettingsScreen() {
       <div className="routine-settings-toolbar">
         <span>
           <strong>Active chores</strong>
-          <small>
-            {templates.data.templates.filter((template) => !template.archived).length} schedules
-          </small>
+          <small>{activeTemplates.length} schedules · top to bottom on Chores</small>
         </span>
         <button
           className="admin-secondary"
@@ -163,37 +195,39 @@ export function RoutinesSettingsScreen() {
         </form>
       ) : null}
       <div className="routine-editor-list">
-        {templates.data.templates
-          .filter((template) => !template.archived)
-          .map((template, index) => (
-            <RoutineEditor
-              key={template.id}
-              archiveConfirmation={archiveConfirmation === template.id}
-              members={activeMembers}
-              onArchive={() => {
-                if (archiveConfirmation !== template.id) {
-                  setArchiveConfirmation(template.id);
-                  return;
-                }
-                archive.mutate({
-                  templateId: template.id,
-                  requestId: createRequestId('routine_archive'),
-                });
-              }}
-              onCancelArchive={() => setArchiveConfirmation(null)}
-              onSave={(fields) =>
-                update.mutate({
-                  templateId: template.id,
-                  fields,
-                  requestId: createRequestId('routine_update'),
-                })
+        {activeTemplates.map((template, index) => (
+          <RoutineEditor
+            key={template.id}
+            archiveConfirmation={archiveConfirmation === template.id}
+            members={activeMembers}
+            onArchive={() => {
+              if (archiveConfirmation !== template.id) {
+                setArchiveConfirmation(template.id);
+                return;
               }
-              pending={update.isPending || archive.isPending}
-              primary={index === 0}
-              today={runtime.localDate}
-              template={template}
-            />
-          ))}
+              archive.mutate({
+                templateId: template.id,
+                requestId: createRequestId('routine_archive'),
+              });
+            }}
+            onCancelArchive={() => setArchiveConfirmation(null)}
+            onMoveDown={() => moveTemplate(template.id, 1)}
+            onMoveUp={() => moveTemplate(template.id, -1)}
+            onSave={(fields) =>
+              update.mutate({
+                templateId: template.id,
+                fields,
+                requestId: createRequestId('routine_update'),
+              })
+            }
+            canMoveDown={index < activeTemplates.length - 1}
+            canMoveUp={index > 0}
+            pending={update.isPending || archive.isPending || reorder.isPending}
+            primary={index === 0}
+            today={runtime.localDate}
+            template={template}
+          />
+        ))}
       </div>
       {templates.data.templates.some((template) => template.archived) ? (
         <details className="archived-routines">
@@ -243,7 +277,11 @@ function RoutineEditor({
   onSave,
   onArchive,
   onCancelArchive,
+  onMoveDown,
+  onMoveUp,
   archiveConfirmation,
+  canMoveDown,
+  canMoveUp,
 }: {
   template: ChoreTemplate;
   members: HearthMember[];
@@ -253,7 +291,11 @@ function RoutineEditor({
   onSave: (fields: ChoreTemplateInput) => void;
   onArchive: () => void;
   onCancelArchive: () => void;
+  onMoveDown: () => void;
+  onMoveUp: () => void;
   archiveConfirmation: boolean;
+  canMoveDown: boolean;
+  canMoveUp: boolean;
 }) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -261,42 +303,62 @@ function RoutineEditor({
   }
 
   return (
-    <details className="routine-editor">
-      <summary
-        data-focus-entry={primary ? 'true' : undefined}
-        data-focus-id={`routine-template-${template.id}`}
-      >
-        <AssigneeAvatars members={template.assignees} />
-        <span>
-          <strong>{template.title}</strong>
-          <small>
-            {assigneeNames(template)} · {repeatLabel(template)}
-          </small>
-        </span>
-        <Icon name="chevron-right" />
-      </summary>
-      <form onSubmit={submit}>
-        <RoutineFields members={members} template={template} today={today} />
-        <div className="routine-editor__actions">
-          <button className="admin-secondary routine-save" disabled={pending} type="submit">
-            {pending ? 'Saving…' : 'Save future schedule'}
-          </button>
-          <button
-            className={archiveConfirmation ? 'admin-danger' : 'admin-secondary'}
-            disabled={pending}
-            onClick={onArchive}
-            type="button"
-          >
-            {archiveConfirmation ? `Archive ${template.title}?` : 'Archive'}
-          </button>
-          {archiveConfirmation ? (
-            <button className="admin-secondary" onClick={onCancelArchive} type="button">
-              Cancel
+    <div className="routine-editor-item">
+      <div className="routine-order-controls" aria-label={`Order ${template.title}`}>
+        <button
+          aria-label={`Move ${template.title} earlier`}
+          disabled={!canMoveUp || pending}
+          onClick={onMoveUp}
+          type="button"
+        >
+          <Icon name="chevron-up" />
+        </button>
+        <button
+          aria-label={`Move ${template.title} later`}
+          disabled={!canMoveDown || pending}
+          onClick={onMoveDown}
+          type="button"
+        >
+          <Icon name="chevron-down" />
+        </button>
+      </div>
+      <details className="routine-editor">
+        <summary
+          data-focus-entry={primary ? 'true' : undefined}
+          data-focus-id={`routine-template-${template.id}`}
+        >
+          <AssigneeAvatars members={template.assignees} />
+          <span>
+            <strong>{template.title}</strong>
+            <small>
+              {assigneeNames(template)} · {template.routineLabel} · {repeatLabel(template)}
+            </small>
+          </span>
+          <Icon name="chevron-right" />
+        </summary>
+        <form onSubmit={submit}>
+          <RoutineFields members={members} template={template} today={today} />
+          <div className="routine-editor__actions">
+            <button className="admin-secondary routine-save" disabled={pending} type="submit">
+              {pending ? 'Saving…' : 'Save future schedule'}
             </button>
-          ) : null}
-        </div>
-      </form>
-    </details>
+            <button
+              className={archiveConfirmation ? 'admin-danger' : 'admin-secondary'}
+              disabled={pending}
+              onClick={onArchive}
+              type="button"
+            >
+              {archiveConfirmation ? `Archive ${template.title}?` : 'Archive'}
+            </button>
+            {archiveConfirmation ? (
+              <button className="admin-secondary" onClick={onCancelArchive} type="button">
+                Cancel
+              </button>
+            ) : null}
+          </div>
+        </form>
+      </details>
+    </div>
   );
 }
 
@@ -431,25 +493,36 @@ function RoutineFields({
           ))}
         </fieldset>
       ) : null}
-      <div className="admin-form__split routine-fields__split">
-        <label>
-          {repeat === 'once' ? 'Due date' : 'Starts'}
-          <input
-            defaultValue={
-              template === undefined || template.repeat !== 'once' ? today : template.activeFrom
-            }
-            min={today}
-            name="activeFrom"
-            required
-            type="date"
-          />
-        </label>
-        <label>
-          Due time
-          <input defaultValue={template?.dueTime ?? ''} name="dueTime" type="time" />
-          <small>Optional · shown on Today and Chores</small>
-        </label>
-      </div>
+      <label>
+        {repeat === 'once' ? 'Due date' : 'Starts'}
+        <input
+          defaultValue={
+            template === undefined || template.repeat !== 'once' ? today : template.activeFrom
+          }
+          min={today}
+          name="activeFrom"
+          required
+          type="date"
+        />
+      </label>
+      <fieldset className="routine-time-window">
+        <legend>Time window</legend>
+        <p>Optional · use either time or both. Hearth keeps the label compact on television.</p>
+        <div className="admin-form__split routine-fields__split">
+          <label>
+            Available from
+            <input
+              defaultValue={template?.availableFromTime ?? ''}
+              name="availableFromTime"
+              type="time"
+            />
+          </label>
+          <label>
+            Due by
+            <input defaultValue={template?.dueTime ?? ''} name="dueTime" type="time" />
+          </label>
+        </div>
+      </fieldset>
     </div>
   );
 }
@@ -478,6 +551,7 @@ function templateFields(
     description: String(data.get('description') ?? '').trim() || null,
     assigneeIds: data.getAll('assigneeIds').map(String),
     routineLabel: String(data.get('routineLabel') ?? '').trim(),
+    availableFromTime: String(data.get('availableFromTime') ?? '').trim() || null,
     dueTime: String(data.get('dueTime') ?? '').trim() || null,
     repeat,
     repeatDays:
@@ -503,7 +577,8 @@ function repeatLabel(template: ChoreTemplate): string {
         : template.repeat === 'weekdays'
           ? 'Weekdays'
           : `Every ${formatList(template.repeatDays.map((day) => dayLabels[day]))}`;
-  return template.dueTime === null ? repeat : `${repeat} · ${formatDueTime(template.dueTime)}`;
+  const timing = formatChoreTiming(template.availableFromTime, template.dueTime);
+  return timing === null ? repeat : `${repeat} · ${timing}`;
 }
 
 function assigneeNames(template: ChoreTemplate): string {
@@ -552,12 +627,4 @@ function formatLocalDate(localDate: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${localDate}T12:00:00Z`));
-}
-
-function formatDueTime(localTime: string): string {
-  return new Intl.DateTimeFormat('en-AU', {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'UTC',
-  }).format(new Date(`2000-01-01T${localTime}:00.000Z`));
 }

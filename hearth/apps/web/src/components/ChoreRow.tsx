@@ -3,6 +3,7 @@ import type { ChoreOccurrence } from '@hearth/shared';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import { InlineError } from './Status';
+import { formatChoreTiming } from '../utils/choreTiming';
 
 export interface ChoreMutationView {
   mutate: (variables: { action: 'complete' | 'undo'; occurrence: ChoreOccurrence }) => void;
@@ -31,6 +32,7 @@ export function ChoreRow({
   const pending = mutation.pendingOccurrenceId === occurrence.id;
   const failed = mutation.failedOccurrenceId === occurrence.id;
   const action = completed ? 'undo' : 'complete';
+  const timing = formatChoreTiming(occurrence.availableFromTime, occurrence.dueTime);
   const activate = () => {
     if (pending || unavailable) return;
     mutation.clearError();
@@ -63,7 +65,7 @@ export function ChoreRow({
           <strong>{occurrence.title}</strong>
           <span>
             {occurrence.routineLabel}
-            {occurrence.dueTime === null ? '' : ` · Due ${formatDueTime(occurrence.dueTime)}`}
+            {timing === null ? '' : ` · ${timing}`}
           </span>
         </span>
         <span className="chore-row__action">
@@ -92,14 +94,6 @@ export function ChoreRow({
       ) : null}
     </div>
   );
-}
-
-function formatDueTime(localTime: string): string {
-  return new Intl.DateTimeFormat('en-AU', {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'UTC',
-  }).format(new Date(`2000-01-01T${localTime}:00.000Z`));
 }
 
 interface FocusProps {

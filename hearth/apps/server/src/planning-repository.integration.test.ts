@@ -453,6 +453,7 @@ describe('SQLite household planning repository', () => {
         description: null,
         assigneeIds: ['member_ezra'],
         routineLabel: 'Morning',
+        availableFromTime: null,
         dueTime: '07:15',
         repeat: 'daily',
         repeatDays: ['MO', 'TU', 'WE', 'TH', 'FR'],
@@ -494,6 +495,7 @@ describe('SQLite household planning repository', () => {
         description: 'Each person puts away their own gear.',
         assigneeIds: ['member_ezra', alex.id],
         routineLabel: 'After school',
+        availableFromTime: '15:45',
         dueTime: '16:15',
         repeat: 'daily',
         repeatDays: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'],
@@ -506,6 +508,10 @@ describe('SQLite household planning repository', () => {
       'Ezra',
       'Alex',
     ]);
+    expect(created.template).toMatchObject({
+      availableFromTime: '15:45',
+      dueTime: '16:15',
+    });
     expect(
       database
         .prepare(
@@ -527,6 +533,11 @@ describe('SQLite household planning repository', () => {
       'Ezra',
     ]);
     expect(new Set(occurrences.map((occurrence) => occurrence.id))).toHaveProperty('size', 2);
+    expect(occurrences[0]).toMatchObject({
+      availableFromTime: '15:45',
+      dueTime: '16:15',
+      sortOrder: created.template.sortOrder,
+    });
 
     const ezraOccurrence = occurrences.find(
       (occurrence) => occurrence.assignee.id === 'member_ezra',
@@ -555,6 +566,7 @@ describe('SQLite household planning repository', () => {
         description: 'Each person puts away their own gear.',
         assigneeIds: [alex.id],
         routineLabel: 'After school',
+        availableFromTime: '15:45',
         dueTime: '16:15',
         repeat: 'daily',
         repeatDays: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'],
@@ -578,6 +590,67 @@ describe('SQLite household planning repository', () => {
     ).toEqual(['Alex']);
   });
 
+  it('reorders future chore occurrences without changing an already generated day', async () => {
+    const { chores, database, planning } = await repositories();
+    const original = await planning.getChoreTemplates(DEMO_HOUSEHOLD_ID, adult);
+    const active = original.templates.filter((template) => !template.archived);
+    const dishes = active.find((template) => template.id === 'template_dishes');
+    expect(dishes).toBeDefined();
+    const before = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-03');
+    const previousEzraOrder = before.groups
+      .find((group) => group.member.id === 'member_ezra')!
+      .occurrences.map((occurrence) => occurrence.title);
+    const orderedTemplateIds = [
+      dishes!.id,
+      ...active.filter((template) => template.id !== dishes!.id).map((template) => template.id),
+    ];
+
+    const reordered = await planning.reorderChoreTemplates(
+      DEMO_HOUSEHOLD_ID,
+      { requestId: 'request_reorder_chores', orderedTemplateIds },
+      adult,
+    );
+    const replay = await planning.reorderChoreTemplates(
+      DEMO_HOUSEHOLD_ID,
+      { requestId: 'request_reorder_chores', orderedTemplateIds },
+      adult,
+    );
+    expect(reordered).toMatchObject({
+      replayed: false,
+      audit: { action: 'chore-template.reorder' },
+    });
+    expect(reordered.list.templates.filter((template) => !template.archived)[0]?.id).toBe(
+      dishes!.id,
+    );
+    expect(replay.replayed).toBe(true);
+    await expect(
+      planning.reorderChoreTemplates(
+        DEMO_HOUSEHOLD_ID,
+        { requestId: 'request_invalid_chore_order', orderedTemplateIds: [dishes!.id] },
+        adult,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT' } satisfies Partial<RepositoryError>);
+
+    const preserved = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-03');
+    expect(
+      preserved.groups
+        .find((group) => group.member.id === 'member_ezra')!
+        .occurrences.map((occurrence) => occurrence.title),
+    ).toEqual(previousEzraOrder);
+    const future = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-04');
+    expect(
+      future.groups.find((group) => group.member.id === 'member_ezra')!.occurrences[0],
+    ).toMatchObject({ title: 'Dishwasher', sortOrder: 0 });
+    expect(
+      database
+        .prepare(
+          `SELECT sort_order_snapshot FROM chore_occurrences
+           WHERE id = 'occurrence_dishes'`,
+        )
+        .get(),
+    ).toEqual({ sort_order_snapshot: 2 });
+  });
+
   it('schedules a one-off chore and archives or restores it without rewriting generated history', async () => {
     const { chores, planning } = await repositories();
     const created = await planning.createChoreTemplate(
@@ -588,6 +661,7 @@ describe('SQLite household planning repository', () => {
         description: 'After the truck has passed',
         assigneeIds: ['member_ezra'],
         routineLabel: 'Extra jobs',
+        availableFromTime: null,
         dueTime: '16:30',
         repeat: 'once',
         repeatDays: [],
@@ -603,6 +677,7 @@ describe('SQLite household planning repository', () => {
         description: 'After the truck has passed',
         assigneeIds: ['member_ezra'],
         routineLabel: 'Extra jobs',
+        availableFromTime: null,
         dueTime: '16:30',
         repeat: 'once',
         repeatDays: [],

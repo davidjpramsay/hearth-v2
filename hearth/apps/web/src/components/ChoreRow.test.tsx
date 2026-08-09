@@ -17,7 +17,9 @@ const occurrence: ChoreOccurrence = {
     capabilities: ['household.view', 'chores.complete'],
   },
   routineLabel: 'Morning',
+  availableFromTime: '07:00',
   dueTime: '07:30',
+  sortOrder: 0,
   localDate: '2026-08-03',
   state: 'pending',
   completionId: null,
@@ -49,7 +51,7 @@ describe('ChoreRow', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Complete Pack school bag' }));
     expect(mutation.mutate).toHaveBeenCalledWith({ action: 'complete', occurrence });
-    expect(screen.getByText(/Morning · Due 7:30 am/)).toBeVisible();
+    expect(screen.getByText(/Morning · 7:00–7:30 am/)).toBeVisible();
 
     const completed = {
       ...occurrence,

@@ -5793,6 +5793,43 @@
   flex-direction: column;
   gap: 12px;
 }
+.routine-editor-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+.routine-order-controls {
+  padding-top: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.routine-order-controls button {
+  width: 44px;
+  height: 39px;
+  padding: 0;
+  border: 1px solid #cfc5bd;
+  border-radius: 11px;
+  color: var(--plum);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.routine-order-controls button svg {
+  width: 20px;
+  height: 20px;
+}
+.routine-order-controls button:disabled {
+  color: var(--muted);
+  opacity: 0.38;
+  cursor: default;
+}
+.routine-order-controls button:focus-visible {
+  outline: 3px solid rgb(85 50 74 / 25%);
+  outline-offset: 2px;
+}
 .routine-settings-toolbar {
   min-height: 62px;
   margin-top: 17px;
@@ -5877,6 +5914,25 @@
 }
 .routine-fields__split {
   grid-template-columns: 1fr 1fr;
+}
+.routine-time-window {
+  margin: 17px 0 0;
+  padding: 0;
+  border: 0;
+}
+.routine-time-window legend {
+  color: #51484d;
+  font-size: 15px;
+  font-weight: 680;
+}
+.routine-time-window > p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.routine-time-window label {
+  margin-top: 9px;
 }
 .routine-assignee-avatars {
   min-width: 44px;
@@ -7730,6 +7786,11 @@
 :root[data-theme='dark'] .saved-meal-card {
   background: var(--surface-glass);
 }
+:root[data-theme='dark'] .routine-order-controls button {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: var(--surface-raised);
+}
 :root[data-theme='dark'] .home-status-band {
   background: var(--surface-glass);
 }
@@ -7782,7 +7843,8 @@
 :root[data-theme='dark'] .member-colour-picker__option input:checked ~ .member-colour-picker__name,
 :root[data-theme='dark'] .routine-fields label,
 :root[data-theme='dark'] .routine-assignees legend,
-:root[data-theme='dark'] .routine-days legend {
+:root[data-theme='dark'] .routine-days legend,
+:root[data-theme='dark'] .routine-time-window legend {
   color: var(--ink);
 }
 :root[data-theme='dark'] .routine-assignees__options label {

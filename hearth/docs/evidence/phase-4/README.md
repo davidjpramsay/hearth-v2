@@ -24,6 +24,10 @@ used as the documented fallback.
   schedule summary
 - `screenshots/chores-multi-assignee-tv-1080.png`, showing separate Ezra/Alex occurrences from one
   shared schedule
+- `screenshots/routines-order-phone.png`, showing substantial labelled earlier/later controls and
+  the saved top-to-bottom schedule
+- `screenshots/routines-time-window-phone.png`, showing optional available/due fields and their
+  family-readable validation guidance
 - `screenshots/admin-pocket-money-phone-portrait.png`
 
 The 4K captures render a 1920×1080 logical television canvas at 2×. Phone
@@ -63,6 +67,24 @@ scrolling.
   feature changes assignment semantics without introducing a second visual language.
 - The implementation was inspected at 390×844 and 1920×1080 using Playwright Chromium because no
   Browser/IAB controller was available.
+
+## Window and ordering fidelity ledger
+
+| Area         | Finding                                                                                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Copy         | **Time window**, **Available from** and **Due by** use household language; summaries compress the result without exposing storage names.                              |
+| Composition  | Earlier/later controls sit in a narrow companion column beside each schedule; television rows keep the accepted person-led three-column composition.                  |
+| Typography   | Window metadata is deliberately secondary to the chore title while retaining the existing Source Sans 3 minimums at TV and phone sizes.                               |
+| Palette      | Ordering controls reuse neutral surfaces; actionable focus retains the established blue/eucalyptus treatment rather than introducing a schedule-only colour system.   |
+| Icons/assets | Local chevron icons provide earlier/later direction. Existing avatars remain the only person marks; no external assets were added.                                    |
+| Spacing      | Phone ordering targets are at least 44 pixels. Television metadata fits within the existing 72-pixel chore rows and does not lengthen the pocket-money band.          |
+| Focus        | Earlier/later buttons are named for the exact chore and remain keyboard reachable. TV completion focus is unchanged after the metadata addition.                      |
+| Responsive   | The phone form remains single column at 390×844; the inspected 1920×1080 television view keeps all three children's ordinary workload visible without page scrolling. |
+
+The accepted Phase 1 Chores concept remains the visual baseline for calm palette, strong person
+columns, readable titles and open spacing. The implementation intentionally differs by showing
+three children, proportional pocket-money bands and compact chore windows, all approved later
+product requirements. The concept's obsolete Music navigation is not reproduced.
 
 ## State evidence
 

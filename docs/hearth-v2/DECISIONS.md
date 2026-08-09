@@ -587,3 +587,21 @@ Record durable choices here. New decisions should include date, status, context,
   receives a clear, independently completable job. The existing join-table and occurrence-uniqueness
   constraints implement the choice without a new migration. Due windows and routine ordering remain
   separate later work.
+
+## D-041 — Chore windows and order are snapshotted onto occurrences
+
+- Date: 2026-08-10
+- Status: accepted
+- Context: A single due time could not express “after school but before dinner”, and implicit query
+  order gave adults no dependable way to shape a child's television routine. Reusing the template's
+  live values at render time would also silently retime and rearrange historical days.
+- Choice: Give a chore template optional household-local **Available from** and **Due by** values,
+  rejecting a two-ended window unless start is earlier than due. Store an explicit household-local
+  `sortOrder`. Phone administration exposes labelled earlier/later actions and sends the complete
+  active template order in one authenticated, receipt-idempotent command. New schedules append and
+  edits keep their position. Snapshot the two time boundaries and order onto every generated
+  occurrence; the television renders compact window text and follows the occurrence order.
+- Consequence: Parents can shape a calm, predictable routine without a drag-only editor, while
+  completions and historical views remain stable after future edits. Migration
+  `0018_chore_windows_and_order.sql` backfills deterministic template order and occurrence snapshots
+  and adds the household/order index.
