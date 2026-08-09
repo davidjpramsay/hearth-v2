@@ -72,6 +72,7 @@ describe('shared wire schemas', () => {
       description: null,
       assigneeId: 'member_ezra',
       routineLabel: 'Extra jobs',
+      dueTime: '16:30',
       repeat: 'once',
       repeatDays: [],
       activeFrom: '2026-08-04',
@@ -90,6 +91,7 @@ describe('shared wire schemas', () => {
         capabilities: ['household.view', 'chores.complete'],
       },
       routineLabel: once.routineLabel,
+      dueTime: once.dueTime,
       repeat: once.repeat,
       repeatDays: once.repeatDays,
       activeFrom: once.activeFrom,
@@ -98,6 +100,9 @@ describe('shared wire schemas', () => {
     };
     expect(ChoreTemplateSchema.parse(template).activeUntil).toBe('2026-08-04');
     expect(ChoreTemplateSchema.safeParse({ ...template, activeUntil: null }).success).toBe(false);
+    expect(
+      CreateChoreTemplateRequestSchema.safeParse({ ...once, dueTime: '4:30 pm' }).success,
+    ).toBe(false);
     expect(
       CreateChoreTemplateRequestSchema.safeParse({ ...once, repeat: 'weekly', repeatDays: [] })
         .success,

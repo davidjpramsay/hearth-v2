@@ -218,18 +218,21 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   const schoolBag = page.locator('.routine-editor').filter({ hasText: 'Pack school bag' });
   await schoolBag.locator('summary').click();
   await schoolBag.getByLabel('Routine group').fill('School morning');
+  await schoolBag.getByLabel('Due time').fill('07:45');
   await schoolBag.getByRole('button', { name: 'Save future schedule' }).click();
   await expect(page.getByRole('status')).toContainText('updated from today forward');
   await page.reload();
   await schoolBag.locator('summary').click();
   await expect(schoolBag.getByLabel('Routine group')).toHaveValue('School morning');
+  await expect(schoolBag.getByLabel('Due time')).toHaveValue('07:45');
 
   await page.getByRole('button', { name: 'New chore' }).click();
   const addChore = page.locator('.routine-add-form');
-  await addChore.getByLabel('Chore').fill('Bring bins in');
+  await addChore.getByLabel('Chore', { exact: true }).fill('Bring bins in');
   await addChore.getByLabel('Repeat').selectOption('once');
   await addChore.getByLabel('Routine group').fill('Extra jobs');
   await addChore.getByLabel('Due date').fill('2026-08-03');
+  await addChore.getByLabel('Due time').fill('17:30');
   await addChore.getByRole('button', { name: 'Add chore' }).click();
   await expect(page.getByRole('status')).toContainText('Bring bins in was scheduled');
   const oneOff = page.locator('.routine-editor').filter({ hasText: 'Bring bins in' });
@@ -238,6 +241,7 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/chores');
   await expect(page.getByText('Bring bins in')).toBeVisible();
+  await expect(page.getByText('Extra jobs · Due 5:30 pm')).toBeVisible();
   await page.screenshot({
     path: resolve(evidence, 'chores-one-off-tv-1080.png'),
     animations: 'disabled',
@@ -307,6 +311,122 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await expect(page.getByLabel('Weekly pocket money')).toBeVisible();
 });
 
+test('phone adults reason, skip, excuse and reassign today’s chores with visible history', async ({
+  page,
+  request,
+}) => {
+  const completion = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-occurrences/occurrence_dishes/completions',
+    { data: { requestId: 'request_chore_management_seed_completion' } },
+  );
+  expect(completion.ok()).toBe(true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/planning');
+  await page.getByRole('link', { name: /Today’s chores/ }).click();
+  await expect(page.getByRole('heading', { name: 'Today’s chores' })).toBeVisible();
+
+  let schoolBag = page.locator('.chore-management-row').filter({ hasText: 'Pack school bag' });
+  await schoolBag.locator('summary').click();
+  await expect(schoolBag).toContainText('Pack the lunchbox, water bottle and homework folder.');
+  await expect(schoolBag).toContainText('Due 7:30 am');
+  await schoolBag.getByLabel('Reason for the change').fill('Away at school camp');
+  await schoolBag.getByRole('button', { name: 'Skip today' }).click();
+  await expect(page.getByRole('status')).toContainText('still counts in this week’s pocket money');
+  await expect(schoolBag.locator('.chore-management-state')).toHaveText('Skipped');
+  await expect(schoolBag.getByRole('region', { name: /History/ })).toContainText(
+    'Away at school camp',
+  );
+  await page.screenshot({
+    path: resolve(evidence, 'chore-exception-history-phone.png'),
+    animations: 'disabled',
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.screenshot({
+    path: resolve(evidence, 'chore-exception-history-phone-landscape.png'),
+    animations: 'disabled',
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/chores');
+  await expect(page.getByText('33% this week')).toBeVisible();
+  await expect(page.getByText('$4.00 of $12.00')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pack school bag, skipped' })).toBeVisible();
+
+  await page.goto('/admin/chore-day');
+  schoolBag = page.locator('.chore-management-row').filter({ hasText: 'Pack school bag' });
+  await schoolBag.locator('summary').click();
+  await schoolBag.getByLabel('Reason for the change').fill('Excused for school camp');
+  await schoolBag.getByRole('button', { name: 'Excuse this job' }).click();
+  await expect(page.getByRole('status')).toContainText('no longer counts against pocket money');
+  await expect(schoolBag.locator('.chore-management-state')).toHaveText('Excused');
+  await expect(schoolBag.getByRole('region', { name: /History/ })).toContainText(
+    'Excused for school camp',
+  );
+
+  await page.goto('/chores');
+  await expect(page.getByText('50% this week')).toBeVisible();
+  await expect(page.getByText('$6.00 of $12.00')).toBeVisible();
+
+  await page.goto('/admin/chore-day');
+  const pepper = page.locator('.chore-management-row').filter({ hasText: 'Feed Pepper' });
+  await pepper.locator('summary').click();
+  const adultName =
+    (
+      await pepper.getByLabel('Reassign to').locator('option[value="member_maya"]').textContent()
+    )?.trim() ?? 'the adult';
+  await pepper.getByLabel('Reason for the change').fill(`${adultName} is doing the morning jobs`);
+  await pepper.getByLabel('Reassign to').selectOption('member_maya');
+  await pepper.getByRole('button', { name: 'Reassign', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText(`now belongs to ${adultName}`);
+  await expect(pepper.getByRole('region', { name: /History/ })).toContainText(
+    `Reassigned from Ezra to ${adultName}`,
+  );
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/chores');
+  await expect(page.getByText('100% this week')).toBeVisible();
+  await expect(page.getByText('$12.00 of $12.00')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Complete Feed Pepper' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Complete Feed Pepper' })).toContainText(
+    'Due 7:15 am',
+  );
+  await page.screenshot({
+    path: resolve(evidence, 'chores-due-times-reassigned-tv-1080.png'),
+    animations: 'disabled',
+  });
+});
+
+test('today’s chore exception reports a failed save and retries the same command', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/chore-day?scenario=fail-next');
+  const laundry = page.locator('.chore-management-row').filter({ hasText: 'Start laundry' });
+  await laundry.locator('summary').click();
+  await laundry.getByLabel('Reason for the change').fill('Rain forecast all day');
+  await laundry.getByRole('button', { name: 'Skip today' }).click();
+  await expect(page.getByRole('alert')).toContainText('That chore change did not save');
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('status')).toContainText('still counts in this week’s pocket money');
+  await expect(laundry.locator('.chore-management-state')).toHaveText('Skipped');
+});
+
+test('@a11y today’s chore management has no serious violations on phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/chore-day');
+  const schoolBag = page.locator('.chore-management-row').filter({ hasText: 'Pack school bag' });
+  await schoolBag.locator('summary').click();
+  await expect(schoolBag.getByLabel('Reason for the change')).toBeVisible();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+});
+
 test('one-off chore creation reports a failed save and retries the same safe command', async ({
   page,
 }) => {
@@ -314,7 +434,7 @@ test('one-off chore creation reports a failed save and retries the same safe com
   await page.goto('/admin/routines?scenario=fail-next');
   await page.getByRole('button', { name: 'New chore' }).click();
   const addChore = page.locator('.routine-add-form');
-  await addChore.getByLabel('Chore').fill('Clean football boots');
+  await addChore.getByLabel('Chore', { exact: true }).fill('Clean football boots');
   await addChore.getByLabel('Repeat').selectOption('once');
   await addChore.getByLabel('Routine group').fill('Extra jobs');
   await addChore.getByRole('button', { name: 'Add chore' }).click();
@@ -517,7 +637,14 @@ for (const viewport of planningViewports) {
   }
 }
 
-for (const route of ['planning', 'lists', 'meals', 'routines', 'pocket-money'] as const) {
+for (const route of [
+  'planning',
+  'lists',
+  'meals',
+  'routines',
+  'chore-day',
+  'pocket-money',
+] as const) {
   test(`@visual ${route} phone administration`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/admin/${route}`);

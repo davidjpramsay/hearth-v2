@@ -1,4 +1,4 @@
-import type { AuditSummary, ChoreOccurrence } from '@hearth/shared';
+import type { AuditSummary, ChoreOccurrence, Member } from '@hearth/shared';
 
 export interface ChoreCommandContext {
   actorId: string;
@@ -73,8 +73,10 @@ export function undoChore(
 
 export function skipChore(
   occurrence: ChoreOccurrence,
+  reason: string,
   context: ChoreCommandContext,
 ): { occurrence: ChoreOccurrence; audit: AuditSummary } {
+  assertReason(reason);
   if (occurrence.locked) {
     throw new ChoreDomainError('FORBIDDEN', 'Ask an adult to change this.');
   }
@@ -91,6 +93,61 @@ export function skipChore(
       completedLabel: null,
     },
     audit: createAudit(context, occurrence.id, 'chore.skip', 'succeeded'),
+  };
+}
+
+export function excuseChore(
+  occurrence: ChoreOccurrence,
+  reason: string,
+  context: ChoreCommandContext,
+): { occurrence: ChoreOccurrence; audit: AuditSummary } {
+  assertReason(reason);
+  if (occurrence.locked) {
+    throw new ChoreDomainError('FORBIDDEN', 'Ask an adult to change this.');
+  }
+  if (occurrence.state !== 'pending' && occurrence.state !== 'skipped') {
+    throw new ChoreDomainError('CONFLICT', 'This chore can no longer be excused.');
+  }
+
+  return {
+    occurrence: {
+      ...occurrence,
+      state: 'excused',
+      completionId: null,
+      completedAt: null,
+      completedLabel: null,
+    },
+    audit: createAudit(context, occurrence.id, 'chore.excuse', 'succeeded'),
+  };
+}
+
+export function reassignChore(
+  occurrence: ChoreOccurrence,
+  assignee: Member,
+  reason: string,
+  context: ChoreCommandContext,
+): { occurrence: ChoreOccurrence; audit: AuditSummary } {
+  assertReason(reason);
+  if (occurrence.locked) {
+    throw new ChoreDomainError('FORBIDDEN', 'Ask an adult to change this.');
+  }
+  if (occurrence.state !== 'pending' && occurrence.state !== 'skipped') {
+    throw new ChoreDomainError('CONFLICT', 'This chore can no longer be reassigned.');
+  }
+  if (occurrence.assignee.id === assignee.id) {
+    throw new ChoreDomainError('CONFLICT', `${assignee.displayName} already has this chore.`);
+  }
+
+  return {
+    occurrence: {
+      ...occurrence,
+      assignee,
+      state: 'pending',
+      completionId: null,
+      completedAt: null,
+      completedLabel: null,
+    },
+    audit: createAudit(context, occurrence.id, 'chore.reassign', 'succeeded'),
   };
 }
 
@@ -138,6 +195,12 @@ function createAudit(
     occurredAt: context.occurredAt,
     result,
   };
+}
+
+function assertReason(reason: string): void {
+  if (reason.trim().length < 2) {
+    throw new ChoreDomainError('CONFLICT', 'Add a short reason for this change.');
+  }
 }
 
 function formatPerthTime(timestamp: string): string {

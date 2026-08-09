@@ -119,3 +119,11 @@ export function useChoreTemplatesQuery(enabled = true) {
     enabled,
   });
 }
+
+export function useChoreOccurrenceDetailQuery(occurrenceId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.choreOccurrence(occurrenceId),
+    queryFn: () => hearthApi.getChoreOccurrenceDetail(occurrenceId),
+    enabled,
+  });
+}

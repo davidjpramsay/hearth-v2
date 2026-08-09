@@ -6,6 +6,8 @@ import {
   CalendarConnectionTestResultSchema,
   ChoreCommandResultSchema,
   ChoreListSchema,
+  ChoreOccurrenceChangeResultSchema,
+  ChoreOccurrenceDetailSchema,
   ChoreSkipResultSchema,
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
@@ -48,6 +50,8 @@ import {
   type CalendarConnectionTestResult,
   type ChoreCommandResult,
   type ChoreList,
+  type ChoreOccurrenceChangeResult,
+  type ChoreOccurrenceDetail,
   type ChoreSkipResult,
   type ChoreTemplateCommandResult,
   type ChoreTemplateList,
@@ -155,6 +159,8 @@ export const queryKeys = {
   get choreTemplates() {
     return [householdId(getHearthRuntime()), 'chore-templates'] as const;
   },
+  choreOccurrence: (occurrenceId: string) =>
+    [householdId(getHearthRuntime()), 'chore-occurrence', occurrenceId] as const,
 };
 
 const demoAdminHeaders = { 'X-Hearth-Demo-Actor': 'member_maya' } as const;
@@ -677,14 +683,40 @@ export const hearthApi = {
       ChoreCommandResultSchema,
       { method: 'POST', body: JSON.stringify({ requestId, completionId }) },
     ),
-  skipChore: (occurrenceId: string, requestId: string) =>
+  getChoreOccurrenceDetail: (occurrenceId: string) =>
+    request(
+      `${householdApiBase()}/chore-occurrences/${occurrenceId}`,
+      ChoreOccurrenceDetailSchema,
+      { headers: demoAdminHeaders },
+    ),
+  skipChore: (occurrenceId: string, requestId: string, reason: string) =>
     request(
       `${householdApiBase()}/chore-occurrences/${occurrenceId}/skips`,
       ChoreSkipResultSchema,
       {
         method: 'POST',
         headers: demoAdminHeaders,
-        body: JSON.stringify({ requestId }),
+        body: JSON.stringify({ requestId, reason }),
+      },
+    ),
+  excuseChore: (occurrenceId: string, requestId: string, reason: string) =>
+    request(
+      `${householdApiBase()}/chore-occurrences/${occurrenceId}/excuses`,
+      ChoreOccurrenceChangeResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId, reason }),
+      },
+    ),
+  reassignChore: (occurrenceId: string, requestId: string, assigneeId: string, reason: string) =>
+    request(
+      `${householdApiBase()}/chore-occurrences/${occurrenceId}/reassignments`,
+      ChoreOccurrenceChangeResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId, assigneeId, reason }),
       },
     ),
   setScenario: async (scenario: DemoScenario): Promise<void> => {
@@ -733,12 +765,15 @@ export type HearthPocketMoneyPaymentCommandResult = PocketMoneyPaymentCommandRes
 export type HearthPocketMoneyPaymentVoidCommandResult = PocketMoneyPaymentVoidCommandResult;
 export type HearthChoreTemplates = ChoreTemplateList;
 export type HearthChoreTemplateCommandResult = ChoreTemplateCommandResult;
+export type HearthChoreOccurrenceDetail = ChoreOccurrenceDetail;
+export type HearthChoreOccurrenceChangeResult = ChoreOccurrenceChangeResult;
 
 export interface ChoreTemplateInput {
   title: string;
   description: string | null;
   assigneeId: string;
   routineLabel: string;
+  dueTime: string | null;
   repeat: 'once' | 'daily' | 'weekdays' | 'weekly';
   repeatDays: Array<'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'>;
   activeFrom: string;

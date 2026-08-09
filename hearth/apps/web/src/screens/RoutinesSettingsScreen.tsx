@@ -397,18 +397,25 @@ function RoutineFields({
           ))}
         </fieldset>
       ) : null}
-      <label>
-        {repeat === 'once' ? 'Due date' : 'Starts'}
-        <input
-          defaultValue={
-            template === undefined || template.repeat !== 'once' ? today : template.activeFrom
-          }
-          min={today}
-          name="activeFrom"
-          required
-          type="date"
-        />
-      </label>
+      <div className="admin-form__split routine-fields__split">
+        <label>
+          {repeat === 'once' ? 'Due date' : 'Starts'}
+          <input
+            defaultValue={
+              template === undefined || template.repeat !== 'once' ? today : template.activeFrom
+            }
+            min={today}
+            name="activeFrom"
+            required
+            type="date"
+          />
+        </label>
+        <label>
+          Due time
+          <input defaultValue={template?.dueTime ?? ''} name="dueTime" type="time" />
+          <small>Optional · shown on Today and Chores</small>
+        </label>
+      </div>
     </div>
   );
 }
@@ -437,6 +444,7 @@ function templateFields(
     description: String(data.get('description') ?? '').trim() || null,
     assigneeId: String(data.get('assigneeId') ?? ''),
     routineLabel: String(data.get('routineLabel') ?? '').trim(),
+    dueTime: String(data.get('dueTime') ?? '').trim() || null,
     repeat,
     repeatDays:
       repeat === 'once'
@@ -453,11 +461,15 @@ function templateFields(
 }
 
 function repeatLabel(template: ChoreTemplate): string {
-  if (template.repeat === 'once') return `One-off · ${formatLocalDate(template.activeFrom)}`;
-  if (template.repeat === 'daily') return 'Every day';
-  if (template.repeat === 'weekdays') return 'Weekdays';
-  const days = template.repeatDays.map((day) => dayLabels[day]);
-  return `Every ${formatList(days)}`;
+  const repeat =
+    template.repeat === 'once'
+      ? `One-off · ${formatLocalDate(template.activeFrom)}`
+      : template.repeat === 'daily'
+        ? 'Every day'
+        : template.repeat === 'weekdays'
+          ? 'Weekdays'
+          : `Every ${formatList(template.repeatDays.map((day) => dayLabels[day]))}`;
+  return template.dueTime === null ? repeat : `${repeat} · ${formatDueTime(template.dueTime)}`;
 }
 
 const dayLabels: Record<ChoreTemplate['repeatDays'][number], string> = {
@@ -482,4 +494,12 @@ function formatLocalDate(localDate: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${localDate}T12:00:00Z`));
+}
+
+function formatDueTime(localTime: string): string {
+  return new Intl.DateTimeFormat('en-AU', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }).format(new Date(`2000-01-01T${localTime}:00.000Z`));
 }

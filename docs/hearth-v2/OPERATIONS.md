@@ -156,7 +156,7 @@ Deployment files belong in `hearth/deploy/synology`; live secrets never return t
 As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffold: a multi-stage
 Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
 Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
-ignored runtime directory template. The server production build includes all 16 forward migrations
+ignored runtime directory template. The server production build includes all 17 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 
 Both native ARM64 development images and emulated `linux/amd64` images for the DS920+ were built and

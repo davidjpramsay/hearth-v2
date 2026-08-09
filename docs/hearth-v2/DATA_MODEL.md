@@ -128,11 +128,14 @@ The external credential/config file is never stored in SQLite.
 ### Chore occurrence
 
 - stable occurrence ID
-- template snapshot/reference
+- template reference plus snapshotted title and optional description
 - scheduled local date and due time
 - assigned member(s)
 - state: pending, completed, skipped, excused or cancelled
-- completion timestamp, actor and optional note
+- completion/skip timestamp and actor where relevant
+- immutable audit history for completion, undo, skip, excuse and reassignment; adult exception
+  records include a bounded family-readable reason and reassignment records include prior/new member
+  identity
 
 Template edits do not rewrite historical occurrences. Generate occurrences within a controlled horizon and enforce a uniqueness rule for template/date/instance.
 One-off templates use an explicit once-only recurrence and equal start/end local dates. Archiving
@@ -385,6 +388,10 @@ the read-only Synology photo scanner without storing a source filesystem path in
 Migration `0016_meal_planning_polish.sql` adds nullable, bounded preparation minutes and an index for
 active/favourite saved-meal ordering. Existing meal-plan rows and historical saved meals remain
 valid without rewriting household data.
+Migration `0017_chore_occurrence_management.sql` adds nullable description and due-time snapshots to
+existing occurrence rows, backfills them from the referenced template and adds the targeted audit
+history index. Skip, excuse and reassignment remain command/audit rows rather than mutable history
+blobs; no reason text is placed in a browser-visible receipt beyond the typed result.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported one-off, daily and weekly occurrences on
@@ -407,3 +414,8 @@ receipt-idempotent in both the SQLite runtime and injected in-memory contract te
 Chore-template creation/update accepts one-off or recurring schedules. Archive and restore reuse the
 existing forward-compatible active-range/archive columns, keep generated history intact and write
 their own idempotent receipts and audit events; no migration is required.
+Adult occurrence-management commands require a bounded reason. Skip keeps the occurrence eligible
+and incomplete, excuse moves pending/skipped work to `excused`, and reassignment moves pending or
+skipped work to another active member and resets it to pending. Mutation, audit event and receipt
+commit in one SQLite transaction; the adult-only detail query reconstructs newest-first history from
+safe audit summaries.

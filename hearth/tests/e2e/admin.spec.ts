@@ -26,7 +26,7 @@ test('phone More opens setup and household/member changes survive reload', async
   await expect(page.getByRole('link', { name: /Lists/ })).toBeVisible();
   await page.getByRole('link', { name: /Household & people/ }).click();
   await expect(page.getByRole('heading', { name: 'Hearth settings' })).toBeVisible();
-  await expect(page.getByText('Maya')).toBeVisible();
+  await expect(page.locator('.admin-actor')).toContainText('Administrator');
 
   await page.getByRole('link', { name: /Household/ }).click();
   await page.getByLabel('Household name').fill('Rowan household');

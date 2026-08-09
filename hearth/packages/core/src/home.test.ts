@@ -33,6 +33,7 @@ const chores = {
             capabilities: ['household.view', 'chores.complete'],
           },
           routineLabel: 'After dinner',
+          dueTime: '18:45',
           localDate: '2026-08-03',
           state: 'pending',
           completionId: null,

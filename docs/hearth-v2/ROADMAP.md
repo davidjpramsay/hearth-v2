@@ -172,7 +172,7 @@ Status: complete and locally verified with deterministic demo household data.
 - Voice retries do not duplicate list items or chore completions.
 - Dense editing remains out of the TV's primary interaction path.
 
-Implementation note (updated 2026-08-09): Lists and Meals have D-pad television
+Implementation note (updated 2026-08-10): Lists and Meals have D-pad television
 surfaces and responsive phone presentations. The phone Family Planning area
 creates, renames, colours, orders, archives and restores lists; edits, orders
 and removes list items; and explicitly clears checked history. Meal administration now edits all
@@ -181,11 +181,15 @@ week with confirmation, and creates, searches, favourites, updates, archives and
 meals with optional preparation time and notes. Chore administration now creates explicit one-off
 or recurring schedules, keeps the everyday list compact, confirms archive, restores from today's
 local date and retains previously generated occurrence history through idempotent audited commands.
-It also edits future recurring chores, child weekly amounts,
+It also edits future recurring chores and due times. A separate phone-first daily management surface
+supports reasoned skip, excuse and adult reassignment, exposes snapshotted descriptions and
+newest-first immutable history, and preserves the documented pocket-money denominator rules.
+Television rows show due time without exposing adult management controls. It also manages child weekly amounts,
 paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted
-idempotency receipts. Migration `0009_pocket_money.sql` supersedes the active
+idempotency receipts. Migration `0017_chore_occurrence_management.sql` adds the forward-only
+description/due-time snapshots and targeted audit-history index. Migration `0009_pocket_money.sql` supersedes the active
 reward implementation while retaining the old migration tables as dormant
 history; active reward source contracts and runtime seeds are removed and chore completion/undo no longer writes star awards. Migration
 `0014_pocket_money_payment_history.sql` adds optional payment notes, multiple

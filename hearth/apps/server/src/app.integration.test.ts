@@ -446,7 +446,7 @@ describe('Hearth v2 API', () => {
       method: 'POST',
       url: `${root}/occurrence_laundry/skips`,
       headers: { 'x-hearth-demo-actor': 'member_maya', 'x-hearth-demo-source': 'companion' },
-      payload: { requestId: 'request_adult_http_skip' },
+      payload: { requestId: 'request_adult_http_skip', reason: 'Waiting for dry weather' },
     });
     const locked = buildServer({ logger: false, demoMode: false });
     servers.push(locked);
@@ -460,6 +460,66 @@ describe('Hearth v2 API', () => {
     expect(childOther).toMatchObject({ statusCode: 403 });
     expect(adultSkip.json()).toMatchObject({ occurrence: { state: 'skipped' }, replayed: false });
     expect(unauthenticated.json().error.code).toBe('UNAUTHENTICATED');
+  });
+
+  it('validates and replays adult chore exceptions, reassignment and history routes', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo/chore-occurrences';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const invalid = await app.inject({
+      method: 'POST',
+      url: `${root}/occurrence_laundry/excuses`,
+      headers,
+      payload: { requestId: 'request_excuse_invalid', reason: 'x' },
+    });
+    expect(invalid).toMatchObject({ statusCode: 400 });
+
+    const reassigned = await app.inject({
+      method: 'POST',
+      url: `${root}/occurrence_school_bag/reassignments`,
+      headers,
+      payload: {
+        requestId: 'request_http_reassign',
+        assigneeId: 'member_maya',
+        reason: 'Ezra and Maya swapped morning jobs',
+      },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${root}/occurrence_school_bag/reassignments`,
+      headers,
+      payload: {
+        requestId: 'request_http_reassign',
+        assigneeId: 'member_maya',
+        reason: 'Ezra and Maya swapped morning jobs',
+      },
+    });
+    expect(reassigned.json()).toMatchObject({
+      occurrence: { assignee: { id: 'member_maya' }, state: 'pending' },
+      replayed: false,
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `${root}/occurrence_school_bag`,
+      headers,
+    });
+    expect(detail.json()).toMatchObject({
+      occurrence: { dueTime: '07:30', assignee: { id: 'member_maya' } },
+      history: [
+        {
+          action: 'chore.reassign',
+          reason: 'Ezra and Maya swapped morning jobs',
+        },
+      ],
+    });
+    const childDetail = await app.inject({
+      method: 'GET',
+      url: `${root}/occurrence_school_bag`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(childDetail).toMatchObject({ statusCode: 403 });
   });
 
   it('returns stable family-safe validation, permission and retryable failure errors', async () => {
@@ -1446,6 +1506,7 @@ describe('Hearth v2 API', () => {
       description: null,
       assigneeId: 'member_ezra',
       routineLabel: 'Extra jobs',
+      dueTime: '16:30',
       repeat: 'once',
       repeatDays: [],
       activeFrom: '2026-08-04',

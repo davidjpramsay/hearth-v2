@@ -4,12 +4,17 @@ import {
   completeChore,
   ChoreDomainError,
   createMonthGrid,
+  excuseChore,
+  reassignChore,
   skipChore,
   sortByStart,
   undoChore,
 } from '@hearth/core';
 import type {
   ChoreCommandResult,
+  ChoreOccurrenceChangeResult,
+  ChoreOccurrenceDetail,
+  ChoreOccurrenceHistoryEntry,
   ChoreList,
   ChoreOccurrence,
   ChoreSkipResult,
@@ -54,6 +59,11 @@ export interface HearthRepository {
   getWeek(householdId: string, startDate: string): Promise<WeekSchedule>;
   getMonth(householdId: string, month: string): Promise<MonthSchedule>;
   getChores(householdId: string, localDate: string): Promise<ChoreList>;
+  getChoreOccurrenceDetail(
+    householdId: string,
+    occurrenceId: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceDetail>;
   complete(
     householdId: string,
     occurrenceId: string,
@@ -71,8 +81,24 @@ export interface HearthRepository {
     householdId: string,
     occurrenceId: string,
     requestId: string,
+    reason: string,
     actor: CommandActor,
   ): Promise<ChoreSkipResult>;
+  excuse(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult>;
+  reassign(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    assigneeId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult>;
   reset(): void;
   setScenario(scenario: DemoScenario): void;
 }
@@ -93,7 +119,8 @@ export class InMemoryHearthRepository implements HearthRepository {
   private seed: DemoSeed;
   private scenario: DemoScenario = 'healthy';
   private sequence = 10;
-  private readonly receipts = new Map<string, ChoreCommandResult | ChoreSkipResult>();
+  private readonly receipts = new Map<string, ChoreCommandResult | ChoreOccurrenceChangeResult>();
+  private readonly history = new Map<string, ChoreOccurrenceHistoryEntry[]>();
 
   constructor() {
     this.seed = createDemoSeed();
@@ -230,6 +257,23 @@ export class InMemoryHearthRepository implements HearthRepository {
     };
   }
 
+  async getChoreOccurrenceDetail(
+    householdId: string,
+    occurrenceId: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceDetail> {
+    this.assertHousehold(householdId);
+    this.authorizeAdult(actor);
+    const occurrence = this.seed.chores.find((item) => item.id === occurrenceId);
+    if (occurrence === undefined)
+      throw new RepositoryError('NOT_FOUND', 'That chore could not be found.');
+    return {
+      occurrence,
+      description: null,
+      history: this.history.get(occurrenceId) ?? [],
+    };
+  }
+
   async complete(
     householdId: string,
     occurrenceId: string,
@@ -259,6 +303,7 @@ export class InMemoryHearthRepository implements HearthRepository {
         audit: result.audit,
         replayed: false,
       } satisfies ChoreCommandResult;
+      this.recordHistory(response.audit, actor);
       this.receipts.set(receiptKey, response);
       return response;
     } catch (error) {
@@ -297,6 +342,7 @@ export class InMemoryHearthRepository implements HearthRepository {
         audit: result.audit,
         replayed: false,
       } satisfies ChoreCommandResult;
+      this.recordHistory(response.audit, actor);
       this.receipts.set(receiptKey, response);
       return response;
     } catch (error) {
@@ -308,6 +354,7 @@ export class InMemoryHearthRepository implements HearthRepository {
     householdId: string,
     occurrenceId: string,
     requestId: string,
+    reason: string,
     actor: CommandActor,
   ): Promise<ChoreSkipResult> {
     this.assertHousehold(householdId);
@@ -324,10 +371,12 @@ export class InMemoryHearthRepository implements HearthRepository {
     try {
       const result = skipChore(
         this.withScenarioPermission(occurrence),
+        reason,
         this.createContext(requestId, actor),
       );
       this.seed.chores[occurrenceIndex] = result.occurrence;
       const response = { ...result, replayed: false } satisfies ChoreSkipResult;
+      this.recordHistory(response.audit, actor, reason);
       this.receipts.set(receiptKey, response);
       return response;
     } catch (error) {
@@ -335,11 +384,52 @@ export class InMemoryHearthRepository implements HearthRepository {
     }
   }
 
+  async excuse(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult> {
+    return this.changeOccurrence(
+      householdId,
+      occurrenceId,
+      requestId,
+      actor,
+      'excuse',
+      reason,
+      (item) => excuseChore(item, reason, this.createContext(requestId, actor)),
+    );
+  }
+
+  async reassign(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    assigneeId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult> {
+    const assignee = this.seed.household.members.find((member) => member.id === assigneeId);
+    if (assignee === undefined)
+      throw new RepositoryError('NOT_FOUND', 'That person was not found.');
+    return this.changeOccurrence(
+      householdId,
+      occurrenceId,
+      requestId,
+      actor,
+      'reassign',
+      reason,
+      (item) => reassignChore(item, assignee, reason, this.createContext(requestId, actor)),
+    );
+  }
+
   reset(): void {
     this.seed = createDemoSeed();
     this.scenario = 'healthy';
     this.sequence = 10;
     this.receipts.clear();
+    this.history.clear();
   }
 
   setScenario(scenario: DemoScenario): void {
@@ -394,16 +484,22 @@ export class InMemoryHearthRepository implements HearthRepository {
   private authorize(
     actor: CommandActor,
     occurrence: ChoreOccurrence,
-    action: 'complete' | 'undo' | 'skip',
+    action: 'complete' | 'undo' | 'skip' | 'excuse' | 'reassign',
   ): void {
     if (actor.type === 'member') {
       if (actor.id === 'member_maya') return;
-      if (actor.id === 'member_ezra' && action !== 'skip' && occurrence.assignee.id === actor.id) {
+      if (
+        actor.id === 'member_ezra' &&
+        (action === 'complete' || action === 'undo') &&
+        occurrence.assignee.id === actor.id
+      ) {
         return;
       }
       throw new RepositoryError('FORBIDDEN', 'Ask an adult to change this.');
     }
-    if (action === 'skip') throw new RepositoryError('FORBIDDEN', 'Ask an adult to skip this.');
+    if (action !== 'complete' && action !== 'undo') {
+      throw new RepositoryError('FORBIDDEN', 'Ask an adult to change this.');
+    }
     if (
       (actor.type === 'device' && actor.id === DEMO_TV_ACTOR.id) ||
       (actor.type === 'service' && actor.id === 'service_home_assistant')
@@ -418,6 +514,74 @@ export class InMemoryHearthRepository implements HearthRepository {
       throw new RepositoryError(error.code, error.message);
     }
     throw error;
+  }
+
+  private authorizeAdult(actor: CommandActor): void {
+    if (actor.type !== 'member' || actor.source !== 'companion' || actor.id !== 'member_maya') {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult can manage this chore.');
+    }
+  }
+
+  private changeOccurrence(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    actor: CommandActor,
+    action: 'excuse' | 'reassign',
+    reason: string,
+    change: (occurrence: ChoreOccurrence) => {
+      occurrence: ChoreOccurrence;
+      audit: ChoreOccurrenceChangeResult['audit'];
+    },
+  ): ChoreOccurrenceChangeResult {
+    this.assertHousehold(householdId);
+    const receiptKey = `${action}:${requestId}`;
+    const receipt = this.receipts.get(receiptKey);
+    if (receipt !== undefined)
+      return { ...(receipt as ChoreOccurrenceChangeResult), replayed: true };
+    this.failNextIfRequested();
+    const occurrenceIndex = this.findOccurrenceIndex(occurrenceId);
+    const occurrence = this.seed.chores[occurrenceIndex];
+    if (occurrence === undefined)
+      throw new RepositoryError('NOT_FOUND', 'That chore could not be found.');
+    this.authorize(actor, occurrence, action);
+    try {
+      const result = change(this.withScenarioPermission(occurrence));
+      this.seed.chores[occurrenceIndex] = result.occurrence;
+      const response = { ...result, replayed: false } satisfies ChoreOccurrenceChangeResult;
+      this.recordHistory(response.audit, actor, reason);
+      this.receipts.set(receiptKey, response);
+      return response;
+    } catch (error) {
+      this.translateDomainError(error);
+    }
+  }
+
+  private recordHistory(
+    audit: ChoreOccurrenceChangeResult['audit'],
+    actor: CommandActor,
+    reason: string | null = null,
+  ): void {
+    const actionLabels: Record<ChoreOccurrenceHistoryEntry['action'], string> = {
+      'chore.complete': 'Marked done',
+      'chore.undo': 'Completion undone',
+      'chore.skip': 'Skipped',
+      'chore.excuse': 'Excused',
+      'chore.reassign': 'Reassigned',
+    };
+    if (!(audit.action in actionLabels)) return;
+    const entries = this.history.get(audit.targetId) ?? [];
+    entries.unshift({
+      id: audit.id,
+      action: audit.action as ChoreOccurrenceHistoryEntry['action'],
+      label: actionLabels[audit.action as ChoreOccurrenceHistoryEntry['action']],
+      actorLabel:
+        this.seed.household.members.find((member) => member.id === actor.id)?.displayName ??
+        'Hearth',
+      occurredAt: audit.occurredAt,
+      reason,
+    });
+    this.history.set(audit.targetId, entries);
   }
 }
 

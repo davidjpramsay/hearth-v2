@@ -10,6 +10,10 @@ export const LocalDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a YYYY-MM-DD local date');
 
+export const LocalTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Expected a 24-hour HH:mm local time');
+
 export const TimestampSchema = z.iso.datetime({ offset: true });
 export const TimezoneSchema = z.string().min(1).max(80);
 
@@ -152,6 +156,7 @@ export const ChoreOccurrenceSchema = z.object({
   title: z.string().min(1).max(140),
   assignee: MemberSchema,
   routineLabel: z.string().min(1).max(80),
+  dueTime: LocalTimeSchema.nullable().default(null),
   localDate: LocalDateSchema,
   state: ChoreStateSchema,
   completionId: OpaqueIdSchema.nullable(),
@@ -446,6 +451,7 @@ export const ChoreTemplateSchema = z
     description: z.string().max(320).nullable(),
     assignee: MemberSchema,
     routineLabel: z.string().min(1).max(80),
+    dueTime: LocalTimeSchema.nullable().default(null),
     repeat: ChoreRepeatSchema,
     repeatDays: z.array(ChoreDaySchema),
     activeFrom: LocalDateSchema,
@@ -464,6 +470,7 @@ const ChoreTemplateFieldsSchema = z.object({
   description: z.string().trim().max(320).nullable(),
   assigneeId: OpaqueIdSchema,
   routineLabel: z.string().trim().min(1).max(80),
+  dueTime: LocalTimeSchema.nullable().default(null),
   repeat: ChoreRepeatSchema,
   repeatDays: z.array(ChoreDaySchema),
   activeFrom: LocalDateSchema,
@@ -821,6 +828,14 @@ export const CompletionReversalRequestSchema = CommandRequestSchema.extend({
   completionId: OpaqueIdSchema,
 });
 
+export const ChoreExceptionRequestSchema = CommandRequestSchema.extend({
+  reason: z.string().trim().min(2).max(240),
+});
+
+export const ChoreReassignmentRequestSchema = ChoreExceptionRequestSchema.extend({
+  assigneeId: OpaqueIdSchema,
+});
+
 export const AuditSummarySchema = z.object({
   id: OpaqueIdSchema,
   actorType: z.enum(['member', 'device', 'service', 'system']),
@@ -830,6 +845,8 @@ export const AuditSummarySchema = z.object({
     'chore.complete',
     'chore.undo',
     'chore.skip',
+    'chore.excuse',
+    'chore.reassign',
     'household.update',
     'member.create',
     'member.update',
@@ -934,6 +951,23 @@ export const ChoreSkipResultSchema = z.object({
   occurrence: ChoreOccurrenceSchema,
   audit: AuditSummarySchema,
   replayed: z.boolean(),
+});
+
+export const ChoreOccurrenceChangeResultSchema = ChoreSkipResultSchema;
+
+export const ChoreOccurrenceHistoryEntrySchema = z.object({
+  id: OpaqueIdSchema,
+  action: z.enum(['chore.complete', 'chore.undo', 'chore.skip', 'chore.excuse', 'chore.reassign']),
+  label: z.string().min(1).max(180),
+  actorLabel: z.string().min(1).max(80),
+  occurredAt: TimestampSchema,
+  reason: z.string().max(240).nullable(),
+});
+
+export const ChoreOccurrenceDetailSchema = z.object({
+  occurrence: ChoreOccurrenceSchema,
+  description: z.string().max(320).nullable(),
+  history: z.array(ChoreOccurrenceHistoryEntrySchema),
 });
 
 export const HomeActionResultSchema = z.object({
@@ -1325,9 +1359,14 @@ export type PocketMoneyPaymentVoidCommandResult = z.infer<
 >;
 export type CommandRequest = z.infer<typeof CommandRequestSchema>;
 export type CompletionReversalRequest = z.infer<typeof CompletionReversalRequestSchema>;
+export type ChoreExceptionRequest = z.infer<typeof ChoreExceptionRequestSchema>;
+export type ChoreReassignmentRequest = z.infer<typeof ChoreReassignmentRequestSchema>;
 export type AuditSummary = z.infer<typeof AuditSummarySchema>;
 export type ChoreCommandResult = z.infer<typeof ChoreCommandResultSchema>;
 export type ChoreSkipResult = z.infer<typeof ChoreSkipResultSchema>;
+export type ChoreOccurrenceChangeResult = z.infer<typeof ChoreOccurrenceChangeResultSchema>;
+export type ChoreOccurrenceHistoryEntry = z.infer<typeof ChoreOccurrenceHistoryEntrySchema>;
+export type ChoreOccurrenceDetail = z.infer<typeof ChoreOccurrenceDetailSchema>;
 export type HomeActionResult = z.infer<typeof HomeActionResultSchema>;
 export type AssistDaySummaryResult = z.infer<typeof AssistDaySummaryResultSchema>;
 export type AssistChoreCompletionResult = z.infer<typeof AssistChoreCompletionResultSchema>;

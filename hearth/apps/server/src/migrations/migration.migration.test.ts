@@ -108,7 +108,14 @@ describe('0001 household core migration', () => {
       INSERT INTO members VALUES ('member_chore', 'household_chore', 'Tester', '#000000', NULL, 'adult', NULL, 'now', 'now', '["chores.complete"]');
       INSERT INTO chore_templates VALUES ('template_chore', 'household_chore', 'Test chore', NULL, 'FREQ=DAILY', 'Morning', NULL, 0, '2026-08-03', NULL, NULL, 'now', 'now');
       INSERT INTO chore_template_assignees VALUES ('template_chore', 'member_chore');
-      INSERT INTO chore_occurrences VALUES ('occurrence_chore', 'household_chore', 'template_chore', '2026-08-03', 'default', 'Test chore', 'Morning', 'member_chore', 'skipped', NULL, NULL, NULL, 'now', 'now', 'now', 'member_chore');
+      INSERT INTO chore_occurrences
+        (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
+         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at, skipped_at, skipped_by_actor_id)
+      VALUES
+        ('occurrence_chore', 'household_chore', 'template_chore', '2026-08-03', 'default',
+         'Test chore', 'Morning', 'member_chore', 'skipped', NULL, NULL, NULL, 'now', 'now',
+         'now', 'member_chore');
     `);
     expect(
       database
@@ -627,6 +634,56 @@ describe('0001 household core migration', () => {
         VALUES ('saved_meal_invalid', 'household_meals', 'Impossible', NULL, 0, NULL, 'now', 'now', 0);
       `),
     ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds durable chore detail snapshots and an indexed occurrence audit history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 17').get()).toEqual(
+      { name: 'chore_occurrence_management' },
+    );
+    const columns = database.prepare('PRAGMA table_info(chore_occurrences)').all() as Array<{
+      name: string;
+    }>;
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['description_snapshot', 'due_time_snapshot']),
+    );
+    const indexes = database.prepare('PRAGMA index_list(audit_events)').all() as Array<{
+      name: string;
+    }>;
+    expect(indexes.map((index) => index.name)).toContain('audit_events_target_history_idx');
+    database.exec(`
+      INSERT INTO households VALUES ('household_chore_detail', 'Chore home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_chore_detail', 'household_chore_detail', 'Child', '#1668b7', NULL, 'child', NULL, 'now', 'now', '["chores.complete"]');
+      INSERT INTO chore_templates
+        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
+         points_value, active_from, active_until, archived_at, created_at, updated_at)
+      VALUES
+        ('template_chore_detail', 'household_chore_detail', 'Pack bag', 'Put lunch inside',
+         'FREQ=DAILY', 'Morning', '07:30', 0, '2026-08-10', NULL, NULL, 'now', 'now');
+      INSERT INTO chore_occurrences
+        (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
+         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at, skipped_at, skipped_by_actor_id,
+         description_snapshot, due_time_snapshot)
+      VALUES
+        ('occurrence_chore_detail', 'household_chore_detail', 'template_chore_detail',
+         '2026-08-10', 'default', 'Pack bag', 'Morning', 'member_chore_detail', 'pending',
+         NULL, NULL, NULL, 'now', 'now', NULL, NULL, 'Put lunch inside', '07:30');
+    `);
+    expect(
+      database
+        .prepare(
+          'SELECT description_snapshot, due_time_snapshot FROM chore_occurrences WHERE id = ?',
+        )
+        .get('occurrence_chore_detail'),
+    ).toEqual({ description_snapshot: 'Put lunch inside', due_time_snapshot: '07:30' });
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();

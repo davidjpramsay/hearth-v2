@@ -102,6 +102,11 @@ the phone More hub.
   distinguishes **One day only**, daily, weekdays and selected weekly days. Archiving requires a
   second explicit action; archived chores retain past completions and can resume from today without
   filling the paused interval with newly generated occurrences.
+- A separate phone-first **Today’s chores** surface opens one occurrence at a time. It shows the
+  snapshotted description and due time, requires an adult reason before Skip, Excuse or Reassign,
+  explains the pocket-money consequence in family language and keeps newest-first history visible.
+- The television shows due time as quiet secondary metadata and retains one-Select completion/undo;
+  it does not expose exception forms or an audit timeline.
 
 ### Lists
 

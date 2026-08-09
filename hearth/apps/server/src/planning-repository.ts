@@ -1848,7 +1848,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             `INSERT INTO chore_templates
               (id, household_id, title, description, recurrence_rule, routine_label, due_time,
                points_value, active_from, active_until, archived_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
           )
           .run(
             templateId,
@@ -1857,6 +1857,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
+            input.dueTime,
             0,
             input.activeFrom,
             input.repeat === 'once' ? input.activeFrom : null,
@@ -1895,7 +1896,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
           .prepare(
             `UPDATE chore_templates
              SET title = ?, description = ?, recurrence_rule = ?, routine_label = ?,
-                 points_value = ?, active_from = ?, active_until = ?, updated_at = ?
+                 due_time = ?, points_value = ?, active_from = ?, active_until = ?, updated_at = ?
              WHERE id = ? AND household_id = ?`,
           )
           .run(
@@ -1903,6 +1904,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
+            input.dueTime,
             0,
             input.activeFrom,
             input.repeat === 'once' ? input.activeFrom : null,
@@ -2650,14 +2652,26 @@ function demoChoreTemplates(): ChoreTemplate[] {
     ['occurrence_herbs', 'FREQ=DAILY'],
     ['occurrence_make_bed', 'FREQ=DAILY'],
   ]);
+  const descriptions = new Map([
+    ['occurrence_school_bag', 'Pack the lunchbox, water bottle and homework folder.'],
+    ['occurrence_feed_pepper', 'Fresh water first, then one measured scoop of food.'],
+    ['occurrence_dishes', 'Unload the clean dishes and put everything back in its usual place.'],
+    ['occurrence_laundry', 'Take the school clothes to the laundry and separate any wet items.'],
+    ['occurrence_herbs', 'Water the herb pots until the soil is damp, without flooding the tray.'],
+    [
+      'occurrence_make_bed',
+      'Straighten the sheets, pull up the doona and place pillows at the top.',
+    ],
+  ]);
   return seed.chores.map((occurrence) => {
     const parsed = choreRepeatFromRule(rules.get(occurrence.id) ?? 'FREQ=DAILY');
     return ChoreTemplateSchema.parse({
       id: `template_${occurrence.id.replace('occurrence_', '')}`,
       title: occurrence.title,
-      description: null,
+      description: descriptions.get(occurrence.id) ?? null,
       assignee: occurrence.assignee,
       routineLabel: occurrence.routineLabel,
+      dueTime: occurrence.dueTime,
       ...parsed,
       activeFrom: DEMO_LOCAL_DATE,
       activeUntil: null,
@@ -2716,6 +2730,7 @@ function templateFromInput(
     description: input.description,
     assignee: demoMember(input.assigneeId),
     routineLabel: input.routineLabel,
+    dueTime: input.dueTime,
     repeat: input.repeat,
     repeatDays: input.repeatDays,
     activeFrom: input.activeFrom,
@@ -2884,6 +2899,7 @@ function choreTemplateFromRow(row: ChoreTemplateRow): ChoreTemplate {
     description: row.description,
     assignee: memberFromRow(row),
     routineLabel: row.routine_label,
+    dueTime: row.due_time,
     ...choreRepeatFromRule(row.recurrence_rule),
     activeFrom: row.active_from,
     activeUntil: row.active_until,
@@ -2956,6 +2972,7 @@ interface ChoreTemplateRow extends MemberRow {
   description: string | null;
   recurrence_rule: string;
   routine_label: string;
+  due_time: string | null;
   points_value: number;
   active_from: string;
   active_until: string | null;

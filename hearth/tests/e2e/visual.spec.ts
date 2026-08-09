@@ -158,6 +158,7 @@ test('@visual Chores dynamic three-column board at television and phone sizes', 
         description: null,
         assigneeId: member.id,
         routineLabel: 'After school',
+        dueTime: '16:00',
         repeat: 'weekly',
         repeatDays: ['MO'],
         activeFrom: '2026-08-03',
@@ -226,6 +227,7 @@ test('@visual pocket-money progress and administration at required viewports', a
         description: null,
         assigneeId: member.id,
         routineLabel: 'After school',
+        dueTime: '16:00',
         repeat: 'weekly',
         repeatDays: ['MO'],
         activeFrom: '2026-08-03',
@@ -342,7 +344,7 @@ test('@visual skipped chore state', async ({ page, request }) => {
     'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-occurrences/occurrence_laundry/skips',
     {
       headers: { 'x-hearth-demo-actor': 'member_maya' },
-      data: { requestId: 'request_visual_skip_laundry' },
+      data: { requestId: 'request_visual_skip_laundry', reason: 'Waiting for dry weather' },
     },
   );
   expect(response.ok()).toBe(true);

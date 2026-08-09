@@ -1487,6 +1487,17 @@
 .chore-row--skipped .chore-row__action {
   color: var(--muted);
 }
+.chore-row--excused,
+.chore-row--cancelled {
+  border-style: dashed;
+  background: var(--surface-muted);
+  color: var(--muted);
+  cursor: default;
+}
+.chore-row--excused .chore-check,
+.chore-row--cancelled .chore-check {
+  border-color: var(--muted);
+}
 .chore-row-wrap--failed .chore-row {
   border-color: #dfaaa4;
   border-bottom-left-radius: 8px;
@@ -5969,6 +5980,228 @@
   margin-top: 2px;
   color: var(--muted);
 }
+.chore-management-note {
+  margin-top: 17px;
+  padding: 17px;
+  border: 1px solid #bac8b5;
+  border-radius: 18px;
+  color: #455b47;
+  background: var(--sage-soft);
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+.chore-management-note > svg {
+  flex: 0 0 auto;
+}
+.chore-management-note strong {
+  font-size: 18px;
+}
+.chore-management-note p {
+  margin: 3px 0 0;
+  line-height: 1.4;
+}
+.chore-management-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.chore-management-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.chore-management-error button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  margin: 0;
+}
+.chore-management-row {
+  border: 1px solid #e2d9d0;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 78%);
+  overflow: hidden;
+}
+.chore-management-row > summary {
+  min-height: 82px;
+  padding: 13px 15px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto 22px;
+  align-items: center;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.chore-management-row > summary::-webkit-details-marker {
+  display: none;
+}
+.chore-management-row > summary:focus-visible {
+  outline: 3px solid rgb(85 50 74 / 18%);
+  outline-offset: -3px;
+}
+.chore-management-row[open] > summary > svg {
+  transform: rotate(90deg);
+}
+.chore-management-row__copy strong,
+.chore-management-row__copy small {
+  display: block;
+}
+.chore-management-row__copy strong {
+  color: var(--ink);
+  font-size: 19px;
+}
+.chore-management-row__copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.chore-management-state {
+  min-width: 72px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #355c42;
+  background: var(--sage-soft);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 720;
+}
+.chore-management-state--completed {
+  color: #315a40;
+  background: var(--eucalyptus-soft);
+}
+.chore-management-state--skipped {
+  color: #765c25;
+  background: var(--ochre-soft);
+}
+.chore-management-state--excused,
+.chore-management-state--cancelled {
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+.chore-management-row__body {
+  padding: 17px;
+  border-top: 1px solid var(--hairline);
+}
+.chore-management-description {
+  margin: 0 0 15px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+.chore-management-controls {
+  padding: 15px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--surface-muted);
+}
+.chore-management-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 680;
+}
+.chore-management-controls input,
+.chore-management-controls select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid #cfc5bd;
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+}
+.chore-management-reassign {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+.chore-management-reassign button,
+.chore-management-actions button {
+  min-height: 48px;
+  margin: 0;
+}
+.chore-management-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.chore-management-excuse {
+  color: var(--brick);
+}
+.chore-management-locked,
+.chore-history-loading {
+  margin: 0;
+  color: var(--muted);
+}
+.chore-history {
+  margin-top: 17px;
+}
+.chore-history h3 {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 17px;
+}
+.chore-history > p {
+  margin: 0;
+  color: var(--muted);
+}
+.chore-history ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chore-history li {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 9px;
+  position: relative;
+}
+.chore-history li:not(:last-child)::before {
+  content: '';
+  width: 2px;
+  position: absolute;
+  top: 13px;
+  bottom: -4px;
+  left: 5px;
+  background: var(--hairline);
+}
+.chore-history__marker {
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--eucalyptus);
+  box-shadow: 0 0 0 1px var(--eucalyptus);
+  z-index: 1;
+}
+.chore-history li strong,
+.chore-history li span,
+.chore-history li p {
+  display: block;
+}
+.chore-history li strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+.chore-history li div > span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.chore-history li p {
+  margin: 4px 0 12px;
+  color: var(--ink);
+  font-size: 14px;
+}
 .pocket-money-week-nav {
   margin-top: 17px;
   padding: 6px;
@@ -6689,6 +6922,54 @@
   .routine-fields__split {
     grid-template-columns: 1fr;
   }
+  .chore-management-note {
+    padding: 14px;
+  }
+  .chore-management-row > summary {
+    min-height: 76px;
+    padding: 11px 12px;
+    grid-template-columns: 44px minmax(0, 1fr) 20px;
+    gap: 10px;
+  }
+  .chore-management-row > summary .avatar {
+    width: 44px;
+    height: 44px;
+  }
+  .chore-management-state {
+    grid-column: 2;
+    width: max-content;
+    min-width: 0;
+    margin-top: -2px;
+    padding: 4px 8px;
+  }
+  .chore-management-row > summary > svg {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+  .chore-management-row__body {
+    padding: 14px;
+  }
+  .chore-management-controls {
+    padding: 13px;
+  }
+  .chore-management-reassign {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .chore-management-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .chore-management-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .chore-management-error button {
+    width: 100%;
+  }
+  .chore-management-reassign button,
+  .chore-management-actions button {
+    width: 100%;
+  }
   .pocket-money-settings-form,
   .pocket-payment-form {
     grid-template-columns: 1fr;
@@ -7342,6 +7623,7 @@
 :root[data-theme='dark'] .member-editor,
 :root[data-theme='dark'] .planning-area-card,
 :root[data-theme='dark'] .routine-editor,
+:root[data-theme='dark'] .chore-management-row,
 :root[data-theme='dark'] .pocket-money-admin-card,
 :root[data-theme='dark'] .pocket-money-history,
 :root[data-theme='dark'] .meal-week-settings,
@@ -7406,6 +7688,7 @@
 :root[data-theme='dark'] .local-status,
 :root[data-theme='dark'] .planning-intro,
 :root[data-theme='dark'] .history-safe-note,
+:root[data-theme='dark'] .chore-management-note,
 :root[data-theme='dark'] .pocket-money-intro,
 :root[data-theme='dark'] .pocket-money-week-context,
 :root[data-theme='dark'] .meal-settings-intro {
@@ -7428,6 +7711,8 @@
 :root[data-theme='dark'] .meal-week-controls button,
 :root[data-theme='dark'] .routine-fields input,
 :root[data-theme='dark'] .routine-fields select,
+:root[data-theme='dark'] .chore-management-controls input,
+:root[data-theme='dark'] .chore-management-controls select,
 :root[data-theme='dark'] .routine-days label,
 :root[data-theme='dark'] .pocket-money-settings-form input,
 :root[data-theme='dark'] .pocket-money-settings-form select,

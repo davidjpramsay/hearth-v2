@@ -95,6 +95,13 @@ Chromium fallback produced the retained evidence.
 - An adult can create a one-off chore for a household-local date, archive any active chore only
   after confirmation and restore it from today. Command retries replay safely, past occurrences
   remain visible and the archived interval does not produce retroactive jobs.
+- An adult can add an optional due time to future schedules, then reasonedly skip, excuse or
+  reassign a pending occurrence from the phone. The occurrence detail shows its snapshotted
+  description, due time and newest-first immutable history after restart.
+- Skip remains incomplete and eligible for pocket money, excuse is excluded, and reassignment moves
+  responsibility. Retrying the same request cannot apply the change or create history twice.
+- The television renders due time as secondary row metadata but keeps completion/undo as the only
+  ordinary chore actions; exception and history controls remain phone-first.
 - An adult can reverse an accidental completion with an audit trail.
 - A child cannot modify another person's history or household rules without permission.
 - Every participating child has a required weekly amount and payday in phone administration.

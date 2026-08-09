@@ -5,7 +5,9 @@ import type { ChoreOccurrence, Member } from '@hearth/shared';
 import {
   ChoreDomainError,
   completeChore,
+  excuseChore,
   isChoreDueOnDate,
+  reassignChore,
   skipChore,
   sortByStart,
   undoChore,
@@ -25,6 +27,7 @@ const pending: ChoreOccurrence = {
   title: 'Pack school bag',
   assignee: ezra,
   routineLabel: 'Morning',
+  dueTime: '07:30',
   localDate: '2026-08-03',
   state: 'pending',
   completionId: null,
@@ -73,10 +76,50 @@ describe('chore commands', () => {
   });
 
   it('skips a pending occurrence without manufacturing a completion', () => {
-    const skipped = skipChore(pending, { ...context, auditId: 'audit_skip_001' });
+    const skipped = skipChore(pending, 'Away at camp', {
+      ...context,
+      auditId: 'audit_skip_001',
+    });
     expect(skipped.occurrence).toMatchObject({ state: 'skipped', completionId: null });
     expect(skipped.audit).toMatchObject({ action: 'chore.skip', result: 'succeeded' });
-    expect(() => skipChore(skipped.occurrence, context)).toThrow('can no longer be skipped');
+    expect(() => skipChore(skipped.occurrence, 'Away at camp', context)).toThrow(
+      'can no longer be skipped',
+    );
+  });
+
+  it('excuses pending or skipped work without creating a completion', () => {
+    const skipped = skipChore(pending, 'Away at camp', context);
+    const excused = excuseChore(skipped.occurrence, 'School camp', {
+      ...context,
+      auditId: 'audit_excuse_001',
+    });
+    expect(excused.occurrence).toMatchObject({ state: 'excused', completionId: null });
+    expect(excused.audit.action).toBe('chore.excuse');
+    expect(() => excuseChore(excused.occurrence, 'Still away', context)).toThrow(
+      'can no longer be excused',
+    );
+  });
+
+  it('reassigns waiting work and returns a skipped job to pending', () => {
+    const maya: Member = {
+      ...ezra,
+      id: 'member_maya',
+      displayName: 'Maya',
+      color: '#c97900',
+    };
+    const skipped = skipChore(pending, 'Jobs swapped', context);
+    const reassigned = reassignChore(skipped.occurrence, maya, 'Jobs swapped', {
+      ...context,
+      auditId: 'audit_reassign_001',
+    });
+    expect(reassigned.occurrence).toMatchObject({
+      state: 'pending',
+      assignee: { id: 'member_maya' },
+    });
+    expect(reassigned.audit.action).toBe('chore.reassign');
+    expect(() => reassignChore(reassigned.occurrence, maya, 'Same person', context)).toThrow(
+      'already has this chore',
+    );
   });
 
   it('evaluates supported one-off, daily and weekly recurrence rules within active dates', () => {

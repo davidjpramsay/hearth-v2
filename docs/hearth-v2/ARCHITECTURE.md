@@ -118,9 +118,14 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `GET /api/v1/households/:id/week?start=`
 - `GET /api/v1/households/:id/month?month=`
 - `GET /api/v1/households/:id/chore-occurrences?date=`
+- adult-only `GET /api/v1/households/:id/chore-occurrences/:occurrenceId` for the occurrence
+  description and family-readable immutable command history
 - `POST .../:occurrenceId/completions` with `{ requestId }`
 - `POST .../:occurrenceId/completion-reversals` with `{ requestId, completionId }`
-- `POST .../:occurrenceId/skips` with `{ requestId }`
+- adult-only `POST .../:occurrenceId/skips` with `{ requestId, reason }`
+- adult-only `POST .../:occurrenceId/excuses` with `{ requestId, reason }`
+- adult-only `POST .../:occurrenceId/reassignments` with
+  `{ requestId, reason, assigneeId }`
 - `GET /api/v1/households/:id/events` as a same-origin Server-Sent Events invalidation stream
 - `GET /api/v1/households/:id/admin` and typed household/member setup commands
 - `GET /api/v1/households/:id/members/:memberId/avatar` for the same-origin normalized profile derivative
@@ -261,11 +266,12 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0016` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0017` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
-history, the Synology photo index and saved-meal preparation metadata. The live demo server uses
-the SQLite repository; its in-memory adapter remains only for isolated contract tests.
+history, the Synology photo index, saved-meal preparation metadata and reasoned chore-occurrence
+management history. The live demo server uses the SQLite repository; its in-memory adapter remains
+only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
 

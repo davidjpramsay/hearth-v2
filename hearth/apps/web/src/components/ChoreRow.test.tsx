@@ -17,6 +17,7 @@ const occurrence: ChoreOccurrence = {
     capabilities: ['household.view', 'chores.complete'],
   },
   routineLabel: 'Morning',
+  dueTime: '07:30',
   localDate: '2026-08-03',
   state: 'pending',
   completionId: null,
@@ -48,6 +49,7 @@ describe('ChoreRow', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Complete Pack school bag' }));
     expect(mutation.mutate).toHaveBeenCalledWith({ action: 'complete', occurrence });
+    expect(screen.getByText(/Morning · Due 7:30 am/)).toBeVisible();
 
     const completed = {
       ...occurrence,
@@ -93,6 +95,22 @@ describe('ChoreRow', () => {
     );
     const row = screen.getByRole('button', { name: 'Pack school bag, skipped' });
     expect(row).toHaveTextContent('Skipped');
+    expect(row).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(row);
+    expect(mutation.mutate).not.toHaveBeenCalled();
+  });
+
+  it('renders an excused occurrence as a non-command state', () => {
+    const mutation = view();
+    render(
+      <ChoreRow
+        occurrence={{ ...occurrence, state: 'excused' }}
+        mutation={mutation}
+        focus={{ 'data-focus-id': 'chore-one' }}
+      />,
+    );
+    const row = screen.getByRole('button', { name: 'Pack school bag, excused' });
+    expect(row).toHaveTextContent('Excused');
     expect(row).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(row);
     expect(mutation.mutate).not.toHaveBeenCalled();

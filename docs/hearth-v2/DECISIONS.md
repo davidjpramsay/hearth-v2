@@ -545,3 +545,25 @@ Record durable choices here. New decisions should include date, status, context,
   lifecycle command cannot duplicate state, and a paused interval does not silently acquire chores.
   The existing schema already stores recurrence, active ranges and archive state, so this choice
   needs no migration.
+
+## D-039 — Adult chore exceptions are reasoned occurrence commands
+
+- Date: 2026-08-10
+- Status: accepted
+- Context: Completion/undo and future schedule editing were durable, but an adult could not fairly
+  handle a school camp, illness or job swap without changing a template or losing the reason. A
+  generic status edit would make pocket-money results hard to explain and could duplicate changes
+  during a network retry.
+- Choice: Keep television completion/undo unchanged. Add an optional `HH:mm` due time to templates
+  and snapshot due time plus optional description onto generated occurrences. Require an
+  authenticated adult, bounded reason and idempotent request ID for Skip, Excuse and Reassign.
+  Skip changes pending to skipped and leaves it in the pocket-money denominator. Excuse changes
+  pending/skipped to excused and removes it. Reassign moves pending/skipped work to another active
+  household member and resets it to pending. Store the reason and safe prior/new member summary in
+  the existing immutable audit event, and expose an adult-only occurrence-detail/history query.
+- Consequence: The phone can explain and preserve one-day decisions without rewriting schedules,
+  retries cannot duplicate the mutation/history, and pocket-money calculations remain
+  deterministic. Migration `0017_chore_occurrence_management.sql` backfills description/due-time
+  snapshots and adds the history lookup index. Multi-assignee templates and due windows remain
+  separate later work; this decision completes the reasoned exception/reassignment/history portion
+  deferred by D-038.

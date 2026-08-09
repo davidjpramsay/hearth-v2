@@ -7,19 +7,27 @@ import {
   addLocalDays,
   completeChore,
   createMonthGrid,
+  excuseChore,
   isChoreDueOnDate,
   localDateInTimezone,
+  reassignChore,
   skipChore,
   sortByStart,
   undoChore,
 } from '@hearth/core';
 import {
   ChoreCommandResultSchema,
+  ChoreOccurrenceChangeResultSchema,
+  ChoreOccurrenceDetailSchema,
+  ChoreOccurrenceHistoryEntrySchema,
   ChoreOccurrenceSchema,
   ChoreSkipResultSchema,
   MemberSchema,
   type AuditSummary,
   type ChoreCommandResult,
+  type ChoreOccurrenceChangeResult,
+  type ChoreOccurrenceDetail,
+  type ChoreOccurrenceHistoryEntry,
   type ChoreList,
   type ChoreOccurrence,
   type ChoreSkipResult,
@@ -52,6 +60,15 @@ const TEMPLATE_RULES = new Map<string, string>([
   ['occurrence_laundry', 'FREQ=WEEKLY;BYDAY=MO,TH'],
   ['occurrence_herbs', 'FREQ=DAILY'],
   ['occurrence_make_bed', 'FREQ=DAILY'],
+]);
+
+const TEMPLATE_DESCRIPTIONS = new Map<string, string>([
+  ['occurrence_school_bag', 'Pack the lunchbox, water bottle and homework folder.'],
+  ['occurrence_feed_pepper', 'Fresh water first, then one measured scoop of food.'],
+  ['occurrence_dishes', 'Unload the clean dishes and put everything back in its usual place.'],
+  ['occurrence_laundry', 'Take the school clothes to the laundry and separate any wet items.'],
+  ['occurrence_herbs', 'Water the herb pots until the soil is damp, without flooding the tray.'],
+  ['occurrence_make_bed', 'Straighten the sheets, pull up the doona and place pillows at the top.'],
 ]);
 
 export class SqliteHearthRepository implements HearthRepository {
@@ -232,6 +249,28 @@ export class SqliteHearthRepository implements HearthRepository {
     };
   }
 
+  async getChoreOccurrenceDetail(
+    householdId: string,
+    occurrenceId: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceDetail> {
+    this.assertHousehold(householdId);
+    this.authorizeAdult(householdId, actor);
+    const occurrence = this.readOccurrence(householdId, occurrenceId);
+    const row = this.database
+      .prepare(
+        `SELECT description_snapshot FROM chore_occurrences
+         WHERE id = ? AND household_id = ?`,
+      )
+      .get(occurrenceId, householdId) as { description_snapshot: string | null } | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That chore could not be found.');
+    return ChoreOccurrenceDetailSchema.parse({
+      occurrence,
+      description: row.description_snapshot,
+      history: this.readOccurrenceHistory(householdId, occurrenceId),
+    });
+  }
+
   async complete(
     householdId: string,
     occurrenceId: string,
@@ -311,6 +350,7 @@ export class SqliteHearthRepository implements HearthRepository {
     householdId: string,
     occurrenceId: string,
     requestId: string,
+    reason: string,
     actor: CommandActor,
   ): Promise<ChoreSkipResult> {
     this.assertHousehold(householdId);
@@ -323,7 +363,7 @@ export class SqliteHearthRepository implements HearthRepository {
       'skip',
       ChoreSkipResultSchema,
       (occurrence, context) => {
-        const result = skipChore(occurrence, context);
+        const result = skipChore(occurrence, reason, context);
         this.database
           .prepare(
             `UPDATE chore_occurrences
@@ -334,6 +374,89 @@ export class SqliteHearthRepository implements HearthRepository {
           .run(context.occurredAt, actor.id, context.occurredAt, occurrenceId);
         return { occurrence: result.occurrence, audit: result.audit, replayed: false };
       },
+      () => ({ reason }),
+    );
+  }
+
+  async excuse(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult> {
+    this.assertHousehold(householdId);
+    this.failNextIfRequested(householdId, occurrenceId, requestId, actor, 'chore.excuse');
+    return this.runCommand(
+      householdId,
+      occurrenceId,
+      requestId,
+      actor,
+      'excuse',
+      ChoreOccurrenceChangeResultSchema,
+      (occurrence, context) => {
+        const result = excuseChore(occurrence, reason, context);
+        this.database
+          .prepare(
+            `UPDATE chore_occurrences
+             SET state = 'excused', completion_id = NULL, completed_at = NULL,
+                 completed_by_actor_id = NULL, skipped_at = NULL, skipped_by_actor_id = NULL,
+                 updated_at = ? WHERE id = ?`,
+          )
+          .run(context.occurredAt, occurrenceId);
+        return { occurrence: result.occurrence, audit: result.audit, replayed: false };
+      },
+      () => ({ reason }),
+    );
+  }
+
+  async reassign(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    assigneeId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult> {
+    this.assertHousehold(householdId);
+    this.failNextIfRequested(householdId, occurrenceId, requestId, actor, 'chore.reassign');
+    const assignee = this.readMember(householdId, assigneeId);
+    return this.runCommand(
+      householdId,
+      occurrenceId,
+      requestId,
+      actor,
+      'reassign',
+      ChoreOccurrenceChangeResultSchema,
+      (occurrence, context) => {
+        const result = reassignChore(occurrence, assignee, reason, context);
+        try {
+          this.database
+            .prepare(
+              `UPDATE chore_occurrences
+               SET assignee_member_id = ?, state = 'pending', completion_id = NULL,
+                   completed_at = NULL, completed_by_actor_id = NULL, skipped_at = NULL,
+                   skipped_by_actor_id = NULL, updated_at = ? WHERE id = ?`,
+            )
+            .run(assignee.id, context.occurredAt, occurrenceId);
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            throw new RepositoryError(
+              'CONFLICT',
+              `${assignee.displayName} already has this chore for the day.`,
+            );
+          }
+          throw error;
+        }
+        return { occurrence: result.occurrence, audit: result.audit, replayed: false };
+      },
+      (occurrence) => ({
+        reason,
+        fromAssigneeId: occurrence.assignee.id,
+        fromAssigneeName: occurrence.assignee.displayName,
+        toAssigneeId: assignee.id,
+        toAssigneeName: assignee.displayName,
+      }),
     );
   }
 
@@ -357,17 +480,18 @@ export class SqliteHearthRepository implements HearthRepository {
     this.scenario = scenario;
   }
 
-  private runCommand<T extends ChoreCommandResult | ChoreSkipResult>(
+  private runCommand<T extends ChoreCommandResult | ChoreOccurrenceChangeResult>(
     householdId: string,
     occurrenceId: string,
     requestId: string,
     actor: CommandActor,
-    commandType: 'complete' | 'undo' | 'skip',
+    commandType: 'complete' | 'undo' | 'skip' | 'excuse' | 'reassign',
     schema: { parse(value: unknown): T },
     mutate: (
       occurrence: ChoreOccurrence,
       context: ReturnType<SqliteHearthRepository['createContext']>,
     ) => T,
+    safeSummary: (occurrence: ChoreOccurrence, response: T) => Record<string, unknown> = () => ({}),
   ): T {
     const transaction = this.database.transaction(() => {
       const receipt = this.readReceipt(householdId, requestId, commandType, schema);
@@ -376,7 +500,13 @@ export class SqliteHearthRepository implements HearthRepository {
       const context = this.createContext(requestId, actor);
       this.authorize(householdId, actor, occurrence, commandType);
       const response = mutate(this.withScenarioPermission(occurrence), context);
-      this.writeAudit(householdId, response.audit, requestId);
+      this.writeAudit(
+        householdId,
+        response.audit,
+        requestId,
+        'chore_occurrence',
+        safeSummary(occurrence, response),
+      );
       this.database
         .prepare(
           `INSERT INTO command_receipts
@@ -409,11 +539,11 @@ export class SqliteHearthRepository implements HearthRepository {
     householdId: string,
     actor: CommandActor,
     occurrence: ChoreOccurrence,
-    action: 'complete' | 'undo' | 'skip',
+    action: 'complete' | 'undo' | 'skip' | 'excuse' | 'reassign',
   ): void {
     if (actor.type === 'device') {
-      if (actor.source !== 'tv' || action === 'skip') {
-        throw new RepositoryError('FORBIDDEN', 'Ask an adult to skip this.');
+      if (actor.source !== 'tv' || (action !== 'complete' && action !== 'undo')) {
+        throw new RepositoryError('FORBIDDEN', 'Ask an adult to change this.');
       }
       const row = this.database
         .prepare(
@@ -434,7 +564,7 @@ export class SqliteHearthRepository implements HearthRepository {
       if (
         !['automation', 'voice'].includes(actor.source) ||
         actor.id !== 'service_home_assistant' ||
-        action === 'skip'
+        (action !== 'complete' && action !== 'undo')
       ) {
         throw new RepositoryError('FORBIDDEN', 'That automation cannot change this chore.');
       }
@@ -457,15 +587,15 @@ export class SqliteHearthRepository implements HearthRepository {
       throw new RepositoryError('FORBIDDEN', 'You cannot change chores.');
     }
     if (row.role === 'adult') return;
-    if (action !== 'skip' && occurrence.assignee.id === actor.id) return;
+    if ((action === 'complete' || action === 'undo') && occurrence.assignee.id === actor.id) return;
     throw new RepositoryError('FORBIDDEN', 'Ask an adult to change this.');
   }
 
   private generateOccurrences(householdId: string, localDate: string): void {
     const rows = this.database
       .prepare(
-        `SELECT t.id, t.title, t.recurrence_rule, t.routine_label, t.active_from, t.active_until,
-                a.member_id
+        `SELECT t.id, t.title, t.description, t.recurrence_rule, t.routine_label, t.due_time,
+                t.active_from, t.active_until, a.member_id
          FROM chore_templates t
          JOIN chore_template_assignees a ON a.template_id = t.id
          JOIN members m ON m.id = a.member_id AND m.archived_at IS NULL
@@ -475,9 +605,10 @@ export class SqliteHearthRepository implements HearthRepository {
     const insert = this.database.prepare(
       `INSERT OR IGNORE INTO chore_occurrences
         (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
-         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
-         completed_by_actor_id, created_at, updated_at, skipped_at, skipped_by_actor_id)
-       VALUES (?, ?, ?, ?, 'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+         description_snapshot, routine_label_snapshot, due_time_snapshot, assignee_member_id,
+         state, completion_id, completed_at, completed_by_actor_id, created_at, updated_at,
+         skipped_at, skipped_by_actor_id)
+       VALUES (?, ?, ?, ?, 'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
     );
     const demoByTitleAndMember = new Map(
       createDemoSeed().chores.map((chore) => [`${chore.title}:${chore.assignee.id}`, chore]),
@@ -500,7 +631,9 @@ export class SqliteHearthRepository implements HearthRepository {
           row.id,
           localDate,
           row.title,
+          row.description,
           row.routine_label,
+          row.due_time,
           row.member_id,
           isSeedCompletion ? 'completed' : 'pending',
           isSeedCompletion ? demoOccurrence.completionId : null,
@@ -547,6 +680,7 @@ export class SqliteHearthRepository implements HearthRepository {
       title: row.title_snapshot,
       assignee: memberFromOccurrenceRow(row),
       routineLabel: row.routine_label_snapshot,
+      dueTime: row.due_time_snapshot,
       localDate: row.scheduled_local_date,
       state: row.state,
       completionId: row.completion_id,
@@ -557,6 +691,74 @@ export class SqliteHearthRepository implements HearthRepository {
           : completedLabel(row.completed_at, this.readHousehold(row.household_id).timezone),
       locked: this.scenario === 'permission' && row.id === 'occurrence_school_bag',
     });
+  }
+
+  private readOccurrenceHistory(
+    householdId: string,
+    occurrenceIdValue: string,
+  ): ChoreOccurrenceHistoryEntry[] {
+    const rows = this.database
+      .prepare(
+        `SELECT a.id, a.action_type, a.occurred_at, a.actor_type, a.safe_summary_json,
+                m.display_name AS actor_display_name
+         FROM audit_events a
+         LEFT JOIN members m ON m.id = a.actor_id AND m.household_id = a.household_id
+         WHERE a.household_id = ? AND a.target_type = 'chore_occurrence' AND a.target_id = ?
+           AND a.result IN ('succeeded', 'reversed')
+           AND a.action_type IN
+             ('chore.complete', 'chore.undo', 'chore.skip', 'chore.excuse', 'chore.reassign')
+         ORDER BY a.rowid DESC`,
+      )
+      .all(householdId, occurrenceIdValue) as OccurrenceHistoryRow[];
+    return rows.map((row) => {
+      const summary = safeSummaryFromJson(row.safe_summary_json);
+      const action = row.action_type;
+      const label =
+        action === 'chore.complete'
+          ? 'Marked done'
+          : action === 'chore.undo'
+            ? 'Completion undone'
+            : action === 'chore.skip'
+              ? 'Skipped'
+              : action === 'chore.excuse'
+                ? 'Excused'
+                : `Reassigned from ${safeName(summary.fromAssigneeName)} to ${safeName(summary.toAssigneeName)}`;
+      return ChoreOccurrenceHistoryEntrySchema.parse({
+        id: row.id,
+        action,
+        label,
+        actorLabel:
+          row.actor_display_name ??
+          (row.actor_type === 'device'
+            ? 'Television'
+            : row.actor_type === 'service'
+              ? 'Home Assistant'
+              : 'Hearth'),
+        occurredAt: row.occurred_at,
+        reason: typeof summary.reason === 'string' ? summary.reason : null,
+      });
+    });
+  }
+
+  private readMember(householdId: string, memberId: string): Member {
+    const row = this.database
+      .prepare(
+        `SELECT id, display_name, colour, avatar_key, role, capabilities_json
+         FROM members WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+      )
+      .get(memberId, householdId) as MemberRow | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That person was not found.');
+    return memberFromRow(row);
+  }
+
+  private authorizeAdult(householdId: string, actor: CommandActor): void {
+    if (actor.type !== 'member' || actor.source !== 'companion') {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult can manage this chore.');
+    }
+    const member = this.readMember(householdId, actor.id);
+    if (member.role !== 'adult' || !member.capabilities.includes('chores.complete')) {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult can manage this chore.');
+    }
   }
 
   private readReceipt<T>(
@@ -579,13 +781,14 @@ export class SqliteHearthRepository implements HearthRepository {
     audit: AuditSummary,
     requestId: string,
     targetType = 'chore_occurrence',
+    safeSummary: Record<string, unknown> = {},
   ): void {
     this.database
       .prepare(
         `INSERT INTO audit_events
           (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
            target_type, target_id, request_id, result, safe_summary_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         audit.id,
@@ -599,6 +802,7 @@ export class SqliteHearthRepository implements HearthRepository {
         audit.targetId,
         requestId,
         audit.result,
+        JSON.stringify(safeSummary),
       );
   }
 
@@ -607,7 +811,7 @@ export class SqliteHearthRepository implements HearthRepository {
     occurrenceIdValue: string,
     requestId: string,
     actor: CommandActor,
-    commandType: 'complete' | 'undo' | 'skip',
+    commandType: 'complete' | 'undo' | 'skip' | 'excuse' | 'reassign',
     error: RepositoryError,
   ): void {
     this.database
@@ -655,7 +859,11 @@ export class SqliteHearthRepository implements HearthRepository {
       },
       requestId,
     );
-    throw new RepositoryError('COMMAND_FAILED', 'Couldn’t mark this done.', true);
+    throw new RepositoryError(
+      'COMMAND_FAILED',
+      action === 'chore.complete' ? 'Couldn’t mark this done.' : 'That chore change did not save.',
+      true,
+    );
   }
 
   private createContext(requestId: string, actor: CommandActor) {
@@ -766,7 +974,7 @@ export class SqliteHearthRepository implements HearthRepository {
       `INSERT OR IGNORE INTO chore_templates
         (id, household_id, title, description, recurrence_rule, routine_label, due_time,
          points_value, active_from, active_until, archived_at, created_at, updated_at)
-       VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, ?, NULL, NULL, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
     );
     const insertAssignee = this.database.prepare(
       'INSERT OR IGNORE INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)',
@@ -778,8 +986,10 @@ export class SqliteHearthRepository implements HearthRepository {
         templateId,
         seed.household.id,
         chore.title,
+        TEMPLATE_DESCRIPTIONS.get(chore.id) ?? null,
         TEMPLATE_RULES.get(chore.id) ?? 'FREQ=DAILY',
         chore.routineLabel,
+        chore.dueTime,
         0,
         DEMO_LOCAL_DATE,
         createdAt,
@@ -794,8 +1004,10 @@ export class SqliteHearthRepository implements HearthRepository {
 interface TemplateRow {
   id: string;
   title: string;
+  description: string | null;
   recurrence_rule: string;
   routine_label: string;
+  due_time: string | null;
   active_from: string;
   active_until: string | null;
   member_id: string;
@@ -815,7 +1027,9 @@ interface OccurrenceRow {
   household_id: string;
   assignee_member_id: string;
   title_snapshot: string;
+  description_snapshot: string | null;
   routine_label_snapshot: string;
+  due_time_snapshot: string | null;
   scheduled_local_date: string;
   state: 'pending' | 'completed' | 'skipped' | 'excused' | 'cancelled';
   completion_id: string | null;
@@ -825,6 +1039,15 @@ interface OccurrenceRow {
   avatar_key: string | null;
   role: 'adult' | 'child';
   capabilities_json: string;
+}
+
+interface OccurrenceHistoryRow {
+  id: string;
+  action_type: ChoreOccurrenceHistoryEntry['action'];
+  occurred_at: string;
+  actor_type: AuditSummary['actorType'];
+  actor_display_name: string | null;
+  safe_summary_json: string;
 }
 
 function memberFromRow(row: MemberRow): Member {
@@ -853,6 +1076,25 @@ function translateError(error: unknown): unknown {
   if (error instanceof RepositoryError) return error;
   if (error instanceof ChoreDomainError) return new RepositoryError(error.code, error.message);
   return error;
+}
+
+function safeSummaryFromJson(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function safeName(value: unknown): string {
+  return typeof value === 'string' && value.length > 0 ? value : 'another person';
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('UNIQUE constraint failed');
 }
 
 function id(prefix: string): string {

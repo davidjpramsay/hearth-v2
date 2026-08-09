@@ -61,6 +61,9 @@ const PocketMoneySettingsScreen = lazy(async () => ({
 const RoutinesSettingsScreen = lazy(async () => ({
   default: (await import('./screens/RoutinesSettingsScreen')).RoutinesSettingsScreen,
 }));
+const ChoreDaySettingsScreen = lazy(async () => ({
+  default: (await import('./screens/ChoreDaySettingsScreen')).ChoreDaySettingsScreen,
+}));
 const TelevisionsSettingsScreen = lazy(async () => ({
   default: (await import('./screens/TelevisionsSettingsScreen')).TelevisionsSettingsScreen,
 }));
@@ -145,6 +148,7 @@ export function App() {
             <Route path="/admin/meals" element={<MealsSettingsScreen />} />
             <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
             <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
+            <Route path="/admin/chore-day" element={<ChoreDaySettingsScreen />} />
             <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
             <Route path="/admin/rewards" element={<Navigate replace to="/admin/pocket-money" />} />
           </Route>

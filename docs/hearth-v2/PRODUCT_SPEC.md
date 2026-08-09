@@ -65,7 +65,12 @@ Can understand the current household state and use clearly exposed room controls
 - Chore templates assigned to one or more people.
 - One-off, daily, weekly and rule-based recurrence.
 - Concrete daily occurrences so historical completion never changes when a template is edited.
-- Complete, undo, skip and reassign with permission checks.
+- Optional household-local due time, snapshotted onto each occurrence with its title, description,
+  routine and assignee.
+- Complete and undo from the family surface. Adult skip, excuse and reassignment commands require a
+  short reason, permission checks, idempotency and immutable occurrence history.
+- Skipping leaves the chore due and incomplete; excusing removes it from the pocket-money
+  denominator; reassignment moves an awaiting occurrence to the selected household member.
 - Optional evidence/note support later; never required for ordinary chores.
 - Morning, after-school, evening and bedtime routine grouping.
 - Streaks and progress that encourage rather than shame.

@@ -165,7 +165,9 @@ test('calendar sources remain identifiable and cached Week survives provider out
   const agenda = page.locator('.week-agenda');
   await expect(agenda).toBeVisible();
   await expect(agenda.locator('.week-day-forecast')).toHaveCount(7);
-  await expect(agenda.getByText('Maya').first()).toBeVisible();
+  const dentist = agenda.locator('.agenda-event').filter({ hasText: 'Dentist' });
+  await expect(dentist).toBeVisible();
+  await expect(dentist.locator('p')).not.toHaveText('Family');
 });
 
 test('three active assignees become three television columns with horizontal D-pad movement', async ({
@@ -198,6 +200,7 @@ test('three active assignees become three television columns with horizontal D-p
         description: null,
         assigneeId: member.id,
         routineLabel: 'After school',
+        dueTime: '16:00',
         repeat: 'weekly',
         repeatDays: ['MO'],
         activeFrom: '2026-08-03',

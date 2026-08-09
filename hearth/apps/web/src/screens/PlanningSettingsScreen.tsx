@@ -12,10 +12,17 @@ const planningAreas: Array<{
 }> = [
   {
     title: 'Routines and chores',
-    description: 'Repeat patterns and assignees',
+    description: 'Schedules, assignees and due times',
     path: '/admin/routines',
     icon: 'chores',
     focusId: 'planning-routines',
+  },
+  {
+    title: 'Today’s chores',
+    description: 'Reassign, skip, excuse and review history',
+    path: '/admin/chore-day',
+    icon: 'chores',
+    focusId: 'planning-chore-day',
   },
   {
     title: 'Meals',

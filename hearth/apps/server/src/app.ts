@@ -26,7 +26,11 @@ import {
   CalendarConnectionTestRequestSchema,
   CalendarConnectionTestResultSchema,
   ChoreCommandResultSchema,
+  ChoreExceptionRequestSchema,
   ChoreListSchema,
+  ChoreOccurrenceChangeResultSchema,
+  ChoreOccurrenceDetailSchema,
+  ChoreReassignmentRequestSchema,
   ChoreSkipResultSchema,
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
@@ -1628,6 +1632,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return reply;
   });
 
+  server.get(
+    '/api/v1/households/:householdId/chore-occurrences/:occurrenceId',
+    async (request, reply) => {
+      const params = parse(ChoreParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () =>
+        ChoreOccurrenceDetailSchema.parse(
+          await repository.getChoreOccurrenceDetail(
+            params.householdId,
+            params.occurrenceId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        ),
+      );
+    },
+  );
+
   server.post(
     '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/completions',
     async (request, reply) => {
@@ -1677,7 +1698,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/skips',
     async (request, reply) => {
       const params = parse(ChoreParamsSchema, request.params, reply);
-      const body = parse(CommandRequestSchema, request.body, reply);
+      const body = parse(ChoreExceptionRequestSchema, request.body, reply);
       if (params === null || body === null) return reply;
       return run(reply, async () => {
         const result = ChoreSkipResultSchema.parse(
@@ -1685,6 +1706,54 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             params.householdId,
             params.occurrenceId,
             body.requestId,
+            body.reason,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore.changed', params.occurrenceId);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.occurrenceId);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/excuses',
+    async (request, reply) => {
+      const params = parse(ChoreParamsSchema, request.params, reply);
+      const body = parse(ChoreExceptionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreOccurrenceChangeResultSchema.parse(
+          await repository.excuse(
+            params.householdId,
+            params.occurrenceId,
+            body.requestId,
+            body.reason,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore.changed', params.occurrenceId);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.occurrenceId);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/reassignments',
+    async (request, reply) => {
+      const params = parse(ChoreParamsSchema, request.params, reply);
+      const body = parse(ChoreReassignmentRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreOccurrenceChangeResultSchema.parse(
+          await repository.reassign(
+            params.householdId,
+            params.occurrenceId,
+            body.requestId,
+            body.assigneeId,
+            body.reason,
             commandActor(request.headers, options, adminRepository),
           ),
         );

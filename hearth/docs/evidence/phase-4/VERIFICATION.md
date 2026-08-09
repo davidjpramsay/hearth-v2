@@ -1,5 +1,42 @@
 # Phase 4 household-planning verification
 
+## 2026-08-10 daily chore-management polish addendum
+
+Hearth now separates future schedule editing from one-day adult decisions. Routine administration
+accepts an optional due time. The new phone-first **Today’s chores** destination shows the
+occurrence’s snapshotted description/due time and requires a short reason before Skip, Excuse or
+Reassign. Skip stays incomplete in the child’s pocket-money denominator, Excuse removes the job,
+and Reassign moves awaiting responsibility and resets it to pending. Each mutation, safe reason
+summary, receipt and audit event commits together; adult-only history remains available after a
+SQLite restart. Television rows show the due time quietly while retaining completion/undo as their
+only ordinary action.
+
+Passed from `hearth/`:
+
+- `pnpm install --frozen-lockfile` — the pnpm 10.33.2 lockfile was current across all five projects.
+- `pnpm verify` — formatting, lint, strict type checks, 100 unit tests, 73 server integration tests,
+  16 migration tests, web/server production builds and all 174 Playwright tests passed.
+- The browser cases cover the phone occurrence-detail flow, description/due-time rendering,
+  reason validation, skip → excuse pocket-money transitions, adult reassignment, same-request
+  failure/retry, newest-first history, phone axe analysis, 390×844 and 844×390 companion renders and
+  the compact 1920×1080 television result. Existing D-pad, offline, dark-mode and reduced-motion
+  coverage also remained green.
+- `git diff --check` and added-line secret/private-URL scans passed. Application/package/test source
+  contains no old-Hearth path or Skylight reference.
+
+The production Chore Day Admin chunk is 6.15 kB JavaScript (2.28 kB gzip). The main entry is
+463.52 kB JavaScript (134.64 kB gzip), and the stylesheet is 136.86 kB (24.50 kB gzip). The server
+build copied all 17 forward migrations. The installed Playwright Chromium remained the rendering
+fallback because the Browser/IAB controller was not available.
+
+Fresh phone portrait, phone landscape and 1080p television counterparts were inspected with
+`view_image`. The phone keeps one expanded decision in context; the television remains a calm
+two-column family board with the pocket-money bar aligned to its chore rows. The first complete gate
+passed 171/174: three old browser assertions assumed an untouched seed adult name or used a broad
+`Chore` label match. They were made configuration-safe/exact, all three targeted reruns passed and
+the second complete gate passed 174/174. No live calendar, Home Assistant, Synology or household
+deployment was changed.
+
 ## 2026-08-09 meal-planning polish addendum
 
 The Meals slice now has one real adult companion destination for compact whole-week dinner
