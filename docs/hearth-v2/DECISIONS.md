@@ -412,3 +412,28 @@ Record durable choices here. New decisions should include date, status, context,
   server restart, but real enrolment cannot happen until the permanent private HTTPS hostname and
   trusted certificate are approved. A second-adult/additional-passkey and locally confirmed recovery
   flow remains required before the household pilot.
+
+## D-033 — Calendar is one destination with three stable views
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: Week and Month occupied separate positions in the television rail,
+  Agenda was only an incidental phone rendering of Week, and phone More jumped
+  directly into administration. Calendar connection setup therefore existed
+  but was hard to discover, while the primary menu gave two positions to one
+  family outcome and hid ordinary family modules from the companion.
+- Choice: Make Calendar one television rail/phone-tab destination and expose
+  Week, Month and Agenda through one D-pad-safe view switch on both form factors.
+  Use `/calendar/week`, `/calendar/month` and `/calendar/agenda` as stable paths;
+  preserve old Week/Month links through query-preserving redirects. Add real
+  earlier/current/later queries, household-timezone event formatting, a focused
+  event-detail overlay with exact Back restoration and a direct Sources link.
+  Put Home before the lower-frequency Photos destination. Make phone More a
+  family-tools/setup hub, rename the admin root Hearth settings and keep pairing
+  inside Televisions.
+- Consequence: The primary navigation is shorter and outcome-led without
+  removing any calendar view or saved link. Dense schedules have a genuine
+  full-size Agenda surface, calendar setup is discoverable, and event/detail
+  navigation is remote-safe. This changes browser routes and presentation only;
+  provider contracts, credentials, read-only scope and database schema are
+  unchanged.

@@ -86,10 +86,11 @@ export const queryKeys = {
     const runtime = getHearthRuntime();
     return [householdId(runtime), 'today', runtime.localDate] as const;
   },
-  get week() {
-    const runtime = getHearthRuntime();
-    return [householdId(runtime), 'week', runtime.weekStart] as const;
+  get weekRoot() {
+    return [householdId(getHearthRuntime()), 'week'] as const;
   },
+  week: (start = getHearthRuntime().weekStart) =>
+    [householdId(getHearthRuntime()), 'week', start] as const,
   month: (month = getHearthRuntime().currentMonth) =>
     [householdId(getHearthRuntime()), 'month', month] as const,
   get chores() {
@@ -153,8 +154,8 @@ export const hearthApi = {
     request(`${API_BASE}/auth/sign-outs`, PasskeySignOutResultSchema, { method: 'POST' }),
   getToday: () =>
     request(`${householdApiBase()}/today?date=${getHearthRuntime().localDate}`, TodaySummarySchema),
-  getWeek: () =>
-    request(`${householdApiBase()}/week?start=${getHearthRuntime().weekStart}`, WeekScheduleSchema),
+  getWeek: (start = getHearthRuntime().weekStart) =>
+    request(`${householdApiBase()}/week?start=${start}`, WeekScheduleSchema),
   getMonth: (month = getHearthRuntime().currentMonth) =>
     request(`${householdApiBase()}/month?month=${month}`, MonthScheduleSchema),
   getChores: () =>

@@ -237,13 +237,23 @@ test('cached Photos remain visible through a real browser offline event', async 
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
-  await expect(page.locator('.photos-grid img')).toHaveCount(5);
+  const photos = page.locator('.photos-grid img');
+  await expect(photos).toHaveCount(5);
+  await expect
+    .poll(() =>
+      photos.evaluateAll((images) =>
+        images.every(
+          (image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0,
+        ),
+      ),
+    )
+    .toBe(true);
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
   await expect(
     page.getByRole('status').filter({ hasText: 'Showing saved family photos' }),
   ).toBeVisible();
-  await expect(page.locator('.photos-grid img')).toHaveCount(5);
+  await expect(photos).toHaveCount(5);
   await context.setOffline(false);
 });
 

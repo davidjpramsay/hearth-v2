@@ -23,7 +23,7 @@ export function useScenario(): {
       await hearthApi.setScenario(scenario);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
         queryClient.invalidateQueries({ queryKey: queryKeys.home }),
       ]);

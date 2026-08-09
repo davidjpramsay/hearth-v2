@@ -60,7 +60,7 @@ export function useRealtimeInvalidation(): void {
       }
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
         queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
         queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin }),

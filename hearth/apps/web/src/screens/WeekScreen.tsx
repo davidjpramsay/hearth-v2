@@ -1,13 +1,20 @@
-import type { CalendarEvent, DailyForecast, DemoScenario, WeekDay } from '@hearth/shared';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
+import { addLocalDays } from '@hearth/core';
+import type { CalendarEvent, DemoScenario, WeekDay } from '@hearth/shared';
 
 import { Avatar } from '../components/Avatar';
+import { CalendarAgenda, DayForecast } from '../components/CalendarAgenda';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
+import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useWeekQuery } from '../hooks/useHearthQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
+import { eventsForDay, forecastIcon } from '../utils/calendar';
 import { formatEventTime } from '../utils/date';
 
 export function WeekScreen({
@@ -18,8 +25,15 @@ export function WeekScreen({
   preparing: boolean;
 }) {
   const runtime = useHearthRuntime();
-  const query = useWeekQuery(!preparing);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedStart = searchParams.get('start');
+  const weekStart =
+    requestedStart !== null && /^\d{4}-\d{2}-\d{2}$/.test(requestedStart)
+      ? requestedStart
+      : runtime.weekStart;
+  const query = useWeekQuery(weekStart, !preparing);
   const online = useOnlineStatus(scenario === 'offline');
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const week = query.data;
@@ -34,7 +48,7 @@ export function WeekScreen({
   return (
     <div className="screen week-screen">
       <ScreenHeader
-        title="This week"
+        title={weekStart === runtime.weekStart ? 'This week' : 'Week'}
         meta={week.displayRange}
         actions={
           <div className="week-glance">
@@ -73,43 +87,75 @@ export function WeekScreen({
             dayIndex={dayIndex}
             events={eventsForDay(week.events, day.localDate)}
             key={day.localDate}
+            onSelect={setSelectedEvent}
             primaryEventId={primaryEventId}
+            timezone={runtime.timezone}
           />
         ))}
       </div>
       <div className="week-footer-controls">
-        <button aria-label="Earlier week" type="button">
+        <button
+          aria-label="Earlier week"
+          className="focusable"
+          data-focus-id="week-earlier"
+          data-focus-left="nav-calendar"
+          data-focus-right="week-today"
+          onClick={() => changeWeek(-7)}
+          type="button"
+        >
           <Icon name="chevron-left" />
           <span>Earlier week</span>
         </button>
-        <button aria-label="Later week" type="button">
+        <button
+          aria-label="Go to this week"
+          className="focusable"
+          data-focus-id="week-today"
+          data-focus-left="week-earlier"
+          data-focus-right="week-later"
+          onClick={goToCurrentWeek}
+          type="button"
+        >
+          This week
+        </button>
+        <button
+          aria-label="Later week"
+          className="focusable"
+          data-focus-id="week-later"
+          data-focus-left="week-today"
+          data-focus-right="week-later"
+          onClick={() => changeWeek(7)}
+          type="button"
+        >
           <span>Later week</span>
           <Icon name="chevron-right" />
         </button>
       </div>
-      <div className="week-agenda">
-        {week.days.map((day, dayIndex) => {
-          const events = eventsForDay(week.events, day.localDate);
-          return (
-            <section className="agenda-day" key={day.localDate}>
-              <header>
-                <strong>{day.dayLabel}</strong>
-                <span className="agenda-day__date">{day.dateLabel}</span>
-                <DayForecast forecast={day.forecast} />
-              </header>
-              {events.length === 0 ? (
-                <p>Nothing planned</p>
-              ) : (
-                events.map((event, index) => (
-                  <WeekAgendaEvent dayIndex={dayIndex} event={event} index={index} key={event.id} />
-                ))
-              )}
-            </section>
-          );
-        })}
-      </div>
+      <CalendarAgenda
+        className="week-agenda"
+        days={week.days}
+        events={week.events}
+        onSelect={setSelectedEvent}
+        timezone={runtime.timezone}
+      />
+      <EventDetailsDialog
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        timezone={runtime.timezone}
+      />
     </div>
   );
+
+  function changeWeek(dayCount: number): void {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('start', addLocalDays(weekStart, dayCount));
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function goToCurrentWeek(): void {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('start');
+    setSearchParams(nextParams, { replace: true });
+  }
 }
 
 function dayPeriod(timestamp: string, timezone: string): string {
@@ -134,11 +180,15 @@ function WeekColumn({
   events,
   dayIndex,
   primaryEventId,
+  timezone,
+  onSelect,
 }: {
   day: WeekDay;
   events: CalendarEvent[];
   dayIndex: number;
   primaryEventId: string | undefined;
+  timezone: string;
+  onSelect: (event: CalendarEvent) => void;
 }) {
   return (
     <section className={`week-column${day.isToday ? ' week-column--today' : ''}`}>
@@ -154,20 +204,22 @@ function WeekColumn({
           events.map((event, index) => {
             const prior = events[index - 1];
             const next = events[index + 1];
+            const timeLabel = formatEventTime(event, timezone);
             return (
               <button
-                aria-label={`${formatEventTime(event)}, ${event.title}, ${event.sourceLabel}`}
+                aria-label={`${timeLabel}, ${event.title}, ${event.sourceLabel}`}
                 className="week-event focusable"
                 data-focus-entry={event.id === primaryEventId ? 'true' : undefined}
                 data-focus-id={`week-event-${event.id}`}
-                data-focus-left={dayIndex === 0 ? 'nav-week' : undefined}
+                data-focus-left={dayIndex === 0 ? 'nav-calendar' : undefined}
                 data-focus-up={
-                  prior === undefined ? `week-event-${event.id}` : `week-event-${prior.id}`
+                  prior === undefined ? 'calendar-view-week' : `week-event-${prior.id}`
                 }
                 data-focus-down={
                   next === undefined ? `week-event-${event.id}` : `week-event-${next.id}`
                 }
-                style={timelineStyle(event)}
+                onClick={() => onSelect(event)}
+                style={timelineStyle(event, timezone)}
                 type="button"
                 key={event.id}
               >
@@ -179,7 +231,7 @@ function WeekColumn({
                   ) : (
                     <Avatar member={event.owner} size="small" />
                   )}
-                  <time>{formatEventTime(event)}</time>
+                  <time>{timeLabel}</time>
                 </span>
                 <strong>{event.title}</strong>
               </button>
@@ -191,70 +243,7 @@ function WeekColumn({
   );
 }
 
-function DayForecast({ forecast }: { forecast: DailyForecast | null }) {
-  if (forecast === null) return null;
-  const accessibleLabel = `${forecast.label}, ${forecast.temperatureCelsius} degrees Celsius`;
-  return (
-    <span
-      aria-label={accessibleLabel}
-      className={`week-day-forecast week-day-forecast--${forecast.condition}`}
-      title={accessibleLabel}
-    >
-      <Icon name={forecastIcon(forecast.condition)} />
-      <strong>{forecast.temperatureCelsius}°</strong>
-    </span>
-  );
-}
-
-function forecastIcon(condition: DailyForecast['condition']): IconName {
-  switch (condition) {
-    case 'clear':
-      return 'sun';
-    case 'partly-cloudy':
-      return 'cloud-sun';
-    case 'cloudy':
-      return 'cloud';
-    case 'rain':
-      return 'cloud-rain';
-  }
-}
-
-function WeekAgendaEvent({
-  event,
-  dayIndex,
-  index,
-}: {
-  event: CalendarEvent;
-  dayIndex: number;
-  index: number;
-}) {
-  return (
-    <button
-      aria-label={`${formatEventTime(event)}, ${event.title}, ${event.sourceLabel}`}
-      className="agenda-event focusable"
-      data-focus-id={`agenda-${event.id}`}
-      data-focus-left={dayIndex === 0 ? 'phone-tab-week' : undefined}
-      data-focus-up={index === 0 ? 'phone-tab-week' : undefined}
-      style={{ '--event-color': event.color } as React.CSSProperties}
-      type="button"
-    >
-      <time>{formatEventTime(event)}</time>
-      <span />
-      <div>
-        <strong>{event.title}</strong>
-        <p>{event.sourceLabel}</p>
-      </div>
-    </button>
-  );
-}
-
-function eventsForDay(events: CalendarEvent[], localDate: string): CalendarEvent[] {
-  return events.filter(
-    (event) => event.startLocalDate <= localDate && event.endLocalDate >= localDate,
-  );
-}
-
-function timelineStyle(event: CalendarEvent): React.CSSProperties {
+function timelineStyle(event: CalendarEvent, timezone: string): React.CSSProperties {
   if (event.allDay) {
     return {
       '--event-color': event.color,
@@ -262,7 +251,7 @@ function timelineStyle(event: CalendarEvent): React.CSSProperties {
       '--event-height': '11.25%',
     } as React.CSSProperties;
   }
-  const start = perthClockMinutes(event.start);
+  const start = clockMinutes(event.start, timezone);
   const duration = Math.max(
     45,
     Math.round((new Date(event.end).getTime() - new Date(event.start).getTime()) / 60_000),
@@ -274,9 +263,9 @@ function timelineStyle(event: CalendarEvent): React.CSSProperties {
   } as React.CSSProperties;
 }
 
-function perthClockMinutes(timestamp: string): number {
+function clockMinutes(timestamp: string, timezone: string): number {
   const parts = new Intl.DateTimeFormat('en-AU', {
-    timeZone: 'Australia/Perth',
+    timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',

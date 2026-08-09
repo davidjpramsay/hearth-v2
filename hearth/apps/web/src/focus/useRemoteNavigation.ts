@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { FocusMemory, focusById, nextFocusId, type FocusDirection } from './focusGraph';
@@ -16,19 +16,24 @@ export function useRemoteNavigation(defaultFocusId: string): void {
   const location = useLocation();
   const focusMemory = useRef(new FocusMemory());
   const previousPath = useRef(location.pathname);
+  const activePath = useRef(location.pathname);
   const remoteMoved = useRef(false);
+
+  useLayoutEffect(() => {
+    activePath.current = location.pathname;
+  }, [location.pathname]);
 
   useEffect(() => {
     const rememberFocusedControl = (event: FocusEvent) => {
       if (event.target instanceof HTMLElement && event.target.dataset.focusId !== undefined) {
-        focusMemory.current.remember(location.pathname, event.target.dataset.focusId);
+        focusMemory.current.remember(activePath.current, event.target.dataset.focusId);
       }
     };
     document.addEventListener('focusin', rememberFocusedControl);
     return () => document.removeEventListener('focusin', rememberFocusedControl);
-  }, [location.pathname]);
+  }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const priorPath = previousPath.current;
     const routeChanged = priorPath !== location.pathname;
     if (routeChanged) {
@@ -41,6 +46,9 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     }
     const fallbackId = `nav-${location.pathname.slice(1) || 'today'}`;
     const target = focusMemory.current.recall(location.pathname, defaultFocusId);
+    // Route content has committed by the time this layout effect runs. Move focus
+    // before paint so a fast follow-up D-pad key cannot act on the old rail item.
+    if (routeChanged) focusById(target);
     const animationFrame = requestAnimationFrame(() => {
       const activeFocusId =
         document.activeElement instanceof HTMLElement
@@ -49,7 +57,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       // A remote key can arrive before this first animation frame on a fast TV.
       // Never steal that explicit focus move during initial screen entry.
       if (remoteMoved.current || (!routeChanged && activeFocusId !== undefined)) return;
-      if (!focusById(target) && !focusById(defaultFocusId)) {
+      if (!focusById(target) && target !== defaultFocusId && !focusById(defaultFocusId)) {
         focusById(fallbackId);
       }
     });
@@ -58,14 +66,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
         observer.disconnect();
         return;
       }
-      const activeFocusId =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement.dataset.focusId
-          : undefined;
-      if (
-        (activeFocusId === undefined || activeFocusId === fallbackId) &&
-        (focusById(target) || focusById(defaultFocusId))
-      ) {
+      if (focusById(target)) {
         observer.disconnect();
       }
     });

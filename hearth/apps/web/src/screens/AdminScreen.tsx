@@ -34,23 +34,10 @@ const settings: {
     path: '/admin/people',
   },
   {
-    title: 'Appearance',
-    description: () => 'Light, dark and evening comfort',
-    icon: 'moon',
-    path: '/admin/appearance',
-  },
-  {
     title: 'Family planning',
     description: () => 'Routines, meals, lists and pocket money',
     icon: 'wallet',
     path: '/admin/planning',
-  },
-  {
-    title: 'Paired televisions',
-    description: (_members, televisions) =>
-      `${televisions} connected · Approve or revoke a television`,
-    icon: 'television',
-    path: '/admin/televisions',
   },
   {
     title: 'Connections',
@@ -63,6 +50,19 @@ const settings: {
     description: () => 'Approved album and source',
     icon: 'image',
     path: '/admin/photos',
+  },
+  {
+    title: 'Paired televisions',
+    description: (_members, televisions) =>
+      `${televisions} connected · Approve, pair or revoke a television`,
+    icon: 'television',
+    path: '/admin/televisions',
+  },
+  {
+    title: 'Appearance',
+    description: () => 'Light, dark and evening comfort',
+    icon: 'moon',
+    path: '/admin/appearance',
   },
 ];
 
@@ -117,7 +117,7 @@ export function AdminScreen() {
         </div>
       </header>
       <div className="admin-home__title">
-        <h1>Home settings</h1>
+        <h1>Hearth settings</h1>
         <p>{admin.data.household.name}</p>
       </div>
       <div className="local-status" role="status">
@@ -134,7 +134,7 @@ export function AdminScreen() {
           <Link
             className="admin-setting-row focusable"
             data-focus-entry={index === 0 ? 'true' : undefined}
-            data-focus-down={adjacentSettingFocusId(index + 1, 'admin-pair-television')}
+            data-focus-down={adjacentSettingFocusId(index + 1, settingFocusId(setting.title))}
             data-focus-id={settingFocusId(setting.title)}
             data-focus-left={settingFocusId(setting.title)}
             data-focus-right={settingFocusId(setting.title)}
@@ -160,18 +160,6 @@ export function AdminScreen() {
           </Link>
         ))}
       </div>
-      <Link
-        className="admin-primary-action focusable"
-        data-focus-down="admin-pair-television"
-        data-focus-id="admin-pair-television"
-        data-focus-left="admin-pair-television"
-        data-focus-right="admin-pair-television"
-        data-focus-up={settingFocusId(settings.at(-1)?.title ?? 'Photos')}
-        to="/admin/televisions"
-      >
-        <Icon name="television" />
-        Pair a television
-      </Link>
       {runtime.mode === 'private' ? null : (
         <p className="demo-session-note">
           Demo adult session · Private deployment uses passkey sign-in.

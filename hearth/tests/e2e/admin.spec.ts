@@ -22,7 +22,10 @@ test('phone More opens setup and household/member changes survive reload', async
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/today');
   await page.getByRole('link', { name: 'More' }).click();
-  await expect(page.getByRole('heading', { name: 'Home settings' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'More' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Lists/ })).toBeVisible();
+  await page.getByRole('link', { name: /Household & people/ }).click();
+  await expect(page.getByRole('heading', { name: 'Hearth settings' })).toBeVisible();
   await expect(page.getByText('Maya')).toBeVisible();
 
   await page.getByRole('link', { name: /Household/ }).click();
@@ -32,7 +35,7 @@ test('phone More opens setup and household/member changes survive reload', async
   await page.reload();
   await expect(page.getByLabel('Household name')).toHaveValue('Rowan household');
 
-  await page.getByRole('link', { name: 'Back to Home settings' }).click();
+  await page.getByRole('link', { name: 'Back to Hearth settings' }).click();
   await page.getByRole('link', { name: /People/ }).click();
   const add = page.locator('.admin-form--add-member');
   await expect(add.getByRole('radio')).toHaveCount(12);
@@ -62,7 +65,7 @@ test('Connections contains only services used directly by Hearth', async ({ page
   await expect(page).toHaveURL(/\/admin\/connections$/);
   await expect(page.getByRole('heading', { name: 'Connections' })).toBeVisible();
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
-  await expect(page.getByText('Calendar', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-focus-id="connection-calendar"]')).toBeVisible();
   await expect(page.getByText('Home Assistant', { exact: true })).toBeVisible();
   await expect(page.getByText('Jellyfin', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Music Assistant', { exact: true })).toHaveCount(0);
@@ -75,7 +78,7 @@ test('adult can test, select, map, save and remove a read-only calendar connecti
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/connections');
-  await page.getByRole('link', { name: /Calendar/ }).click();
+  await page.locator('[data-focus-id="connection-calendar"]').click();
   await expect(page).toHaveURL(/\/admin\/connections\/calendar$/);
   await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
 
@@ -343,7 +346,7 @@ for (const viewport of [
   test(`@visual admin home at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto('/admin');
-    await expect(page.getByRole('heading', { name: 'Home settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Hearth settings' })).toBeVisible();
     await page.screenshot({
       path: resolve(evidence, `admin-${viewport.name}.png`),
       animations: 'disabled',

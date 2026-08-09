@@ -35,6 +35,15 @@ A change is complete only when:
 - Events from multiple enabled calendars retain correct owner/source cues.
 - Month fits one television viewport, shows readable colour-coded event titles plus deterministic overflow inside date cells, and identifies each colour through a separate avatar/label key. On phone, focusing or selecting a date exposes every title in a companion agenda beneath the compact grid.
 - Month is reachable below Week with D-pad navigation; Back restores Week and the prior rail focus, while the phone exposes a Week/Month switch.
+- Week, Month and Agenda are views beneath one Calendar primary destination on
+  television and phone. Every view is reachable with D-pad/keyboard-only input;
+  legacy Week/Month links redirect without losing scenario/date query state.
+- Earlier, current-period and later controls issue the requested week/month
+  query, and Calendar source setup is directly discoverable without searching
+  the general settings list.
+- Selecting an Agenda/Week event exposes its available time, source/person and
+  location in a family-readable detail surface; Back closes it and restores the
+  exact event focus.
 - All-day events appear on the correct Perth local dates.
 - Events created in a daylight-saving region display at the correct Perth time.
 - Recurrence exceptions and cancellations do not resurrect.
@@ -59,6 +68,12 @@ Calendar-setup evidence as of 2026-08-08 adds shared-schema, Fastify,
 SQLite-restart/idempotency, migration, permission, secret-scan, responsive
 Playwright and accessibility coverage using the fake verifier. It does not
 constitute live iCloud validation.
+
+Calendar-navigation evidence as of 2026-08-09 adds 1366×768 and 1920×1080
+television, 390×844 and 844×390 phone, D-pad/Back, route compatibility,
+date-navigation, event-detail focus restoration and automated accessibility
+coverage. Browser-plugin control was unavailable, so the installed Playwright
+Chromium fallback produced the retained evidence.
 
 ### Household people
 

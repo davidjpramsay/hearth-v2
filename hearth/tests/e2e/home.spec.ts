@@ -19,7 +19,7 @@ test('remote-only Home navigation, confirmation, action and Back restoration', a
   await page.goto('/today');
   await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.locator('[data-focus-id="nav-today"]').focus();
-  for (let step = 0; step < 7; step += 1) await page.keyboard.press('ArrowDown');
+  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-home"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();

@@ -6,8 +6,13 @@ export function useTodayQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.today, queryFn: hearthApi.getToday, enabled });
 }
 
-export function useWeekQuery(enabled = true) {
-  return useQuery({ queryKey: queryKeys.week, queryFn: hearthApi.getWeek, enabled });
+export function useWeekQuery(start = getHearthRuntime().weekStart, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.week(start),
+    queryFn: () => hearthApi.getWeek(start),
+    placeholderData: (previous) => previous,
+    enabled,
+  });
 }
 
 export function useMonthQuery(month = getHearthRuntime().currentMonth, enabled = true) {

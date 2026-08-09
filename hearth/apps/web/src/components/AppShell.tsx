@@ -14,17 +14,16 @@ interface NavigationItem {
 
 const navigation: NavigationItem[] = [
   { label: 'Today', path: '/today', icon: 'today', enabled: true },
-  { label: 'Week', path: '/week', icon: 'calendar', enabled: true },
-  { label: 'Month', path: '/month', icon: 'calendar', enabled: true },
+  { label: 'Calendar', path: '/calendar/week', icon: 'calendar', enabled: true },
   { label: 'Chores', path: '/chores', icon: 'chores', enabled: true },
   { label: 'Lists', path: '/lists', icon: 'list', enabled: true },
   { label: 'Meals', path: '/meals', icon: 'meal', enabled: true },
-  { label: 'Photos', path: '/photos', icon: 'image', enabled: true },
   { label: 'Home', path: '/home', icon: 'home', enabled: true },
+  { label: 'Photos', path: '/photos', icon: 'image', enabled: true },
 ];
 
 const phoneNavigation = navigation.filter((item) =>
-  ['Today', 'Week', 'Chores'].includes(item.label),
+  ['Today', 'Calendar', 'Chores'].includes(item.label),
 );
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -57,7 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="tv-rail__nav">
           {navigation.map((item, index) => (
-            <RailItem item={item} index={index} key={item.label} />
+            <RailItem item={item} index={index} key={item.label} pathname={pathname} />
           ))}
         </nav>
         <div className="tv-rail__footer">
@@ -68,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             data-focus-id="nav-appearance"
             data-focus-left="nav-appearance"
             data-focus-right={`appearance-${preferences.theme}`}
-            data-focus-up="nav-home"
+            data-focus-up="nav-photos"
             to="/admin/appearance"
           >
             <Icon name="moon" />
@@ -89,7 +88,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function PhoneNavigation() {
   const { pathname } = useLocation();
-  const moreActive = !['/today', '/week', '/month', '/chores'].includes(pathname);
+  const moreActive =
+    pathname === '/more' ||
+    pathname.startsWith('/admin') ||
+    ['/lists', '/meals', '/home', '/photos'].includes(pathname);
   return (
     <nav className="phone-tabs" aria-label="Primary navigation">
       {phoneNavigation.map((item, index) => (
@@ -100,7 +102,7 @@ function PhoneNavigation() {
         data-focus-id="phone-tab-more"
         data-focus-left="phone-tab-chores"
         data-focus-right="phone-tab-more"
-        to="/admin"
+        to="/more"
       >
         <Icon name="more" />
         <span>More</span>
@@ -109,7 +111,15 @@ function PhoneNavigation() {
   );
 }
 
-function RailItem({ item, index }: { item: NavigationItem; index: number }) {
+function RailItem({
+  item,
+  index,
+  pathname,
+}: {
+  item: NavigationItem;
+  index: number;
+  pathname: string;
+}) {
   const prior = navigation.slice(0, index).findLast((candidate) => candidate.enabled);
   const next = navigation.slice(index + 1).find((candidate) => candidate.enabled);
   const focusId = `nav-${item.label.toLowerCase()}`;
@@ -135,7 +145,11 @@ function RailItem({ item, index }: { item: NavigationItem; index: number }) {
   return (
     <NavLink
       {...attrs}
-      className={({ isActive }) => `${className}${isActive ? ' rail-item--active' : ''}`}
+      className={({ isActive }) => {
+        const sectionActive =
+          isActive || (item.label === 'Calendar' && pathname.startsWith('/calendar/'));
+        return `${className}${sectionActive ? ' rail-item--active' : ''}`;
+      }}
       to={item.path}
     >
       <Icon name={item.icon} />
@@ -153,7 +167,8 @@ function PhoneTab({
   index: number;
   pathname: string;
 }) {
-  const sectionActive = pathname === item.path || (item.path === '/week' && pathname === '/month');
+  const sectionActive =
+    pathname === item.path || (item.label === 'Calendar' && pathname.startsWith('/calendar/'));
   return (
     <NavLink
       className={`phone-tab${sectionActive ? ' phone-tab--active' : ''}`}

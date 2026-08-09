@@ -10,6 +10,7 @@ import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useMonthQuery } from '../hooks/useHearthQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
+import { formatEventTime } from '../utils/date';
 
 const WEEKDAYS = [
   ['Monday', 'Mon'],
@@ -114,7 +115,7 @@ export function MonthScreen({
         ))}
       </div>
       {selectedDay === undefined ? null : (
-        <MonthDayDetails day={selectedDay} events={selectedEvents} />
+        <MonthDayDetails day={selectedDay} events={selectedEvents} timezone={runtime.timezone} />
       )}
       <MonthLegend calendars={month.calendars} />
       <div className="month-footer-controls">
@@ -122,8 +123,8 @@ export function MonthScreen({
           aria-label="Earlier month"
           className="focusable"
           data-focus-id="month-earlier"
-          data-focus-left="nav-month"
-          data-focus-right="month-later"
+          data-focus-left="nav-calendar"
+          data-focus-right="month-today"
           data-focus-up={`month-day-${month.days[36]?.localDate ?? month.gridEndDate}`}
           onClick={() => changeMonth(-1)}
           type="button"
@@ -132,10 +133,22 @@ export function MonthScreen({
           <span>Earlier month</span>
         </button>
         <button
+          aria-label="Go to this month"
+          className="focusable"
+          data-focus-id="month-today"
+          data-focus-left="month-earlier"
+          data-focus-right="month-later"
+          data-focus-up={`month-day-${month.days[38]?.localDate ?? month.gridEndDate}`}
+          onClick={goToCurrentMonth}
+          type="button"
+        >
+          This month
+        </button>
+        <button
           aria-label="Later month"
           className="focusable"
           data-focus-id="month-later"
-          data-focus-left="month-earlier"
+          data-focus-left="month-today"
           data-focus-right="month-later"
           data-focus-up={`month-day-${month.days[41]?.localDate ?? month.gridEndDate}`}
           onClick={() => changeMonth(1)}
@@ -154,6 +167,12 @@ export function MonthScreen({
     const next = date.toISOString().slice(0, 7);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('month', next);
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function goToCurrentMonth(): void {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('month');
     setSearchParams(nextParams, { replace: true });
   }
 }
@@ -185,20 +204,24 @@ function MonthCell({
       data-focus-entry={day.isToday ? 'true' : undefined}
       data-focus-id={`month-day-${day.localDate}`}
       data-focus-left={
-        index % 7 === 0 ? 'nav-month' : `month-day-${days[previous]?.localDate ?? day.localDate}`
+        index % 7 === 0 ? 'nav-calendar' : `month-day-${days[previous]?.localDate ?? day.localDate}`
       }
       data-focus-right={
         index % 7 === 6
           ? `month-day-${day.localDate}`
           : `month-day-${days[next]?.localDate ?? day.localDate}`
       }
-      data-focus-up={`month-day-${days[above]?.localDate ?? day.localDate}`}
+      data-focus-up={
+        index < 7 ? 'calendar-view-month' : `month-day-${days[above]?.localDate ?? day.localDate}`
+      }
       data-focus-down={
         index <= 34
           ? `month-day-${days[below]?.localDate ?? day.localDate}`
           : index % 7 <= 3
             ? 'month-earlier'
-            : 'month-later'
+            : index % 7 <= 4
+              ? 'month-today'
+              : 'month-later'
       }
       onClick={() => onSelect(day.localDate)}
       onFocus={() => onSelect(day.localDate)}
@@ -236,7 +259,15 @@ function MonthCell({
   );
 }
 
-function MonthDayDetails({ day, events }: { day: MonthDay; events: CalendarEvent[] }) {
+function MonthDayDetails({
+  day,
+  events,
+  timezone,
+}: {
+  day: MonthDay;
+  events: CalendarEvent[];
+  timezone: string;
+}) {
   return (
     <section aria-live="polite" className="month-day-details">
       <header>
@@ -255,7 +286,7 @@ function MonthDayDetails({ day, events }: { day: MonthDay; events: CalendarEvent
             <li key={event.id}>
               <i style={{ '--event-color': event.color } as CSSProperties} />
               <strong>{event.title}</strong>
-              <span>{eventTimeLabel(event)}</span>
+              <span>{formatEventTime(event, timezone)}</span>
             </li>
           ))}
         </ul>
@@ -328,13 +359,4 @@ function detailDateLabel(localDate: string): string {
     month: 'long',
     timeZone: 'UTC',
   }).format(new Date(`${localDate}T12:00:00.000Z`));
-}
-
-function eventTimeLabel(event: CalendarEvent): string {
-  if (event.allDay) return 'All day';
-  return new Intl.DateTimeFormat('en-AU', {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'Australia/Perth',
-  }).format(new Date(event.start));
 }

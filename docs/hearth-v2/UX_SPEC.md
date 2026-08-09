@@ -35,7 +35,7 @@ Exact numbers may be refined from real-TV testing, but may not be reduced merely
 
 Primary commands are Up, Down, Left, Right, Select and Back.
 
-- A persistent navigation rail or dock exposes Today, Calendar, Chores, Lists, Meals, Photos and selected Home actions.
+- A persistent navigation rail or dock exposes Today, Calendar, Chores, Lists, Meals, selected Home actions and Photos, in that order; Week and Month are views inside Calendar rather than competing primary destinations.
 - The focused destination and focused action are always visually obvious.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
 - Opening a detail page should place focus on its primary meaningful control.
@@ -75,6 +75,13 @@ The first focus should usually be the most relevant actionable item, not the nav
 - **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact colour-coded event titles and a deterministic `+N more` summary when the day is dense; faces and source labels appear once in a persistent Calendar key. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
 
 Event cards must express start time, title, owner/source and conflicts. Location and notes appear in a focused detail surface.
+
+The Calendar view switch is available on both television and phone. Week,
+Month and Agenda keep their own stable URLs beneath `/calendar`; the previous
+`/week` and `/month` paths redirect while preserving query parameters. Earlier,
+current-period and later controls must perform real provider-neutral queries.
+Calendar source setup is directly discoverable from the Calendar toolbar and
+the phone More hub.
 
 ### Chores and routines
 
@@ -137,6 +144,11 @@ Event cards must express start time, title, owner/source and conflicts. Location
   then save. Clear the password field immediately after testing. Connected state
   shows only hostname, masked account, selected calendars, owner cues and
   read-only status; replacement and removal require explicit actions.
+- Phone More is a genuine hub rather than a direct jump into settings: family
+  tools appear first, followed by Hearth setup destinations. The administration
+  root is named Hearth settings so it cannot be confused with the Home Assistant
+  action surface. Television pairing is one row/action inside Televisions, not a
+  duplicate call to action on the settings root.
 
 ### Appearance and evening comfort
 

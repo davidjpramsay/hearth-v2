@@ -131,6 +131,17 @@ fully fake and inert. Migration `0011_calendar_connection_setup.sql` persists
 safe setup metadata only. A real iCloud credentialed read remains an explicitly
 owner-controlled deployment validation action and has not been performed.
 
+Implementation extension (2026-08-09): Calendar is now one primary television
+and phone destination with Week, Month and a dedicated responsive Agenda view.
+All three views share an explicit D-pad/keyboard switch and a direct source
+setup link; legacy `/week` and `/month` bookmarks preserve query parameters
+through redirects. Week and Month now have functional earlier/current/later
+navigation, event selection opens a family-readable detail surface and Back
+restores the exact event focus. Event time and timeline placement use the
+runtime household timezone rather than a browser-side Perth constant. Phone
+More now exposes family modules before grouped setup links, Home precedes Photos
+on television, and duplicate pairing/settings wording has been removed.
+
 ## Phase 4 — Lists, meals and pocket money
 
 Status: complete and locally verified with deterministic demo household data.

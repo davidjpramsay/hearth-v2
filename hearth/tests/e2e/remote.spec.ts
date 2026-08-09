@@ -5,7 +5,7 @@ test.beforeEach(async ({ page, request }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
 });
 
-test('remote-only Today → Week → Month → Chores → complete → undo → Back flow', async ({
+test('remote-only Today → Calendar views → Chores → complete → undo → Back flow', async ({
   page,
 }) => {
   await page.goto('/today');
@@ -19,14 +19,15 @@ test('remote-only Today → Week → Month → Chores → complete → undo → 
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
 
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowDown');
-  await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'August' })).toBeVisible();
   await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
@@ -36,7 +37,10 @@ test('remote-only Today → Week → Month → Chores → complete → undo → 
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
-  await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
@@ -60,7 +64,7 @@ test('remote-only Today → Week → Month → Chores → complete → undo → 
   await expect(page.locator('[data-focus-id="nav-chores"]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
-  await expect(page.locator('[data-focus-id="nav-week"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
 });
 
 test('Month keeps faces in its key and names events in date cells', async ({ page }) => {
@@ -80,10 +84,13 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="month-earlier"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="month-today"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'September' })).toBeVisible();
   await expect(page).toHaveURL(/month=2026-09/);
   await expect(page.locator('[data-focus-id="month-later"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'August' })).toBeVisible();
@@ -91,7 +98,9 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await expect(page.locator('.calendar-view-switch')).toBeVisible();
-  await expect(page.locator('[data-focus-id="phone-tab-week"]')).toHaveClass(/phone-tab--active/);
+  await expect(page.locator('[data-focus-id="phone-tab-calendar"]')).toHaveClass(
+    /phone-tab--active/,
+  );
   await expect(page.locator('.month-grid')).toBeVisible();
   await expect(page.locator('.month-day-details')).toContainText('School drop-off');
   await expect(page.locator('.month-day-details')).toContainText('4 plans');
@@ -256,7 +265,7 @@ test('phone presents agenda navigation and the same chore command', async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/today');
   await expect(page.locator('.phone-tabs')).toBeVisible();
-  await page.getByRole('link', { name: 'Week' }).click();
+  await page.getByRole('link', { name: 'Calendar' }).click();
   await expect(page.locator('.week-agenda')).toBeVisible();
   await page.getByRole('link', { name: 'Chores' }).click();
   const schoolBag = page.getByRole('button', { name: 'Complete Pack school bag' });

@@ -143,7 +143,7 @@ function PocketMoneyProgress({
   if (child.weeklyAmountCents === null || child.earnedAmountCents === null) {
     return (
       <div className="chore-pocket-summary chore-pocket-summary--muted">
-        Set a weekly amount in Home settings
+        Set a weekly amount in Hearth settings
       </div>
     );
   }

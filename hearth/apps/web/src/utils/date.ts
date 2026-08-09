@@ -1,13 +1,16 @@
 import type { CalendarEvent } from '@hearth/shared';
 
-export function formatTime(value: string): string {
+export function formatTime(value: string, timezone: string): string {
   return new Intl.DateTimeFormat('en-AU', {
     hour: 'numeric',
     minute: '2-digit',
-    timeZone: 'Australia/Perth',
+    timeZone: timezone,
   }).format(new Date(value));
 }
 
-export function formatEventTime(event: Pick<CalendarEvent, 'allDay' | 'start'>): string {
-  return event.allDay ? 'All day' : formatTime(event.start);
+export function formatEventTime(
+  event: Pick<CalendarEvent, 'allDay' | 'start'>,
+  timezone: string,
+): string {
+  return event.allDay ? 'All day' : formatTime(event.start, timezone);
 }
