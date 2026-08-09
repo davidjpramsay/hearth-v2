@@ -280,6 +280,7 @@ for (const path of [
   '/admin',
   '/admin/household',
   '/admin/people',
+  '/admin/today',
   '/admin/televisions',
   '/admin/connections',
   '/admin/connections/calendar',

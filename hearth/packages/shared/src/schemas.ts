@@ -222,6 +222,31 @@ export const PhotoGallerySchema = z.object({
   photos: z.array(PhotoAssetSchema),
 });
 
+export const TodaySectionVisibilitySchema = z.object({
+  dinner: z.boolean(),
+  listSummary: z.boolean(),
+  notice: z.boolean(),
+  photo: z.boolean(),
+});
+
+export const HouseholdNoticeSchema = z.object({
+  id: OpaqueIdSchema,
+  householdId: OpaqueIdSchema,
+  message: z.string().trim().min(1).max(240),
+  priority: z.enum(['standard', 'important']),
+  startsAt: TimestampSchema,
+  expiresAt: TimestampSchema.nullable(),
+  createdAt: TimestampSchema,
+  updatedAt: TimestampSchema,
+});
+
+export const TodayConfigurationSchema = z.object({
+  householdId: OpaqueIdSchema,
+  sections: TodaySectionVisibilitySchema,
+  activeNoticeId: OpaqueIdSchema.nullable(),
+  notices: z.array(HouseholdNoticeSchema),
+});
+
 export const TodaySummarySchema = z.object({
   household: HouseholdSummarySchema,
   localDate: LocalDateSchema,
@@ -243,6 +268,7 @@ export const TodaySummarySchema = z.object({
     .nullable(),
   notice: z.string().max(240).nullable(),
   photo: TodayPhotoSummarySchema.nullable(),
+  sections: TodaySectionVisibilitySchema,
   integrations: z.array(IntegrationStateSchema),
 });
 
@@ -695,10 +721,49 @@ export const AuditSummarySchema = z.object({
     'calendar.connection.remove',
     'auth.passkey.register',
     'home.action.execute',
+    'notice.create',
+    'notice.update',
+    'notice.archive',
+    'today.sections.update',
   ]),
   targetId: OpaqueIdSchema,
   occurredAt: TimestampSchema,
   result: z.enum(['succeeded', 'rejected', 'failed', 'reversed']),
+});
+
+const NoticeFieldsSchema = z.object({
+  message: HouseholdNoticeSchema.shape.message,
+  priority: HouseholdNoticeSchema.shape.priority,
+  startsAt: TimestampSchema,
+  expiresAt: TimestampSchema.nullable(),
+});
+
+function validateNoticeWindow(
+  value: z.infer<typeof NoticeFieldsSchema>,
+  context: z.core.$RefinementCtx,
+) {
+  if (value.expiresAt !== null && Date.parse(value.expiresAt) <= Date.parse(value.startsAt)) {
+    context.addIssue({
+      code: 'custom',
+      message: 'The notice expiry must be after its start time.',
+      path: ['expiresAt'],
+    });
+  }
+}
+
+export const CreateHouseholdNoticeRequestSchema = CommandRequestSchema.extend(
+  NoticeFieldsSchema.shape,
+).superRefine(validateNoticeWindow);
+export const UpdateHouseholdNoticeRequestSchema = CreateHouseholdNoticeRequestSchema;
+export const ArchiveHouseholdNoticeRequestSchema = CommandRequestSchema;
+export const UpdateTodaySectionsRequestSchema = CommandRequestSchema.extend(
+  TodaySectionVisibilitySchema.shape,
+);
+
+export const TodayConfigurationCommandResultSchema = z.object({
+  configuration: TodayConfigurationSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
 });
 
 export const ChoreCommandResultSchema = z.object({
@@ -746,6 +811,7 @@ export const RealtimeEventSchema = z.object({
     'chore-template.changed',
     'home.changed',
     'calendar.changed',
+    'today.changed',
   ]),
   householdId: OpaqueIdSchema,
   targetId: OpaqueIdSchema,
@@ -1014,6 +1080,13 @@ export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
 export type ChoreState = z.infer<typeof ChoreStateSchema>;
 export type ChoreOccurrence = z.infer<typeof ChoreOccurrenceSchema>;
 export type TodaySummary = z.infer<typeof TodaySummarySchema>;
+export type TodaySectionVisibility = z.infer<typeof TodaySectionVisibilitySchema>;
+export type HouseholdNotice = z.infer<typeof HouseholdNoticeSchema>;
+export type TodayConfiguration = z.infer<typeof TodayConfigurationSchema>;
+export type CreateHouseholdNoticeRequest = z.infer<typeof CreateHouseholdNoticeRequestSchema>;
+export type UpdateHouseholdNoticeRequest = z.infer<typeof UpdateHouseholdNoticeRequestSchema>;
+export type UpdateTodaySectionsRequest = z.infer<typeof UpdateTodaySectionsRequestSchema>;
+export type TodayConfigurationCommandResult = z.infer<typeof TodayConfigurationCommandResultSchema>;
 export type TodayPhotoSummary = z.infer<typeof TodayPhotoSummarySchema>;
 export type PhotoOrientation = z.infer<typeof PhotoOrientationSchema>;
 export type PhotoAsset = z.infer<typeof PhotoAssetSchema>;

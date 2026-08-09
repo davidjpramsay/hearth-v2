@@ -437,3 +437,23 @@ Record durable choices here. New decisions should include date, status, context,
   navigation is remote-safe. This changes browser routes and presentation only;
   provider contracts, credentials, read-only scope and database schema are
   unchanged.
+
+## D-034 — Today supports bounded content choices, not layout editing
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: Dinner, list summary, notice and photo were always rendered, the
+  seeded notice could not be changed, and hiding one item would otherwise tempt
+  a general user-configurable grid that the product explicitly excludes.
+- Choice: Add one phone-first **Today & notices** administration surface. Store
+  four independent visibility booleans and durable concise notices with
+  Standard/Important priority, start/expiry and archive state. Select the active
+  notice on the server. Require authenticated administrator commands with Zod
+  validation, request-id receipts, audit records and realtime invalidation.
+  Keep plans and chores fixed and let code-defined summary variants rebalance
+  the remaining content.
+- Consequence: Families can remove irrelevant overview material and publish a
+  useful notice without turning Hearth into a layout editor or moving priority
+  logic into the browser. Private state survives restart; demo reset remains
+  isolated. Rich acknowledgement/member targeting remains deferred until a
+  real household need is demonstrated.

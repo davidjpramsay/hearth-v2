@@ -20,6 +20,7 @@ import {
   AssistDaySummaryResultSchema,
   ApprovePairingRequestSchema,
   ArchiveMemberRequestSchema,
+  ArchiveHouseholdNoticeRequestSchema,
   CalendarConnectionCommandResultSchema,
   CalendarConnectionSettingsSchema,
   CalendarConnectionTestRequestSchema,
@@ -32,6 +33,7 @@ import {
   CommandRequestSchema,
   CompletionReversalRequestSchema,
   CreateMemberRequestSchema,
+  CreateHouseholdNoticeRequestSchema,
   CreatePairingRequestSchema,
   CreateTvPairingSessionRequestSchema,
   CreateChoreTemplateRequestSchema,
@@ -74,13 +76,17 @@ import {
   SavedMealCommandResultSchema,
   SaveCalendarConnectionRequestSchema,
   TodaySummarySchema,
+  TodayConfigurationCommandResultSchema,
+  TodayConfigurationSchema,
   TvDeviceSessionSchema,
   TvPairingSessionSchema,
   UpdateHouseholdRequestSchema,
+  UpdateHouseholdNoticeRequestSchema,
   UpdateChoreTemplateRequestSchema,
   UpdateMemberRequestSchema,
   UpdateMemberAvatarRequestSchema,
   UpdatePocketMoneySettingsRequestSchema,
+  UpdateTodaySectionsRequestSchema,
   WeekScheduleSchema,
   UpsertMealPlanRequestSchema,
 } from '@hearth/shared';
@@ -104,6 +110,7 @@ import { UnconfiguredPhotoSourceProvider } from './integrations/photo-source.js'
 import { PhotoService, type PhotoRepository } from './photo-repository.js';
 import { InMemoryPlanningRepository, type PlanningRepository } from './planning-repository.js';
 import { PocketMoneyService, type PocketMoneyRepository } from './pocket-money-repository.js';
+import { TodayContentService, type TodayContentRepository } from './today-content-repository.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import {
   DEMO_TV_ACTOR,
@@ -127,6 +134,7 @@ const DeviceParamsSchema = HouseholdParamsSchema.extend({ deviceId: OpaqueIdSche
 const ListParamsSchema = HouseholdParamsSchema.extend({ listId: OpaqueIdSchema });
 const ListItemParamsSchema = HouseholdParamsSchema.extend({ itemId: OpaqueIdSchema });
 const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: OpaqueIdSchema });
+const NoticeParamsSchema = HouseholdParamsSchema.extend({ noticeId: OpaqueIdSchema });
 const PairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
 const TodayQuerySchema = z.object({ date: LocalDateSchema });
 const WeekQuerySchema = z.object({ start: LocalDateSchema });
@@ -161,6 +169,7 @@ export interface BuildServerOptions {
   pocketMoneyRepository?: PocketMoneyRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
   companionAuth?: CompanionAuthRepository;
+  todayContentRepository?: TodayContentRepository;
   runtime?: RuntimeConfiguration;
   trustProxyHops?: number;
   readiness?: () => Promise<void> | void;
@@ -193,6 +202,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     (demoMode ? new PhotoService() : new PhotoService(new UnconfiguredPhotoSourceProvider()));
   const pocketMoneyRepository =
     options.pocketMoneyRepository ?? new PocketMoneyService(repository, adminRepository);
+  const todayContentRepository = options.todayContentRepository ?? new TodayContentService();
   const calendarConnectionRepository =
     options.calendarConnectionRepository ??
     new CalendarConnectionService(
@@ -222,13 +232,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   const readToday = async (householdId: string, localDate: string) => {
-    const [today, household, lists, meals, gallery] = await Promise.all([
-      repository.getToday(householdId, localDate),
-      adminRepository.getHousehold(householdId),
-      planningRepository.getLists(householdId),
-      planningRepository.getMealPlan(householdId, localDate),
-      photoRepository.getGallery(householdId).catch(() => null),
-    ]);
+    const [today, household, lists, meals, gallery, todayConfiguration, activeNotice] =
+      await Promise.all([
+        repository.getToday(householdId, localDate),
+        adminRepository.getHousehold(householdId),
+        planningRepository.getLists(householdId),
+        planningRepository.getMealPlan(householdId, localDate),
+        photoRepository.getGallery(householdId).catch(() => null),
+        todayContentRepository.getConfiguration(householdId),
+        todayContentRepository.getActiveNotice(householdId),
+      ]);
     const members = memberLookup(household.members);
     const primaryList = lists.lists[0];
     const dinner = meals.days[0]?.entries.find((entry) => entry.slot === 'dinner');
@@ -242,8 +255,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         primaryList === undefined
           ? today.listSummary
           : { name: primaryList.name, remainingCount: primaryList.remainingCount },
-      photo:
-        gallery === null
+      notice: activeNotice?.message ?? null,
+      sections: todayConfiguration.sections,
+      photo: !todayConfiguration.sections.photo
+        ? null
+        : gallery === null
           ? today.photo
           : featuredPhoto === null
             ? null
@@ -370,6 +386,85 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       ),
     );
   });
+
+  server.get('/api/v1/households/:householdId/today-configuration', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
+      return TodayConfigurationSchema.parse(
+        await todayContentRepository.getConfiguration(params.householdId),
+      );
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/today-sections', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(UpdateTodaySectionsRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = TodayConfigurationCommandResultSchema.parse(
+        await todayContentRepository.updateSections(params.householdId, body, actor),
+      );
+      realtime.publish(params.householdId, 'today.changed', params.householdId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/notices', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CreateHouseholdNoticeRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = TodayConfigurationCommandResultSchema.parse(
+        await todayContentRepository.createNotice(params.householdId, body, actor),
+      );
+      realtime.publish(params.householdId, 'today.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.patch('/api/v1/households/:householdId/notices/:noticeId', async (request, reply) => {
+    const params = parse(NoticeParamsSchema, request.params, reply);
+    const body = parse(UpdateHouseholdNoticeRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = TodayConfigurationCommandResultSchema.parse(
+        await todayContentRepository.updateNotice(params.householdId, params.noticeId, body, actor),
+      );
+      realtime.publish(params.householdId, 'today.changed', params.noticeId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/notices/:noticeId/archives',
+    async (request, reply) => {
+      const params = parse(NoticeParamsSchema, request.params, reply);
+      const body = parse(ArchiveHouseholdNoticeRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const actor = commandActor(request.headers, options, adminRepository);
+        await adminRepository.getOverview(params.householdId, actor.id);
+        const result = TodayConfigurationCommandResultSchema.parse(
+          await todayContentRepository.archiveNotice(
+            params.householdId,
+            params.noticeId,
+            body.requestId,
+            actor,
+          ),
+        );
+        realtime.publish(params.householdId, 'today.changed', params.noticeId);
+        return result;
+      });
+    },
+  );
 
   server.get('/api/v1/households/:householdId/calendar-connection', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
@@ -1161,6 +1256,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       photoRepository.reset();
       pocketMoneyRepository.reset();
       calendarConnectionRepository.reset();
+      todayContentRepository.reset();
       return reply.send({ reset: true });
     });
 
@@ -1171,6 +1267,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       planningRepository.setScenario(body.scenario);
       homeRepository.setScenario(body.scenario);
       photoRepository.setScenario(body.scenario);
+      todayContentRepository.setScenario(body.scenario);
       return reply.send({ scenario: body.scenario });
     });
   }
@@ -1180,6 +1277,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     adminRepository.close();
     pocketMoneyRepository.close();
     calendarConnectionRepository.close();
+    todayContentRepository.close();
   });
 
   return server;

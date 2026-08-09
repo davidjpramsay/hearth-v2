@@ -226,11 +226,17 @@ Synology source is selected. Neither response exposes its Synology path.
 
 ### Announcement
 
-- title/body
-- priority
-- optional author/member scope
-- start and expiry times
-- acknowledged/dismissed state where applicable
+- opaque ID and household ID
+- concise message (maximum 240 characters)
+- Standard or Important priority
+- start time and nullable expiry time
+- archive, created and updated times
+
+`today_section_preferences` stores one row per household for Dinner, List
+summary, Notice and Family photo visibility. `announcements` is append/update/
+archive managed through adult commands; the active Today notice is the eligible
+Important notice first, then the most recently updated eligible notice. The
+browser never chooses priority ordering itself.
 
 ## Home actions
 

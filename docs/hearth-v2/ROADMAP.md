@@ -142,6 +142,16 @@ runtime household timezone rather than a browser-side Perth constant. Phone
 More now exposes family modules before grouped setup links, Home precedes Photos
 on television, and duplicate pairing/settings wording has been removed.
 
+Implementation extension (2026-08-09): **Today & notices** now provides
+phone-first adult creation, editing and removal of expiring Standard/Important
+household notices plus independent Dinner, List summary, Notice and Family
+photo visibility. Migration `0013_notices_and_today_sections.sql` persists the
+state; authenticated commands are validated, idempotent, audited and broadcast
+through `today.changed`. Today rebalances its remaining bands without exposing
+a layout editor. Demo reset isolation, SQLite restart, phone accessibility and
+customised 1080p rendering are automated; live household copy remains a pilot
+tuning decision.
+
 ## Phase 4 — Lists, meals and pocket money
 
 Status: complete and locally verified with deterministic demo household data.

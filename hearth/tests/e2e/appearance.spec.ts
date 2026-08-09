@@ -63,7 +63,7 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
   await page.goto('/admin');
   await expect(page.locator('[data-focus-id="admin-household"]')).toBeFocused();
 
-  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/admin\/appearance$/);

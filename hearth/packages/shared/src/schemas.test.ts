@@ -27,6 +27,8 @@ import {
   TvPairingSessionSchema,
   TodayPhotoSummarySchema,
   AssistAddListItemRequestSchema,
+  CreateHouseholdNoticeRequestSchema,
+  TodaySectionVisibilitySchema,
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
@@ -245,6 +247,35 @@ describe('shared wire schemas', () => {
         },
       }).error.code,
     ).toBe('FORBIDDEN');
+  });
+
+  it('validates bounded notice windows and explicit Today visibility', () => {
+    expect(
+      CreateHouseholdNoticeRequestSchema.parse({
+        requestId: 'request_notice_schema',
+        message: 'Bins tonight',
+        priority: 'important',
+        startsAt: '2026-08-03T00:00:00.000Z',
+        expiresAt: '2026-08-04T00:00:00.000Z',
+      }).priority,
+    ).toBe('important');
+    expect(
+      CreateHouseholdNoticeRequestSchema.safeParse({
+        requestId: 'request_notice_bad_window',
+        message: 'Invalid',
+        priority: 'standard',
+        startsAt: '2026-08-04T00:00:00.000Z',
+        expiresAt: '2026-08-03T00:00:00.000Z',
+      }).success,
+    ).toBe(false);
+    expect(
+      TodaySectionVisibilitySchema.parse({
+        dinner: false,
+        listSummary: true,
+        notice: true,
+        photo: false,
+      }),
+    ).toEqual({ dinner: false, listSummary: true, notice: true, photo: false });
   });
 
   it('keeps pairing codes compact and administrator capability adult-only', () => {

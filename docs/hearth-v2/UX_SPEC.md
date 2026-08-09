@@ -64,6 +64,12 @@ The default shared overview:
   blurred backing panel
 - quick access to selected Home scenes
 
+Adults may independently show or hide Dinner, List summary, Notice and Family
+photo from the phone-first **Today & notices** settings surface. Upcoming plans
+and due chores remain the stable core. The remaining summary bands expand to
+use the freed space; a photo-only configuration is centred rather than leaving
+an unexplained empty column.
+
 The first focus should usually be the most relevant actionable item, not the navigation chrome.
 
 ### Calendar
@@ -149,6 +155,10 @@ the phone More hub.
   root is named Hearth settings so it cannot be confused with the Home Assistant
   action surface. Television pairing is one row/action inside Televisions, not a
   duplicate call to action on the settings root.
+- Today & notices lets an adult publish, edit and remove concise notices, choose
+  Standard or Important priority, choose a bounded expiry or keep-until-removed,
+  and see which eligible notice currently wins. It also owns the four optional
+  Today summary switches; it is not a general layout editor.
 
 ### Appearance and evening comfort
 

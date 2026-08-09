@@ -36,7 +36,18 @@ export function TodayScreen({
   const primaryChoreId =
     today.chores.find((chore) => chore.state === 'pending' && !chore.locked)?.id ??
     today.chores[0]?.id;
-  const empty = today.events.length === 0 && today.chores.length === 0;
+  const visibleSummaryCount = [
+    today.sections.dinner,
+    today.sections.listSummary,
+    today.sections.notice,
+  ].filter(Boolean).length;
+  const showPhoto = today.sections.photo && today.photo !== null;
+  const hasVisibleSummaryContent =
+    (today.sections.dinner && today.dinner !== null) ||
+    (today.sections.listSummary && today.listSummary !== null) ||
+    (today.sections.notice && today.notice !== null) ||
+    showPhoto;
+  const empty = today.events.length === 0 && today.chores.length === 0 && !hasVisibleSummaryContent;
   if (empty) {
     return (
       <EmptyState onBootstrap={runtime.mode === 'private' ? undefined : () => void bootstrap()} />
@@ -141,22 +152,34 @@ export function TodayScreen({
           </div>
         </section>
       </div>
-      <div className={`summary-row${today.photo === null ? ' summary-row--without-photo' : ''}`}>
-        <div className="summary-details">
-          <SummaryBand icon="meal" label="Dinner">
-            {today.dinner ?? 'Nothing planned'}
-          </SummaryBand>
-          <SummaryBand icon="list" label="List summary">
-            {today.listSummary === null
-              ? 'No active list'
-              : `${today.listSummary.name} · ${today.listSummary.remainingCount} items left`}
-          </SummaryBand>
-          <SummaryBand icon="home" label="Notice">
-            {today.notice ?? 'No notices'}
-          </SummaryBand>
+      {visibleSummaryCount === 0 && !showPhoto ? null : (
+        <div
+          className={`summary-row${showPhoto ? '' : ' summary-row--without-photo'}${visibleSummaryCount === 0 ? ' summary-row--photo-only' : ''}`}
+        >
+          {visibleSummaryCount === 0 ? null : (
+            <div className={`summary-details summary-details--count-${visibleSummaryCount}`}>
+              {today.sections.dinner ? (
+                <SummaryBand icon="meal" label="Dinner">
+                  {today.dinner ?? 'Nothing planned'}
+                </SummaryBand>
+              ) : null}
+              {today.sections.listSummary ? (
+                <SummaryBand icon="list" label="List summary">
+                  {today.listSummary === null
+                    ? 'No active list'
+                    : `${today.listSummary.name} · ${today.listSummary.remainingCount} items left`}
+                </SummaryBand>
+              ) : null}
+              {today.sections.notice ? (
+                <SummaryBand icon="home" label="Notice">
+                  {today.notice ?? 'No notices'}
+                </SummaryBand>
+              ) : null}
+            </div>
+          )}
+          {showPhoto && today.photo !== null ? <TodayPhoto photo={today.photo} /> : null}
         </div>
-        {today.photo === null ? null : <TodayPhoto photo={today.photo} />}
-      </div>
+      )}
       <p className="sr-only" aria-live="polite">
         {mutation.pendingOccurrenceId === null ? '' : 'Saving chore change'}
       </p>

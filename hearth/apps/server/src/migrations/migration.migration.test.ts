@@ -474,4 +474,39 @@ describe('0001 household core migration', () => {
     ).toThrow(/CHECK/);
     database.close();
   });
+
+  it('adds constrained notices and one Today preference row per household', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 13').get()).toEqual(
+      { name: 'notices_and_today_sections' },
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_notice', 'Notice home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO today_section_preferences VALUES ('household_notice', 1, 0, 1, 0, 'now');
+      INSERT INTO announcements VALUES (
+        'notice_test', 'household_notice', 'Bins tonight', 'important',
+        '2026-08-03T00:00:00.000Z', '2026-08-04T00:00:00.000Z', NULL, 'now', 'now'
+      );
+    `);
+    expect(() =>
+      database.exec(
+        "INSERT INTO today_section_preferences VALUES ('household_notice', 2, 1, 1, 1, 'now');",
+      ),
+    ).toThrow(/UNIQUE|CHECK/);
+    expect(() =>
+      database.exec(`
+        INSERT INTO announcements VALUES (
+          'notice_bad', 'household_notice', 'Bad', 'urgent',
+          '2026-08-04T00:00:00.000Z', '2026-08-03T00:00:00.000Z', NULL, 'now', 'now'
+        );
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
 });

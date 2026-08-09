@@ -34,6 +34,12 @@ const settings: {
     path: '/admin/people',
   },
   {
+    title: 'Today & notices',
+    description: () => 'Overview sections and household notices',
+    icon: 'today',
+    path: '/admin/today',
+  },
+  {
     title: 'Family planning',
     description: () => 'Routines, meals, lists and pocket money',
     icon: 'wallet',

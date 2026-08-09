@@ -173,6 +173,14 @@ accessible per-day summaries from that single typed response; it does not issue
 five or six sequential Week requests. On narrow companions, the same response
 also supplies the selected-date agenda beneath the compact grid.
 
+Today composition reads durable `today_section_preferences` and
+`announcements` through an injected content repository. Adult companion writes
+use validated, idempotent and audited commands; private runtime uses SQLite and
+demo/test runtime uses the same contract with isolated seed state. The server
+selects the one active notice by start/expiry window and priority, publishes a
+`today.changed` invalidation and returns explicit visibility flags in
+`TodaySummary`. This is bounded content configuration, not a layout DSL.
+
 The server selects its calendar implementation at composition time. Demo mode
 injects `FakeCalendarProvider`; private mode injects a stable managed provider
 that delegates either to the read-only `CalDavCalendarProvider` loaded from an

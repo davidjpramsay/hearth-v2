@@ -155,6 +155,99 @@ describe('Hearth v2 API', () => {
     expect(chores.json()).toMatchObject({ totalCount: 6, completedCount: 1 });
   });
 
+  it('creates and removes notices and applies Today section visibility through typed commands', async () => {
+    const app = server();
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers,
+      payload: {
+        requestId: 'request_notice_create',
+        message: 'Bring library books tomorrow',
+        priority: 'important',
+        startsAt: '2026-08-02T00:00:00.000Z',
+        expiresAt: '2026-08-04T00:00:00.000Z',
+      },
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toMatchObject({
+      replayed: false,
+      configuration: {
+        notices: expect.arrayContaining([expect.objectContaining({ priority: 'important' })]),
+      },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers,
+      payload: {
+        requestId: 'request_notice_create',
+        message: 'Bring library books tomorrow',
+        priority: 'important',
+        startsAt: '2026-08-02T00:00:00.000Z',
+        expiresAt: '2026-08-04T00:00:00.000Z',
+      },
+    });
+    expect(replay.json().replayed).toBe(true);
+
+    const sections = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/today-sections',
+      headers,
+      payload: {
+        requestId: 'request_sections_update',
+        dinner: false,
+        listSummary: true,
+        notice: true,
+        photo: false,
+      },
+    });
+    expect(sections.statusCode).toBe(200);
+    const today = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
+    });
+    expect(today.json()).toMatchObject({
+      notice: 'Bring library books tomorrow',
+      photo: null,
+      sections: { dinner: false, listSummary: true, notice: true, photo: false },
+    });
+  });
+
+  it('rejects invalid notice windows and non-administrator notice writes', async () => {
+    const app = server();
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: {
+        requestId: 'request_notice_invalid',
+        message: 'Invalid window',
+        priority: 'standard',
+        startsAt: '2026-08-04T00:00:00.000Z',
+        expiresAt: '2026-08-03T00:00:00.000Z',
+      },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+
+    const child = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: {
+        requestId: 'request_notice_child',
+        message: 'Child write',
+        priority: 'standard',
+        startsAt: '2026-08-02T00:00:00.000Z',
+        expiresAt: null,
+      },
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+  });
+
   it('returns a path-safe photo gallery with empty, cached-unavailable and retry states', async () => {
     const app = server();
     const url = '/api/v1/households/household_hearth_demo/photos';

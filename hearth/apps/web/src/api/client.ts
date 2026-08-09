@@ -31,6 +31,8 @@ import {
   RuntimeContextSchema,
   SavedMealCommandResultSchema,
   TodaySummarySchema,
+  TodayConfigurationCommandResultSchema,
+  TodayConfigurationSchema,
   WeekScheduleSchema,
   type AdminOverview,
   type ApiError,
@@ -67,6 +69,7 @@ import {
   type SavedMealCommandResult,
   type RuntimeContext,
   type TodaySummary,
+  type TodaySectionVisibility,
   type WeekSchedule,
 } from '@hearth/shared';
 import type { z } from 'zod';
@@ -105,6 +108,9 @@ export const queryKeys = {
   },
   get admin() {
     return [householdId(getHearthRuntime()), 'admin'] as const;
+  },
+  get todayConfiguration() {
+    return [householdId(getHearthRuntime()), 'today-configuration'] as const;
   },
   get calendarConnection() {
     return [householdId(getHearthRuntime()), 'calendar-connection'] as const;
@@ -154,6 +160,53 @@ export const hearthApi = {
     request(`${API_BASE}/auth/sign-outs`, PasskeySignOutResultSchema, { method: 'POST' }),
   getToday: () =>
     request(`${householdApiBase()}/today?date=${getHearthRuntime().localDate}`, TodaySummarySchema),
+  getTodayConfiguration: () =>
+    request(`${householdApiBase()}/today-configuration`, TodayConfigurationSchema, {
+      headers: demoAdminHeaders,
+    }),
+  updateTodaySections: (sections: TodaySectionVisibility, requestId: string) =>
+    request(`${householdApiBase()}/today-sections`, TodayConfigurationCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId, ...sections }),
+    }),
+  createNotice: (input: {
+    requestId: string;
+    message: string;
+    priority: 'standard' | 'important';
+    startsAt: string;
+    expiresAt: string | null;
+  }) =>
+    request(`${householdApiBase()}/notices`, TodayConfigurationCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  updateNotice: (
+    noticeId: string,
+    input: {
+      requestId: string;
+      message: string;
+      priority: 'standard' | 'important';
+      startsAt: string;
+      expiresAt: string | null;
+    },
+  ) =>
+    request(`${householdApiBase()}/notices/${noticeId}`, TodayConfigurationCommandResultSchema, {
+      method: 'PATCH',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  archiveNotice: (noticeId: string, requestId: string) =>
+    request(
+      `${householdApiBase()}/notices/${noticeId}/archives`,
+      TodayConfigurationCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+    ),
   getWeek: (start = getHearthRuntime().weekStart) =>
     request(`${householdApiBase()}/week?start=${start}`, WeekScheduleSchema),
   getMonth: (month = getHearthRuntime().currentMonth) =>

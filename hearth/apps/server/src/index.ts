@@ -33,6 +33,7 @@ import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
+import { TodayContentService } from './today-content-repository.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import { FixedClock, SystemClock } from './runtime-context.js';
 
@@ -76,6 +77,7 @@ const repository = new SqliteHearthRepository(
       },
 );
 const planningRepository = new SqlitePlanningRepository(database, { seedDemo: demoMode, clock });
+const todayContentRepository = new TodayContentService(database, { seedDemo: demoMode, clock });
 const homeRepository = new HomeService(
   demoMode ? new FakeHomeAssistantProvider() : new UnconfiguredHomeAssistantProvider(),
   database,
@@ -122,6 +124,7 @@ const server = buildServer({
   runtime: { mode: runtimeMode, householdId: runtimeHouseholdId, clock },
   adminRepository,
   planningRepository,
+  todayContentRepository,
   repository,
   homeRepository,
   photoRepository,

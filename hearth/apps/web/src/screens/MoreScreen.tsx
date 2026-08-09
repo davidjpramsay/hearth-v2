@@ -34,6 +34,12 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
         path: '/admin',
       },
       {
+        title: 'Today & notices',
+        description: 'Choose overview sections and publish notices',
+        icon: 'today',
+        path: '/admin/today',
+      },
+      {
         title: 'Calendars & sources',
         description: 'Connect and choose read-only calendars',
         icon: 'calendar',

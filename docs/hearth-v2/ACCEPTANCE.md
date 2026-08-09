@@ -108,6 +108,26 @@ Chromium fallback produced the retained evidence.
 - Today's meal is visible without entering the Meals module.
 - Long-form editing is comfortable from the phone companion.
 
+### Notices and Today composition
+
+- An authenticated adult can publish, edit and remove a notice with Standard or
+  Important priority and a valid start/expiry window.
+- Duplicate command request IDs replay the original result and do not create a
+  second notice; each accepted write has an audit record.
+- The server, not the browser, selects the eligible Important/most-recent notice
+  shown on Today, and expiry/removal reveals the next eligible notice.
+- Dinner, List summary, Notice and Family photo can be independently shown or
+  hidden from the companion without hiding plans or chores or creating a layout
+  editor.
+- The TV summary rebalances cleanly for one, two or three bands, with or without
+  a photo; phone administration remains accessible and usable at 390×844.
+
+Status as of 2026-08-09: fake/in-memory and durable SQLite command paths,
+idempotency, permission/validation rejection, reset isolation, restart state,
+realtime invalidation, accessibility and retained 390×844/1920×1080 renders are
+implemented. Real household wording and expiry preferences remain pilot tuning,
+not a deployment blocker.
+
 ### Home Assistant and voice
 
 - Voice Preview Edition and an iPhone can trigger the same typed Hearth actions.
@@ -233,7 +253,7 @@ not yet complete.
 
 Local deployment evidence as of 2026-08-09: the production server/web images build and become
 healthy together in private mode on native ARM64 and emulated DS920+ `linux/amd64`; the same-origin
-readiness route, 12-migration database startup, unseeded first-use runtime, non-root/read-only
+readiness route, 13-migration database startup, unseeded first-use runtime, non-root/read-only
 security settings and clean `SIGTERM` shutdown pass. These checks validate the scaffold only. The
 five operations bullets above still require the actual Synology, Pi, TV, router and restore drill,
 so production acceptance remains incomplete.

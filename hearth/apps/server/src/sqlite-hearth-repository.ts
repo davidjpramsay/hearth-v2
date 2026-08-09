@@ -147,6 +147,7 @@ export class SqliteHearthRepository implements HearthRepository {
         isEmpty || !this.demoSeedEnabled ? null : { name: 'Groceries', remainingCount: 6 },
       notice: isEmpty || !this.demoSeedEnabled ? null : 'Bins go out tonight',
       photo: isEmpty || !this.demoSeedEnabled ? null : DEMO_TODAY_PHOTO,
+      sections: { dinner: true, listSummary: true, notice: true, photo: true },
       integrations: this.demoSeedEnabled
         ? seed.integrations.map((integration) =>
             integration.kind === 'calendar' ? projection.integration : integration,

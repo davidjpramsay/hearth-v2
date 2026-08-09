@@ -58,6 +58,13 @@ export function useRealtimeInvalidation(): void {
         void queryClient.invalidateQueries({ queryKey: queryKeys.home });
         return;
       }
+      if (parsed.data.kind === 'today.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.todayConfiguration }),
+        ]);
+        return;
+      }
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
@@ -73,6 +80,7 @@ export function useRealtimeInvalidation(): void {
     source.addEventListener('pocket-money.changed', receive as EventListener);
     source.addEventListener('chore-template.changed', receive as EventListener);
     source.addEventListener('home.changed', receive as EventListener);
+    source.addEventListener('today.changed', receive as EventListener);
     return () => source.close();
   }, [queryClient]);
 }
