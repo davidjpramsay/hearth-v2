@@ -188,6 +188,12 @@ The same web application may present a phone-oriented shell for:
 
 The companion is responsive, not a shrunken TV canvas. Shared domain components are encouraged; television navigation chrome need not be reused on mobile.
 
+Pocket-money administration provides previous/current/next week navigation, named setup warnings,
+paid/partially-paid/unpaid states and a recent payment history. Adults may record a full or partial
+amount with an optional note. Before payday the interface warns that early recording is allowed. A
+mistake opens a reason form and creates a visible void record; no interface offers silent payment
+editing or deletion.
+
 ## Required UI states
 
 Every data-driven surface needs intentional states for:

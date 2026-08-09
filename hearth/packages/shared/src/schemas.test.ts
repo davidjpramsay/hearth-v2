@@ -21,6 +21,7 @@ import {
   PhotoGallerySchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentSchema,
+  RecordPocketMoneyPaymentRequestSchema,
   RuntimeContextSchema,
   PairingCodeSchema,
   CreateTvPairingSessionRequestSchema,
@@ -447,6 +448,7 @@ describe('shared wire schemas', () => {
         asOfDate: '2026-08-03',
         displayRange: '3–9 Aug',
         children: [],
+        recentPayments: [],
       }),
     ).toMatchObject({ householdId: 'household_demo', children: [] });
     expect(
@@ -459,9 +461,20 @@ describe('shared wire schemas', () => {
         completedCount: 3,
         completionPercentage: 100,
         amountCents: 1200,
+        note: null,
         paidAt: '2026-08-07T10:00:00+08:00',
         paidByActorId: 'member_parent',
         source: 'companion',
+        void: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      RecordPocketMoneyPaymentRequestSchema.safeParse({
+        requestId: 'request_zero_payment',
+        memberId: 'member_child',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 0,
       }).success,
     ).toBe(false);
   });

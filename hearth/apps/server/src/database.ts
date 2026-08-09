@@ -22,6 +22,10 @@ const migrations = [
     version: 13,
     url: new URL('./migrations/0013_notices_and_today_sections.sql', import.meta.url),
   },
+  {
+    version: 14,
+    url: new URL('./migrations/0014_pocket_money_payment_history.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

@@ -296,7 +296,7 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-027 — Proportional pocket money replaces star rewards
 
 - Date: 2026-08-06
-- Status: accepted
+- Status: amended by D-035
 - Context: The owner does not want an abstract star economy or reward catalogue. Each child instead has a real weekly pocket-money amount, and parents need an honest running figure and a record of what to pay.
 - Choice: Require an adult-configured weekly amount in Australian cents and payday for every participating child. For the Monday–Sunday week, calculate progress from completed chores divided by all non-excused, non-cancelled chores due through the selected as-of date. Apply that percentage directly to the weekly amount and round once to the nearest cent. Keep skipped chores in the denominator. Let an adult record one idempotent payment snapshot per child/week containing counts, percentage and amount. Remove star values from chore contracts and administration, remove reward routes/screens and stop chore completion/undo from writing reward-ledger entries.
 - Consequence: Chores can show a child-friendly weekly percentage and amount due while phone administration owns weekly settings and payment recording. A later chore/template change cannot rewrite an existing payment. Migration `0009_pocket_money.sql` is forward-only; the migration-0005 reward tables remain dormant so existing databases are not destructively rewritten, but no active API or UI reads or writes them. D-017 remains authoritative for the shared typed/idempotent/audited command path and is superseded only for its reward-ledger choice.
@@ -457,3 +457,25 @@ Record durable choices here. New decisions should include date, status, context,
   logic into the browser. Private state survives restart; demo reset remains
   isolated. Rich acknowledgement/member targeting remains deferred until a
   real household need is demonstrated.
+
+## D-035 — Pocket-money payments use immutable disbursements and reasoned voids
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: D-027 allowed only one payment snapshot per child/week. Real pocket money may be split
+  between cash and transfer, paid in parts, or recorded against the wrong account. Parents also need
+  to review earlier weeks without an erroneous record disappearing from history.
+- Choice: Allow multiple positive, immutable payment disbursements for a child/week, each preserving
+  chore counts, percentage, amount, actor, time and an optional parent note. Sum only non-voided
+  rows and reject any command that would exceed the amount currently due. Correct a mistake with at
+  most one separate adult-authenticated void containing a required reason; never edit or delete the
+  original payment. Keep payment and void commands independently idempotent and audited. Permit
+  recording before payday, but warn clearly. Drive command timestamps through the injected Hearth
+  clock so demo evidence is deterministic and private mode uses real time. Remove the old reward
+  schemas, repository methods and seeds from active source while retaining migration-0005 tables for
+  forward-only upgrade safety.
+- Consequence: Administration can show unpaid, partially paid and paid states, navigate weeks and
+  retain an honest correction history after restart. Migration
+  `0014_pocket_money_payment_history.sql` rebuilds the payment table without its old one-row-per-week
+  constraint, adds optional notes and adds a one-to-one void table. D-027 still governs proportional
+  calculation and supersedes stars, but its single-payment choice is replaced by this decision.

@@ -87,9 +87,60 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await expect(page.getByText('$5.00 of $15.00')).toBeVisible();
 
   await page.goto('/admin/pocket-money');
-  await page.getByRole('button', { name: 'Record paid' }).click();
-  await expect(page.getByText('$5.00 paid · 33% complete')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Paid' })).toBeDisabled();
+  await page.getByLabel('Payment amount').fill('2.00');
+  await page.getByLabel(/Note optional/).fill('Cash');
+  await page.getByRole('button', { name: 'Record payment' }).click();
+  await expect(page.getByRole('status')).toContainText('$2.00 recorded');
+  await expect(page.getByText('$3.00 still to pay')).toBeVisible();
+  const history = page.getByRole('region', { name: 'Payment history' });
+  await expect(history.getByText('Cash')).toBeVisible();
+  await expect(history.getByText('$2.00')).toBeVisible();
+
+  await page.getByLabel('Payment amount').fill('3.00');
+  await page.getByRole('button', { name: 'Record payment' }).click();
+  await expect(
+    page.locator('.pocket-money-admin-card').getByText('Paid in full').first(),
+  ).toBeVisible();
+
+  const remainderPayment = history.locator('article').filter({ hasText: '$3.00' });
+  await remainderPayment.getByRole('button', { name: 'Correct' }).click();
+  await remainderPayment.getByLabel('Correction reason').fill('Recorded from wrong account');
+  await remainderPayment.getByRole('button', { name: 'Void payment' }).click();
+  await expect(history.getByText('Voided · Recorded from wrong account')).toBeVisible();
+  await expect(page.getByText('$3.00 still to pay')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Previous' }).click();
+  await expect(page).toHaveURL(/week=2026-07-27/);
+  await expect(page.getByText('Reviewing 27–2 Aug')).toBeVisible();
+  await expect(page.getByText('Return to This week to change these settings.')).toBeVisible();
+  await expect(page.getByLabel('Weekly pocket money')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'This week' })).toBeEnabled();
+  await page.getByRole('button', { name: 'This week' }).click();
+  await expect(page).not.toHaveURL(/week=/);
+  await expect(page.getByLabel('Weekly pocket money')).toBeVisible();
+});
+
+test('pocket-money setup names every child missing a weekly amount', async ({ page, request }) => {
+  const response = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/members',
+    {
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      data: {
+        requestId: 'request_unconfigured_pocket_child',
+        displayName: 'Alex',
+        role: 'child',
+        color: '#7a5b8f',
+        administrator: false,
+      },
+    },
+  );
+  expect(response.ok()).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/pocket-money');
+  await expect(page.getByRole('alert')).toContainText('Set pocket money and payday for Alex.');
+  await expect(page.getByText('Nothing due yet')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Record payment' })).toHaveCount(0);
 });
 
 test('the former Rewards bookmark redirects without exposing the star system', async ({ page }) => {
@@ -163,6 +214,46 @@ for (const path of [
     ).toEqual([]);
   });
 }
+
+test('@a11y partial-payment history and correction form have no serious violations', async ({
+  page,
+  request,
+}) => {
+  const completion = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-occurrences/occurrence_school_bag/completions',
+    { data: { requestId: 'request_a11y_pocket_completion' } },
+  );
+  expect(completion.ok()).toBe(true);
+  const payment = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/pocket-money-payments',
+    {
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      data: {
+        requestId: 'request_a11y_pocket_payment',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 150,
+        note: 'Cash',
+      },
+    },
+  );
+  expect(payment.ok()).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/pocket-money');
+  await page
+    .getByRole('region', { name: 'Payment history' })
+    .getByRole('button', { name: 'Correct' })
+    .click();
+  await expect(page.getByLabel('Correction reason')).toBeVisible();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+});
 
 const planningViewports = [
   { name: 'tv-4k', width: 3840, height: 2160 },

@@ -98,7 +98,11 @@ Chromium fallback produced the retained evidence.
 - Chores shows each child's week-to-date completed/total count, percentage and proportional amount due without requiring scroll on the primary television layout.
 - Completing and undoing a chore updates that running total through the same typed chore contract.
 - Excused and cancelled occurrences do not reduce the percentage; skipped occurrences remain incomplete.
-- A recorded payment snapshots the counts, percentage and amount, is idempotent on retry and cannot be duplicated for the same child/week.
+- Pocket-money administration can move to the previous, current or next Monday–Sunday week and exposes an immutable recent payment history.
+- A payment snapshots the counts, percentage and amount, supports an optional note and is idempotent on retry. Multiple partial disbursements are allowed, but their non-voided total cannot exceed the amount due.
+- Paid, partially paid and unpaid/building states are explicit. A missing weekly amount/payday produces a named setup warning for each affected child.
+- An adult can correct a mistaken payment only by recording a reasoned, audited void. The original payment and void remain visible after restart, and retrying the same void request does not create another correction.
+- Before payday, the payment control clearly warns that early recording is allowed.
 - Star balances, per-chore points, reward choices and redemptions are absent from the active UI and API.
 
 ### Lists and meals

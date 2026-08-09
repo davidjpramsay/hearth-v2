@@ -143,14 +143,27 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
 });
 
 const darkViewportCases = [
-  { name: 'today-tv-4k', path: '/today', width: 3840, height: 2160 },
-  { name: 'week-tv-1080', path: '/week', width: 1920, height: 1080 },
-  { name: 'month-tv-1366', path: '/month', width: 1366, height: 768 },
-  { name: 'chores-tv-1080', path: '/chores', width: 1920, height: 1080 },
-  { name: 'photos-tv-1080', path: '/photos', width: 1920, height: 1080 },
-  { name: 'home-tv-1080', path: '/home', width: 1920, height: 1080 },
-  { name: 'today-phone-portrait', path: '/today', width: 390, height: 844 },
-  { name: 'week-phone-landscape', path: '/week', width: 844, height: 390 },
+  { name: 'today-tv-4k', path: '/today', heading: 'Today', width: 3840, height: 2160 },
+  { name: 'week-tv-1080', path: '/week', heading: /week/i, width: 1920, height: 1080 },
+  { name: 'month-tv-1366', path: '/month', heading: 'August', width: 1366, height: 768 },
+  { name: 'chores-tv-1080', path: '/chores', heading: 'Chores', width: 1920, height: 1080 },
+  { name: 'photos-tv-1080', path: '/photos', heading: 'Photos', width: 1920, height: 1080 },
+  { name: 'home-tv-1080', path: '/home', heading: 'Home', width: 1920, height: 1080 },
+  { name: 'today-phone-portrait', path: '/today', heading: 'Today', width: 390, height: 844 },
+  {
+    name: 'pocket-money-phone-portrait',
+    path: '/admin/pocket-money',
+    heading: 'Pocket money',
+    width: 390,
+    height: 844,
+  },
+  {
+    name: 'week-phone-landscape',
+    path: '/week',
+    heading: /week/i,
+    width: 844,
+    height: 390,
+  },
 ] as const;
 
 for (const viewport of darkViewportCases) {
@@ -163,7 +176,7 @@ for (const viewport of darkViewportCases) {
     });
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto(viewport.path);
-    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.getByRole('heading', { name: viewport.heading })).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);

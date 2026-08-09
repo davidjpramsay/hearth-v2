@@ -22,7 +22,7 @@ export function ChoresScreen({
   preparing: boolean;
 }) {
   const query = useChoresQuery(!preparing);
-  const pocketMoney = usePocketMoneyQuery(!preparing);
+  const pocketMoney = usePocketMoneyQuery(undefined, undefined, !preparing);
   const mutation = useChoreMutation();
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;

@@ -873,7 +873,7 @@ describe('Hearth v2 API', () => {
     expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('plans meals and calculates an idempotent weekly pocket-money payment', async () => {
+  it('plans meals and exposes idempotent partial payment and void commands', async () => {
     const app = server();
     const headers = { 'x-hearth-demo-actor': 'member_maya' };
     const meal = await app.inject({
@@ -919,6 +919,32 @@ describe('Hearth v2 API', () => {
         memberId: 'member_ezra',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',
+        amountCents: 200,
+        note: 'Cash',
+      },
+    });
+    const overpayment = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_overpayment',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 301,
+      },
+    });
+    const zeroPayment = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_zero',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 0,
       },
     });
     const replay = await app.inject({
@@ -930,7 +956,55 @@ describe('Hearth v2 API', () => {
         memberId: 'member_ezra',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',
+        amountCents: 200,
+        note: 'Cash',
       },
+    });
+    const remainder = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_002',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 300,
+      },
+    });
+    const paymentVoid = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/household_hearth_demo/pocket-money-payments/${remainder.json().payment.id}/voids`,
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_void_http_001',
+        asOfDate: '2026-08-03',
+        reason: 'Wrong account',
+      },
+    });
+    const paymentVoidReplay = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/household_hearth_demo/pocket-money-payments/${remainder.json().payment.id}/voids`,
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_void_http_001',
+        asOfDate: '2026-08-03',
+        reason: 'Wrong account',
+      },
+    });
+    const secondPaymentVoid = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/household_hearth_demo/pocket-money-payments/${remainder.json().payment.id}/voids`,
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_void_http_002',
+        asOfDate: '2026-08-03',
+        reason: 'Another correction',
+      },
+    });
+    const afterVoid = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/pocket-money?weekStart=2026-08-03&asOf=2026-08-03',
     });
     const removedRewardsRoute = await app.inject({
       method: 'GET',
@@ -948,8 +1022,40 @@ describe('Hearth v2 API', () => {
       completionPercentage: 33,
       earnedAmountCents: 500,
     });
-    expect(payment.json()).toMatchObject({ payment: { amountCents: 500 }, replayed: false });
-    expect(replay.json()).toMatchObject({ payment: { amountCents: 500 }, replayed: true });
+    expect(payment.json()).toMatchObject({
+      payment: { amountCents: 200, note: 'Cash' },
+      child: { status: 'partially-paid', remainingAmountCents: 300 },
+      replayed: false,
+    });
+    expect(replay.json()).toMatchObject({ payment: { amountCents: 200 }, replayed: true });
+    expect(overpayment.statusCode).toBe(409);
+    expect(overpayment.json().error).toMatchObject({
+      code: 'CONFLICT',
+      message: 'Only $3.00 remains due for this week.',
+    });
+    expect(zeroPayment.statusCode).toBe(400);
+    expect(zeroPayment.json().error.code).toBe('VALIDATION_ERROR');
+    expect(remainder.json()).toMatchObject({ child: { status: 'paid' } });
+    expect(paymentVoid.json()).toMatchObject({
+      payment: { void: { reason: 'Wrong account' } },
+      child: { status: 'partially-paid', remainingAmountCents: 300 },
+      replayed: false,
+    });
+    expect(paymentVoidReplay.json()).toMatchObject({ replayed: true });
+    expect(secondPaymentVoid.statusCode).toBe(409);
+    expect(secondPaymentVoid.json().error.code).toBe('CONFLICT');
+    expect(afterVoid.json().children[0]).toMatchObject({
+      status: 'partially-paid',
+      paidAmountCents: 200,
+    });
+    expect(afterVoid.json().recentPayments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: remainder.json().payment.id,
+          void: expect.objectContaining({ reason: 'Wrong account' }),
+        }),
+      ]),
+    );
     expect(removedRewardsRoute.statusCode).toBe(404);
   });
 

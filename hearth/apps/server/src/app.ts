@@ -66,6 +66,7 @@ import {
   PhotoGallerySchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
+  PocketMoneyPaymentVoidCommandResultSchema,
   PocketMoneySettingsCommandResultSchema,
   RealtimeEventSchema,
   RecordPocketMoneyPaymentRequestSchema,
@@ -87,6 +88,7 @@ import {
   UpdateMemberAvatarRequestSchema,
   UpdatePocketMoneySettingsRequestSchema,
   UpdateTodaySectionsRequestSchema,
+  VoidPocketMoneyPaymentRequestSchema,
   WeekScheduleSchema,
   UpsertMealPlanRequestSchema,
 } from '@hearth/shared';
@@ -135,6 +137,7 @@ const ListParamsSchema = HouseholdParamsSchema.extend({ listId: OpaqueIdSchema }
 const ListItemParamsSchema = HouseholdParamsSchema.extend({ itemId: OpaqueIdSchema });
 const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: OpaqueIdSchema });
 const NoticeParamsSchema = HouseholdParamsSchema.extend({ noticeId: OpaqueIdSchema });
+const PocketMoneyPaymentParamsSchema = HouseholdParamsSchema.extend({ paymentId: OpaqueIdSchema });
 const PairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
 const TodayQuerySchema = z.object({ date: LocalDateSchema });
 const WeekQuerySchema = z.object({ start: LocalDateSchema });
@@ -201,7 +204,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     options.photoRepository ??
     (demoMode ? new PhotoService() : new PhotoService(new UnconfiguredPhotoSourceProvider()));
   const pocketMoneyRepository =
-    options.pocketMoneyRepository ?? new PocketMoneyService(repository, adminRepository);
+    options.pocketMoneyRepository ??
+    new PocketMoneyService(repository, adminRepository, undefined, {
+      seedDemo: demoMode,
+      clock: runtime.clock,
+    });
   const todayContentRepository = options.todayContentRepository ?? new TodayContentService();
   const calendarConnectionRepository =
     options.calendarConnectionRepository ??
@@ -1103,6 +1110,27 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return result;
     });
   });
+
+  server.post(
+    '/api/v1/households/:householdId/pocket-money-payments/:paymentId/voids',
+    async (request, reply) => {
+      const params = parse(PocketMoneyPaymentParamsSchema, request.params, reply);
+      const body = parse(VoidPocketMoneyPaymentRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = PocketMoneyPaymentVoidCommandResultSchema.parse(
+          await pocketMoneyRepository.voidPayment(
+            params.householdId,
+            params.paymentId,
+            body,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'pocket-money.changed', result.payment.memberId);
+        return result;
+      });
+    },
+  );
 
   server.get('/api/v1/households/:householdId/chore-templates', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);

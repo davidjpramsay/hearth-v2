@@ -4372,6 +4372,9 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
   }
+  html {
+    scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
   .companion-shell {
     width: 100%;
     box-shadow: none;
@@ -5393,6 +5396,44 @@
   margin: 0 0 14px;
   font-size: 23px;
 }
+.pocket-money-week-nav {
+  margin-top: 17px;
+  padding: 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 15px;
+  background: var(--surface-muted);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.pocket-money-week-nav button {
+  min-height: 45px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ink);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 680;
+  cursor: pointer;
+}
+.pocket-money-week-nav button:not(:disabled):hover,
+.pocket-money-week-nav button:not(:disabled):focus-visible {
+  background: var(--surface);
+}
+.pocket-money-week-nav button:disabled {
+  color: var(--eucalyptus);
+  background: var(--surface);
+  cursor: default;
+}
+.pocket-money-week-nav svg {
+  width: 20px;
+  height: 20px;
+}
 .pocket-money-intro {
   margin-top: 17px;
   padding: 17px;
@@ -5413,6 +5454,54 @@
 .pocket-money-intro p {
   margin: 3px 0 0;
   line-height: 1.35;
+}
+.pocket-money-setup-warning {
+  margin-top: 13px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--ochre) 45%, var(--hairline));
+  border-radius: 15px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ochre) 11%, var(--surface));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pocket-money-setup-warning > svg {
+  flex: 0 0 auto;
+  color: var(--ochre);
+}
+.pocket-money-setup-warning strong,
+.pocket-money-setup-warning span {
+  display: block;
+}
+.pocket-money-setup-warning span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.pocket-money-week-context {
+  margin-top: 13px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--plum) 34%, var(--hairline));
+  border-radius: 15px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--plum-soft) 64%, var(--surface));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pocket-money-week-context > svg {
+  flex: 0 0 auto;
+  color: var(--plum);
+}
+.pocket-money-week-context strong,
+.pocket-money-week-context span {
+  display: block;
+}
+.pocket-money-week-context span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
 }
 .pocket-money-admin-list {
   margin-top: 17px;
@@ -5451,7 +5540,7 @@
 .pocket-money-summary {
   margin-top: 14px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 9px;
 }
 .pocket-money-summary > span {
@@ -5516,28 +5605,91 @@
   min-height: 48px;
   white-space: nowrap;
 }
+.pocket-money-settings-readonly {
+  margin-top: 15px;
+  padding: 13px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 13px;
+  background: var(--surface-muted);
+}
+.pocket-money-settings-readonly strong,
+.pocket-money-settings-readonly span,
+.pocket-money-settings-readonly small {
+  display: block;
+}
+.pocket-money-settings-readonly span {
+  margin-top: 3px;
+  color: var(--ink);
+  font-weight: 680;
+}
+.pocket-money-settings-readonly small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
 .pocket-payment {
-  min-height: 66px;
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid var(--hairline);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
 }
-.pocket-payment strong,
-.pocket-payment span {
+.pocket-payment__summary strong,
+.pocket-payment__summary span {
   display: block;
 }
-.pocket-payment span {
+.pocket-payment__summary strong {
+  font-size: 18px;
+}
+.pocket-payment__summary span {
   margin-top: 2px;
   color: var(--muted);
   font-size: 14px;
 }
-.pocket-payment .admin-submit {
+.pocket-payment-form {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(125px, 0.7fr) minmax(0, 1.3fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+.pocket-payment-form label,
+.pocket-money-void-form label {
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 680;
+}
+.pocket-payment-form input,
+.pocket-money-void-form input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid #cfc5bd;
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--input-surface, white);
+  font: inherit;
+  font-size: 16px;
+}
+.pocket-payment-form .money-input input {
+  padding-left: 28px;
+}
+.pocket-payment-note__label {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.pocket-payment-note__label small {
+  color: var(--muted);
+  font: inherit;
+  font-weight: 450;
+}
+.pocket-payment-form .admin-submit {
   width: auto;
+  min-height: 46px;
   margin: 0;
+  white-space: nowrap;
 }
 .pocket-money-empty {
   margin-top: 18px;
@@ -5545,6 +5697,132 @@
   border-radius: 15px;
   color: var(--muted);
   background: var(--surface-muted);
+}
+.pocket-money-history {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: var(--surface-glass);
+}
+.pocket-money-history > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pocket-money-history h2,
+.pocket-money-history p {
+  margin: 0;
+}
+.pocket-money-history h2 {
+  font-size: 23px;
+}
+.pocket-money-history header p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.pocket-money-history header > svg {
+  width: 30px;
+  height: 30px;
+  color: var(--eucalyptus);
+}
+.pocket-money-history__empty {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 13px;
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+.pocket-money-history__list {
+  margin-top: 13px;
+  border-top: 1px solid var(--hairline);
+}
+.pocket-money-history-row {
+  min-height: 78px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--hairline);
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 120px minmax(180px, 1.2fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+.pocket-money-history-row:last-child {
+  border-bottom: 0;
+}
+.pocket-money-history-row--voided {
+  opacity: 0.7;
+}
+.pocket-money-history-row__person {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.pocket-money-history-row__person .avatar {
+  width: 42px;
+  height: 42px;
+}
+.pocket-money-history-row__person strong,
+.pocket-money-history-row__person button,
+.pocket-money-history-row__amount strong,
+.pocket-money-history-row__amount span,
+.pocket-money-history-row__detail span,
+.pocket-money-history-row__detail strong {
+  display: block;
+}
+.pocket-money-history-row__person button {
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  color: var(--eucalyptus);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pocket-money-history-row__amount strong {
+  font-size: 19px;
+}
+.pocket-money-history-row__amount span,
+.pocket-money-history-row__detail span,
+.pocket-money-history-row__detail strong {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.pocket-money-history-row__detail strong {
+  color: var(--terracotta);
+}
+.pocket-money-history-row__void {
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.pocket-money-void-form {
+  grid-column: 1 / -1;
+  padding: 13px;
+  border-radius: 13px;
+  background: var(--surface-muted);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+.pocket-money-void-form > div {
+  display: flex;
+  gap: 8px;
+}
+.pocket-money-void-form button {
+  min-height: 46px;
+  margin: 0;
 }
 @media (max-width: 900px) {
   .lists-layout {
@@ -5743,8 +6021,11 @@
     grid-template-columns: 1fr;
   }
   .pocket-money-settings-form,
-  .pocket-money-summary {
+  .pocket-payment-form {
     grid-template-columns: 1fr;
+  }
+  .pocket-money-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .pocket-money-admin-card {
     padding: 15px;
@@ -5753,10 +6034,29 @@
     min-height: 55px;
   }
   .pocket-payment {
-    align-items: stretch;
-    flex-direction: column;
+    min-height: 0;
   }
-  .pocket-payment .admin-submit {
+  .pocket-payment-form .admin-submit {
+    width: 100%;
+  }
+  .pocket-money-history {
+    padding: 15px;
+  }
+  .pocket-money-history-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px 12px;
+  }
+  .pocket-money-history-row__detail {
+    grid-column: 1 / -1;
+  }
+  .pocket-money-history-row__void {
+    grid-column: 2;
+  }
+  .pocket-money-void-form {
+    grid-template-columns: 1fr;
+  }
+  .pocket-money-void-form > div,
+  .pocket-money-void-form button {
     width: 100%;
   }
 }
@@ -5946,6 +6246,7 @@
 :root[data-theme='dark'] .planning-area-card,
 :root[data-theme='dark'] .routine-editor,
 :root[data-theme='dark'] .pocket-money-admin-card,
+:root[data-theme='dark'] .pocket-money-history,
 :root[data-theme='dark'] .phone-meal-editor form {
   background: var(--surface-glass);
 }
@@ -5987,7 +6288,7 @@
 :root[data-theme='dark'] .planning-area-card small,
 :root[data-theme='dark'] .routine-editor summary small,
 :root[data-theme='dark'] .pocket-money-admin-card header span,
-:root[data-theme='dark'] .pocket-payment span {
+:root[data-theme='dark'] .pocket-payment__summary span {
   color: var(--muted);
 }
 :root[data-theme='dark'] .admin-home__title h1,
@@ -6008,6 +6309,7 @@
 :root[data-theme='dark'] .planning-intro,
 :root[data-theme='dark'] .history-safe-note,
 :root[data-theme='dark'] .pocket-money-intro,
+:root[data-theme='dark'] .pocket-money-week-context,
 :root[data-theme='dark'] .meal-tv-message {
   border-color: #48604f;
   color: #d6e8d9;
@@ -6032,6 +6334,8 @@
 :root[data-theme='dark'] .routine-days label,
 :root[data-theme='dark'] .pocket-money-settings-form input,
 :root[data-theme='dark'] .pocket-money-settings-form select,
+:root[data-theme='dark'] .pocket-payment-form input,
+:root[data-theme='dark'] .pocket-money-void-form input,
 :root[data-theme='dark'] .phone-list-add input,
 :root[data-theme='dark'] .phone-meal-editor input,
 :root[data-theme='dark'] .phone-meal-editor select,

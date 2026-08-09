@@ -24,7 +24,7 @@ export function useRealtimeInvalidation(): void {
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.today }),
           queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot }),
         ]);
         return;
       }
@@ -43,7 +43,7 @@ export function useRealtimeInvalidation(): void {
         return;
       }
       if (parsed.data.kind === 'pocket-money.changed') {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot });
         return;
       }
       if (parsed.data.kind === 'chore-template.changed') {

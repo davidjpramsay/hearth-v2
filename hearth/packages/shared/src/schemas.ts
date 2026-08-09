@@ -539,6 +539,15 @@ export const PaydaySchema = z.enum([
   'sunday',
 ]);
 
+export const PocketMoneyPaymentVoidSchema = z.object({
+  id: OpaqueIdSchema,
+  paymentId: OpaqueIdSchema,
+  reason: z.string().trim().min(3).max(240),
+  voidedAt: TimestampSchema,
+  voidedByActorId: OpaqueIdSchema,
+  source: z.literal('companion'),
+});
+
 export const PocketMoneyPaymentSchema = z
   .object({
     id: OpaqueIdSchema,
@@ -549,9 +558,11 @@ export const PocketMoneyPaymentSchema = z
     completedCount: z.number().int().nonnegative(),
     completionPercentage: z.number().int().min(0).max(100),
     amountCents: z.number().int().nonnegative(),
+    note: z.string().trim().min(1).max(240).nullable(),
     paidAt: TimestampSchema,
     paidByActorId: OpaqueIdSchema,
     source: z.enum(['companion', 'system']),
+    void: PocketMoneyPaymentVoidSchema.nullable(),
   })
   .refine((payment) => payment.completedCount <= payment.scheduledCount, {
     message: 'Completed chores cannot exceed scheduled chores.',
@@ -568,8 +579,11 @@ export const PocketMoneyChildSummarySchema = z
     completedCount: z.number().int().nonnegative(),
     completionPercentage: z.number().int().min(0).max(100),
     earnedAmountCents: z.number().int().nonnegative().nullable(),
-    status: z.enum(['not-configured', 'building', 'ready', 'paid']),
-    payment: PocketMoneyPaymentSchema.nullable(),
+    paidAmountCents: z.number().int().nonnegative(),
+    remainingAmountCents: z.number().int().nonnegative().nullable(),
+    paydayReached: z.boolean(),
+    status: z.enum(['not-configured', 'building', 'ready', 'partially-paid', 'paid']),
+    payments: z.array(PocketMoneyPaymentSchema),
   })
   .refine((summary) => summary.completedCount <= summary.scheduledCount, {
     message: 'Completed chores cannot exceed scheduled chores.',
@@ -583,6 +597,7 @@ export const PocketMoneyOverviewSchema = z.object({
   asOfDate: LocalDateSchema,
   displayRange: z.string().min(1).max(80),
   children: z.array(PocketMoneyChildSummarySchema),
+  recentPayments: z.array(PocketMoneyPaymentSchema),
 });
 
 export const UpdatePocketMoneySettingsRequestSchema = CommandRequestSchema.extend({
@@ -596,6 +611,13 @@ export const RecordPocketMoneyPaymentRequestSchema = CommandRequestSchema.extend
   memberId: OpaqueIdSchema,
   weekStart: LocalDateSchema,
   asOfDate: LocalDateSchema,
+  amountCents: z.number().int().positive().max(100_000).optional(),
+  note: z.string().trim().min(1).max(240).nullable().optional(),
+});
+
+export const VoidPocketMoneyPaymentRequestSchema = CommandRequestSchema.extend({
+  asOfDate: LocalDateSchema,
+  reason: z.string().trim().min(3).max(240),
 });
 
 export const PocketMoneySettingsCommandResultSchema = z.object({
@@ -611,74 +633,9 @@ export const PocketMoneyPaymentCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
-/** @deprecated Retained only so historical reward records remain readable. */
-export const RewardDefinitionSchema = z.object({
-  id: OpaqueIdSchema,
-  name: z.string().min(1).max(140),
-  description: z.string().max(320).nullable(),
-  cost: z.number().int().positive().max(100_000),
-  approvalRequired: z.boolean(),
-  archived: z.boolean(),
-});
-
-export const RewardLedgerEntrySchema = z.object({
-  id: OpaqueIdSchema,
-  member: MemberSchema,
-  delta: z
-    .number()
-    .int()
-    .refine((value) => value !== 0),
-  reason: z.string().min(1).max(180),
-  rewardId: OpaqueIdSchema.nullable(),
-  relatedChoreOccurrenceId: OpaqueIdSchema.nullable(),
-  reversalOfEntryId: OpaqueIdSchema.nullable(),
-  occurredAt: TimestampSchema,
-  actorId: OpaqueIdSchema,
-  source: z.enum(['tv', 'companion', 'voice', 'automation', 'system']),
-});
-
-export const MemberRewardBalanceSchema = z.object({
-  member: MemberSchema,
-  balance: z.number().int(),
-});
-
-export const RewardsOverviewSchema = z.object({
-  householdId: OpaqueIdSchema,
-  balances: z.array(MemberRewardBalanceSchema),
-  definitions: z.array(RewardDefinitionSchema),
-  ledger: z.array(RewardLedgerEntrySchema),
-});
-
-export const CreateRewardDefinitionRequestSchema = CommandRequestSchema.extend({
-  name: z.string().trim().min(1).max(140),
-  description: z.string().trim().max(320).nullable(),
-  cost: z.number().int().positive().max(100_000),
-  approvalRequired: z.boolean(),
-});
-
-export const RewardDefinitionCommandResultSchema = z.object({
-  definition: RewardDefinitionSchema,
-  audit: z.lazy(() => AuditSummarySchema),
-  replayed: z.boolean(),
-});
-
-export const AdjustRewardRequestSchema = CommandRequestSchema.extend({
-  memberId: OpaqueIdSchema,
-  delta: z
-    .number()
-    .int()
-    .min(-100_000)
-    .max(100_000)
-    .refine((value) => value !== 0),
-  reason: z.string().trim().min(1).max(180),
-  rewardId: OpaqueIdSchema.nullable(),
-});
-
-export const ReverseRewardEntryRequestSchema = CommandRequestSchema;
-
-export const RewardCommandResultSchema = z.object({
-  entry: RewardLedgerEntrySchema,
-  balances: z.array(MemberRewardBalanceSchema),
+export const PocketMoneyPaymentVoidCommandResultSchema = z.object({
+  payment: PocketMoneyPaymentSchema,
+  child: PocketMoneyChildSummarySchema,
   audit: z.lazy(() => AuditSummarySchema),
   replayed: z.boolean(),
 });
@@ -711,12 +668,9 @@ export const AuditSummarySchema = z.object({
     'list.item.undo',
     'meal.plan',
     'saved-meal.create',
-    'reward.definition.create',
-    'reward.adjust',
-    'reward.reverse',
-    'reward.award',
     'pocket-money.settings.update',
     'pocket-money.payment.record',
+    'pocket-money.payment.void',
     'calendar.connection.save',
     'calendar.connection.remove',
     'auth.passkey.register',
@@ -806,7 +760,6 @@ export const RealtimeEventSchema = z.object({
     'household.changed',
     'list.changed',
     'meal.changed',
-    'reward.changed',
     'pocket-money.changed',
     'chore-template.changed',
     'home.changed',
@@ -1131,6 +1084,7 @@ export type CreateSavedMealRequest = z.infer<typeof CreateSavedMealRequestSchema
 export type SavedMealCommandResult = z.infer<typeof SavedMealCommandResultSchema>;
 export type MealCommandResult = z.infer<typeof MealCommandResultSchema>;
 export type Payday = z.infer<typeof PaydaySchema>;
+export type PocketMoneyPaymentVoid = z.infer<typeof PocketMoneyPaymentVoidSchema>;
 export type PocketMoneyPayment = z.infer<typeof PocketMoneyPaymentSchema>;
 export type PocketMoneyChildSummary = z.infer<typeof PocketMoneyChildSummarySchema>;
 export type PocketMoneyOverview = z.infer<typeof PocketMoneyOverviewSchema>;
@@ -1138,19 +1092,14 @@ export type UpdatePocketMoneySettingsRequest = z.infer<
   typeof UpdatePocketMoneySettingsRequestSchema
 >;
 export type RecordPocketMoneyPaymentRequest = z.infer<typeof RecordPocketMoneyPaymentRequestSchema>;
+export type VoidPocketMoneyPaymentRequest = z.infer<typeof VoidPocketMoneyPaymentRequestSchema>;
 export type PocketMoneySettingsCommandResult = z.infer<
   typeof PocketMoneySettingsCommandResultSchema
 >;
 export type PocketMoneyPaymentCommandResult = z.infer<typeof PocketMoneyPaymentCommandResultSchema>;
-export type RewardDefinition = z.infer<typeof RewardDefinitionSchema>;
-export type RewardLedgerEntry = z.infer<typeof RewardLedgerEntrySchema>;
-export type MemberRewardBalance = z.infer<typeof MemberRewardBalanceSchema>;
-export type RewardsOverview = z.infer<typeof RewardsOverviewSchema>;
-export type CreateRewardDefinitionRequest = z.infer<typeof CreateRewardDefinitionRequestSchema>;
-export type RewardDefinitionCommandResult = z.infer<typeof RewardDefinitionCommandResultSchema>;
-export type AdjustRewardRequest = z.infer<typeof AdjustRewardRequestSchema>;
-export type ReverseRewardEntryRequest = z.infer<typeof ReverseRewardEntryRequestSchema>;
-export type RewardCommandResult = z.infer<typeof RewardCommandResultSchema>;
+export type PocketMoneyPaymentVoidCommandResult = z.infer<
+  typeof PocketMoneyPaymentVoidCommandResultSchema
+>;
 export type CommandRequest = z.infer<typeof CommandRequestSchema>;
 export type CompletionReversalRequest = z.infer<typeof CompletionReversalRequestSchema>;
 export type AuditSummary = z.infer<typeof AuditSummarySchema>;

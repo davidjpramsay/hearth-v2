@@ -161,9 +161,18 @@ Only active child members may receive a setting. New children appear as unconfig
 - Monday week start and Sunday week end
 - scheduled and completed counts at payment time
 - completion percentage and proportional amount in cents
+- optional parent note
 - payment timestamp, adult actor and source
 
-There is at most one recorded payment per child and week. Payment rows are immutable snapshots rather than a mutable balance. Chores in `excused` or `cancelled` state are excluded from the denominator; `pending` and `skipped` remain incomplete. Migration `0009_pocket_money.sql` introduces these records. The former reward tables from migration 0005 remain dormant for forward-only migration safety; no route, UI or chore command writes them.
+There may be multiple immutable partial payment rows for a child/week. The service sums only active rows and prevents their total exceeding the amount due. Chores in `excused` or `cancelled` state are excluded from the denominator; `pending` and `skipped` remain incomplete. Migration `0009_pocket_money.sql` introduces the original records; migration `0014_pocket_money_payment_history.sql` removes the one-row-per-week constraint and adds notes without rewriting prior snapshots.
+
+### Pocket-money payment void
+
+- one-to-one payment reference
+- required family-readable correction reason
+- correction timestamp, adult actor and companion source
+
+A payment is never edited or deleted. A mistaken record receives at most one separate void row; it remains in history but no longer contributes to the active paid total. Payment and void commands each use their own idempotency receipt and audit event. The former reward tables from migration 0005 remain dormant for forward-only migration safety; no active source contract, route, UI or chore command reads or writes them.
 
 ## Lists
 
@@ -358,7 +367,7 @@ The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administ
 on the same SQLite connection. Voice list commands resolve a normalized list
 name before mutation, return `AMBIGUOUS_TARGET` rather than choosing among
 multiple matches, reject active exact-item duplicates, and replay a prior typed
-result when the same request ID is retried. Pocket-money settings and immutable
-weekly payment snapshots use the same idempotent, audited command path. The
+result when the same request ID is retried. Pocket-money settings, immutable partial weekly
+payment snapshots and reasoned one-to-one voids use the same idempotent, audited command path. The
 former reward tables remain dormant migration history and are not read or
 written by the runtime.

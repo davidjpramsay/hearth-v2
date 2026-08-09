@@ -75,7 +75,9 @@ Can understand the current household state and use clearly exposed room controls
 - Every participating child has a required weekly amount in Australian dollars and a household-selected payday.
 - Week-to-date progress is the number of completed chore occurrences divided by all non-excused, non-cancelled occurrences due so far in the Monday–Sunday week.
 - The amount due is the same proportion of the weekly amount, rounded to the nearest cent. Skipped chores remain due and therefore reduce the proportion.
-- A parent can record the amount paid. The payment stores a dated snapshot of the counts, percentage and amount so later chore/template edits do not rewrite payment history.
+- A parent can record one or more partial disbursements, each with an optional note. Every payment stores a dated snapshot of the counts, percentage and amount so later chore/template edits do not rewrite payment history; active payments for a week may never exceed the amount currently due.
+- Mistakes are corrected with a separate adult-authenticated void record and reason. Hearth never silently edits or deletes a payment, and paid, partially paid and unpaid states remain visible by child and week.
+- Recording before the selected payday is allowed with an explicit warning rather than silently blocked.
 - Only an adult administrator can change weekly amounts/paydays or record a payment. Chore completion uses the normal actor and permission rules.
 - Hearth does not expose star balances, reward choices, redemptions or per-chore point values.
 

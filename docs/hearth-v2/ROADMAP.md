@@ -168,19 +168,21 @@ Status: complete and locally verified with deterministic demo household data.
 ### Completion criteria
 
 - Ordinary list and meal operations work from TV and phone where appropriate.
-- Pocket-money payment retries are idempotent and a child/week cannot be paid twice.
+- Pocket-money payment and correction retries are idempotent. A child/week may receive multiple immutable partial disbursements, but the non-voided total cannot exceed the calculated amount due.
 - Voice retries do not duplicate list items or chore completions.
 - Dense editing remains out of the TV's primary interaction path.
 
 Implementation note (updated 2026-08-06): Lists and Meals have D-pad television
 surfaces and responsive phone presentations. The phone Family Planning area
 edits future recurring chores, dinners/saved meals, child weekly amounts,
-paydays and payment snapshots. Chores shows the current weekly completion
+paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted
 idempotency receipts. Migration `0009_pocket_money.sql` supersedes the active
 reward implementation while retaining the old migration tables as dormant
-history; chore completion/undo no longer writes star awards. Unit,
+history; active reward source contracts and runtime seeds are removed and chore completion/undo no longer writes star awards. Migration
+`0014_pocket_money_payment_history.sql` adds optional payment notes, multiple
+immutable disbursements and one audited void per payment. Unit,
 Fastify/SQLite integration, migration, accessibility, remote,
 offline, failure/retry and rendered-viewport tests cover the completion
 criteria.

@@ -74,10 +74,15 @@ export function useMealPlanQuery(startDate = getHearthRuntime().weekStart, enabl
   });
 }
 
-export function usePocketMoneyQuery(enabled = true) {
+export function usePocketMoneyQuery(
+  weekStart = getHearthRuntime().weekStart,
+  asOfDate = getHearthRuntime().localDate,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: queryKeys.pocketMoney,
-    queryFn: hearthApi.getPocketMoney,
+    queryKey: queryKeys.pocketMoney(weekStart, asOfDate),
+    queryFn: () => hearthApi.getPocketMoney(weekStart, asOfDate),
+    placeholderData: (previous) => previous,
     enabled,
   });
 }

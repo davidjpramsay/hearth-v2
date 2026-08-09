@@ -10,6 +10,21 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
+const PRE_PAYMENT_HISTORY_MIGRATIONS = [
+  '0001_household_core.sql',
+  '0002_admin_and_pairing.sql',
+  '0003_chore_runtime.sql',
+  '0004_calendar_projection.sql',
+  '0005_household_planning.sql',
+  '0006_home_assistant_projection.sql',
+  '0007_tv_device_credentials.sql',
+  '0008_photo_library.sql',
+  '0009_pocket_money.sql',
+  '0010_member_avatars.sql',
+  '0011_calendar_connection_setup.sql',
+  '0012_passkey_authentication.sql',
+  '0013_notices_and_today_sections.sql',
+] as const;
 
 afterEach(async () => {
   await Promise.all(
@@ -283,7 +298,7 @@ describe('0001 household core migration', () => {
     database.close();
   });
 
-  it('adds required child pocket-money settings and one payment snapshot per week', async () => {
+  it('adds required child settings plus immutable partial payments and one void per payment', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
     temporaryDirectories.push(directory);
     const database = new Database(join(directory, 'hearth.sqlite'));
@@ -292,14 +307,32 @@ describe('0001 household core migration', () => {
     expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 9').get()).toEqual({
       name: 'pocket_money',
     });
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 14').get()).toEqual(
+      {
+        name: 'pocket_money_payment_history',
+      },
+    );
     database.exec(`
       INSERT INTO households VALUES ('household_money', 'Money', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
       INSERT INTO members VALUES ('member_child', 'household_money', 'Child', '#000000', NULL, 'child', NULL, 'now', 'now', '["pocket-money.view"]');
       INSERT INTO members VALUES ('member_adult', 'household_money', 'Adult', '#111111', NULL, 'adult', NULL, 'now', 'now', '["household.admin"]');
       INSERT INTO pocket_money_settings VALUES ('household_money', 'member_child', 1200, 'AUD', 'friday', 'now', 'now');
-      INSERT INTO pocket_money_payments VALUES (
+      INSERT INTO pocket_money_payments
+        (id, household_id, member_id, week_start, week_end, scheduled_count, completed_count,
+         completion_percentage, amount_cents, note, paid_at, paid_by_actor_id, source_channel)
+      VALUES (
         'payment_one', 'household_money', 'member_child', '2026-08-03', '2026-08-09',
-        6, 4, 67, 800, 'now', 'member_adult', 'companion'
+        6, 4, 67, 400, 'First half', 'now', 'member_adult', 'companion'
+      );
+      INSERT INTO pocket_money_payments
+        (id, household_id, member_id, week_start, week_end, scheduled_count, completed_count,
+         completion_percentage, amount_cents, note, paid_at, paid_by_actor_id, source_channel)
+      VALUES (
+        'payment_two', 'household_money', 'member_child', '2026-08-03', '2026-08-09',
+        6, 4, 67, 400, NULL, 'later', 'member_adult', 'companion'
+      );
+      INSERT INTO pocket_money_payment_voids VALUES (
+        'void_one', 'payment_one', 'Recorded twice', 'later', 'member_adult', 'companion'
       );
     `);
     expect(() =>
@@ -307,16 +340,61 @@ describe('0001 household core migration', () => {
         "INSERT INTO pocket_money_settings VALUES ('household_money', 'member_adult', 1000, 'AUD', 'friday', 'now', 'now');",
       ),
     ).toThrow(/active child/);
+    expect(
+      database
+        .prepare(
+          'SELECT COUNT(*) AS count FROM pocket_money_payments WHERE household_id = ? AND week_start = ?',
+        )
+        .get('household_money', '2026-08-03'),
+    ).toEqual({ count: 2 });
     expect(() =>
       database.exec(
-        "INSERT INTO pocket_money_payments VALUES ('payment_two', 'household_money', 'member_child', '2026-08-03', '2026-08-09', 6, 4, 67, 800, 'later', 'member_adult', 'companion');",
+        "INSERT INTO pocket_money_payment_voids VALUES ('void_two', 'payment_one', 'Another reason', 'later', 'member_adult', 'companion');",
       ),
     ).toThrow(/UNIQUE/);
+    expect(() =>
+      database.exec(
+        "INSERT INTO pocket_money_payment_voids VALUES ('void_short', 'payment_two', 'x', 'later', 'member_adult', 'companion');",
+      ),
+    ).toThrow(/CHECK/);
     expect(() =>
       database.exec(
         "INSERT INTO pocket_money_settings VALUES ('household_money', 'member_child', 0, 'AUD', 'friday', 'now', 'now');",
       ),
     ).toThrow();
+    database.close();
+  });
+
+  it('preserves existing weekly payment snapshots while upgrading to payment history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    for (const filename of PRE_PAYMENT_HISTORY_MIGRATIONS) {
+      const path = fileURLToPath(new URL(filename, import.meta.url));
+      database.exec(readFileSync(path, 'utf8'));
+    }
+    database.exec(`
+      INSERT INTO households VALUES ('household_upgrade', 'Upgrade', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_upgrade_child', 'household_upgrade', 'Child', '#000000', NULL, 'child', NULL, 'now', 'now', '["pocket-money.view"]');
+      INSERT INTO members VALUES ('member_upgrade_adult', 'household_upgrade', 'Adult', '#111111', NULL, 'adult', NULL, 'now', 'now', '["household.admin"]');
+      INSERT INTO pocket_money_settings VALUES ('household_upgrade', 'member_upgrade_child', 1200, 'AUD', 'friday', 'now', 'now');
+      INSERT INTO pocket_money_payments VALUES (
+        'payment_upgrade', 'household_upgrade', 'member_upgrade_child', '2026-08-03', '2026-08-09',
+        6, 4, 67, 800, 'now', 'member_upgrade_adult', 'companion'
+      );
+    `);
+    const migrationPath = fileURLToPath(
+      new URL('0014_pocket_money_payment_history.sql', import.meta.url),
+    );
+    database.exec(readFileSync(migrationPath, 'utf8'));
+
+    expect(
+      database
+        .prepare('SELECT id, amount_cents, note FROM pocket_money_payments WHERE id = ?')
+        .get('payment_upgrade'),
+    ).toEqual({ id: 'payment_upgrade', amount_cents: 800, note: null });
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
 

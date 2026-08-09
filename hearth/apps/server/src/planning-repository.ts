@@ -10,8 +10,6 @@ import {
   localDateInTimezone,
   normaliseListItemText,
   PlanningDomainError,
-  reverseRewardEntry,
-  rewardBalances,
 } from '@hearth/core';
 import {
   ChoreTemplateCommandResultSchema,
@@ -25,21 +23,14 @@ import {
   MealPlanEntrySchema,
   MealPlanSchema,
   MemberSchema,
-  RewardCommandResultSchema,
-  RewardDefinitionCommandResultSchema,
-  RewardDefinitionSchema,
-  RewardLedgerEntrySchema,
-  RewardsOverviewSchema,
   SavedMealCommandResultSchema,
   SavedMealSchema,
   type AddListItemRequest,
-  type AdjustRewardRequest,
   type AuditSummary,
   type ChoreTemplate,
   type ChoreTemplateCommandResult,
   type ChoreTemplateList,
   type CreateChoreTemplateRequest,
-  type CreateRewardDefinitionRequest,
   type CreateSavedMealRequest,
   type DemoScenario,
   type HouseholdList,
@@ -49,10 +40,6 @@ import {
   type MealCommandResult,
   type MealPlan,
   type Member,
-  type RewardCommandResult,
-  type RewardDefinitionCommandResult,
-  type RewardLedgerEntry,
-  type RewardsOverview,
   type SavedMeal,
   type SavedMealCommandResult,
   type UpdateChoreTemplateRequest,
@@ -99,23 +86,6 @@ export interface PlanningRepository {
     input: CreateSavedMealRequest,
     actor: CommandActor,
   ): Promise<SavedMealCommandResult>;
-  getRewards(householdId: string): Promise<RewardsOverview>;
-  createRewardDefinition(
-    householdId: string,
-    input: CreateRewardDefinitionRequest,
-    actor: CommandActor,
-  ): Promise<RewardDefinitionCommandResult>;
-  adjustReward(
-    householdId: string,
-    input: AdjustRewardRequest,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult>;
-  reverseReward(
-    householdId: string,
-    entryId: string,
-    requestId: string,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult>;
   getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList>;
   createChoreTemplate(
     householdId: string,
@@ -137,8 +107,6 @@ export class InMemoryPlanningRepository implements PlanningRepository {
   private lists = demoLists();
   private savedMeals = demoSavedMeals();
   private mealEntries = demoMealEntries();
-  private definitions = demoRewardDefinitions();
-  private ledger = demoRewardLedger();
   private templates = demoChoreTemplates();
   private readonly receipts = new Map<string, AuditedResult>();
   private sequence = 100;
@@ -272,109 +240,6 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     );
   }
 
-  async getRewards(householdId: string): Promise<RewardsOverview> {
-    this.assertHousehold(householdId);
-    return rewardsOverview(
-      householdId,
-      this.scenario === 'empty' ? [] : this.definitions,
-      this.scenario === 'empty' ? [] : this.ledger,
-    );
-  }
-
-  async createRewardDefinition(
-    householdId: string,
-    input: CreateRewardDefinitionRequest,
-    actor: CommandActor,
-  ): Promise<RewardDefinitionCommandResult> {
-    this.assertHousehold(householdId);
-    this.assertAdmin(actor);
-    return this.replayOrRun(
-      'reward-definition-create',
-      input.requestId,
-      RewardDefinitionCommandResultSchema,
-      () => {
-        const definition = RewardDefinitionSchema.parse({
-          id: this.id('reward'),
-          name: input.name,
-          description: input.description,
-          cost: input.cost,
-          approvalRequired: input.approvalRequired,
-          archived: false,
-        });
-        this.definitions.push(definition);
-        return {
-          definition,
-          audit: this.audit('reward.definition.create', definition.id, actor),
-          replayed: false,
-        };
-      },
-    );
-  }
-
-  async adjustReward(
-    householdId: string,
-    input: AdjustRewardRequest,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult> {
-    this.assertHousehold(householdId);
-    this.assertAdmin(actor);
-    return this.replayOrRun('reward-adjust', input.requestId, RewardCommandResultSchema, () => {
-      const member = demoMember(input.memberId);
-      const entry = RewardLedgerEntrySchema.parse({
-        id: this.id('reward_entry'),
-        member,
-        delta: input.delta,
-        reason: input.reason,
-        rewardId: input.rewardId,
-        relatedChoreOccurrenceId: null,
-        reversalOfEntryId: null,
-        occurredAt: new Date().toISOString(),
-        actorId: actor.id,
-        source: actor.source,
-      });
-      this.ledger.unshift(entry);
-      return {
-        entry,
-        balances: rewardsOverview(householdId, this.definitions, this.ledger).balances,
-        audit: this.audit('reward.adjust', entry.id, actor),
-        replayed: false,
-      };
-    });
-  }
-
-  async reverseReward(
-    householdId: string,
-    entryId: string,
-    requestId: string,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult> {
-    this.assertHousehold(householdId);
-    this.assertAdmin(actor);
-    return this.replayOrRun('reward-reverse', requestId, RewardCommandResultSchema, () => {
-      const original = this.ledger.find((entry) => entry.id === entryId);
-      if (original === undefined)
-        throw new RepositoryError('NOT_FOUND', 'That reward entry was not found.');
-      if (this.ledger.some((entry) => entry.reversalOfEntryId === original.id)) {
-        throw new RepositoryError('CONFLICT', 'That reward change has already been reversed.');
-      }
-      const reversed = reverseRewardEntry(original, {
-        entryId: this.id('reward_entry'),
-        auditId: this.id('audit'),
-        actorId: actor.id,
-        actorType: actor.type,
-        source: actor.source,
-        occurredAt: new Date().toISOString(),
-      });
-      this.ledger.unshift(reversed.entry);
-      return {
-        entry: reversed.entry,
-        balances: rewardsOverview(householdId, this.definitions, this.ledger).balances,
-        audit: reversed.audit,
-        replayed: false,
-      };
-    });
-  }
-
   async getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList> {
     this.assertHousehold(householdId);
     this.assertAdmin(actor);
@@ -438,8 +303,6 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     this.lists = demoLists();
     this.savedMeals = demoSavedMeals();
     this.mealEntries = demoMealEntries();
-    this.definitions = demoRewardDefinitions();
-    this.ledger = demoRewardLedger();
     this.templates = demoChoreTemplates();
     this.receipts.clear();
     this.sequence = 100;
@@ -790,155 +653,6 @@ export class SqlitePlanningRepository implements PlanningRepository {
     );
   }
 
-  async getRewards(householdId: string): Promise<RewardsOverview> {
-    this.assertHousehold(householdId);
-    const definitions = this.database
-      .prepare(
-        `SELECT * FROM reward_definitions
-         WHERE household_id = ? ORDER BY archived_at IS NOT NULL, cost, name`,
-      )
-      .all(householdId) as RewardDefinitionRow[];
-    const ledger = this.readRewardLedger(householdId);
-    return rewardsOverview(
-      householdId,
-      this.scenario === 'empty' ? [] : definitions.map(rewardDefinitionFromRow),
-      this.scenario === 'empty' ? [] : ledger,
-      this.readMembers(householdId),
-    );
-  }
-
-  async createRewardDefinition(
-    householdId: string,
-    input: CreateRewardDefinitionRequest,
-    actor: CommandActor,
-  ): Promise<RewardDefinitionCommandResult> {
-    this.assertAdmin(householdId, actor);
-    return this.execute(
-      householdId,
-      input.requestId,
-      'reward-definition-create',
-      'reward_definition',
-      RewardDefinitionCommandResultSchema,
-      () => {
-        const definitionId = id('reward');
-        const now = new Date().toISOString();
-        this.database
-          .prepare(
-            `INSERT INTO reward_definitions
-              (id, household_id, name, description, cost, approval_required, archived_at,
-               created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-          )
-          .run(
-            definitionId,
-            householdId,
-            input.name,
-            input.description,
-            input.cost,
-            input.approvalRequired ? 1 : 0,
-            now,
-            now,
-          );
-        return {
-          definition: this.readRewardDefinition(householdId, definitionId),
-          audit: audit('reward.definition.create', definitionId, actor),
-          replayed: false,
-        };
-      },
-    );
-  }
-
-  async adjustReward(
-    householdId: string,
-    input: AdjustRewardRequest,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult> {
-    this.assertAdmin(householdId, actor);
-    this.readMember(householdId, input.memberId);
-    if (input.rewardId !== null) this.readRewardDefinition(householdId, input.rewardId);
-    return this.execute(
-      householdId,
-      input.requestId,
-      'reward-adjust',
-      'reward_ledger_entry',
-      RewardCommandResultSchema,
-      () => {
-        const entryId = id('reward_entry');
-        this.insertRewardEntry({
-          id: entryId,
-          householdId,
-          memberId: input.memberId,
-          delta: input.delta,
-          reason: input.reason,
-          rewardId: input.rewardId,
-          relatedChoreOccurrenceId: null,
-          reversalOfEntryId: null,
-          actorId: actor.id,
-          source: actor.source,
-          occurredAt: new Date().toISOString(),
-        });
-        return {
-          entry: this.readRewardEntry(householdId, entryId),
-          balances: this.getRewardsSync(householdId).balances,
-          audit: audit('reward.adjust', entryId, actor),
-          replayed: false,
-        };
-      },
-    );
-  }
-
-  async reverseReward(
-    householdId: string,
-    entryId: string,
-    requestId: string,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult> {
-    this.assertAdmin(householdId, actor);
-    return this.execute(
-      householdId,
-      requestId,
-      'reward-reverse',
-      'reward_ledger_entry',
-      RewardCommandResultSchema,
-      () => {
-        const original = this.readRewardEntry(householdId, entryId);
-        const existing = this.database
-          .prepare('SELECT 1 FROM reward_ledger_entries WHERE reversal_of_entry_id = ?')
-          .get(entryId);
-        if (existing !== undefined) {
-          throw new RepositoryError('CONFLICT', 'That reward change has already been reversed.');
-        }
-        const reversed = reverseRewardEntry(original, {
-          entryId: id('reward_entry'),
-          auditId: id('audit_reward'),
-          actorId: actor.id,
-          actorType: actor.type,
-          source: actor.source,
-          occurredAt: new Date().toISOString(),
-        });
-        this.insertRewardEntry({
-          id: reversed.entry.id,
-          householdId,
-          memberId: reversed.entry.member.id,
-          delta: reversed.entry.delta,
-          reason: reversed.entry.reason,
-          rewardId: reversed.entry.rewardId,
-          relatedChoreOccurrenceId: null,
-          reversalOfEntryId: reversed.entry.reversalOfEntryId,
-          actorId: reversed.entry.actorId,
-          source: reversed.entry.source,
-          occurredAt: reversed.entry.occurredAt,
-        });
-        return {
-          entry: this.readRewardEntry(householdId, reversed.entry.id),
-          balances: this.getRewardsSync(householdId).balances,
-          audit: reversed.audit,
-          replayed: false,
-        };
-      },
-    );
-  }
-
   async getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList> {
     this.assertAdmin(householdId, actor);
     const rows = this.database
@@ -1240,73 +954,6 @@ export class SqlitePlanningRepository implements PlanningRepository {
     return mealFromRow(row);
   }
 
-  private readRewardDefinition(householdId: string, definitionId: string) {
-    const row = this.database
-      .prepare('SELECT * FROM reward_definitions WHERE id = ? AND household_id = ?')
-      .get(definitionId, householdId) as RewardDefinitionRow | undefined;
-    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That reward was not found.');
-    return rewardDefinitionFromRow(row);
-  }
-
-  private readRewardLedger(householdId: string): RewardLedgerEntry[] {
-    const rows = this.database
-      .prepare(
-        `SELECT e.*, m.display_name, m.colour, m.avatar_key, m.role, m.capabilities_json
-         FROM reward_ledger_entries e JOIN members m ON m.id = e.member_id
-         WHERE e.household_id = ? ORDER BY e.occurred_at DESC, e.id DESC`,
-      )
-      .all(householdId) as RewardLedgerRow[];
-    return rows.map(rewardLedgerFromRow);
-  }
-
-  private readRewardEntry(householdId: string, entryId: string): RewardLedgerEntry {
-    const row = this.database
-      .prepare(
-        `SELECT e.*, m.display_name, m.colour, m.avatar_key, m.role, m.capabilities_json
-         FROM reward_ledger_entries e JOIN members m ON m.id = e.member_id
-         WHERE e.id = ? AND e.household_id = ?`,
-      )
-      .get(entryId, householdId) as RewardLedgerRow | undefined;
-    if (row === undefined)
-      throw new RepositoryError('NOT_FOUND', 'That reward entry was not found.');
-    return rewardLedgerFromRow(row);
-  }
-
-  private getRewardsSync(householdId: string): RewardsOverview {
-    const definitions = this.database
-      .prepare('SELECT * FROM reward_definitions WHERE household_id = ? ORDER BY cost, name')
-      .all(householdId) as RewardDefinitionRow[];
-    return rewardsOverview(
-      householdId,
-      definitions.map(rewardDefinitionFromRow),
-      this.readRewardLedger(householdId),
-      this.readMembers(householdId),
-    );
-  }
-
-  private insertRewardEntry(input: RewardEntryInsert): void {
-    this.database
-      .prepare(
-        `INSERT INTO reward_ledger_entries
-          (id, household_id, member_id, delta, reason, reward_id, related_chore_occurrence_id,
-           reversal_of_entry_id, actor_id, source_channel, occurred_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        input.id,
-        input.householdId,
-        input.memberId,
-        input.delta,
-        input.reason,
-        input.rewardId,
-        input.relatedChoreOccurrenceId,
-        input.reversalOfEntryId,
-        input.actorId,
-        input.source,
-        input.occurredAt,
-      );
-  }
-
   private readChoreTemplate(householdId: string, templateId: string): ChoreTemplate {
     const row = this.database
       .prepare(
@@ -1321,16 +968,6 @@ export class SqlitePlanningRepository implements PlanningRepository {
     if (row === undefined)
       throw new RepositoryError('NOT_FOUND', 'That recurring chore was not found.');
     return choreTemplateFromRow(row);
-  }
-
-  private readMembers(householdId: string): Member[] {
-    const rows = this.database
-      .prepare(
-        `SELECT id, display_name, colour, avatar_key, role, capabilities_json
-         FROM members WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at, id`,
-      )
-      .all(householdId) as MemberRow[];
-    return rows.map(memberFromRow);
   }
 
   private readMember(householdId: string, memberId: string): Member {
@@ -1586,56 +1223,6 @@ function demoMealEntries() {
   );
 }
 
-function demoRewardDefinitions() {
-  return [
-    RewardDefinitionSchema.parse({
-      id: 'reward_friday_movie',
-      name: 'Choose Friday movie',
-      description: 'Pick the family film for Friday night.',
-      cost: 20,
-      approvalRequired: true,
-      archived: false,
-    }),
-    RewardDefinitionSchema.parse({
-      id: 'reward_pick_dessert',
-      name: 'Pick dessert',
-      description: 'Choose dessert for a family dinner.',
-      cost: 12,
-      approvalRequired: true,
-      archived: false,
-    }),
-  ];
-}
-
-function demoRewardLedger(): RewardLedgerEntry[] {
-  const ezra = demoMember('member_ezra');
-  const maya = demoMember('member_maya');
-  return [
-    ledger('reward_entry_ezra_welcome', ezra, 13, 'Starting stars', '2026-08-01T08:00:00+08:00'),
-    ledger('reward_entry_maya_welcome', maya, 16, 'Starting stars', '2026-08-01T08:01:00+08:00'),
-    ledger('reward_entry_bag', ezra, 2, 'Pack school bag', '2026-08-03T07:15:00+08:00'),
-    ledger('reward_entry_pepper', ezra, 3, 'Feed Pepper', '2026-08-03T07:05:00+08:00'),
-    ledger(
-      'reward_entry_dessert',
-      maya,
-      -12,
-      'Pick dessert',
-      '2026-08-02T18:30:00+08:00',
-      'reward_pick_dessert',
-    ),
-    {
-      ...ledger(
-        'reward_entry_dessert_reversal',
-        maya,
-        12,
-        'Pick dessert · reversed',
-        '2026-08-02T19:10:00+08:00',
-      ),
-      reversalOfEntryId: 'reward_entry_dessert',
-    },
-  ];
-}
-
 function demoChoreTemplates(): ChoreTemplate[] {
   const seed = createDemoSeed();
   const rules = new Map([
@@ -1700,21 +1287,6 @@ function mealPlan(
   });
 }
 
-function rewardsOverview(
-  householdId: string,
-  definitions: readonly ReturnType<typeof rewardDefinitionFromRow>[],
-  ledgerEntries: readonly RewardLedgerEntry[],
-  members: readonly Member[] = createDemoSeed().household.members,
-): RewardsOverview {
-  const balances = rewardBalances(ledgerEntries);
-  return RewardsOverviewSchema.parse({
-    householdId,
-    balances: members.map((member) => ({ member, balance: balances.get(member.id) ?? 0 })),
-    definitions,
-    ledger: ledgerEntries,
-  });
-}
-
 function templateFromInput(
   idValue: string,
   input: CreateChoreTemplateRequest | UpdateChoreTemplateRequest,
@@ -1770,28 +1342,6 @@ function item(idValue: string, text: string, checked = false): ListItem {
 function refreshListCounts(listValue: HouseholdList): void {
   listValue.remainingCount = listValue.items.filter((entry) => !entry.checked).length;
   listValue.totalCount = listValue.items.length;
-}
-
-function ledger(
-  idValue: string,
-  member: Member,
-  delta: number,
-  reason: string,
-  occurredAt: string,
-  rewardId: string | null = null,
-): RewardLedgerEntry {
-  return RewardLedgerEntrySchema.parse({
-    id: idValue,
-    member,
-    delta,
-    reason,
-    rewardId,
-    relatedChoreOccurrenceId: null,
-    reversalOfEntryId: null,
-    occurredAt,
-    actorId: 'member_maya',
-    source: 'companion',
-  });
 }
 
 function sameText(left: string, right: string): boolean {
@@ -1863,32 +1413,6 @@ function mealFromRow(row: MealRow) {
   });
 }
 
-function rewardDefinitionFromRow(row: RewardDefinitionRow) {
-  return RewardDefinitionSchema.parse({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    cost: row.cost,
-    approvalRequired: row.approval_required === 1,
-    archived: row.archived_at !== null,
-  });
-}
-
-function rewardLedgerFromRow(row: RewardLedgerRow): RewardLedgerEntry {
-  return RewardLedgerEntrySchema.parse({
-    id: row.id,
-    member: memberFromRow(row),
-    delta: row.delta,
-    reason: row.reason,
-    rewardId: row.reward_id,
-    relatedChoreOccurrenceId: row.related_chore_occurrence_id,
-    reversalOfEntryId: row.reversal_of_entry_id,
-    occurredAt: row.occurred_at,
-    actorId: row.actor_id,
-    source: row.source_channel,
-  });
-}
-
 function choreTemplateFromRow(row: ChoreTemplateRow): ChoreTemplate {
   return ChoreTemplateSchema.parse({
     id: row.id,
@@ -1948,15 +1472,6 @@ interface MealRow {
   note: string | null;
 }
 
-interface RewardDefinitionRow {
-  id: string;
-  name: string;
-  description: string | null;
-  cost: number;
-  approval_required: 0 | 1;
-  archived_at: string | null;
-}
-
 interface MemberRow {
   id?: string;
   member_id?: string;
@@ -1965,18 +1480,6 @@ interface MemberRow {
   avatar_key: string | null;
   role: 'adult' | 'child';
   capabilities_json: string;
-}
-
-interface RewardLedgerRow extends MemberRow {
-  id: string;
-  delta: number;
-  reason: string;
-  reward_id: string | null;
-  related_chore_occurrence_id: string | null;
-  reversal_of_entry_id: string | null;
-  occurred_at: string;
-  actor_id: string;
-  source_channel: RewardLedgerEntry['source'];
 }
 
 interface ChoreTemplateRow extends MemberRow {
@@ -1988,18 +1491,4 @@ interface ChoreTemplateRow extends MemberRow {
   points_value: number;
   active_from: string;
   archived_at: string | null;
-}
-
-interface RewardEntryInsert {
-  id: string;
-  householdId: string;
-  memberId: string;
-  delta: number;
-  reason: string;
-  rewardId: string | null;
-  relatedChoreOccurrenceId: string | null;
-  reversalOfEntryId: string | null;
-  actorId: string;
-  source: RewardLedgerEntry['source'];
-  occurredAt: string;
 }

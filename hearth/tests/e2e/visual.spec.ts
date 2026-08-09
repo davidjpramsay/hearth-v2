@@ -200,11 +200,59 @@ test('@visual pocket-money progress and administration at required viewports', a
   page,
   request,
 }) => {
+  const headers = { 'x-hearth-demo-actor': 'member_maya' };
+  const memberResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/members',
+    {
+      headers,
+      data: {
+        requestId: 'request_visual_pocket_money_child',
+        displayName: 'Alex',
+        role: 'child',
+        color: '#7a5b8f',
+        administrator: false,
+      },
+    },
+  );
+  expect(memberResponse.ok()).toBe(true);
+  const member = (await memberResponse.json()) as { id: string };
+  const templateResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-templates',
+    {
+      headers,
+      data: {
+        requestId: 'request_visual_pocket_money_chore',
+        title: 'Put lunchbox away',
+        description: null,
+        assigneeId: member.id,
+        routineLabel: 'After school',
+        repeat: 'weekly',
+        repeatDays: ['MO'],
+        activeFrom: '2026-08-03',
+      },
+    },
+  );
+  expect(templateResponse.ok()).toBe(true);
   const completion = await request.post(
     'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-occurrences/occurrence_school_bag/completions',
     { data: { requestId: 'request_visual_pocket_money_completion' } },
   );
   expect(completion.ok()).toBe(true);
+  const payment = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/pocket-money-payments',
+    {
+      data: {
+        requestId: 'request_visual_pocket_money_partial',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 150,
+        note: 'Cash',
+      },
+      headers,
+    },
+  );
+  expect(payment.ok()).toBe(true);
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
@@ -221,12 +269,36 @@ test('@visual pocket-money progress and administration at required viewports', a
     await page.setViewportSize(viewport);
     await page.goto('/admin/pocket-money');
     await expect(page.getByRole('heading', { name: 'Pocket money' })).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Alex');
+    await expect(page.getByText('$2.50 still to pay')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Payment history' })).toContainText('Cash');
     await page.screenshot({
       path: resolve(pocketMoneyEvidence, `admin-pocket-money-${viewport.name}.png`),
       animations: 'disabled',
       fullPage: true,
     });
   }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/pocket-money');
+  const paymentHistory = page.getByRole('region', { name: 'Payment history' });
+  await paymentHistory.getByRole('button', { name: 'Correct' }).click();
+  await expect(paymentHistory.getByLabel('Correction reason')).toBeVisible();
+  await paymentHistory.getByRole('button', { name: 'Void payment' }).evaluate((button) => {
+    button.scrollIntoView({ block: 'center' });
+  });
+  await page.screenshot({
+    path: resolve(pocketMoneyEvidence, 'admin-pocket-money-correction-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  await paymentHistory.getByLabel('Correction reason').fill('Recorded from wrong account');
+  await paymentHistory.getByRole('button', { name: 'Void payment' }).click();
+  await expect(paymentHistory.getByText('Voided · Recorded from wrong account')).toBeVisible();
+  await page.screenshot({
+    path: resolve(pocketMoneyEvidence, 'admin-pocket-money-voided-phone-portrait.png'),
+    animations: 'disabled',
+    fullPage: true,
+  });
 });
 
 const states = [

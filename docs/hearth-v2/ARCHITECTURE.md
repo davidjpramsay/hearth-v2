@@ -132,7 +132,8 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `GET /api/v1/households/:id/meal-plan?start=` plus typed meal-plan and saved-meal commands
 - `GET /api/v1/households/:id/pocket-money?weekStart=&asOf=` for child weekly progress and amounts due
 - `PUT /api/v1/households/:id/members/:memberId/pocket-money-settings` for adult-only required weekly amount and payday changes
-- `POST /api/v1/households/:id/pocket-money-payments` for an adult-only, idempotent weekly payment snapshot
+- `POST /api/v1/households/:id/pocket-money-payments` for an adult-only, idempotent full or partial weekly payment snapshot with an optional note
+- `POST /api/v1/households/:id/pocket-money-payments/:paymentId/voids` for an adult-only, idempotent, reasoned correction that preserves the original record
 - adult-only recurring chore-template query/create/update commands
 - `GET /api/v1/households/:id/home` for curated presence, television power and power-safety state
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
@@ -147,10 +148,12 @@ idempotency receipts and explicit audit actions. The browser normalizes the sele
 original opaque avatar key needed for reset; responses and receipts never contain image bytes.
 The versioned same-origin URL prevents stale browser images without exposing a filesystem path.
 
-Pocket-money settings and payment commands use the same server-side adult session, validation,
+Pocket-money settings, partial-payment and void commands use the same server-side adult session, validation,
 idempotency receipt and audit path as other household writes. Chore completion and undo publish a
 `pocket-money.changed` invalidation; they do not create star/reward records. The forward-only
 `0009_pocket_money.sql` migration leaves the former reward tables dormant for upgrade safety.
+Migration `0014_pocket_money_payment_history.sql` adds payment notes, multiple immutable
+disbursements per child/week and one reasoned void per payment.
 
 `TodaySummary`, `WeekSchedule` and `MonthSchedule` expose read-only calendar sources and
 normalized events with opaque `calendarId`, inclusive household-local start/end

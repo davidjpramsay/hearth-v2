@@ -27,6 +27,7 @@ import {
   PhotoGallerySchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
+  PocketMoneyPaymentVoidCommandResultSchema,
   PocketMoneySettingsCommandResultSchema,
   RuntimeContextSchema,
   SavedMealCommandResultSchema,
@@ -65,6 +66,7 @@ import {
   type Payday,
   type PocketMoneyOverview,
   type PocketMoneyPaymentCommandResult,
+  type PocketMoneyPaymentVoidCommandResult,
   type PocketMoneySettingsCommandResult,
   type SavedMealCommandResult,
   type RuntimeContext,
@@ -120,10 +122,13 @@ export const queryKeys = {
   },
   meals: (startDate = getHearthRuntime().weekStart) =>
     [householdId(getHearthRuntime()), 'meals', startDate] as const,
-  get pocketMoney() {
-    const runtime = getHearthRuntime();
-    return [householdId(runtime), 'pocket-money', runtime.weekStart, runtime.localDate] as const;
+  get pocketMoneyRoot() {
+    return [householdId(getHearthRuntime()), 'pocket-money'] as const;
   },
+  pocketMoney: (
+    weekStart = getHearthRuntime().weekStart,
+    asOfDate = getHearthRuntime().localDate,
+  ) => [...queryKeys.pocketMoneyRoot, weekStart, asOfDate] as const,
   get choreTemplates() {
     return [householdId(getHearthRuntime()), 'chore-templates'] as const;
   },
@@ -285,9 +290,12 @@ export const hearthApi = {
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
     }),
-  getPocketMoney: () =>
+  getPocketMoney: (
+    weekStart = getHearthRuntime().weekStart,
+    asOfDate = getHearthRuntime().localDate,
+  ) =>
     request(
-      `${householdApiBase()}/pocket-money?weekStart=${getHearthRuntime().weekStart}&asOf=${getHearthRuntime().localDate}`,
+      `${householdApiBase()}/pocket-money?weekStart=${weekStart}&asOf=${asOfDate}`,
       PocketMoneyOverviewSchema,
     ),
   updatePocketMoneySettings: (
@@ -310,12 +318,23 @@ export const hearthApi = {
     memberId: string;
     weekStart: string;
     asOfDate: string;
+    amountCents?: number;
+    note?: string | null;
   }) =>
     request(`${householdApiBase()}/pocket-money-payments`, PocketMoneyPaymentCommandResultSchema, {
       method: 'POST',
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
     }),
+  voidPocketMoneyPayment: (
+    paymentId: string,
+    input: { requestId: string; asOfDate: string; reason: string },
+  ) =>
+    request(
+      `${householdApiBase()}/pocket-money-payments/${paymentId}/voids`,
+      PocketMoneyPaymentVoidCommandResultSchema,
+      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
+    ),
   getChoreTemplates: () =>
     request(`${householdApiBase()}/chore-templates`, ChoreTemplateListSchema, {
       headers: demoAdminHeaders,
@@ -502,6 +521,7 @@ export type HearthSavedMealCommandResult = SavedMealCommandResult;
 export type HearthPocketMoney = PocketMoneyOverview;
 export type HearthPocketMoneySettingsCommandResult = PocketMoneySettingsCommandResult;
 export type HearthPocketMoneyPaymentCommandResult = PocketMoneyPaymentCommandResult;
+export type HearthPocketMoneyPaymentVoidCommandResult = PocketMoneyPaymentVoidCommandResult;
 export type HearthChoreTemplates = ChoreTemplateList;
 export type HearthChoreTemplateCommandResult = ChoreTemplateCommandResult;
 

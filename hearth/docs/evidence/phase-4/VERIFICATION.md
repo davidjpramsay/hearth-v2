@@ -1,5 +1,9 @@
 # Phase 4 household-planning verification
 
+> Historical 2026-08-03 checkpoint. Its reward-ledger counts describe the then-current migration-5
+> implementation, not the active product. D-027/D-035 and the pocket-money evidence supersede those
+> runtime claims; the old tables remain only for forward-only database upgrades.
+
 Verified on 2026-08-03 in Australia/Perth with Node 25.9.0, pnpm 10.33.2 and
 Playwright Chromium 1.62.1.
 

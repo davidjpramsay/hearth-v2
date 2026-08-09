@@ -88,6 +88,7 @@ const photoRepository = new PhotoService(
 );
 const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository, database, {
   seedDemo: demoMode,
+  clock,
 });
 const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
   ? undefined
