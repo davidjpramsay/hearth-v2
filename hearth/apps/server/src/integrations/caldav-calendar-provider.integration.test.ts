@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,9 +8,14 @@ import type { DAVCalendar, DAVCalendarObject } from 'tsdav';
 import { DEMO_HOUSEHOLD_ID } from '../demo/seed.js';
 import { openHearthDatabase } from '../database.js';
 import { SqliteHearthRepository } from '../sqlite-hearth-repository.js';
-import { CalDavCalendarProvider } from './caldav-calendar-provider.js';
+import { CalDavCalendarProvider, discoverCalDavCalendars } from './caldav-calendar-provider.js';
 import { CalendarProviderError } from './calendar-provider.js';
-import { createCalendarRuntime, resolveCalendarRuntime } from './calendar-runtime.js';
+import {
+  createCalendarRuntime,
+  removeCalendarRuntimeConfig,
+  resolveCalendarRuntime,
+  writeCalendarRuntimeConfig,
+} from './calendar-runtime.js';
 
 const FAMILY_URL = 'https://calendar.example.test/calendars/family/';
 const EZRA_URL = 'https://calendar.example.test/calendars/ezra/';
@@ -111,6 +116,39 @@ describe('read-only CalDAV calendar provider', () => {
         eventExternalId: event.externalId,
       }),
     ).resolves.toMatchObject({ title: 'Swimming lesson moved', isRecurrenceException: true });
+  });
+
+  it('discovers safe read-only calendar choices before exact allowlisting', async () => {
+    const client = clientFixture({
+      calendars: [
+        calendar('Family', FAMILY_URL, '#C67A42FF'),
+        calendar('Ezra', EZRA_URL, '#2F766D'),
+      ],
+      objects: [],
+    });
+    await expect(
+      discoverCalDavCalendars(
+        {
+          serverUrl: 'https://calendar.example.test',
+          username: 'family@example.test',
+          appPassword: 'super-secret-password',
+        },
+        () => client,
+      ),
+    ).resolves.toEqual([
+      {
+        externalId: FAMILY_URL,
+        displayName: 'Family',
+        color: '#c67a42',
+        capabilities: { read: true, write: false },
+      },
+      {
+        externalId: EZRA_URL,
+        displayName: 'Ezra',
+        color: '#2f766d',
+        capabilities: { read: true, write: false },
+      },
+    ]);
   });
 
   it('refuses calendars outside the exact server-side allowlist', async () => {
@@ -286,6 +324,31 @@ describe('read-only CalDAV calendar provider', () => {
     await expect(privateRuntime?.provider.listCalendars()).rejects.toMatchObject({
       code: 'CONFIGURATION_REQUIRED',
     });
+  });
+
+  it('atomically writes the external runtime secret with owner-only permissions', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-calendar-secret-'));
+    const path = join(directory, 'calendar.json');
+    try {
+      await writeCalendarRuntimeConfig(path, {
+        version: 1,
+        provider: 'caldav',
+        serverUrl: 'https://calendar.example.test',
+        username: 'family@example.test',
+        appPassword: 'super-secret-password',
+        householdTimezone: 'Australia/Perth',
+        calendars: [{ displayName: 'Family', ownerMemberId: null }],
+      });
+      expect((await stat(path)).mode & 0o777).toBe(0o600);
+      expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({
+        provider: 'caldav',
+        appPassword: 'super-secret-password',
+      });
+      await removeCalendarRuntimeConfig(path);
+      await expect(stat(path)).rejects.toThrow();
+    } finally {
+      await rm(directory, { recursive: true });
+    }
   });
 });
 

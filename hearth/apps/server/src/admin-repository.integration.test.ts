@@ -55,7 +55,8 @@ describe('SQLite admin repository', () => {
   it('stores only a television credential hash and revokes its session', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-admin-'));
     temporaryDirectories.push(directory);
-    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    const databasePath = join(directory, 'hearth.sqlite');
+    const database = await openHearthDatabase(databasePath);
     const repository = new SqliteAdminRepository(database);
     const pairingSecret = 'b'.repeat(43);
     const pairing = await repository.createPairing(
@@ -98,5 +99,75 @@ describe('SQLite admin repository', () => {
       /not paired with Hearth/,
     );
     repository.close();
+  });
+
+  it('persists, replays and restores bounded local member profile photos', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-admin-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'hearth.sqlite');
+    const database = await openHearthDatabase(databasePath);
+    const repository = new SqliteAdminRepository(database);
+    const dataBase64 = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
+    const input = {
+      requestId: 'request_avatar_repository_update',
+      mimeType: 'image/jpeg' as const,
+      dataBase64,
+    };
+
+    const updated = await repository.updateMemberAvatar(
+      DEMO_HOUSEHOLD_ID,
+      'member_ezra',
+      DEMO_ADMIN_ACTOR_ID,
+      input,
+    );
+    const replay = await repository.updateMemberAvatar(
+      DEMO_HOUSEHOLD_ID,
+      'member_ezra',
+      DEMO_ADMIN_ACTOR_ID,
+      input,
+    );
+    const asset = await repository.getMemberAvatar(DEMO_HOUSEHOLD_ID, 'member_ezra');
+    const receipt = database
+      .prepare(
+        `SELECT response_json FROM command_receipts
+         WHERE request_id = 'request_avatar_repository_update'`,
+      )
+      .get() as { response_json: string };
+
+    expect(updated).toMatchObject({
+      replayed: false,
+      member: { avatarUrl: expect.stringContaining('/member_ezra/avatar?v=') },
+      audit: { action: 'member.avatar.update' },
+    });
+    expect(replay).toMatchObject({ replayed: true, member: updated.member });
+    expect(Buffer.from(asset.bytes)).toEqual(Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+    expect(receipt.response_json).not.toContain(dataBase64);
+
+    repository.close();
+    const restarted = new SqliteAdminRepository(await openHearthDatabase(databasePath));
+    const persisted = await restarted.getMemberAvatar(DEMO_HOUSEHOLD_ID, 'member_ezra');
+    expect(Buffer.from(persisted.bytes)).toEqual(Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+
+    const reset = await restarted.resetMemberAvatar(
+      DEMO_HOUSEHOLD_ID,
+      'member_ezra',
+      DEMO_ADMIN_ACTOR_ID,
+      'request_avatar_repository_reset',
+    );
+    expect(reset).toMatchObject({
+      replayed: false,
+      member: { avatarUrl: '/demo/ezra.png' },
+      audit: { action: 'member.avatar.reset', result: 'reversed' },
+    });
+    await expect(restarted.getMemberAvatar(DEMO_HOUSEHOLD_ID, 'member_ezra')).rejects.toThrow(
+      /could not be found/,
+    );
+    await expect(
+      restarted.updateMemberAvatar(DEMO_HOUSEHOLD_ID, 'member_ezra', 'member_ezra', {
+        ...input,
+        requestId: 'request_avatar_child_denied',
+      }),
+    ).rejects.toThrow(/administrator/);
+    restarted.close();
   });
 });

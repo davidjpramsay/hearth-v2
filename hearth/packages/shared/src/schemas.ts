@@ -610,6 +610,8 @@ export const AuditSummarySchema = z.object({
     'household.update',
     'member.create',
     'member.update',
+    'member.avatar.update',
+    'member.avatar.reset',
     'member.archive',
     'device.pair',
     'device.revoke',
@@ -626,6 +628,8 @@ export const AuditSummarySchema = z.object({
     'reward.award',
     'pocket-money.settings.update',
     'pocket-money.payment.record',
+    'calendar.connection.save',
+    'calendar.connection.remove',
     'home.action.execute',
   ]),
   targetId: OpaqueIdSchema,
@@ -677,6 +681,7 @@ export const RealtimeEventSchema = z.object({
     'pocket-money.changed',
     'chore-template.changed',
     'home.changed',
+    'calendar.changed',
   ]),
   householdId: OpaqueIdSchema,
   targetId: OpaqueIdSchema,
@@ -740,6 +745,82 @@ export const AdminOverviewSchema = z.object({
   localOnly: z.literal(true),
 });
 
+export const CalendarConnectionCalendarSchema = z.object({
+  displayName: z.string().trim().min(1).max(80),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  owner: MemberSchema.nullable(),
+});
+
+export const CalendarConnectionSettingsSchema = z.object({
+  id: OpaqueIdSchema,
+  provider: z.literal('caldav'),
+  label: z.string().trim().min(1).max(80),
+  serverHost: z.string().trim().min(1).max(253),
+  accountHint: z.string().trim().min(1).max(80),
+  status: z.enum(['ready', 'needs-attention']),
+  readOnly: z.literal(true),
+  calendars: z.array(CalendarConnectionCalendarSchema).min(1).max(40),
+  lastCheckedAt: TimestampSchema,
+  lastSuccessfulAt: TimestampSchema.nullable(),
+  message: z.string().trim().min(1).max(180),
+});
+
+const HttpsCalendarServerSchema = z
+  .url()
+  .max(500)
+  .refine((value) => /^https:\/\//i.test(value), 'Expected an HTTPS URL');
+
+export const CalendarConnectionTestRequestSchema = z
+  .object({
+    serverUrl: HttpsCalendarServerSchema,
+    username: z.string().trim().min(1).max(320),
+    appPassword: z.string().min(4).max(512),
+  })
+  .strict();
+
+export const CalendarConnectionOptionSchema = z.object({
+  id: OpaqueIdSchema,
+  displayName: z.string().trim().min(1).max(80),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
+export const CalendarConnectionTestResultSchema = z.object({
+  testId: OpaqueIdSchema,
+  provider: z.literal('caldav'),
+  serverHost: z.string().trim().min(1).max(253),
+  accountHint: z.string().trim().min(1).max(80),
+  availableCalendars: z.array(CalendarConnectionOptionSchema).min(1).max(40),
+  expiresAt: TimestampSchema,
+});
+
+const SelectedCalendarSchema = z.object({
+  calendarId: OpaqueIdSchema,
+  ownerMemberId: OpaqueIdSchema.nullable(),
+});
+
+export const SaveCalendarConnectionRequestSchema = CommandRequestSchema.extend({
+  testId: OpaqueIdSchema,
+  label: z.string().trim().min(1).max(80),
+  calendars: z.array(SelectedCalendarSchema).min(1).max(40),
+}).superRefine((value, context) => {
+  const ids = value.calendars.map(({ calendarId }) => calendarId);
+  if (new Set(ids).size !== ids.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['calendars'],
+      message: 'Choose each calendar only once',
+    });
+  }
+});
+
+export const RemoveCalendarConnectionRequestSchema = CommandRequestSchema;
+
+export const CalendarConnectionCommandResultSchema = z.object({
+  connection: CalendarConnectionSettingsSchema.nullable(),
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
 export const UpdateHouseholdRequestSchema = CommandRequestSchema.extend({
   name: z.string().trim().min(1).max(100),
   timezone: TimezoneSchema,
@@ -772,6 +853,23 @@ export const UpdateMemberRequestSchema = CommandRequestSchema.extend(
   MemberFieldsSchema.shape,
 ).superRefine(validateMemberPermissions);
 export const ArchiveMemberRequestSchema = CommandRequestSchema;
+
+export const UpdateMemberAvatarRequestSchema = CommandRequestSchema.extend({
+  mimeType: z.literal('image/jpeg'),
+  dataBase64: z
+    .string()
+    .min(4)
+    .max(1_400_000)
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Expected base64-encoded image data')
+    .refine((value) => value.length % 4 === 0, 'Expected complete base64-encoded image data'),
+});
+export const ResetMemberAvatarRequestSchema = CommandRequestSchema;
+
+export const MemberAvatarCommandResultSchema = z.object({
+  member: MemberSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
 
 export const CreatePairingRequestSchema = CommandRequestSchema.extend({
   deviceName: z.string().trim().min(1).max(80),
@@ -921,10 +1019,21 @@ export type AdminActor = z.infer<typeof AdminActorSchema>;
 export type PairedDevice = z.infer<typeof PairedDeviceSchema>;
 export type PairingRequest = z.infer<typeof PairingRequestSchema>;
 export type AdminOverview = z.infer<typeof AdminOverviewSchema>;
+export type CalendarConnectionCalendar = z.infer<typeof CalendarConnectionCalendarSchema>;
+export type CalendarConnectionSettings = z.infer<typeof CalendarConnectionSettingsSchema>;
+export type CalendarConnectionTestRequest = z.infer<typeof CalendarConnectionTestRequestSchema>;
+export type CalendarConnectionOption = z.infer<typeof CalendarConnectionOptionSchema>;
+export type CalendarConnectionTestResult = z.infer<typeof CalendarConnectionTestResultSchema>;
+export type SaveCalendarConnectionRequest = z.infer<typeof SaveCalendarConnectionRequestSchema>;
+export type RemoveCalendarConnectionRequest = z.infer<typeof RemoveCalendarConnectionRequestSchema>;
+export type CalendarConnectionCommandResult = z.infer<typeof CalendarConnectionCommandResultSchema>;
 export type UpdateHouseholdRequest = z.infer<typeof UpdateHouseholdRequestSchema>;
 export type CreateMemberRequest = z.infer<typeof CreateMemberRequestSchema>;
 export type UpdateMemberRequest = z.infer<typeof UpdateMemberRequestSchema>;
 export type ArchiveMemberRequest = z.infer<typeof ArchiveMemberRequestSchema>;
+export type UpdateMemberAvatarRequest = z.infer<typeof UpdateMemberAvatarRequestSchema>;
+export type ResetMemberAvatarRequest = z.infer<typeof ResetMemberAvatarRequestSchema>;
+export type MemberAvatarCommandResult = z.infer<typeof MemberAvatarCommandResultSchema>;
 export type CreatePairingRequest = z.infer<typeof CreatePairingRequestSchema>;
 export type CreateTvPairingSessionRequest = z.infer<typeof CreateTvPairingSessionRequestSchema>;
 export type TvPairingSession = z.infer<typeof TvPairingSessionSchema>;

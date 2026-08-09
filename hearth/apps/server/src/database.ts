@@ -15,6 +15,8 @@ const migrations = [
   { version: 7, url: new URL('./migrations/0007_tv_device_credentials.sql', import.meta.url) },
   { version: 8, url: new URL('./migrations/0008_photo_library.sql', import.meta.url) },
   { version: 9, url: new URL('./migrations/0009_pocket_money.sql', import.meta.url) },
+  { version: 10, url: new URL('./migrations/0010_member_avatars.sql', import.meta.url) },
+  { version: 11, url: new URL('./migrations/0011_calendar_connection_setup.sql', import.meta.url) },
 ] as const;
 
 export async function openHearthDatabase(path: string): Promise<InstanceType<typeof Database>> {

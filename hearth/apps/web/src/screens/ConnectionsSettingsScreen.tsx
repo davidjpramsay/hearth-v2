@@ -1,41 +1,62 @@
+import { Link } from 'react-router-dom';
+
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useAdminQuery } from '../hooks/useHearthQueries';
-
-const labels = {
-  calendar: 'Calendar',
-  'home-assistant': 'Home Assistant',
-} as const;
+import { useAdminQuery, useCalendarConnectionQuery } from '../hooks/useHearthQueries';
 
 export function ConnectionsSettingsScreen() {
   const admin = useAdminQuery();
-  if (admin.isPending) return <AdminLoading />;
+  const calendar = useCalendarConnectionQuery();
+  if (admin.isPending || calendar.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;
+  if (calendar.isError) return <AdminError message={calendar.error.message} />;
+  const homeAssistant = admin.data.integrations.find(
+    (integration) => integration.kind === 'home-assistant',
+  );
+
   return (
-    <AdminPage title="Connections" subtitle="Services Hearth uses directly">
+    <AdminPage title="Connections" subtitle="Private services Hearth reads from">
       <div className="connection-list">
-        {admin.data.integrations.map((integration) => (
-          <article className="connection-row" key={integration.kind}>
-            <span className="admin-setting-row__icon">
-              <Icon name="link" />
-            </span>
-            <div>
-              <strong>{labels[integration.kind]}</strong>
-              <p>{integration.message}</p>
-            </div>
-            <span className={`connection-badge connection-badge--${integration.status}`}>
-              {integration.status === 'healthy' ? 'Demo ready' : 'Not connected'}
-            </span>
-          </article>
-        ))}
+        <Link
+          className="connection-row connection-row--action focusable"
+          data-focus-id="connection-calendar"
+          to="/admin/connections/calendar"
+        >
+          <span className="admin-setting-row__icon">
+            <Icon name="calendar" />
+          </span>
+          <div>
+            <strong>Calendar</strong>
+            <p>
+              {calendar.data === null
+                ? 'Add an iCloud or CalDAV account and choose the calendars Hearth may read.'
+                : `${calendar.data.label} · ${calendar.data.message}`}
+            </p>
+          </div>
+          <span
+            className={`connection-badge${calendar.data === null ? '' : ' connection-badge--healthy'}`}
+          >
+            {calendar.data === null ? 'Set up' : 'Connected'}
+          </span>
+          <Icon className="connection-row__chevron" name="chevron-right" />
+        </Link>
+        <article className="connection-row">
+          <span className="admin-setting-row__icon">
+            <Icon name="home" />
+          </span>
+          <div>
+            <strong>Home Assistant</strong>
+            <p>{homeAssistant?.message ?? 'Home Assistant is not connected.'}</p>
+          </div>
+          <span className="connection-badge">Not connected</span>
+        </article>
       </div>
       <div className="phase-note">
-        <strong>How are connections protected?</strong>
+        <strong>Private and read-only</strong>
         <p>
-          Hearth’s private iCloud/CalDAV reader is ready. A real account stays disconnected until an
-          adult approves the exact calendar names, supplies a server-only app password and private
-          passkey sign-in is enabled. Home Assistant currently uses a fake adapter; a future live
-          token and script mapping remain server-only and never enter the TV or phone bundle.
+          Calendar passwords stay on the Hearth server and are never returned to this screen. Hearth
+          reads only the calendars an adult selects. It does not create, edit or delete calendar
+          events.
         </p>
       </div>
     </AdminPage>

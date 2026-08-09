@@ -99,6 +99,15 @@ fields are `version: 1`, `provider: "caldav"`, an HTTPS `serverUrl`, `username`,
 variable, Compose file, image layer, source document or command line. Demo mode
 rejects the path so visual/test runs cannot contact a live provider by accident.
 
+The companion Calendar setup page is now the supported way to prepare that
+same file. In demo mode it always uses fictional discovery and stores no
+credential. In private mode, `HEARTH_CALENDAR_CONFIG_PATH` must already resolve
+to an access-restricted secrets location writable by the Hearth server. After a
+successful test and exact selection, Hearth writes the JSON atomically with
+mode `0600` and activates it without restart. The page shows only the hostname
+and a masked account hint after save. If the path is missing or unwritable, save
+fails safely and the entered secret is not copied into SQLite or logs.
+
 Before the first live read, the owner must create a dedicated revocable iCloud
 app-specific password, approve the exact calendar names and place the secret
 file through the deployment secret mechanism. Start Hearth in private mode,
@@ -149,6 +158,8 @@ provider is deliberately unreachable.
 ### Photos/media
 
 - Hearth photo derivatives are disposable; original approved photos remain governed by the Synology's existing backup strategy.
+- Member profile-photo derivatives are identity settings stored inside Hearth SQLite and are covered
+  by the normal database backup/restore drill. The chosen original file is not retained by Hearth.
 - Do not imply that Hearth backups protect the entire media library.
 
 ## Update and rollback

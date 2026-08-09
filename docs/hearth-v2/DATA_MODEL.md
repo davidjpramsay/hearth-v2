@@ -35,6 +35,18 @@ Audit commands identify an actor as one of:
 - scheduled system job
 - external calendar synchroniser
 
+### Member avatar derivative
+
+- household/member identity, with a database guard that they match
+- normalized `image/jpeg` bytes, bounded to 1 MB
+- content-derived version key used only for same-origin cache invalidation
+- original opaque avatar key retained for restore
+- created/updated timestamps
+
+The chosen original image is not retained. Avatar command receipts and audit summaries contain only
+member/result metadata, never the base64 payload. This small identity image is separate from the
+Synology-backed family-photo collection.
+
 ## Calendar projection
 
 ### Calendar connection
@@ -45,6 +57,14 @@ Audit commands identify an actor as one of:
 - sync status, last success/error category
 - opaque incremental cursor plus bounded local-date sync window
 - read/write capabilities and approval state
+
+Migration `0011_calendar_connection_setup.sql` adds the adult-facing safe
+setup projection: provider type, family label, server hostname, masked account
+hint, readiness, selected calendar names/colours/owner mappings and test/success
+timestamps. It deliberately has no username, password, full server URL or raw
+collection URL column. The external mode-0600 secret file remains the only
+persistent credential source; a pending discovery test is memory-only and
+expires after ten minutes.
 
 ### Calendar
 
@@ -300,6 +320,10 @@ Migration `0006_home_assistant_projection.sql` adds the minimal cached household
 power/presence projection. Migration `0007_tv_device_credentials.sql` upgrades
 the pairing record for proof-of-possession exchange without storing a bearer
 secret.
+Migration `0008_photo_library.sql`, `0009_pocket_money.sql`,
+`0010_member_avatars.sql` and `0011_calendar_connection_setup.sql` add the
+approved photo projection, proportional pocket-money records, bounded member
+avatar derivatives and credential-free calendar-setup metadata respectively.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported daily and weekly occurrences on

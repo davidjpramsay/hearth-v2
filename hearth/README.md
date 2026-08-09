@@ -81,8 +81,11 @@ false`.
 Demo mode never contacts a calendar provider. For a separately approved private
 read check, set `HEARTH_MODE=private` and point
 `HEARTH_CALENDAR_CONFIG_PATH` to a JSON secret outside this repository. The
-file must use this shape (replace every placeholder only in the external secret
-file):
+server must be able to create or replace that file with mode `0600`. An adult
+then uses **More → Connections → Calendar** to test the account, choose exact
+calendars and save. The setup page writes this shape; it can also be prepared
+manually as a private deployment/bootstrap step (replace every placeholder only
+in the external secret file):
 
 ```json
 {
@@ -98,7 +101,9 @@ file):
 
 The allowlist is exact and non-empty. Ambiguous/missing names fail closed, all
 reported capabilities are read-only, and the server exposes no calendar write
-method. Never place this JSON in the workspace, `.env`, a browser `VITE_`
+method. In demo mode the same page uses fictional discovery and never writes a
+credential or contacts the entered server.
+Never place this JSON in the workspace, `.env`, a browser `VITE_`
 variable, image layer or shell command. Without the path, private mode reports
 calendar as not configured and continues serving local Hearth data.
 

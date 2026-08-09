@@ -51,6 +51,18 @@ live read has been attempted. Apple documents app-specific passwords for
 third-party calendar access; a credential must be created and supplied by the
 owner only when live validation is approved.
 
+The responsive Connections > Calendar workflow now creates that configuration
+without exposing it to browser storage or SQLite. An adult supplies an HTTPS
+CalDAV server address, account identifier and app-specific password; the server
+tests discovery and returns only opaque option IDs, names and colours. The
+adult then approves exact calendars and optional household-owner mappings. A
+successful private-mode save atomically writes the external JSON secret with
+owner-only file permissions and activates the read-only provider. SQLite keeps
+only the server hostname, masked account hint, selected names/colours/mappings,
+status and timestamps. The password and full server URL are held only in the
+short-lived in-process test result until save, then discarded. Demo mode uses a
+deterministic fake verifier and never contacts iCloud.
+
 Do not scrape calendar web interfaces or ingest private ICS links into client code.
 
 ## Home Assistant

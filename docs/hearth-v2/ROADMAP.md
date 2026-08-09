@@ -48,6 +48,14 @@ Implementation note (2026-08-03): Phase 2 is implemented. The phone Admin area m
 
 Recurring chore editing remains intentionally out of the Admin UI until the denser phone-oriented administration work in Phase 4. Phase 2 establishes and tests its server/domain persistence contract without putting dense editing on the television.
 
+Implementation extension (2026-08-08): People now changes profile photos through a phone-sized
+square crop flow with direct drag and pinch/scroll zoom plus a keyboard fallback. Portrait and
+landscape originals are normalized in the browser to a bounded 512×512 JPEG; typed adult-only
+update/reset commands persist one derivative in SQLite with idempotency receipts and audit events.
+Replace, restart persistence, restore-original, permission, malformed-image, migration-integrity
+and rendered companion flows are covered without coupling member identity photos to the Phase 7
+Synology gallery.
+
 ### Work
 
 - Implement household, member, role/capability and paired-device domain models.
@@ -102,6 +110,16 @@ through one typed 42-day query, compact colour-coded event titles with bounded
 overflow, an avatar/colour source key, deterministic D-pad navigation and a
 responsive Week/Month phone switch with a selected-date agenda. No calendar
 credential, write scope or migration was added.
+
+Implementation extension (2026-08-08): the missing companion calendar setup
+workflow is implemented. Adult-only typed routes test an HTTPS CalDAV account,
+return safe discovered calendar descriptors, persist exact selections/owner
+mappings, replay duplicate saves, audit save/removal and expose connected state
+without returning credentials. Private mode atomically updates the configured
+external secret path and activates the managed read-only provider; demo mode is
+fully fake and inert. Migration `0011_calendar_connection_setup.sql` persists
+safe setup metadata only. A real iCloud credentialed read remains an explicitly
+owner-controlled deployment validation action and has not been performed.
 
 ## Phase 4 — Lists, meals and pocket money
 
@@ -247,7 +265,9 @@ new Hearth application phase.
 Status as of 2026-08-05: in progress. The browser/server Photos slice is
 implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
-responsive gallery, ambient slideshow, immediate remote exit, cached-source
+responsive full-screen collage templates with no skinny leftover strips, calm
+reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
+slideshow, immediate remote exit, cached-source
 states and corrupt-image fallback. Live Synology selection/indexing,
 Home Assistant presence/quiet-hours coordination, production deployment,
 restore evidence and the household pilot remain open; Phase 7 is not complete.

@@ -35,6 +35,10 @@ A change is complete only when:
 - Recurrence exceptions and cancellations do not resurrect.
 - An unavailable provider leaves cached events visible and clearly marked stale.
 - A write conflict is explained and never silently overwrites the provider.
+- An adult can test a private HTTPS CalDAV account, select exact calendars,
+  assign optional people, save, reload and remove the connection from the phone
+  companion. Passwords and raw collection URLs never appear in responses,
+  SQLite, screenshots or logs; child and unauthenticated setup are rejected.
 
 Phase 3 evidence as of 2026-08-03: the first five read/degraded-mode scenarios
 are automated against the fake adapter, SQLite cache and rendered Today/Week/Month
@@ -45,6 +49,23 @@ persisted Today query. A credentialed iCloud read remains intentionally not run
 until the owner supplies an external app-specific credential and calendar
 allowlist. Write-conflict behaviour remains intentionally untested because no
 write scope or write implementation has been approved.
+
+Calendar-setup evidence as of 2026-08-08 adds shared-schema, Fastify,
+SQLite-restart/idempotency, migration, permission, secret-scan, responsive
+Playwright and accessibility coverage using the fake verifier. It does not
+constitute live iCloud validation.
+
+### Household people
+
+- An adult administrator can choose either a portrait or landscape profile photo, position its
+  square crop, save it, replace it and restore the original member avatar.
+- The normalized profile photo survives server restart, remains below the size limit and is served
+  from a same-origin opaque URL without exposing a source path or original image.
+- Child/guest mutation is rejected; retrying the same command is idempotent; audit summaries and
+  logs do not include base64 image data.
+- The phone-sized crop dialog supports direct drag plus two-finger pinch zoom without visible
+  position sliders. The crop surface remains keyboard-accessible with arrow, plus/minus and reset
+  controls, and failures stay family-readable and inline.
 
 ### Chores and pocket money
 
@@ -119,12 +140,21 @@ live-system commissioning tasks requiring owner approval.
 ### Photos and ambient mode
 
 - Approved photos rotate without visible distortion, incorrect orientation or filesystem exposure.
+- The normal gallery shows each visible photo once, fills its available screen region and chooses a
+  stable composition from the featured photo's orientation. In a mixed five-photo set each automatic
+  advance visibly changes the feature: a featured portrait becomes a useful tall anchor and a
+  featured landscape becomes a wide anchor. Portrait support tiles remain substantial, with no
+  skinny portrait column, shallow landscape ribbon or horizontal overflow. Rotation is no faster
+  than every 45 seconds and remains static under reduced motion. Phone landscape shows three
+  substantial rotating occupants rather than five compressed strips.
 - Remote/voice input exits ambient mode immediately.
 - The same static dashboard is not left illuminated overnight.
 - Missing/corrupt photos fail gracefully.
 
-Status as of 2026-08-05: the local browser/server slice passes mixed landscape
-and portrait rendering, path-safe typed responses, D-pad gallery selection,
+Status as of 2026-08-08: the local browser/server slice passes a unique-image,
+orientation-selected full-screen collage with bounded tile geometry, calm 45-second occupant
+rotation and a reduced-motion pause, mixed landscape and portrait rendering, path-safe typed
+responses, D-pad gallery selection,
 immediate keyboard/Back-equivalent ambient exit, real offline cached content,
 empty/unavailable/failure-retry states and a corrupt-derivative fallback at TV
 and phone viewports. Live Synology indexing, voice exit, physical-TCL rendering

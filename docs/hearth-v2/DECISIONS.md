@@ -300,3 +300,48 @@ Record durable choices here. New decisions should include date, status, context,
 - Context: The owner does not want an abstract star economy or reward catalogue. Each child instead has a real weekly pocket-money amount, and parents need an honest running figure and a record of what to pay.
 - Choice: Require an adult-configured weekly amount in Australian cents and payday for every participating child. For the Monday–Sunday week, calculate progress from completed chores divided by all non-excused, non-cancelled chores due through the selected as-of date. Apply that percentage directly to the weekly amount and round once to the nearest cent. Keep skipped chores in the denominator. Let an adult record one idempotent payment snapshot per child/week containing counts, percentage and amount. Remove star values from chore contracts and administration, remove reward routes/screens and stop chore completion/undo from writing reward-ledger entries.
 - Consequence: Chores can show a child-friendly weekly percentage and amount due while phone administration owns weekly settings and payment recording. A later chore/template change cannot rewrite an existing payment. Migration `0009_pocket_money.sql` is forward-only; the migration-0005 reward tables remain dormant so existing databases are not destructively rewritten, but no active API or UI reads or writes them. D-017 remains authoritative for the shared typed/idempotent/audited command path and is superseded only for its reward-ledger choice.
+
+## D-028 — Member profile photos are bounded local derivatives
+
+- Date: 2026-08-08
+- Status: accepted
+- Context: Member avatars are identity cues across calendars, chores and pocket money. People had no
+  way to change them, while the Synology family-photo gallery has different approval, orientation
+  and ambient-display responsibilities. Sending an arbitrary original image to every client or
+  storing filesystem paths would weaken local privacy and make television rendering unpredictable.
+- Choice: Let adult administrators choose a browser-decodable portrait or landscape image in the
+  companion People screen and position a square crop through direct drag and pinch/scroll zoom,
+  with arrow-key, plus/minus and reset fallbacks rather than three visible range sliders. Normalize
+  it client-side to a 512×512 JPEG, reject payloads over 1 MB or without valid JPEG framing, and
+  store one derivative per member in SQLite. Preserve the member's prior opaque avatar key for
+  restore. Serve the derivative through a versioned same-origin URL. Update and reset are typed,
+  idempotent and audited; image bytes are excluded from receipts, responses and logs.
+- Consequence: Member identity photos are editable, restart/backup safe and consistently shaped
+  without retaining the selected original or coupling People to the Synology photo adapter. SQLite
+  backups now include these small derivatives. A future PhotoKit picker may feed the same crop
+  contract, but Apple public-album scraping remains excluded by D-025.
+
+## D-029 — Calendar setup writes an external secret, not browser or database credentials
+
+- Date: 2026-08-08
+- Status: accepted
+- Context: The read-only CalDAV projection was complete, but connecting it
+  required manually authoring a server JSON file. The Connections screen only
+  described that process, so an adult could not add the calendar account from
+  Hearth. A generic shared-calendar URL would also bypass exact allowlisting
+  and encourage private links to cross the browser boundary.
+- Choice: Add an adult-only companion workflow for an HTTPS CalDAV server,
+  account and app-specific password. Test/discovery occurs on the server and
+  returns only opaque option IDs plus calendar names/colours. Keep the pending
+  secret in memory for ten minutes, require exact calendar selection and
+  optional person mapping, then atomically write the established external
+  version-1 config file with mode `0600`. Persist only masked setup metadata in
+  SQLite. Use a stable managed read-only provider so saving/removal can activate
+  or disconnect it without restarting. Demo mode uses a fake verifier and never
+  performs network access.
+- Consequence: Calendar setup is usable and auditable without making a browser,
+  SQLite backup or log a credential store. `HEARTH_CALENDAR_CONFIG_PATH` remains
+  mandatory for a private save; a public ICS/Apple Shared Calendar link is not
+  the supported connection method. Live iCloud validation still requires the
+  owner's app-specific credential and explicit approval, and calendar writes
+  remain absent.

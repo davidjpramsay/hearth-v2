@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { DemoScenario, PhotoAsset } from '@hearth/shared';
+import type { DemoScenario } from '@hearth/shared';
 
 import { hearthApi } from '../api/client';
 import { Icon } from '../components/Icon';
@@ -12,6 +12,14 @@ import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
 import { usePhotosQuery } from '../hooks/useHearthQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import {
+  arrangePhotoCollage,
+  nextPhotoId,
+  PHOTO_COLLAGE_ROTATION_MS,
+  photoCollageMode,
+  type PhotoCollageItem,
+  type PhotoCollageSlot,
+} from './photoCollage';
 
 export function PhotosScreen({
   scenario,
@@ -25,7 +33,14 @@ export function PhotosScreen({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [manualSelectionRevision, setManualSelectionRevision] = useState(0);
   const [ambient, setAmbient] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  const [compactLandscape, setCompactLandscape] = useState(
+    () => window.matchMedia('(max-width: 900px) and (orientation: landscape)').matches,
+  );
   const wasAmbient = useRef(false);
 
   const gallery = query.data;
@@ -34,19 +49,37 @@ export function PhotosScreen({
     gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ??
     gallery?.photos[0] ??
     null;
+  const collageItems = arrangePhotoCollage(gallery?.photos ?? [], selected?.id ?? null);
+  const collageMode =
+    collageItems[0] === undefined ? 'landscape' : photoCollageMode(collageItems[0].photo);
+  const visibleCollageItems = compactLandscape ? collageItems.slice(0, 3) : collageItems;
 
   useEffect(() => {
-    if (!ambient || gallery === undefined || gallery.photos.length < 2) return;
-    const timer = window.setInterval(() => {
-      setSelectedId((current) => {
-        const index = gallery.photos.findIndex((photo) => photo.id === current);
-        return (
-          gallery.photos[(index + 1 + gallery.photos.length) % gallery.photos.length]?.id ?? null
-        );
-      });
-    }, 10_000);
-    return () => window.clearInterval(timer);
-  }, [ambient, gallery]);
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px) and (orientation: landscape)');
+    const onChange = (event: MediaQueryListEvent) => setCompactLandscape(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion || gallery === undefined || gallery.photos.length < 2) return;
+    const timer = window.setTimeout(() => {
+      setSelectedId((current) =>
+        nextPhotoId(
+          gallery.photos,
+          current ?? gallery.featuredPhotoId ?? gallery.photos[0]?.id ?? null,
+        ),
+      );
+    }, PHOTO_COLLAGE_ROTATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [ambient, gallery, manualSelectionRevision, prefersReducedMotion, selectedId]);
 
   useEffect(() => {
     if (!ambient) return;
@@ -74,6 +107,11 @@ export function PhotosScreen({
     await hearthApi.resetDemo();
     await queryClient.invalidateQueries();
     navigate('/photos', { replace: true });
+  }
+
+  function selectPhoto(photoId: string) {
+    setSelectedId(photoId);
+    setManualSelectionRevision((current) => current + 1);
   }
 
   if (gallery.photos.length === 0) {
@@ -135,26 +173,17 @@ export function PhotosScreen({
         <span>{gallery.collection.source.message}</span>
       </div>
       <div className="photos-layout">
-        <figure className={`photos-hero photos-hero--${selected?.orientation ?? 'landscape'}`}>
-          {selected === null ? null : (
-            <PhotoAssetImage
-              alt={selected.alt}
-              className="photos-hero__image"
-              key={selected.id}
-              loading="eager"
-              src={selected.displayUrl}
-            />
-          )}
-        </figure>
-        <div className="photos-grid" aria-label="Family favourites">
-          {gallery.photos.map((photo, index, photos) => (
+        <div
+          aria-label="Family favourites. The featured photo changes about once every 45 seconds."
+          className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--count-${visibleCollageItems.length}`}
+        >
+          {visibleCollageItems.map((item) => (
             <PhotoThumbnail
-              index={index}
-              key={photo.id}
-              onSelect={() => setSelectedId(photo.id)}
-              photo={photo}
-              photos={photos}
-              selected={photo.id === selected?.id}
+              item={item}
+              items={visibleCollageItems}
+              key={item.photo.id}
+              onSelect={() => selectPhoto(item.photo.id)}
+              selected={item.photo.id === selected?.id}
             />
           ))}
         </div>
@@ -191,42 +220,74 @@ export function PhotosScreen({
 }
 
 function PhotoThumbnail({
-  index,
+  item,
+  items,
   onSelect,
-  photo,
-  photos,
   selected,
 }: {
-  index: number;
+  item: PhotoCollageItem;
+  items: PhotoCollageItem[];
   onSelect: () => void;
-  photo: PhotoAsset;
-  photos: PhotoAsset[];
   selected: boolean;
 }) {
-  const column = index % 2;
-  const up = index < 2 ? undefined : photos[index - 2];
-  const down = photos[index + 2];
-  const horizontal = photos[column === 0 ? index + 1 : index - 1];
+  const { photo, slot } = item;
+  const links = collageFocusLinks(slot, items);
+  const featured = slot === 'feature';
   return (
     <button
       aria-label={`Show photo: ${photo.alt}`}
       aria-pressed={selected}
-      className={`photo-thumbnail photo-thumbnail--${photo.orientation} focusable${selected ? ' photo-thumbnail--selected' : ''}`}
-      data-focus-down={`photos-thumb-${down?.id ?? photo.id}`}
+      className={`photo-thumbnail photo-thumbnail--${photo.orientation} photo-collage__tile photo-collage__tile--${slot} focusable${featured ? ` photos-hero photos-hero--${photo.orientation}` : ''}${selected ? ' photo-thumbnail--selected' : ''}`}
+      data-focus-down={links.down}
       data-focus-id={`photos-thumb-${photo.id}`}
-      data-focus-left={column === 0 ? 'nav-photos' : `photos-thumb-${horizontal?.id ?? photo.id}`}
-      data-focus-right={`photos-thumb-${column === 0 ? (horizontal?.id ?? photo.id) : photo.id}`}
-      data-focus-up={up === undefined ? 'photos-start-ambient' : `photos-thumb-${up.id}`}
+      data-focus-left={links.left}
+      data-focus-right={links.right}
+      data-focus-up={links.up}
+      data-photo-id={photo.id}
       onClick={onSelect}
-      style={
-        photo.orientation === 'portrait'
-          ? { aspectRatio: `${photo.width} / ${photo.height}` }
-          : undefined
-      }
       type="button"
     >
-      <PhotoAssetImage alt="" className="photo-thumbnail__image" src={photo.thumbnailUrl} />
+      <PhotoAssetImage
+        alt={featured ? photo.alt : ''}
+        className={
+          featured ? 'photo-thumbnail__image photos-hero__image' : 'photo-thumbnail__image'
+        }
+        key={`${photo.id}-${slot}`}
+        loading={featured ? 'eager' : 'lazy'}
+        src={featured ? photo.displayUrl : photo.thumbnailUrl}
+      />
       <span className="sr-only">{photo.orientation} photo</span>
     </button>
   );
+}
+
+function collageFocusLinks(
+  slot: PhotoCollageSlot,
+  items: PhotoCollageItem[],
+): { up: string; down: string; left: string; right: string } {
+  const bySlot = new Map(items.map((item) => [item.slot, `photos-thumb-${item.photo.id}`]));
+  const feature = bySlot.get('feature') ?? 'photos-start-ambient';
+  const support1 = bySlot.get('support-1') ?? feature;
+  const support2 = bySlot.get('support-2') ?? support1;
+  const support3 = bySlot.get('support-3') ?? support2;
+  const support4 = bySlot.get('support-4') ?? support3;
+
+  const links = {
+    feature: { up: 'photos-start-ambient', down: feature, left: 'nav-photos', right: support1 },
+    'support-1': {
+      up: 'photos-start-ambient',
+      down: support3,
+      left: feature,
+      right: support2,
+    },
+    'support-2': {
+      up: 'photos-start-ambient',
+      down: support4,
+      left: support1,
+      right: support2,
+    },
+    'support-3': { up: support1, down: support3, left: feature, right: support4 },
+    'support-4': { up: support2, down: support4, left: support3, right: support4 },
+  } satisfies Record<PhotoCollageSlot, { up: string; down: string; left: string; right: string }>;
+  return links[slot];
 }

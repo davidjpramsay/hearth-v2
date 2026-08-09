@@ -98,9 +98,21 @@ Can understand the current household state and use clearly exposed room controls
 
 - Rotate approved family photos from a designated Synology source.
 - Preserve aspect ratio and use tasteful cropping/background treatment.
+- Present the browsable Photos screen as a full-screen orientation-aware collage with no duplicate
+  image and no narrow leftover strips. Choose the composition from the visible photo orientations:
+  a portrait anchors a mixed five-photo set beside a 2×2 landscape grid, while an all-landscape set
+  uses a balanced large-feature mosaic. Cycle occupants and selection calmly about every 45
+  seconds without replacing a suitable portrait anchor with a skinny column; pause automatic
+  changes when the display requests reduced motion. On a phone held sideways, show three
+  substantial rotating occupants instead of compressing all five into shallow strips.
 - Overlay only minimal next-event or household information in ambient mode.
 - Exit immediately on remote input, voice request or important alert.
 - Never leave a static dashboard on overnight; allow Home Assistant to turn the panel off.
+
+Member profile photos are separate from the ambient family-photo collection. An adult administrator
+can choose a portrait or landscape image in People, directly drag and pinch/scroll a square crop,
+replace it later or restore the member's original avatar. Hearth keeps only a bounded local
+derivative; it does not retain or expose the selected original file.
 
 ### 7. Notices and household summary
 

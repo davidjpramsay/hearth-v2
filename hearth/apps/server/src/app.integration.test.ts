@@ -256,6 +256,8 @@ describe('Hearth v2 API', () => {
         'req.headers.cookie',
         '*.token',
         '*.password',
+        '*.appPassword',
+        '*.dataBase64',
       ]),
     );
     const app = server();
@@ -300,6 +302,128 @@ describe('Hearth v2 API', () => {
     expect(child.json().error.code).toBe('FORBIDDEN');
     expect(unauthenticated.statusCode).toBe(401);
     expect(unauthenticated.json().error.code).toBe('UNAUTHENTICATED');
+  });
+
+  it('tests, selects, replays and removes a credential-safe calendar connection', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const password = 'fictional-app-password';
+    const tested = await app.inject({
+      method: 'POST',
+      url: `${root}/calendar-connection-tests`,
+      headers,
+      payload: {
+        serverUrl: 'https://caldav.icloud.com',
+        username: 'fictional@example.com',
+        appPassword: password,
+      },
+    });
+    expect(tested.statusCode).toBe(200);
+    expect(tested.json().availableCalendars).toHaveLength(3);
+    expect(JSON.stringify(tested.json())).not.toContain(password);
+    const family = tested.json().availableCalendars[0] as { id: string };
+    const ezra = tested.json().availableCalendars[1] as { id: string };
+    const payload = {
+      requestId: 'request_calendar_http_save',
+      testId: tested.json().testId as string,
+      label: 'Family calendars',
+      calendars: [
+        { calendarId: family.id, ownerMemberId: null },
+        { calendarId: ezra.id, ownerMemberId: 'member_ezra' },
+      ],
+    };
+    const saved = await app.inject({
+      method: 'PUT',
+      url: `${root}/calendar-connection`,
+      headers,
+      payload,
+    });
+    const replay = await app.inject({
+      method: 'PUT',
+      url: `${root}/calendar-connection`,
+      headers,
+      payload,
+    });
+    const read = await app.inject({
+      method: 'GET',
+      url: `${root}/calendar-connection`,
+      headers,
+    });
+    const child = await app.inject({
+      method: 'GET',
+      url: `${root}/calendar-connection`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({
+      replayed: false,
+      connection: {
+        provider: 'caldav',
+        serverHost: 'caldav.icloud.com',
+        accountHint: 'f•••@example.com',
+        readOnly: true,
+        calendars: [
+          { displayName: 'Family', owner: null },
+          { displayName: 'Ezra', owner: { id: 'member_ezra' } },
+        ],
+      },
+      audit: { action: 'calendar.connection.save' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+    expect(read.json()).toMatchObject(saved.json().connection);
+    expect(JSON.stringify(read.json())).not.toContain(password);
+    expect(child.statusCode).toBe(403);
+
+    const removed = await app.inject({
+      method: 'POST',
+      url: `${root}/calendar-connection/removals`,
+      headers,
+      payload: { requestId: 'request_calendar_http_remove' },
+    });
+    const after = await app.inject({
+      method: 'GET',
+      url: `${root}/calendar-connection`,
+      headers,
+    });
+    expect(removed.json()).toMatchObject({
+      connection: null,
+      audit: { action: 'calendar.connection.remove', result: 'reversed' },
+    });
+    expect(after.json()).toBeNull();
+  });
+
+  it('returns stable calendar setup validation and sign-in errors', async () => {
+    const app = server();
+    const url = '/api/v1/households/household_hearth_demo/calendar-connection-tests';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const insecure = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'http://calendar.example.com',
+        username: 'fictional@example.com',
+        appPassword: 'demo-password',
+      },
+    });
+    const rejected = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'https://caldav.icloud.com',
+        username: 'fictional@example.com',
+        appPassword: 'wrong-password',
+      },
+    });
+    expect(insecure.statusCode).toBe(400);
+    expect(insecure.json().error.code).toBe('VALIDATION_ERROR');
+    expect(rejected.statusCode).toBe(503);
+    expect(rejected.json().error).toMatchObject({
+      code: 'INTEGRATION_UNAVAILABLE',
+      retryable: false,
+    });
   });
 
   it('updates household and member setup with companion audit summaries', async () => {
@@ -351,6 +475,82 @@ describe('Hearth v2 API', () => {
         expect.objectContaining({ action: 'member.create', source: 'companion' }),
       ]),
     );
+  });
+
+  it('stores, serves and restores a member profile photo through the typed command routes', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo/members/member_ezra/avatar';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const dataBase64 = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
+    const update = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers,
+      payload: {
+        requestId: 'request_avatar_http_update',
+        mimeType: 'image/jpeg',
+        dataBase64,
+      },
+    });
+    const replay = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers,
+      payload: {
+        requestId: 'request_avatar_http_update',
+        mimeType: 'image/jpeg',
+        dataBase64,
+      },
+    });
+    const image = await app.inject({ method: 'GET', url: root });
+    const childDenied = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: {
+        requestId: 'request_avatar_http_child',
+        mimeType: 'image/jpeg',
+        dataBase64,
+      },
+    });
+    const invalid = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers,
+      payload: {
+        requestId: 'request_avatar_http_invalid',
+        mimeType: 'image/jpeg',
+        dataBase64: Buffer.from('not-a-jpeg').toString('base64'),
+      },
+    });
+    const reset = await app.inject({
+      method: 'POST',
+      url: `${root}-resets`,
+      headers,
+      payload: { requestId: 'request_avatar_http_reset' },
+    });
+    const removed = await app.inject({ method: 'GET', url: root });
+
+    expect(update).toMatchObject({ statusCode: 200 });
+    expect(update.json()).toMatchObject({
+      replayed: false,
+      member: { avatarUrl: expect.stringContaining('/member_ezra/avatar?v=') },
+      audit: { action: 'member.avatar.update' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+    expect(image.headers).toMatchObject({
+      'content-type': 'image/jpeg',
+      'x-content-type-options': 'nosniff',
+    });
+    expect(image.rawPayload).toEqual(Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+    expect(childDenied.statusCode).toBe(403);
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+    expect(reset.json()).toMatchObject({
+      member: { avatarUrl: '/demo/ezra.png' },
+      audit: { action: 'member.avatar.reset' },
+    });
+    expect(removed.statusCode).toBe(404);
   });
 
   it('pairs, observes and revokes a television through a short-lived code', async () => {

@@ -9,6 +9,7 @@ import { ChoresScreen } from './screens/ChoresScreen';
 import { AdminScreen } from './screens/AdminScreen';
 import { AppearanceSettingsScreen } from './screens/AppearanceSettingsScreen';
 import { ConnectionsSettingsScreen } from './screens/ConnectionsSettingsScreen';
+import { CalendarConnectionSettingsScreen } from './screens/CalendarConnectionSettingsScreen';
 import { HouseholdSettingsScreen } from './screens/HouseholdSettingsScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { ListsScreen } from './screens/ListsScreen';
@@ -39,6 +40,8 @@ const defaultFocus: Record<string, string> = {
   '/admin/routines': 'routine-template-template_school_bag',
   '/admin/pocket-money': 'pocket-amount-member_ezra',
   '/admin/photos': 'admin-back',
+  '/admin/connections': 'connection-calendar',
+  '/admin/connections/calendar': 'calendar-server-url',
   '/pair': 'pair-new-code',
 };
 
@@ -80,6 +83,7 @@ export function App() {
         <Route path="/admin/people" element={<PeopleSettingsScreen />} />
         <Route path="/admin/televisions" element={<TelevisionsSettingsScreen />} />
         <Route path="/admin/connections" element={<ConnectionsSettingsScreen />} />
+        <Route path="/admin/connections/calendar" element={<CalendarConnectionSettingsScreen />} />
         <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
         <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
         <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />

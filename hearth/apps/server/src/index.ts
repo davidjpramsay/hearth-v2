@@ -2,8 +2,20 @@ import { fileURLToPath } from 'node:url';
 
 import { SqliteAdminRepository } from './admin-repository.js';
 import { buildServer } from './app.js';
+import {
+  CalendarConnectionService,
+  CalDavCalendarConnectionVerifier,
+  FakeCalendarConnectionVerifier,
+  type CalendarCredentialStore,
+} from './calendar-connection-repository.js';
 import { openHearthDatabase } from './database.js';
-import { resolveCalendarRuntime } from './integrations/calendar-runtime.js';
+import {
+  ManagedCalendarProvider,
+  createCalendarRuntime,
+  removeCalendarRuntimeConfig,
+  resolveCalendarRuntime,
+  writeCalendarRuntimeConfig,
+} from './integrations/calendar-runtime.js';
 import {
   FakeHomeAssistantProvider,
   UnconfiguredHomeAssistantProvider,
@@ -28,13 +40,15 @@ const calendarConfigPath = process.env.HEARTH_CALENDAR_CONFIG_PATH;
 const calendarRuntime = await resolveCalendarRuntime({ demoMode, configPath: calendarConfigPath });
 const database = await openHearthDatabase(databasePath);
 const adminRepository = new SqliteAdminRepository(database);
+const managedCalendarProvider = new ManagedCalendarProvider();
+if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);
 const repository = new SqliteHearthRepository(
   database,
-  calendarRuntime === null
+  demoMode
     ? {}
     : {
-        calendarProvider: calendarRuntime.provider,
-        ownerForCalendarExternalId: calendarRuntime.ownerForCalendarExternalId,
+        calendarProvider: managedCalendarProvider,
+        ownerForCalendarExternalId: managedCalendarProvider.ownerForCalendarExternalId,
       },
 );
 const planningRepository = new SqlitePlanningRepository(database);
@@ -46,6 +60,30 @@ const photoRepository = new PhotoService(
   demoMode ? new FakePhotoSourceProvider() : new UnconfiguredPhotoSourceProvider(),
 );
 const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository, database);
+const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
+  ? undefined
+  : {
+      save: async (config) => {
+        if (calendarConfigPath === undefined) {
+          throw new Error('HEARTH_CALENDAR_CONFIG_PATH is not configured.');
+        }
+        await writeCalendarRuntimeConfig(calendarConfigPath, config);
+        managedCalendarProvider.configure(createCalendarRuntime(config));
+      },
+      remove: async () => {
+        if (calendarConfigPath === undefined) return;
+        await removeCalendarRuntimeConfig(calendarConfigPath);
+        managedCalendarProvider.disconnect();
+      },
+    };
+const calendarConnectionRepository = new CalendarConnectionService(
+  adminRepository,
+  demoMode ? new FakeCalendarConnectionVerifier() : new CalDavCalendarConnectionVerifier(),
+  {
+    database,
+    ...(calendarCredentialStore === undefined ? {} : { credentialStore: calendarCredentialStore }),
+  },
+);
 
 const server = buildServer({
   demoMode,
@@ -55,6 +93,7 @@ const server = buildServer({
   homeRepository,
   photoRepository,
   pocketMoneyRepository,
+  calendarConnectionRepository,
 });
 
 try {

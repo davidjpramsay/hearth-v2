@@ -102,6 +102,19 @@ Event cards must express start time, title, owner/source and conflicts. Location
 ### Photos
 
 - Full-screen ambient slideshow.
+- The normal Photos screen is a full-screen five-image collage rather than a large image plus a
+  duplicated thumbnail. The selected or automatically advanced photo owns the feature region so
+  every rotation is visually meaningful. A featured portrait becomes a tall anchor beside a 2×2
+  support grid; a featured landscape becomes a wide anchor beside the same balanced support grid.
+  Portraits used as support photos remain substantial cropped tiles rather than skinny columns, and
+  landscapes never become shallow ribbons. Phone portrait uses a
+  three-row mosaic so every tile remains useful rather than stacking several narrow strips. Phone
+  landscape shows three substantial images at a time and lets rotation bring the remaining photos
+  through, rather than squeezing the five-image television composition into shallow ribbons.
+- The collage advances its selected photo, feature region and visible occupants every 45 seconds
+  with a restrained image settle while choosing geometry from the featured photo's orientation.
+  Manual D-pad/touch selection restarts that interval, and reduced-motion mode leaves the collage
+  static.
 - Optional minimal overlay: time, next event and discreet notification badge.
 - Immediate remote exit.
 - Photo source/error state should never reveal filesystem paths or technical details to the household.
@@ -118,6 +131,12 @@ Event cards must express start time, title, owner/source and conflicts. Location
 - Household, member, integration and permissions management.
 - Optimised for the companion browser rather than the family TV.
 - The TV may show connection status and pairing QR/code but should not expose secrets.
+- Connections > Calendar offers an adult-only, phone-first setup sequence: enter
+  an HTTPS CalDAV address/account/app-specific password, test, review the
+  discovered names, select the exact calendars, optionally map each to a person,
+  then save. Clear the password field immediately after testing. Connected state
+  shows only hostname, masked account, selected calendars, owner cues and
+  read-only status; replacement and removal require explicit actions.
 
 ### Appearance and evening comfort
 
@@ -169,6 +188,13 @@ Do not substitute raw JSON, spinners without context or toast-only errors.
 - Colour is never the only person/calendar/status signal.
 - People setup offers a curated twelve-colour Hearth palette. Every swatch has a visible name,
   native radio semantics, and a checked/focus treatment so colour is never the only selection cue.
+- Each existing person has a clearly labelled profile-photo control. After choosing any
+  browser-decodable portrait or landscape image, an accessible modal previews the square crop and
+  lets the companion user drag to position and pinch or scroll to zoom. Do not expose three
+  technical range controls for this phone-first task. The crop surface itself remains keyboard
+  operable: arrows move the image, plus/minus change zoom and Home resets it. Save, cancel, replace
+  and restore-original states remain usable on a 390-pixel companion; failure stays inline with
+  retry.
 - Respect reduced-motion settings.
 - Avoid time-limited interaction.
 - Announce important state changes to assistive technology in the web companion.

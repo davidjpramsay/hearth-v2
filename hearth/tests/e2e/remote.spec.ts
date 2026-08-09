@@ -221,6 +221,29 @@ test('long chore navigation keeps the final row visible', async ({ page }) => {
   await expect(last).toBeInViewport();
 });
 
+test('pocket-money summary matches its chore-row width on television and phone', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const viewport of [
+    { width: 3840, height: 2160 },
+    { width: 1920, height: 1080 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/chores');
+    const ezra = page.locator('.chore-group').filter({
+      has: page.getByRole('heading', { name: 'Ezra' }),
+    });
+    const summaryBox = await ezra.locator('.chore-pocket-summary').boundingBox();
+    const choreBox = await ezra.locator('.chore-row').first().boundingBox();
+    if (summaryBox === null || choreBox === null) throw new Error('Expected visible chore layout');
+
+    expect(Math.abs(summaryBox.x - choreBox.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(summaryBox.width - choreBox.width)).toBeLessThanOrEqual(1);
+  }
+});
+
 test('reduced motion removes meaningful focus transforms', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/today');

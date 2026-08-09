@@ -19,6 +19,7 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
+  await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   for (let step = 0; step < 6; step += 1) await page.keyboard.press('ArrowDown');
@@ -28,24 +29,25 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
   await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
   const breakfast = page.locator('[data-focus-id="photos-thumb-photo_family_breakfast"]');
   await expect(breakfast).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   const portrait = page.locator('[data-focus-id="photos-thumb-photo_garden_morning"]');
   await expect(portrait).toBeFocused();
   const portraitBox = await portrait.boundingBox();
-  expect(portraitBox?.height).toBeGreaterThan((portraitBox?.width ?? 0) * 1.4);
-  await expect(portrait.locator('img')).toHaveCSS('object-fit', 'contain');
+  expect(portraitBox?.width).toBeGreaterThanOrEqual(250);
+  expect(portraitBox?.height).toBeGreaterThanOrEqual(250);
+  await expect(portrait.locator('img')).toHaveCSS('object-fit', 'cover');
   await page.keyboard.press('Enter');
-  await expect(page.locator('.photos-hero--portrait')).toBeVisible();
-  await expect(page.locator('.photos-hero__image')).toHaveCSS('object-fit', 'contain');
+  const portraitFeature = page.locator('.photos-hero--portrait');
+  await expect(portraitFeature).toBeVisible();
+  const portraitFeatureBox = await portraitFeature.boundingBox();
+  expect(portraitFeatureBox?.height).toBeGreaterThan((portraitFeatureBox?.width ?? 0) * 1.4);
+  await expect(page.locator('.photos-hero__image')).toHaveCSS('object-fit', 'cover');
   await expect(page.locator('.photos-hero figcaption')).toHaveCount(0);
   await expect(page.locator('.photos-hero')).not.toContainText(
     'Ezra and Maya water herbs in the family garden.',
   );
 
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await expect(page.locator('[data-focus-id="photos-start-ambient"]')).toBeFocused();
   await page.keyboard.press('Enter');
@@ -57,6 +59,149 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   await expect(page.locator('[data-focus-id="nav-photos"]')).toBeFocused();
+});
+
+test('the collage uses each photo once, fits both orientations and rotates calmly', async ({
+  page,
+}) => {
+  const consoleProblems: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      consoleProblems.push(message.text());
+    }
+  });
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
+      nativeSetTimeout(
+        handler,
+        timeout === 45_000 ? 600 : timeout,
+        ...args,
+      )) as typeof window.setTimeout;
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/photos');
+  await expect(page).toHaveTitle(/Hearth/);
+  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
+
+  const tiles = page.locator('.photo-collage__tile');
+  await expect(tiles).toHaveCount(5);
+  const photoIds = await tiles.evaluateAll((elements) =>
+    elements.map((element) => (element as HTMLElement).dataset.photoId),
+  );
+  expect(new Set(photoIds).size).toBe(5);
+
+  const landscapeFeature = page.locator('.photo-collage__tile--feature');
+  const portraitSupport = page.locator('[data-photo-id="photo_garden_morning"]');
+  const landscapeSupport = page.locator('.photo-collage__tile--support-1');
+  const [featureBox, portraitBox, landscapeBox] = await Promise.all([
+    landscapeFeature.boundingBox(),
+    portraitSupport.boundingBox(),
+    landscapeSupport.boundingBox(),
+  ]);
+  expect(featureBox?.width).toBeGreaterThan((landscapeBox?.width ?? 0) * 1.8);
+  expect(featureBox?.height).toBeGreaterThan((landscapeBox?.height ?? 0) * 1.8);
+  expect(portraitBox?.width).toBeGreaterThanOrEqual(250);
+  expect(portraitBox?.height).toBeGreaterThanOrEqual(250);
+
+  for (const photoId of photoIds) {
+    await page.locator(`[data-photo-id="${photoId}"]`).click();
+    await expect(page.locator('.photo-collage__tile--feature')).toHaveAttribute(
+      'data-photo-id',
+      photoId!,
+    );
+    await expect(
+      page.locator(
+        photoId === 'photo_garden_morning'
+          ? '.photos-collage--portrait'
+          : '.photos-collage--landscape',
+      ),
+    ).toBeVisible();
+    const boxes = await tiles.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { height: rect.height, width: rect.width };
+      }),
+    );
+    expect(boxes.every((box) => box.width >= 250 && box.height >= 250)).toBe(true);
+  }
+
+  const overflow = await page.locator('.photos-collage').evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  const phoneBoxes = await page.locator('.photo-collage__tile').evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    }),
+  );
+  expect(phoneBoxes.every((box) => box.width >= 130 && box.height >= 130)).toBe(true);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.reload();
+  const landscapePhoneTiles = page.locator('.photo-collage__tile');
+  await expect(landscapePhoneTiles).toHaveCount(3);
+  const landscapePhoneBoxes = await landscapePhoneTiles.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    }),
+  );
+  expect(landscapePhoneBoxes.every((box) => box.width >= 160 && box.height >= 200)).toBe(true);
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.reload();
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_family_breakfast',
+  );
+  await expect(page.locator('.photos-collage--landscape')).toBeVisible();
+  await page.waitForTimeout(350);
+  await page.locator('.photos-hero').click();
+  await page.waitForTimeout(350);
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_family_breakfast',
+  );
+  await expect(page.locator('.photos-hero')).not.toHaveAttribute(
+    'data-photo-id',
+    'photo_family_breakfast',
+    { timeout: 2_000 },
+  );
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_park_football',
+  );
+  expect(consoleProblems).toEqual([]);
+});
+
+test('reduced motion keeps the Photos collage still', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
+      nativeSetTimeout(
+        handler,
+        timeout === 45_000 ? 100 : timeout,
+        ...args,
+      )) as typeof window.setTimeout;
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/photos');
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_family_breakfast',
+  );
+  await page.waitForTimeout(350);
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_family_breakfast',
+  );
 });
 
 test('Photos has deliberate empty, cached-unavailable and failure/retry states', async ({
@@ -101,7 +246,10 @@ test('a corrupt display derivative fails without revealing its URL', async ({ pa
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
   await page.locator('[data-focus-id="photos-thumb-photo_bush_camping"]').click();
-  const fallback = page.getByRole('img', { name: /toast marshmallows.*unavailable/i });
+  await page.getByRole('button', { name: 'Start ambient' }).click();
+  const fallback = page
+    .getByRole('dialog', { name: /Ambient family photo/ })
+    .getByRole('img', { name: /toast marshmallows.*unavailable/i });
   await expect(fallback).toBeVisible();
   await expect(page.locator('body')).not.toContainText('bush-camping.webp');
 });
@@ -141,7 +289,9 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto('/photos');
     await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
-    await expect(page.locator('.photos-grid img')).toHaveCount(5);
+    await expect(page.locator('.photos-grid img')).toHaveCount(
+      viewport.name === 'phone-landscape' ? 3 : 5,
+    );
     await page.screenshot({
       path: resolve(evidence, `photos-${viewport.name}.png`),
       animations: 'disabled',

@@ -85,6 +85,7 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
 test('television rail opens the per-display Appearance control', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
+  await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();

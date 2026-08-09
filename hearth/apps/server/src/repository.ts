@@ -31,6 +31,7 @@ import {
 export class RepositoryError extends Error {
   constructor(
     readonly code:
+      | 'VALIDATION_ERROR'
       | 'UNAUTHENTICATED'
       | 'NOT_FOUND'
       | 'CONFLICT'

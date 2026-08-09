@@ -337,7 +337,8 @@ test('@visual Phase 3 cached provider-outage state', async ({ page }) => {
 test('@visual Phase 3 CalDAV connection boundary on phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/connections');
-  await expect(page.getByText('private iCloud/CalDAV reader')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Calendar/ })).toBeVisible();
+  await expect(page.getByText('Calendar passwords stay on the Hearth server')).toBeVisible();
   await expect(page.getByText('Jellyfin', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Music Assistant', { exact: true })).toHaveCount(0);
   await page.screenshot({

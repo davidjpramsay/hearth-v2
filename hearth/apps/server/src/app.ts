@@ -20,6 +20,10 @@ import {
   AssistDaySummaryResultSchema,
   ApprovePairingRequestSchema,
   ArchiveMemberRequestSchema,
+  CalendarConnectionCommandResultSchema,
+  CalendarConnectionSettingsSchema,
+  CalendarConnectionTestRequestSchema,
+  CalendarConnectionTestResultSchema,
   ChoreCommandResultSchema,
   ChoreListSchema,
   ChoreSkipResultSchema,
@@ -43,6 +47,7 @@ import {
   LocalDateSchema,
   MealCommandResultSchema,
   MealPlanSchema,
+  MemberAvatarCommandResultSchema,
   type Member,
   MemberSchema,
   MonthKeySchema,
@@ -56,14 +61,18 @@ import {
   PocketMoneySettingsCommandResultSchema,
   RealtimeEventSchema,
   RecordPocketMoneyPaymentRequestSchema,
+  RemoveCalendarConnectionRequestSchema,
+  ResetMemberAvatarRequestSchema,
   RevokeDeviceRequestSchema,
   SavedMealCommandResultSchema,
+  SaveCalendarConnectionRequestSchema,
   TodaySummarySchema,
   TvDeviceSessionSchema,
   TvPairingSessionSchema,
   UpdateHouseholdRequestSchema,
   UpdateChoreTemplateRequestSchema,
   UpdateMemberRequestSchema,
+  UpdateMemberAvatarRequestSchema,
   UpdatePocketMoneySettingsRequestSchema,
   WeekScheduleSchema,
   UpsertMealPlanRequestSchema,
@@ -75,6 +84,11 @@ import {
   credentialHash,
   type AdminRepository,
 } from './admin-repository.js';
+import {
+  CalendarConnectionService,
+  FakeCalendarConnectionVerifier,
+  type CalendarConnectionRepository,
+} from './calendar-connection-repository.js';
 import { RealtimeHub } from './realtime.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
@@ -113,6 +127,7 @@ export const LOGGER_REDACT_PATHS = [
   'request.headers.authorization',
   '*.token',
   '*.password',
+  '*.dataBase64',
   '*.appPassword',
 ] as const;
 
@@ -128,6 +143,7 @@ export interface BuildServerOptions {
   homeRepository?: HomeRepository;
   photoRepository?: PhotoRepository;
   pocketMoneyRepository?: PocketMoneyRepository;
+  calendarConnectionRepository?: CalendarConnectionRepository;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -144,7 +160,24 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     (demoMode ? new PhotoService() : new PhotoService(new UnconfiguredPhotoSourceProvider()));
   const pocketMoneyRepository =
     options.pocketMoneyRepository ?? new PocketMoneyService(repository, adminRepository);
+  const calendarConnectionRepository =
+    options.calendarConnectionRepository ??
+    new CalendarConnectionService(
+      adminRepository,
+      new FakeCalendarConnectionVerifier(),
+      demoMode
+        ? {}
+        : {
+            credentialStore: {
+              save: async () => {
+                throw new Error('Private calendar secret storage is not configured.');
+              },
+              remove: async () => undefined,
+            },
+          },
+    );
   const server = Fastify({
+    bodyLimit: 1_500_000,
     logger:
       options.logger === false
         ? false
@@ -213,6 +246,73 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     );
   });
 
+  server.get('/api/v1/households/:householdId/calendar-connection', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      const connection = await calendarConnectionRepository.get(
+        params.householdId,
+        actorId(request.headers, options),
+      );
+      return connection === null ? null : CalendarConnectionSettingsSchema.parse(connection);
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/calendar-connection-tests',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(CalendarConnectionTestRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        CalendarConnectionTestResultSchema.parse(
+          await calendarConnectionRepository.test(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/calendar-connection', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(SaveCalendarConnectionRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = CalendarConnectionCommandResultSchema.parse(
+        await calendarConnectionRepository.save(
+          params.householdId,
+          actorId(request.headers, options),
+          body,
+        ),
+      );
+      realtime.publish(params.householdId, 'calendar.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/calendar-connection/removals',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(RemoveCalendarConnectionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = CalendarConnectionCommandResultSchema.parse(
+          await calendarConnectionRepository.remove(
+            params.householdId,
+            actorId(request.headers, options),
+            body.requestId,
+          ),
+        );
+        realtime.publish(params.householdId, 'calendar.changed', result.audit.targetId);
+        return result;
+      });
+    },
+  );
+
   server.patch('/api/v1/households/:householdId/settings', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     const body = parse(UpdateHouseholdRequestSchema, request.body, reply);
@@ -264,6 +364,59 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return member;
     });
   });
+
+  server.get('/api/v1/households/:householdId/members/:memberId/avatar', async (request, reply) => {
+    const params = parse(MemberParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      const asset = await adminRepository.getMemberAvatar(params.householdId, params.memberId);
+      return reply
+        .header('Cache-Control', 'private, max-age=31536000, immutable')
+        .header('Content-Length', String(asset.bytes.byteLength))
+        .header('X-Content-Type-Options', 'nosniff')
+        .type(asset.mimeType)
+        .send(Buffer.from(asset.bytes));
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/members/:memberId/avatar', async (request, reply) => {
+    const params = parse(MemberParamsSchema, request.params, reply);
+    const body = parse(UpdateMemberAvatarRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MemberAvatarCommandResultSchema.parse(
+        await adminRepository.updateMemberAvatar(
+          params.householdId,
+          params.memberId,
+          actorId(request.headers, options),
+          body,
+        ),
+      );
+      realtime.publish(params.householdId, 'household.changed', result.member.id);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/members/:memberId/avatar-resets',
+    async (request, reply) => {
+      const params = parse(MemberParamsSchema, request.params, reply);
+      const body = parse(ResetMemberAvatarRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = MemberAvatarCommandResultSchema.parse(
+          await adminRepository.resetMemberAvatar(
+            params.householdId,
+            params.memberId,
+            actorId(request.headers, options),
+            body.requestId,
+          ),
+        );
+        realtime.publish(params.householdId, 'household.changed', result.member.id);
+        return result;
+      });
+    },
+  );
 
   server.post(
     '/api/v1/households/:householdId/members/:memberId/archives',
@@ -882,6 +1035,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       homeRepository.reset();
       photoRepository.reset();
       pocketMoneyRepository.reset();
+      calendarConnectionRepository.reset();
       return reply.send({ reset: true });
     });
 
@@ -900,6 +1054,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     planningRepository.close();
     adminRepository.close();
     pocketMoneyRepository.close();
+    calendarConnectionRepository.close();
   });
 
   return server;
@@ -933,20 +1088,22 @@ async function run(reply: FastifyReply, operation: () => Promise<unknown>): Prom
   } catch (error) {
     if (error instanceof RepositoryError) {
       const status =
-        error.code === 'UNAUTHENTICATED'
-          ? 401
-          : error.code === 'NOT_FOUND'
-            ? 404
-            : error.code === 'FORBIDDEN'
-              ? 403
-              : [
-                    'CONFLICT',
-                    'CONFIRMATION_REQUIRED',
-                    'AMBIGUOUS_TARGET',
-                    'DUPLICATE_ITEM',
-                  ].includes(error.code)
-                ? 409
-                : 503;
+        error.code === 'VALIDATION_ERROR'
+          ? 400
+          : error.code === 'UNAUTHENTICATED'
+            ? 401
+            : error.code === 'NOT_FOUND'
+              ? 404
+              : error.code === 'FORBIDDEN'
+                ? 403
+                : [
+                      'CONFLICT',
+                      'CONFIRMATION_REQUIRED',
+                      'AMBIGUOUS_TARGET',
+                      'DUPLICATE_ITEM',
+                    ].includes(error.code)
+                  ? 409
+                  : 503;
       return reply.status(status).send(
         ApiErrorSchema.parse({
           error: {

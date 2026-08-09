@@ -319,4 +319,103 @@ describe('0001 household core migration', () => {
     ).toThrow();
     database.close();
   });
+
+  it('adds bounded local member avatars with household integrity', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 10').get()).toEqual(
+      {
+        name: 'member_avatars',
+      },
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_avatar', 'Avatar', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO households VALUES ('household_other', 'Other', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_avatar', 'household_avatar', 'Person', '#000000', '/original.jpg', 'adult', NULL, 'now', 'now', '["household.admin"]');
+    `);
+    database
+      .prepare(
+        `INSERT INTO member_avatars
+          (household_id, member_id, mime_type, image_bytes, version_key, original_avatar_key,
+           created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'household_avatar',
+        'member_avatar',
+        'image/jpeg',
+        Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+        '123456789abc',
+        '/original.jpg',
+        'now',
+        'now',
+      );
+    expect(
+      database.prepare('SELECT length(image_bytes) AS size FROM member_avatars').get(),
+    ).toEqual({ size: 4 });
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO member_avatars
+            (household_id, member_id, mime_type, image_bytes, version_key, original_avatar_key,
+             created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          'household_other',
+          'member_avatar',
+          'image/jpeg',
+          Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+          'abcdef123456',
+          '/original.jpg',
+          'now',
+          'now',
+        ),
+    ).toThrow(/household mismatch/);
+    database.close();
+  });
+
+  it('adds credential-free calendar setup metadata with strict selected-calendar JSON', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 11').get()).toEqual(
+      { name: 'calendar_connection_setup' },
+    );
+    const columns = database
+      .prepare('PRAGMA table_info(calendar_connection_settings)')
+      .all() as Array<{
+      name: string;
+    }>;
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['server_host', 'account_hint', 'selected_calendars_json']),
+    );
+    expect(columns.map((column) => column.name)).not.toEqual(
+      expect.arrayContaining(['password', 'username', 'server_url', 'credential']),
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_calendar_setup', 'Calendar', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO calendar_connection_settings VALUES (
+        'household_calendar_setup', 'calendar_setup_test', 'caldav', 'Family calendars',
+        'caldav.icloud.com', 'f•••@example.com', 'ready',
+        '[{"displayName":"Family","color":"#2f766d","ownerMemberId":null}]',
+        'now', 'now', NULL, 'now', 'now'
+      );
+    `);
+    expect(() =>
+      database.exec(`
+        UPDATE calendar_connection_settings
+        SET selected_calendars_json = 'not-json'
+        WHERE household_id = 'household_calendar_setup';
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
 });

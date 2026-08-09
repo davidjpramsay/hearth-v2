@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 
 import {
   AdminOverviewSchema,
+  MemberAvatarCommandResultSchema,
   MemberSchema,
   PairedDeviceSchema,
   PairingRequestSchema,
@@ -13,10 +14,12 @@ import {
   type CreateMemberRequest,
   type HouseholdSummary,
   type Member,
+  type MemberAvatarCommandResult,
   type PairedDevice,
   type PairingRequest,
   type TvDeviceSession,
   type UpdateHouseholdRequest,
+  type UpdateMemberAvatarRequest,
   type UpdateMemberRequest,
 } from '@hearth/shared';
 
@@ -25,6 +28,14 @@ import { RepositoryError, type CommandActor } from './repository.js';
 
 export const DEMO_ADMIN_ACTOR_ID = 'member_maya';
 export const DEMO_CHILD_ACTOR_ID = 'member_ezra';
+
+export const MEMBER_AVATAR_MAX_BYTES = 1_000_000;
+
+export interface MemberAvatarAsset {
+  bytes: Uint8Array;
+  mimeType: 'image/jpeg';
+  versionKey: string;
+}
 
 const DEFAULT_DEVICE: PairedDevice = {
   id: 'device_living_room_tv',
@@ -58,6 +69,19 @@ export interface AdminRepository {
     actorId: string,
     requestId: string,
   ): Promise<Member>;
+  getMemberAvatar(householdId: string, memberId: string): Promise<MemberAvatarAsset>;
+  updateMemberAvatar(
+    householdId: string,
+    memberId: string,
+    actorId: string,
+    input: UpdateMemberAvatarRequest,
+  ): Promise<MemberAvatarCommandResult>;
+  resetMemberAvatar(
+    householdId: string,
+    memberId: string,
+    actorId: string,
+    requestId: string,
+  ): Promise<MemberAvatarCommandResult>;
   createPairing(
     deviceName: string,
     requestId: string,
@@ -96,6 +120,8 @@ export class InMemoryAdminRepository implements AdminRepository {
   private deviceCredentialHashes = new Map<string, string>();
   private exchangedPairings = new Set<string>();
   private audits: AuditSummary[] = [];
+  private memberAvatars = new Map<string, MemberAvatarAsset & { originalAvatarUrl: string }>();
+  private avatarReceipts = new Map<string, MemberAvatarCommandResult>();
   private sequence = 1;
 
   async getHousehold(householdId: string): Promise<HouseholdSummary> {
@@ -174,6 +200,71 @@ export class InMemoryAdminRepository implements AdminRepository {
     this.household.members.splice(index, 1);
     this.writeAudit('member.archive', member.id, actorId);
     return member;
+  }
+
+  async getMemberAvatar(householdId: string, memberId: string): Promise<MemberAvatarAsset> {
+    this.assertHouseholdMember(householdId, memberId);
+    const asset = this.memberAvatars.get(memberId);
+    if (asset === undefined) {
+      throw new RepositoryError('NOT_FOUND', 'That profile photo could not be found.');
+    }
+    return { bytes: asset.bytes.slice(), mimeType: asset.mimeType, versionKey: asset.versionKey };
+  }
+
+  async updateMemberAvatar(
+    householdId: string,
+    memberId: string,
+    actorId: string,
+    input: UpdateMemberAvatarRequest,
+  ): Promise<MemberAvatarCommandResult> {
+    this.assertAdmin(householdId, actorId);
+    const receiptKey = `member-avatar-update:${input.requestId}`;
+    const receipt = this.avatarReceipts.get(receiptKey);
+    if (receipt !== undefined) return { ...structuredClone(receipt), replayed: true };
+    const { member, index } = this.assertHouseholdMember(householdId, memberId);
+    const bytes = decodeMemberAvatar(input.dataBase64);
+    const versionKey = avatarVersion(bytes);
+    const currentAsset = this.memberAvatars.get(memberId);
+    const originalAvatarUrl = currentAsset?.originalAvatarUrl ?? member.avatarUrl;
+    this.memberAvatars.set(memberId, {
+      bytes,
+      mimeType: input.mimeType,
+      versionKey,
+      originalAvatarUrl,
+    });
+    const updated = { ...member, avatarUrl: memberAvatarUrl(householdId, memberId, versionKey) };
+    this.household.members[index] = updated;
+    const result = MemberAvatarCommandResultSchema.parse({
+      member: updated,
+      audit: this.writeAudit('member.avatar.update', memberId, actorId),
+      replayed: false,
+    });
+    this.avatarReceipts.set(receiptKey, result);
+    return structuredClone(result);
+  }
+
+  async resetMemberAvatar(
+    householdId: string,
+    memberId: string,
+    actorId: string,
+    requestId: string,
+  ): Promise<MemberAvatarCommandResult> {
+    this.assertAdmin(householdId, actorId);
+    const receiptKey = `member-avatar-reset:${requestId}`;
+    const receipt = this.avatarReceipts.get(receiptKey);
+    if (receipt !== undefined) return { ...structuredClone(receipt), replayed: true };
+    const { member, index } = this.assertHouseholdMember(householdId, memberId);
+    const asset = this.memberAvatars.get(memberId);
+    const updated = { ...member, avatarUrl: asset?.originalAvatarUrl ?? member.avatarUrl };
+    this.household.members[index] = updated;
+    this.memberAvatars.delete(memberId);
+    const result = MemberAvatarCommandResultSchema.parse({
+      member: updated,
+      audit: this.writeAudit('member.avatar.reset', memberId, actorId, 'reversed'),
+      replayed: false,
+    });
+    this.avatarReceipts.set(receiptKey, result);
+    return structuredClone(result);
   }
 
   async createPairing(
@@ -323,6 +414,8 @@ export class InMemoryAdminRepository implements AdminRepository {
     this.deviceCredentialHashes.clear();
     this.exchangedPairings.clear();
     this.audits = [];
+    this.memberAvatars.clear();
+    this.avatarReceipts.clear();
     this.sequence = 1;
   }
 
@@ -347,8 +440,26 @@ export class InMemoryAdminRepository implements AdminRepository {
     }
   }
 
-  private writeAudit(action: AuditSummary['action'], targetId: string, actorId: string): void {
-    this.audits.push({
+  private assertHouseholdMember(
+    householdId: string,
+    memberId: string,
+  ): { member: Member; index: number } {
+    if (householdId !== this.household.id) {
+      throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
+    }
+    const index = this.household.members.findIndex((member) => member.id === memberId);
+    const member = this.household.members[index];
+    if (member === undefined) throw new RepositoryError('NOT_FOUND', 'That person was not found.');
+    return { member, index };
+  }
+
+  private writeAudit(
+    action: AuditSummary['action'],
+    targetId: string,
+    actorId: string,
+    result: AuditSummary['result'] = action === 'device.revoke' ? 'reversed' : 'succeeded',
+  ): AuditSummary {
+    const audit: AuditSummary = {
       id: `audit_admin_${this.sequence++}`,
       actorType: 'member',
       actorId,
@@ -356,8 +467,10 @@ export class InMemoryAdminRepository implements AdminRepository {
       action,
       targetId,
       occurredAt: new Date().toISOString(),
-      result: action === 'device.revoke' ? 'reversed' : 'succeeded',
-    });
+      result,
+    };
+    this.audits.push(audit);
+    return audit;
   }
 }
 
@@ -473,6 +586,135 @@ export class SqliteAdminRepository implements AdminRepository {
       .run(new Date().toISOString(), new Date().toISOString(), memberId);
     this.writeAudit(householdId, actorId, 'member.archive', member.id, _requestId);
     return member;
+  }
+
+  async getMemberAvatar(householdId: string, memberId: string): Promise<MemberAvatarAsset> {
+    this.readMember(householdId, memberId);
+    const row = this.database
+      .prepare(
+        `SELECT mime_type, image_bytes, version_key
+         FROM member_avatars WHERE household_id = ? AND member_id = ?`,
+      )
+      .get(householdId, memberId) as MemberAvatarRow | undefined;
+    if (row === undefined) {
+      throw new RepositoryError('NOT_FOUND', 'That profile photo could not be found.');
+    }
+    return {
+      bytes: new Uint8Array(row.image_bytes),
+      mimeType: row.mime_type,
+      versionKey: row.version_key,
+    };
+  }
+
+  async updateMemberAvatar(
+    householdId: string,
+    memberId: string,
+    actorId: string,
+    input: UpdateMemberAvatarRequest,
+  ): Promise<MemberAvatarCommandResult> {
+    this.assertAdmin(householdId, actorId);
+    const replay = this.readAvatarReceipt(householdId, input.requestId, 'member.avatar.update');
+    if (replay !== null) return { ...replay, replayed: true };
+    const member = this.readMember(householdId, memberId);
+    const bytes = decodeMemberAvatar(input.dataBase64);
+    const versionKey = avatarVersion(bytes);
+    const now = new Date().toISOString();
+
+    return this.database.transaction(() => {
+      const existing = this.database
+        .prepare(
+          'SELECT original_avatar_key FROM member_avatars WHERE household_id = ? AND member_id = ?',
+        )
+        .get(householdId, memberId) as Pick<MemberAvatarRow, 'original_avatar_key'> | undefined;
+      this.database
+        .prepare(
+          `INSERT INTO member_avatars
+            (household_id, member_id, mime_type, image_bytes, version_key, original_avatar_key,
+             created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(household_id, member_id) DO UPDATE SET
+             mime_type = excluded.mime_type,
+             image_bytes = excluded.image_bytes,
+             version_key = excluded.version_key,
+             updated_at = excluded.updated_at`,
+        )
+        .run(
+          householdId,
+          memberId,
+          input.mimeType,
+          Buffer.from(bytes),
+          versionKey,
+          existing?.original_avatar_key ?? member.avatarUrl,
+          now,
+          now,
+        );
+      const avatarUrl = memberAvatarUrl(householdId, memberId, versionKey);
+      this.database
+        .prepare(
+          'UPDATE members SET avatar_key = ?, updated_at = ? WHERE household_id = ? AND id = ?',
+        )
+        .run(avatarUrl, now, householdId, memberId);
+      const updated = this.readMember(householdId, memberId);
+      const result = MemberAvatarCommandResultSchema.parse({
+        member: updated,
+        audit: this.writeAudit(
+          householdId,
+          actorId,
+          'member.avatar.update',
+          memberId,
+          input.requestId,
+        ),
+        replayed: false,
+      });
+      this.writeAvatarReceipt(householdId, input.requestId, 'member.avatar.update', result);
+      return result;
+    })();
+  }
+
+  async resetMemberAvatar(
+    householdId: string,
+    memberId: string,
+    actorId: string,
+    requestId: string,
+  ): Promise<MemberAvatarCommandResult> {
+    this.assertAdmin(householdId, actorId);
+    const replay = this.readAvatarReceipt(householdId, requestId, 'member.avatar.reset');
+    if (replay !== null) return { ...replay, replayed: true };
+    const member = this.readMember(householdId, memberId);
+
+    return this.database.transaction(() => {
+      const asset = this.database
+        .prepare(
+          'SELECT original_avatar_key FROM member_avatars WHERE household_id = ? AND member_id = ?',
+        )
+        .get(householdId, memberId) as Pick<MemberAvatarRow, 'original_avatar_key'> | undefined;
+      const now = new Date().toISOString();
+      if (asset !== undefined) {
+        this.database
+          .prepare(
+            'UPDATE members SET avatar_key = ?, updated_at = ? WHERE household_id = ? AND id = ?',
+          )
+          .run(asset.original_avatar_key, now, householdId, memberId);
+        this.database
+          .prepare('DELETE FROM member_avatars WHERE household_id = ? AND member_id = ?')
+          .run(householdId, memberId);
+      }
+      const updated = asset === undefined ? member : this.readMember(householdId, memberId);
+      const result = MemberAvatarCommandResultSchema.parse({
+        member: updated,
+        audit: this.writeAudit(
+          householdId,
+          actorId,
+          'member.avatar.reset',
+          memberId,
+          requestId,
+          'reversed',
+        ),
+        replayed: false,
+      });
+      this.writeAvatarReceipt(householdId, requestId, 'member.avatar.reset', result);
+      return result;
+    })();
   }
 
   async createPairing(
@@ -675,7 +917,11 @@ export class SqliteAdminRepository implements AdminRepository {
 
   reset(): void {
     this.database.exec(
-      'DELETE FROM audit_events; DELETE FROM pairing_requests; DELETE FROM paired_devices;',
+      `DELETE FROM member_avatars;
+       DELETE FROM command_receipts;
+       DELETE FROM audit_events;
+       DELETE FROM pairing_requests;
+       DELETE FROM paired_devices;`,
     );
     this.database
       .prepare('UPDATE households SET name = ?, timezone = ?, updated_at = ? WHERE id = ?')
@@ -688,6 +934,11 @@ export class SqliteAdminRepository implements AdminRepository {
     this.database
       .prepare('UPDATE members SET archived_at = NULL WHERE household_id = ?')
       .run(DEMO_HOUSEHOLD_ID);
+    for (const member of createDemoSeed().household.members) {
+      this.database
+        .prepare('UPDATE members SET avatar_key = ? WHERE household_id = ? AND id = ?')
+        .run(member.avatarUrl, DEMO_HOUSEHOLD_ID, member.id);
+    }
     this.seedDefaultDevice();
   }
 
@@ -842,8 +1093,18 @@ export class SqliteAdminRepository implements AdminRepository {
     targetId: string,
     requestId: string,
     result: AuditSummary['result'] = 'succeeded',
-  ): void {
+  ): AuditSummary {
     const occurredAt = new Date().toISOString();
+    const audit = {
+      id: `audit_setup_${this.nextSequence('audit_events')}`,
+      actorType: 'member' as const,
+      actorId,
+      source: 'companion' as const,
+      action,
+      targetId,
+      occurredAt,
+      result,
+    } satisfies AuditSummary;
     this.database
       .prepare(
         `INSERT INTO audit_events
@@ -852,7 +1113,7 @@ export class SqliteAdminRepository implements AdminRepository {
          VALUES (?, ?, ?, 'member', ?, 'companion', ?, ?, ?, ?, ?, '{}')`,
       )
       .run(
-        `audit_setup_${this.nextSequence('audit_events')}`,
+        audit.id,
         occurredAt,
         householdId,
         actorId,
@@ -866,6 +1127,38 @@ export class SqliteAdminRepository implements AdminRepository {
         requestId,
         result,
       );
+    return audit;
+  }
+
+  private readAvatarReceipt(
+    householdId: string,
+    requestId: string,
+    commandType: 'member.avatar.update' | 'member.avatar.reset',
+  ): MemberAvatarCommandResult | null {
+    const row = this.database
+      .prepare(
+        `SELECT response_json FROM command_receipts
+         WHERE household_id = ? AND request_id = ? AND command_type = ?`,
+      )
+      .get(householdId, requestId, commandType) as { response_json: string } | undefined;
+    return row === undefined
+      ? null
+      : MemberAvatarCommandResultSchema.parse(JSON.parse(row.response_json) as unknown);
+  }
+
+  private writeAvatarReceipt(
+    householdId: string,
+    requestId: string,
+    commandType: 'member.avatar.update' | 'member.avatar.reset',
+    result: MemberAvatarCommandResult,
+  ): void {
+    this.database
+      .prepare(
+        `INSERT INTO command_receipts
+          (household_id, request_id, command_type, response_json, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(householdId, requestId, commandType, JSON.stringify(result), new Date().toISOString());
   }
 
   private nextSequence(
@@ -926,6 +1219,13 @@ interface MemberRow {
   avatar_key: string | null;
   role: 'adult' | 'child';
   capabilities_json: string;
+}
+
+interface MemberAvatarRow {
+  mime_type: 'image/jpeg';
+  image_bytes: Buffer;
+  version_key: string;
+  original_avatar_key: string;
 }
 
 interface DeviceRow {
@@ -1007,4 +1307,33 @@ export function credentialHash(credential: string): string {
 function hashesMatch(storedHash: string, candidateHash: string): boolean {
   if (storedHash.length !== candidateHash.length) return false;
   return timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(candidateHash, 'hex'));
+}
+
+function decodeMemberAvatar(dataBase64: string): Uint8Array {
+  const bytes = Buffer.from(dataBase64, 'base64');
+  const isJpeg =
+    bytes.length >= 4 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff &&
+    bytes.at(-2) === 0xff &&
+    bytes.at(-1) === 0xd9;
+  if (!isJpeg) {
+    throw new RepositoryError('VALIDATION_ERROR', 'Choose a valid JPEG profile photo.');
+  }
+  if (bytes.length > MEMBER_AVATAR_MAX_BYTES) {
+    throw new RepositoryError(
+      'VALIDATION_ERROR',
+      'That profile photo is too large. Choose a photo under 1 MB.',
+    );
+  }
+  return new Uint8Array(bytes);
+}
+
+function avatarVersion(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+}
+
+function memberAvatarUrl(householdId: string, memberId: string, versionKey: string): string {
+  return `/api/v1/households/${householdId}/members/${memberId}/avatar?v=${versionKey}`;
 }

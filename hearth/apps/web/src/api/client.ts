@@ -1,6 +1,9 @@
 import {
   AdminOverviewSchema,
   ApiErrorSchema,
+  CalendarConnectionCommandResultSchema,
+  CalendarConnectionSettingsSchema,
+  CalendarConnectionTestResultSchema,
   ChoreCommandResultSchema,
   ChoreListSchema,
   ChoreSkipResultSchema,
@@ -12,6 +15,7 @@ import {
   ListItemCommandResultSchema,
   MealCommandResultSchema,
   MealPlanSchema,
+  MemberAvatarCommandResultSchema,
   MemberSchema,
   MonthScheduleSchema,
   PairedDeviceSchema,
@@ -25,6 +29,9 @@ import {
   WeekScheduleSchema,
   type AdminOverview,
   type ApiError,
+  type CalendarConnectionCommandResult,
+  type CalendarConnectionSettings,
+  type CalendarConnectionTestResult,
   type ChoreCommandResult,
   type ChoreList,
   type ChoreSkipResult,
@@ -39,6 +46,7 @@ import {
   type MealCommandResult,
   type MealPlan,
   type Member,
+  type MemberAvatarCommandResult,
   type MonthSchedule,
   type PairedDevice,
   type PairingRequest,
@@ -72,6 +80,7 @@ export const queryKeys = {
   home: [DEMO_HOUSEHOLD_ID, 'home'] as const,
   photos: [DEMO_HOUSEHOLD_ID, 'photos'] as const,
   admin: [DEMO_HOUSEHOLD_ID, 'admin'] as const,
+  calendarConnection: [DEMO_HOUSEHOLD_ID, 'calendar-connection'] as const,
   lists: [DEMO_HOUSEHOLD_ID, 'lists'] as const,
   meals: (startDate = DEMO_DATE) => [DEMO_HOUSEHOLD_ID, 'meals', startDate] as const,
   pocketMoney: [DEMO_HOUSEHOLD_ID, 'pocket-money', DEMO_DATE] as const,
@@ -253,6 +262,35 @@ export const hearthApi = {
     request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/admin`, AdminOverviewSchema, {
       headers: demoAdminHeaders,
     }),
+  getCalendarConnection: () =>
+    request(
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection`,
+      CalendarConnectionSettingsSchema.nullable(),
+      { headers: demoAdminHeaders },
+    ),
+  testCalendarConnection: (input: { serverUrl: string; username: string; appPassword: string }) =>
+    request(
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection-tests`,
+      CalendarConnectionTestResultSchema,
+      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
+    ),
+  saveCalendarConnection: (input: {
+    requestId: string;
+    testId: string;
+    label: string;
+    calendars: Array<{ calendarId: string; ownerMemberId: string | null }>;
+  }) =>
+    request(
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection`,
+      CalendarConnectionCommandResultSchema,
+      { method: 'PUT', headers: demoAdminHeaders, body: JSON.stringify(input) },
+    ),
+  removeCalendarConnection: (requestId: string) =>
+    request(
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/calendar-connection/removals`,
+      CalendarConnectionCommandResultSchema,
+      { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify({ requestId }) },
+    ),
   updateHousehold: (input: { requestId: string; name: string; timezone: string }) =>
     request(`${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/settings`, AdminOverviewSchema, {
       method: 'PATCH',
@@ -286,6 +324,26 @@ export const hearthApi = {
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
     }),
+  updateMemberAvatar: (memberId: string, requestId: string, dataBase64: string) =>
+    request(
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/avatar`,
+      MemberAvatarCommandResultSchema,
+      {
+        method: 'PUT',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId, mimeType: 'image/jpeg', dataBase64 }),
+      },
+    ),
+  resetMemberAvatar: (memberId: string, requestId: string) =>
+    request(
+      `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/avatar-resets`,
+      MemberAvatarCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+    ),
   archiveMember: (memberId: string, requestId: string) =>
     request(
       `${API_BASE}/households/${DEMO_HOUSEHOLD_ID}/members/${memberId}/archives`,
@@ -363,7 +421,11 @@ export type HearthHomeActionResult = HomeActionResult;
 export type HearthCommandResult = ChoreCommandResult;
 export type HearthSkipResult = ChoreSkipResult;
 export type HearthAdmin = AdminOverview;
+export type HearthCalendarConnection = CalendarConnectionSettings;
+export type HearthCalendarConnectionTestResult = CalendarConnectionTestResult;
+export type HearthCalendarConnectionCommandResult = CalendarConnectionCommandResult;
 export type HearthMember = Member;
+export type HearthMemberAvatarCommandResult = MemberAvatarCommandResult;
 export type HearthPairedDevice = PairedDevice;
 export type HearthPairingRequest = PairingRequest;
 export type HearthLists = HouseholdLists;

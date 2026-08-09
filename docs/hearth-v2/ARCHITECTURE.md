@@ -123,6 +123,9 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `POST .../:occurrenceId/skips` with `{ requestId }`
 - `GET /api/v1/households/:id/events` as a same-origin Server-Sent Events invalidation stream
 - `GET /api/v1/households/:id/admin` and typed household/member setup commands
+- `GET /api/v1/households/:id/members/:memberId/avatar` for the same-origin normalized profile derivative
+- `PUT /api/v1/households/:id/members/:memberId/avatar` with `{ requestId, mimeType: "image/jpeg", dataBase64 }`
+- `POST /api/v1/households/:id/members/:memberId/avatar-resets` with `{ requestId }`
 - one-time pairing request, approval/status and paired-device revocation commands
 - `GET /api/v1/households/:id/lists` plus typed item add, complete and reversal commands
 - `POST /api/v1/households/:id/assist/list-items`, which resolves a named list without guessing and rejects active duplicates
@@ -135,6 +138,12 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist
 - `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
+
+Member-avatar commands use the adult Admin session, strict request-size and JPEG checks,
+idempotency receipts and explicit audit actions. The browser normalizes the selected original to a
+512×512 JPEG before sending it. SQLite stores at most one 1 MB derivative per member plus the
+original opaque avatar key needed for reset; responses and receipts never contain image bytes.
+The versioned same-origin URL prevents stale browser images without exposing a filesystem path.
 
 Pocket-money settings and payment commands use the same server-side adult session, validation,
 idempotency receipt and audit path as other household writes. Chore completion and undo publish a
@@ -163,15 +172,26 @@ five or six sequential Week requests. On narrow companions, the same response
 also supplies the selected-date agenda beneath the compact grid.
 
 The server selects its calendar implementation at composition time. Demo mode
-injects `FakeCalendarProvider`; private mode injects either the read-only
-`CalDavCalendarProvider` loaded from an external secret path or an
-`UnconfiguredCalendarProvider` that reports a distinct not-configured state.
+injects `FakeCalendarProvider`; private mode injects a stable managed provider
+that delegates either to the read-only `CalDavCalendarProvider` loaded from an
+external secret path or to an `UnconfiguredCalendarProvider` that reports a
+distinct not-configured state. The adult calendar-setup command can replace
+that delegate after atomically saving the same external secret format, so a
+server restart is not required to begin a read-only refresh.
 The CalDAV implementation uses the maintained `tsdav` transport for RFC 4791
 discovery/query and `ical.js` for normalized iCalendar components. Credentials
 remain captured inside the server transport factory and are not enumerable on
 the provider object. Full bounded refreshes hide missing calendars and
 tombstone missing events in the same SQLite transaction as cursor/freshness
 updates.
+
+Calendar setup uses separate test/save/remove commands. Discovery credentials
+remain in a ten-minute in-process pending record; the browser receives only an
+opaque test ID and safe calendar descriptors. Save is idempotent and audited,
+writes the private credential file before persisting safe connection metadata,
+and publishes `calendar.changed`. Removal deletes the credential file and
+disconnects the managed provider. No browser contract returns a username,
+password, collection URL or event payload from discovery.
 
 Phase 4 uses the same command envelope, actor/source resolution, audit summaries,
 idempotency receipts and SSE invalidation path as chores. The television may

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ApiErrorSchema,
   CalendarEventSchema,
+  CalendarConnectionTestRequestSchema,
+  SaveCalendarConnectionRequestSchema,
   CalendarSourceSchema,
   CreateMemberRequestSchema,
   DailyForecastSchema,
@@ -15,6 +17,7 @@ import {
   MealPlanSchema,
   MonthKeySchema,
   MonthScheduleSchema,
+  UpdateMemberAvatarRequestSchema,
   PhotoGallerySchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentSchema,
@@ -36,6 +39,50 @@ describe('shared wire schemas', () => {
   it('requires explicit local dates', () => {
     expect(LocalDateSchema.parse('2026-08-03')).toBe('2026-08-03');
     expect(() => LocalDateSchema.parse('03/08/2026')).toThrow();
+  });
+
+  it('accepts only HTTPS calendar setup and unique tested calendar selections', () => {
+    expect(
+      CalendarConnectionTestRequestSchema.parse({
+        serverUrl: 'https://caldav.icloud.com',
+        username: 'fictional@example.com',
+        appPassword: 'demo-app-password',
+      }).serverUrl,
+    ).toBe('https://caldav.icloud.com');
+    expect(
+      CalendarConnectionTestRequestSchema.safeParse({
+        serverUrl: 'http://calendar.example.com',
+        username: 'fictional@example.com',
+        appPassword: 'demo-app-password',
+      }).success,
+    ).toBe(false);
+    expect(
+      SaveCalendarConnectionRequestSchema.safeParse({
+        requestId: 'request_calendar_save',
+        testId: 'calendar_test_demo',
+        label: 'Family calendars',
+        calendars: [
+          { calendarId: 'calendar_option_family', ownerMemberId: null },
+          { calendarId: 'calendar_option_family', ownerMemberId: 'member_ezra' },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts bounded JPEG avatar commands and rejects malformed image transport', () => {
+    const valid = UpdateMemberAvatarRequestSchema.parse({
+      requestId: 'request_avatar_001',
+      mimeType: 'image/jpeg',
+      dataBase64: '/9j/2Q==',
+    });
+    expect(valid.mimeType).toBe('image/jpeg');
+    expect(
+      UpdateMemberAvatarRequestSchema.safeParse({
+        requestId: 'request_avatar_bad',
+        mimeType: 'image/png',
+        dataBase64: 'not base64',
+      }).success,
+    ).toBe(false);
   });
 
   it('requires a six-week Month projection with a valid month key', () => {
