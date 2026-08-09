@@ -84,6 +84,7 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await expect(page).toHaveTitle(/Hearth/);
   await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
   await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause automatic photo rotation' })).toBeVisible();
 
   const tiles = page.locator('.photo-collage__tile');
   await expect(tiles).toHaveCount(5);
@@ -171,6 +172,16 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     'data-photo-id',
     'photo_park_football',
   );
+  await page.getByRole('button', { name: 'Pause automatic photo rotation' }).click();
+  await expect(page.getByText('Automatic rotation paused')).toBeVisible();
+  const pausedPhotoId = await page.locator('.photos-hero').getAttribute('data-photo-id');
+  await page.waitForTimeout(900);
+  await expect(page.locator('.photos-hero')).toHaveAttribute('data-photo-id', pausedPhotoId!);
+  await page.getByRole('button', { name: 'Resume automatic photo rotation' }).click();
+  await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
+  await expect(page.locator('.photos-hero')).not.toHaveAttribute('data-photo-id', pausedPhotoId!, {
+    timeout: 2_000,
+  });
   await page.locator('[data-photo-id="photo_family_breakfast"]').click();
   await page.waitForTimeout(350);
   await expect(page.locator('.photos-hero')).toHaveAttribute(

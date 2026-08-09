@@ -19,6 +19,8 @@ export type IconName =
   | 'mic'
   | 'moon'
   | 'more'
+  | 'pause'
+  | 'play'
   | 'plus'
   | 'power'
   | 'refresh'
@@ -117,6 +119,13 @@ const paths: Record<IconName, React.ReactNode> = {
       <circle cx="19" cy="12" r="1" />
     </>
   ),
+  pause: (
+    <>
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </>
+  ),
+  play: <path d="m7 4 13 8-13 8V4Z" />,
   plus: <path d="M12 5v14M5 12h14" />,
   power: (
     <>

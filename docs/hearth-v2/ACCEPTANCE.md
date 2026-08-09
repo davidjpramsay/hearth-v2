@@ -180,6 +180,8 @@ live-system commissioning tasks requiring owner approval.
 ### Photos and ambient mode
 
 - Approved photos rotate without visible distortion, incorrect orientation or filesystem exposure.
+- Automatic collage rotation can be paused and resumed using only the remote or touch, does not
+  advance while the document is hidden, and remains still when reduced motion is requested.
 - The normal gallery shows each visible photo once, fills its available screen region and chooses a
   stable composition from the featured photo's orientation. In a mixed five-photo set each automatic
   advance visibly changes the feature: a featured portrait becomes a useful tall anchor and a

@@ -35,6 +35,8 @@ export function PhotosScreen({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [manualSelectionRevision, setManualSelectionRevision] = useState(0);
   const [ambient, setAmbient] = useState(false);
+  const [rotationPaused, setRotationPaused] = useState(false);
+  const [pageVisible, setPageVisible] = useState(() => document.visibilityState === 'visible');
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
@@ -69,7 +71,20 @@ export function PhotosScreen({
   }, []);
 
   useEffect(() => {
-    if (prefersReducedMotion || gallery === undefined || gallery.photos.length < 2) return;
+    const onVisibilityChange = () => setPageVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    if (
+      prefersReducedMotion ||
+      rotationPaused ||
+      !pageVisible ||
+      gallery === undefined ||
+      gallery.photos.length < 2
+    )
+      return;
     const timer = window.setTimeout(() => {
       setSelectedId((current) =>
         nextPhotoId(
@@ -79,7 +94,15 @@ export function PhotosScreen({
       );
     }, PHOTO_COLLAGE_ROTATION_MS);
     return () => window.clearTimeout(timer);
-  }, [ambient, gallery, manualSelectionRevision, prefersReducedMotion, selectedId]);
+  }, [
+    ambient,
+    gallery,
+    manualSelectionRevision,
+    pageVisible,
+    prefersReducedMotion,
+    rotationPaused,
+    selectedId,
+  ]);
 
   useEffect(() => {
     if (!ambient) return;
@@ -145,17 +168,43 @@ export function PhotosScreen({
         title="Photos"
         meta={`${gallery.collection.photoCount} favourites · ${gallery.collection.source.label}`}
         actions={
-          <button
-            className="photos-ambient-action focusable"
-            data-focus-down={`photos-thumb-${selected?.id ?? gallery.photos[0]?.id}`}
-            data-focus-id="photos-start-ambient"
-            data-focus-left="nav-photos"
-            onClick={() => setAmbient(true)}
-            type="button"
-          >
-            <Icon name="image" />
-            Start ambient
-          </button>
+          <div className="photos-header-actions">
+            {!prefersReducedMotion && gallery.photos.length > 1 ? (
+              <button
+                aria-label={
+                  rotationPaused
+                    ? 'Resume automatic photo rotation'
+                    : 'Pause automatic photo rotation'
+                }
+                aria-pressed={rotationPaused}
+                className="photos-rotation-action focusable"
+                data-focus-down={`photos-thumb-${selected?.id ?? gallery.photos[0]?.id}`}
+                data-focus-id="photos-toggle-rotation"
+                data-focus-left="nav-photos"
+                data-focus-right="photos-start-ambient"
+                onClick={() => setRotationPaused((paused) => !paused)}
+                type="button"
+              >
+                <Icon name={rotationPaused ? 'play' : 'pause'} />
+                {rotationPaused ? 'Resume' : 'Pause'}
+              </button>
+            ) : null}
+            <button
+              className="photos-ambient-action focusable"
+              data-focus-down={`photos-thumb-${selected?.id ?? gallery.photos[0]?.id}`}
+              data-focus-id="photos-start-ambient"
+              data-focus-left={
+                !prefersReducedMotion && gallery.photos.length > 1
+                  ? 'photos-toggle-rotation'
+                  : 'nav-photos'
+              }
+              onClick={() => setAmbient(true)}
+              type="button"
+            >
+              <Icon name="image" />
+              Start ambient
+            </button>
+          </div>
         }
       />
       {!online ? (
@@ -174,7 +223,7 @@ export function PhotosScreen({
         {!prefersReducedMotion && gallery.photos.length > 1 ? (
           <span className="photos-rotation-note">
             <Icon name="refresh" />
-            Automatic · every 45 seconds
+            {rotationPaused ? 'Automatic rotation paused' : 'Automatic · every 45 seconds'}
           </span>
         ) : null}
       </div>
