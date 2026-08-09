@@ -3,15 +3,17 @@
 The Photos screen was rendered with Playwright Chromium because no Build Web
 Apps Browser/IAB controller is exposed in this workspace. Retained screenshots
 cover 3840×2160, 1920×1080, 1366×768, 390×844 and 844×390, plus empty,
-unavailable, failure, selected-portrait, ambient and phone Admin index states. The concrete folder
-adapter is tested with generated landscape/portrait inputs rather than a live NAS folder; live
-selection and mount still require approval.
+unavailable, failure, selected-portrait, automatically advanced portrait, ambient and phone Admin
+index states. `screenshots/photos-auto-portrait-tv-1080.png` proves that the timer changes both the
+featured occupant and the orientation-aware composition without a click. The concrete folder adapter
+is tested with generated landscape/portrait inputs rather than a live NAS folder; live selection and
+mount still require approval.
 
 ## Fidelity ledger
 
 | Area         | Concept-to-product finding                                                                                                                                                                                        |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Copy         | `Family photos`, `Photos` and `Start ambient` are retained. The product truthfully says five favourites, names the source and explains automatic 45-second rotation.                                              |
+| Copy         | `Family photos`, `Photos` and `Start ambient` are retained. The product truthfully says five favourites, names the source and explains automatic 30-second rotation.                                              |
 | Composition  | A large feature plus four substantial support positions retains the concept hierarchy without duplicated images, skinny columns or shallow ribbons. Each advance changes the feature and reflows by orientation.  |
 | Typography   | Existing local Source Sans 3 and Hearth header hierarchy are retained; actions and automatic/pause state remain sofa-readable.                                                                                    |
 | Palette      | Existing warm ivory, eucalyptus and sky focus colours are unchanged.                                                                                                                                              |
@@ -22,7 +24,7 @@ selection and mount still require approval.
 | States       | Loading, empty, stale/unavailable, offline cache, request failure/retry and corrupt-image fallback use family-readable copy without source paths. Admin reports aggregate index health and an adult scan command. |
 
 No fixable composition, focus, orientation, copy or responsive mismatch remained in the final
-inspected renders. Automatic rotation pauses for reduced motion and hidden documents, can be
-paused manually and resets its calm interval after a manual selection. The deliberate differences
-are the five-photo demo count and omission of concept-only favourite/more icon buttons that have no
-implemented command contract.
+inspected renders. Automatic rotation now shows a subtle progress line, pauses for reduced motion
+and hidden documents, can be paused manually and resets its calm 30-second interval after a manual
+selection. The deliberate differences are the five-photo demo count and omission of concept-only
+favourite/more icon buttons that have no implemented command contract.

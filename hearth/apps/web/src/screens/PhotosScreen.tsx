@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { DemoScenario } from '@hearth/shared';
@@ -139,6 +139,11 @@ export function PhotosScreen({
     setManualSelectionRevision((current) => current + 1);
   }
 
+  function toggleRotation() {
+    setRotationPaused((paused) => !paused);
+    setManualSelectionRevision((current) => current + 1);
+  }
+
   if (gallery.photos.length === 0) {
     return (
       <section className="state-panel photos-empty" aria-labelledby="photos-empty-title">
@@ -184,7 +189,7 @@ export function PhotosScreen({
                 data-focus-id="photos-toggle-rotation"
                 data-focus-left="nav-photos"
                 data-focus-right="photos-start-ambient"
-                onClick={() => setRotationPaused((paused) => !paused)}
+                onClick={toggleRotation}
                 type="button"
               >
                 <Icon name={rotationPaused ? 'play' : 'pause'} />
@@ -225,13 +230,31 @@ export function PhotosScreen({
         {!prefersReducedMotion && gallery.photos.length > 1 ? (
           <span className="photos-rotation-note">
             <Icon name="refresh" />
-            {rotationPaused ? 'Automatic rotation paused' : 'Automatic · every 45 seconds'}
+            <span>
+              {rotationPaused ? 'Automatic rotation paused' : 'Automatic · every 30 seconds'}
+            </span>
+            {!rotationPaused ? (
+              <span
+                aria-hidden="true"
+                className="photos-rotation-progress"
+                key={`${selected?.id ?? 'first'}-${manualSelectionRevision}`}
+              >
+                <span
+                  className="photos-rotation-progress__fill"
+                  style={
+                    {
+                      '--photo-rotation-duration': `${PHOTO_COLLAGE_ROTATION_MS}ms`,
+                    } as CSSProperties
+                  }
+                />
+              </span>
+            ) : null}
           </span>
         ) : null}
       </div>
       <div className="photos-layout">
         <div
-          aria-label="Family favourites. The featured photo changes about once every 45 seconds."
+          aria-label="Family favourites. The featured photo and collage arrangement change about once every 30 seconds."
           className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--count-${visibleCollageItems.length}`}
         >
           {visibleCollageItems.map((item) => (

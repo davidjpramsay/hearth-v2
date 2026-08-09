@@ -228,15 +228,16 @@ live-system commissioning tasks requiring owner approval.
   stable composition from the featured photo's orientation. In a mixed five-photo set each automatic
   advance visibly changes the feature: a featured portrait becomes a useful tall anchor and a
   featured landscape becomes a wide anchor. Portrait support tiles remain substantial, with no
-  skinny portrait column, shallow landscape ribbon or horizontal overflow. Rotation is no faster
-  than every 45 seconds and remains static under reduced motion. Phone landscape shows three
+  skinny portrait column, shallow landscape ribbon or horizontal overflow. Rotation occurs every
+  30 seconds, exposes subtle visible progress to the next composition and remains static under
+  reduced motion. Phone landscape shows three
   substantial rotating occupants rather than five compressed strips.
 - Remote/voice input exits ambient mode immediately.
 - The same static dashboard is not left illuminated overnight.
 - Missing/corrupt photos fail gracefully.
 
-Status as of 2026-08-09: the local browser/server slice passes a unique-image,
-orientation-selected full-screen collage with bounded tile geometry, calm 45-second occupant
+Status as of 2026-08-10: the local browser/server slice passes a unique-image,
+orientation-selected full-screen collage with bounded tile geometry, visible 30-second occupant
 rotation and a reduced-motion pause, mixed landscape and portrait rendering, path-safe typed
 responses, D-pad gallery selection,
 immediate keyboard/Back-equivalent ambient exit, real offline cached content,

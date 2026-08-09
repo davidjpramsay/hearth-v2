@@ -157,11 +157,12 @@ the phone More hub.
   three-row mosaic so every tile remains useful rather than stacking several narrow strips. Phone
   landscape shows three substantial images at a time and lets rotation bring the remaining photos
   through, rather than squeezing the five-image television composition into shallow ribbons.
-- The collage advances its selected photo, feature region and visible occupants every 45 seconds
+- The collage advances its selected photo, feature region and visible occupants every 30 seconds
   with a restrained image settle while choosing geometry from the featured photo's orientation.
-  Manual D-pad/touch selection restarts that interval. A clearly labelled Pause/Resume control is
-  reachable by remote and touch, hidden tabs do not consume rotations, and reduced-motion mode
-  leaves the collage static.
+  A subtle progress line makes the next automatic arrangement legible without adding slideshow
+  chrome. Manual D-pad/touch selection restarts that interval. A clearly labelled Pause/Resume
+  control is reachable by remote and touch, hidden tabs do not consume rotations, and reduced-motion
+  mode leaves the collage static.
 - Optional minimal overlay: time, next event and discreet notification badge.
 - Immediate remote exit.
 - Photo source/error state should never reveal filesystem paths or technical details to the household.

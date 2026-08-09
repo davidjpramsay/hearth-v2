@@ -1,6 +1,6 @@
 import type { PhotoAsset } from '@hearth/shared';
 
-export const PHOTO_COLLAGE_ROTATION_MS = 45_000;
+export const PHOTO_COLLAGE_ROTATION_MS = 30_000;
 export const PHOTO_COLLAGE_SIZE = 5;
 
 export type PhotoCollageMode = 'landscape' | 'portrait';

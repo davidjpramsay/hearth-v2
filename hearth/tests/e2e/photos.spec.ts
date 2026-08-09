@@ -75,7 +75,7 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
       nativeSetTimeout(
         handler,
-        timeout === 45_000 ? 600 : timeout,
+        timeout === 30_000 ? 600 : timeout,
         ...args,
       )) as typeof window.setTimeout;
   });
@@ -83,8 +83,9 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await page.goto('/photos');
   await expect(page).toHaveTitle(/Hearth/);
   await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
-  await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
+  await expect(page.getByText('Automatic · every 30 seconds')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Pause automatic photo rotation' })).toBeVisible();
+  await expect(page.locator('.photos-rotation-progress')).toBeVisible();
 
   const tiles = page.locator('.photo-collage__tile');
   await expect(tiles).toHaveCount(5);
@@ -172,13 +173,24 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     'data-photo-id',
     'photo_park_football',
   );
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_garden_morning',
+    { timeout: 2_000 },
+  );
+  await expect(page.locator('.photos-collage--portrait')).toBeVisible();
+  await page.screenshot({
+    animations: 'disabled',
+    path: resolve(evidence, 'photos-auto-portrait-tv-1080.png'),
+  });
   await page.getByRole('button', { name: 'Pause automatic photo rotation' }).click();
   await expect(page.getByText('Automatic rotation paused')).toBeVisible();
   const pausedPhotoId = await page.locator('.photos-hero').getAttribute('data-photo-id');
   await page.waitForTimeout(900);
   await expect(page.locator('.photos-hero')).toHaveAttribute('data-photo-id', pausedPhotoId!);
   await page.getByRole('button', { name: 'Resume automatic photo rotation' }).click();
-  await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
+  await expect(page.getByText('Automatic · every 30 seconds')).toBeVisible();
+  await expect(page.locator('.photos-rotation-progress')).toBeVisible();
   await expect(page.locator('.photos-hero')).not.toHaveAttribute('data-photo-id', pausedPhotoId!, {
     timeout: 2_000,
   });
@@ -203,13 +215,14 @@ test('reduced motion keeps the Photos collage still', async ({ page }) => {
     window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
       nativeSetTimeout(
         handler,
-        timeout === 45_000 ? 100 : timeout,
+        timeout === 30_000 ? 100 : timeout,
         ...args,
       )) as typeof window.setTimeout;
   });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
-  await expect(page.getByText('Automatic · every 45 seconds')).toHaveCount(0);
+  await expect(page.getByText('Automatic · every 30 seconds')).toHaveCount(0);
+  await expect(page.locator('.photos-rotation-progress')).toHaveCount(0);
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',
     'photo_family_breakfast',
