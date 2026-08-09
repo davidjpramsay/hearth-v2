@@ -54,6 +54,12 @@ export interface CalendarRuntime {
 
 export type CalDavRuntimeConfig = z.infer<typeof CalDavRuntimeConfigSchema>;
 
+class CalendarRuntimeReadError extends Error {
+  constructor(readonly missing: boolean) {
+    super('Hearth could not read the external calendar secret configuration.');
+  }
+}
+
 export class ManagedCalendarProvider implements CalendarProvider {
   readonly providerType = 'caldav';
   private runtime: CalendarRuntime = {
@@ -99,22 +105,35 @@ export async function resolveCalendarRuntime(input: {
     return null;
   }
   if (input.configPath === undefined) {
-    return {
-      provider: new UnconfiguredCalendarProvider(),
-      ownerForCalendarExternalId: (_externalId) => null,
-    };
+    return unconfiguredCalendarRuntime();
   }
-  return loadCalendarRuntime(input.configPath);
+  try {
+    return await loadCalendarRuntime(input.configPath);
+  } catch (error) {
+    if (error instanceof CalendarRuntimeReadError && error.missing) {
+      return unconfiguredCalendarRuntime();
+    }
+    throw error;
+  }
 }
 
 export async function loadCalendarRuntime(configPath: string): Promise<CalendarRuntime> {
   let value: unknown;
   try {
     value = JSON.parse(await readFile(configPath, 'utf8')) as unknown;
-  } catch {
-    throw new Error('Hearth could not read the external calendar secret configuration.');
+  } catch (error) {
+    const missing =
+      typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+    throw new CalendarRuntimeReadError(missing);
   }
   return createCalendarRuntime(value);
+}
+
+function unconfiguredCalendarRuntime(): CalendarRuntime {
+  return {
+    provider: new UnconfiguredCalendarProvider(),
+    ownerForCalendarExternalId: (_externalId) => null,
+  };
 }
 
 export async function writeCalendarRuntimeConfig(

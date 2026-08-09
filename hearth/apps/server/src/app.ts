@@ -153,6 +153,7 @@ export interface BuildServerOptions {
   pocketMoneyRepository?: PocketMoneyRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
   runtime?: RuntimeConfiguration;
+  readiness?: () => Promise<void> | void;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -261,6 +262,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     mode: runtime.mode,
     now: runtime.clock.now().toISOString(),
   }));
+
+  server.get('/api/v1/readiness', async (_request, reply) => {
+    try {
+      await options.readiness?.();
+      return { status: 'ready', database: 'ready', mode: runtime.mode };
+    } catch {
+      return reply.status(503).send({
+        status: 'not-ready',
+        database: 'unavailable',
+        mode: runtime.mode,
+      });
+    }
+  });
 
   server.get('/api/v1/households/:householdId/admin', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);

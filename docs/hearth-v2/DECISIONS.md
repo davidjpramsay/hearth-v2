@@ -370,3 +370,24 @@ Record durable choices here. New decisions should include date, status, context,
   action remains coupled to the private HTTPS/passkey slice; until that exists,
   an empty private database shows an honest setup-required surface and accepts
   no demo bootstrap command.
+
+## D-031 — Synology uses a hardened two-container same-origin deployment
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: Hearth needs a reproducible DS920+ deployment without mixing build tooling into the
+  runtime, exposing Fastify directly, or choosing a permanent WebAuthn origin before the household
+  approves its private hostname and certificate. A packaged SQLite ARM binary also proved that
+  third-party native prebuilds can require a newer glibc than the pinned runtime.
+- Choice: Build separate `server` and `web` images from one multi-stage Dockerfile. Pin Node
+  24.18.0 Bookworm and nginx 1.30.4 Alpine bases, compile the SQLite binding inside the exact target
+  Linux build, copy migrations into the production server, and gate the web service on database
+  readiness. Run both services non-root with read-only roots, all capabilities dropped,
+  `no-new-privileges`, bounded logs and private data/secret mounts. Bind nginx only to Synology
+  loopback, proxy `/api` on the same origin and reserve DSM Reverse Proxy for the stable private HTTPS
+  boundary.
+- Consequence: Native ARM64 and emulated DS920+ `linux/amd64` builds and private first-use smoke
+  tests pass locally without touching the NAS. The Synology service account/folders, stable private
+  hostname, trusted certificate, adult passkeys, backup/restore drill and live commissioning still
+  require explicit approval. No real household or provider data may be entered before those controls
+  are complete.

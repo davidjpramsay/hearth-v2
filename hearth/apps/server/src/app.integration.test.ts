@@ -18,6 +18,28 @@ function server() {
 }
 
 describe('Hearth v2 API', () => {
+  it('distinguishes process health from database readiness', async () => {
+    const ready = server();
+    expect((await ready.inject({ method: 'GET', url: '/api/v1/health' })).json()).toMatchObject({
+      status: 'ok',
+    });
+    expect((await ready.inject({ method: 'GET', url: '/api/v1/readiness' })).json()).toMatchObject({
+      status: 'ready',
+      database: 'ready',
+    });
+
+    const unavailable = buildServer({
+      logger: false,
+      readiness: () => {
+        throw new Error('database unavailable');
+      },
+    });
+    servers.push(unavailable);
+    const response = await unavailable.inject({ method: 'GET', url: '/api/v1/readiness' });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ status: 'not-ready', database: 'unavailable' });
+  });
+
   it('publishes deterministic test runtime dates and the current household name', async () => {
     const app = server();
     const initial = await app.inject({ method: 'GET', url: '/api/v1/runtime' });

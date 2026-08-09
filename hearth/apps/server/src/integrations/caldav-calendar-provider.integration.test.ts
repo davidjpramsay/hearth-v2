@@ -324,6 +324,17 @@ describe('read-only CalDAV calendar provider', () => {
     await expect(privateRuntime?.provider.listCalendars()).rejects.toMatchObject({
       code: 'CONFIGURATION_REQUIRED',
     });
+
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-missing-calendar-secret-'));
+    try {
+      const missingRuntime = await resolveCalendarRuntime({
+        demoMode: false,
+        configPath: join(directory, 'calendar.json'),
+      });
+      expect(missingRuntime?.provider.providerType).toBe('unconfigured');
+    } finally {
+      await rm(directory, { recursive: true });
+    }
   });
 
   it('atomically writes the external runtime secret with owner-only permissions', async () => {

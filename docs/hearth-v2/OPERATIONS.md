@@ -141,6 +141,36 @@ Keep v2 separate from the old deployment:
 
 Deployment files belong in `hearth/deploy/synology`; live secrets never return to the workspace.
 
+## Implemented container scaffold
+
+As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffold: a multi-stage
+Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
+Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
+ignored runtime directory template. The server production build includes all 11 forward migrations
+and compiles `better-sqlite3` within the target Linux image.
+
+Both native ARM64 development images and emulated `linux/amd64` images for the DS920+ were built and
+started together in private mode. In both runs the server and web containers became healthy, the
+proxied readiness endpoint returned `ready`, the runtime returned `household: null` and
+`requiresSetup: true`, and no demo household was seeded. The ARM64 run also verified non-root users,
+read-only roots, all Linux capabilities dropped, `no-new-privileges`, and clean Fastify shutdown on
+`SIGTERM`. This is retained local evidence, not a claim that the live Synology has been changed.
+
+Validation commands from `hearth/`:
+
+```sh
+docker compose --env-file deploy/synology/.env.example \
+  -f deploy/synology/compose.yaml config --quiet
+docker build --platform linux/amd64 --target server \
+  -t hearth-v2-server:local-amd64 -f deploy/synology/Dockerfile .
+docker build --platform linux/amd64 --target web \
+  -t hearth-v2-web:local-amd64 -f deploy/synology/Dockerfile .
+```
+
+Live commissioning remains blocked on an owner-approved private hostname/certificate, dedicated
+Synology service UID/GID and folders, adult passkey enrolment, backup/restore tooling and a focused
+security review. Do not enter real household or provider data before those controls are complete.
+
 ## Backup design
 
 ### Hearth

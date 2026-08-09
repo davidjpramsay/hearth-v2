@@ -18,7 +18,7 @@
     "test:unit": "pnpm -r --if-present test:unit",
     "test:integration": "pnpm --filter @hearth/server test:integration",
     "test:migrations": "pnpm --filter @hearth/server test:migrations",
-    "build": "pnpm -r --if-present build",
+    "build": "pnpm build:packages && pnpm --filter @hearth/web build && pnpm --filter @hearth/server build",
     "test:e2e": "playwright test",
     "test:visual": "playwright test --grep @visual",
     "test:a11y": "playwright test --grep @a11y",

@@ -212,6 +212,13 @@ not yet complete.
 - A Home Assistant backup to Synology is restored successfully.
 - The application has visible but calm health reporting for adults.
 
+Local deployment evidence as of 2026-08-09: the production server/web images build and become
+healthy together in private mode on native ARM64 and emulated DS920+ `linux/amd64`; the same-origin
+readiness route, 11-migration database startup, unseeded first-use runtime, non-root/read-only
+security settings and clean `SIGTERM` shutdown pass. These checks validate the scaffold only. The
+five operations bullets above still require the actual Synology, Pi, TV, router and restore drill,
+so production acceptance remains incomplete.
+
 ## Release evidence
 
 Before calling the first household release complete, retain:

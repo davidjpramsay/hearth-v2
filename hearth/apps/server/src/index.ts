@@ -10,7 +10,7 @@ import {
   FakeCalendarConnectionVerifier,
   type CalendarCredentialStore,
 } from './calendar-connection-repository.js';
-import { openHearthDatabase } from './database.js';
+import { LATEST_MIGRATION_VERSION, openHearthDatabase } from './database.js';
 import {
   ManagedCalendarProvider,
   createCalendarRuntime,
@@ -119,12 +119,35 @@ const server = buildServer({
   photoRepository,
   pocketMoneyRepository,
   calendarConnectionRepository,
+  readiness: () => {
+    database.prepare('SELECT 1').get();
+    const migration = database
+      .prepare('SELECT MAX(version) AS version FROM schema_migrations')
+      .get() as { version: number | null };
+    if (migration.version !== LATEST_MIGRATION_VERSION) {
+      throw new Error('Database migrations are incomplete.');
+    }
+  },
 });
+
+let shuttingDown = false;
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    server.log.info({ signal }, 'Stopping Hearth cleanly.');
+    void server.close().catch((error: unknown) => {
+      server.log.error(error, 'Hearth did not stop cleanly.');
+      process.exitCode = 1;
+    });
+  });
+}
 
 try {
   await server.listen({ host, port });
 } catch (error) {
   server.log.error(error);
+  if (database.open) database.close();
   process.exitCode = 1;
 }
 

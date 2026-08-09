@@ -330,10 +330,19 @@ The intended production deployment is Docker Compose under a new Synology path s
 
 Initial containers:
 
-- `hearth-server`
-- `hearth-web` or a single server image that serves the built web assets
+- `server`: pinned Node LTS, Fastify and the sole owner of the local SQLite volume
+- `web`: pinned nginx stable, static React assets and the same-origin `/api` reverse proxy
 
-Prefer the simpler single-image deployment if it preserves clear source boundaries. Add a separate reverse proxy only if required by the LAN/Tailscale access model.
+`hearth/deploy/synology` implements this split with non-root processes, read-only root filesystems,
+dropped capabilities, bounded logs, readiness-gated startup and loopback-only HTTP ingress. DSM
+Reverse Proxy terminates the eventual private HTTPS origin and is the only intended route to the
+web container. No router port-forward or public DNS exposure is part of this deployment.
+
+The server image compiles its SQLite native binding inside the pinned Linux build image for the
+target CPU architecture, rather than trusting a prebuilt binary from a different glibc runtime.
+`GET /api/v1/health` reports process liveness; `GET /api/v1/readiness` verifies SQLite and the latest
+migration. The stable private hostname and trusted certificate remain commissioning inputs because
+adult passkeys bind to that origin. See D-031.
 
 ## Observability
 

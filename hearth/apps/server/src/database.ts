@@ -19,6 +19,10 @@ const migrations = [
   { version: 11, url: new URL('./migrations/0011_calendar_connection_setup.sql', import.meta.url) },
 ] as const;
 
+const latestMigration = migrations.at(-1);
+if (latestMigration === undefined) throw new Error('Hearth requires at least one migration.');
+export const LATEST_MIGRATION_VERSION = latestMigration.version;
+
 export async function openHearthDatabase(path: string): Promise<InstanceType<typeof Database>> {
   await mkdir(dirname(path), { recursive: true });
   const database = new Database(path);

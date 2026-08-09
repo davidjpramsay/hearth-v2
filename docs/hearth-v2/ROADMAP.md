@@ -271,14 +271,18 @@ new Hearth application phase.
 
 ## Phase 7 — Photos, ambient mode and production operations
 
-Status as of 2026-08-05: in progress. The browser/server Photos slice is
+Status as of 2026-08-09: in progress. The browser/server Photos slice is
 implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
 responsive full-screen collage templates with no skinny leftover strips, calm
-reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
+45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
 slideshow, immediate remote exit, cached-source
-states and corrupt-image fallback. Live Synology selection/indexing,
-Home Assistant presence/quiet-hours coordination, production deployment,
+states and corrupt-image fallback. A production-oriented two-container Synology
+scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
+with same-origin proxying, non-root/read-only processes, readiness gating,
+forward migrations and clean shutdown verified locally. Live Synology
+commissioning, hostname/TLS and passkeys, approved photo selection/indexing,
+Home Assistant presence/quiet-hours coordination,
 restore evidence and the household pilot remain open; Phase 7 is not complete.
 
 Cross-cutting appearance extension (2026-08-05): Light, Dark and Automatic are
@@ -293,7 +297,7 @@ checks pass; physical-TCL comfort assessment remains part of the household pilot
 
 - Add approved Synology photo source, indexing and derivatives.
 - Add ambient slideshow and screen/presence coordination.
-- Create production Docker images and Synology Compose deployment.
+- Commission the verified Docker/Compose scaffold on the approved private Synology HTTPS origin.
 - Implement health monitoring, backup, restore and update procedures.
 - Conduct a household pilot and tune television readability/presence rules.
 
