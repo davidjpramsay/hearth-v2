@@ -66,6 +66,14 @@ Before any approved Synology commissioning:
 9. Configure DSM Reverse Proxy from that HTTPS origin to `http://127.0.0.1:8432`, preserving `Host`
    and `X-Forwarded-Proto`. Do not create a router port-forward or public DNS exposure.
 
+10. For family photos, first create or approve one dedicated Synology folder. Only after that
+    explicit selection, uncomment the `/photos-source:ro` volume in `compose.yaml`, set
+    `HEARTH_PHOTO_HOST_DIR` to the exact host folder and set
+    `HEARTH_PHOTO_SOURCE_DIR=/photos-source`. The server ignores symlinks, creates orientation-
+    corrected WebP display copies and thumbnails under `/data/photo-derivatives`, and returns only
+    opaque asset URLs. It never sends the mounted path or original bytes to the browser. Leave
+    `HEARTH_PHOTO_SOURCE_DIR` blank to keep Photos safely unconfigured.
+
 The hostname and certificate mechanism are intentionally unresolved deployment inputs. The passkey
 contract is implemented, but enrolment remains inert until those values and the first-use code file
 are supplied. Changing the WebAuthn relying-party origin later invalidates the intended trust
@@ -90,6 +98,9 @@ Expected checks:
 - the private origin displays adult/household first-use setup, creates a named passkey and never
   seeds Ezra or Maya.
 - stopping the service sends `SIGTERM` and closes Fastify/SQLite cleanly within 30 seconds.
+- Admin → Photos reports the approved folder index without revealing its path; “Scan now” creates
+  an adult audit event and the gallery keeps its last safe derivatives if the NAS is temporarily
+  unavailable.
 
 Do not enter real family or provider data yet. Real-device passkey enrolment, a second-adult recovery
 path, online backup/restore tooling, the exact HTTPS origin and a focused security review remain

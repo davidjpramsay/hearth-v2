@@ -25,6 +25,8 @@ import {
   PasskeySessionSchema,
   PasskeySignOutResultSchema,
   PhotoGallerySchema,
+  PhotoSourceIndexStatusSchema,
+  PhotoSourceRefreshResultSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
   PocketMoneyPaymentVoidCommandResultSchema,
@@ -63,6 +65,8 @@ import {
   type PasskeyCeremonyOptions,
   type PasskeySession,
   type PhotoGallery,
+  type PhotoSourceIndexStatus,
+  type PhotoSourceRefreshResult,
   type Payday,
   type PocketMoneyOverview,
   type PocketMoneyPaymentCommandResult,
@@ -107,6 +111,9 @@ export const queryKeys = {
   },
   get photos() {
     return [householdId(getHearthRuntime()), 'photos'] as const;
+  },
+  get photoSource() {
+    return [householdId(getHearthRuntime()), 'photo-source'] as const;
   },
   get admin() {
     return [householdId(getHearthRuntime()), 'admin'] as const;
@@ -223,6 +230,16 @@ export const hearthApi = {
     ),
   getHome: () => request(`${householdApiBase()}/home`, HomeStatusSchema),
   getPhotos: () => request(`${householdApiBase()}/photos`, PhotoGallerySchema),
+  getPhotoSource: (): Promise<PhotoSourceIndexStatus> =>
+    request(`${householdApiBase()}/photo-source`, PhotoSourceIndexStatusSchema, {
+      headers: demoAdminHeaders,
+    }),
+  refreshPhotoSource: (requestId: string): Promise<PhotoSourceRefreshResult> =>
+    request(`${householdApiBase()}/photo-source/refreshes`, PhotoSourceRefreshResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId }),
+    }),
   executeHomeAction: (actionId: HomeActionId, requestId: string, confirmed: boolean) =>
     request(`${householdApiBase()}/home/actions/${actionId}`, HomeActionResultSchema, {
       method: 'POST',

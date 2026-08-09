@@ -210,6 +210,12 @@ provider is deliberately unreachable.
 ### Photos/media
 
 - Hearth photo derivatives are disposable; original approved photos remain governed by the Synology's existing backup strategy.
+- Mount only the explicitly approved family-photo folder into the server at `/photos-source` with
+  read-only permissions. Leave `HEARTH_PHOTO_SOURCE_DIR` blank until approval; never mount the
+  Synology photo-library root. Derivatives live under `/data/photo-derivatives` and may be rebuilt
+  with the adult Admin scan command.
+- Photo index responses, audit summaries and logs must remain free of host/container source paths.
+  A temporary NAS outage should preserve and serve the last safe derivative set as stale content.
 - Member profile-photo derivatives are identity settings stored inside Hearth SQLite and are covered
   by the normal database backup/restore drill. The chosen original file is not retained by Hearth.
 - Do not imply that Hearth backups protect the entire media library.

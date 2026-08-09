@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { FakePhotoSourceProvider } from './integrations/photo-source.js';
 import { PhotoService } from './photo-repository.js';
+import { InMemoryAdminRepository } from './admin-repository.js';
 
 describe('PhotoService', () => {
   it('projects only safe derivatives and keeps portrait metadata', async () => {
@@ -32,5 +33,31 @@ describe('PhotoService', () => {
     await expect(service.getGallery('household_hearth_demo')).resolves.toMatchObject({
       freshness: 'current',
     });
+  });
+
+  it('audits an adult refresh, replays duplicate requests and rejects television actors', async () => {
+    const service = new PhotoService(new FakePhotoSourceProvider(), {
+      adminRepository: new InMemoryAdminRepository(),
+    });
+    const actor = { id: 'member_maya', type: 'member', source: 'companion' } as const;
+    const first = await service.refreshSource(
+      'household_hearth_demo',
+      'request_photo_refresh',
+      actor,
+    );
+    const replay = await service.refreshSource(
+      'household_hearth_demo',
+      'request_photo_refresh',
+      actor,
+    );
+    expect(first).toMatchObject({ replayed: false, audit: { action: 'photo.source.refresh' } });
+    expect(replay).toMatchObject({ replayed: true, audit: { id: first.audit.id } });
+    await expect(
+      service.refreshSource('household_hearth_demo', 'request_tv_refresh', {
+        id: 'device_living_room_tv',
+        type: 'device',
+        source: 'tv',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });

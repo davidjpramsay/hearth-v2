@@ -1,19 +1,72 @@
-import { PhotoGallerySchema, type DemoScenario, type PhotoGallery } from '@hearth/shared';
+import { randomUUID } from 'node:crypto';
 
-import { FakePhotoSourceProvider, type PhotoSourceProvider } from './integrations/photo-source.js';
-import { RepositoryError } from './repository.js';
+import type Database from 'better-sqlite3';
+
+import {
+  AuditSummarySchema,
+  PhotoGallerySchema,
+  PhotoSourceIndexStatusSchema,
+  PhotoSourceRefreshResultSchema,
+  type DemoScenario,
+  type PhotoGallery,
+  type PhotoSourceIndexStatus,
+  type PhotoSourceRefreshResult,
+} from '@hearth/shared';
+
+import type { AdminRepository } from './admin-repository.js';
+import {
+  FakePhotoSourceProvider,
+  type PhotoDerivativeAsset,
+  type PhotoDerivativeVariant,
+  type PhotoSourceProvider,
+  type PhotoSourceSnapshot,
+} from './integrations/photo-source.js';
+import { RepositoryError, type CommandActor } from './repository.js';
+import { SystemClock, type HearthClock } from './runtime-context.js';
 
 export interface PhotoRepository {
   getGallery(householdId: string): Promise<PhotoGallery>;
+  getSourceStatus(householdId: string): Promise<PhotoSourceIndexStatus>;
+  refreshSource(
+    householdId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<PhotoSourceRefreshResult>;
+  getDerivative(
+    householdId: string,
+    assetId: string,
+    variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null>;
   reset(): void;
   setScenario(scenario: DemoScenario): void;
+  close(): Promise<void> | void;
 }
+
+interface PhotoServiceOptions {
+  adminRepository?: AdminRepository;
+  database?: InstanceType<typeof Database>;
+  clock?: HearthClock;
+}
+
+const REFRESH_COMMAND_TYPE = 'photo-source:refresh';
 
 export class PhotoService implements PhotoRepository {
   private scenario: DemoScenario = 'healthy';
   private failNext = false;
+  private readonly receipts = new Map<string, PhotoSourceRefreshResult>();
+  private readonly refreshes = new Map<string, Promise<PhotoSourceRefreshResult>>();
+  private readonly adminRepository: AdminRepository | undefined;
+  private readonly database: InstanceType<typeof Database> | undefined;
+  private readonly clock: HearthClock;
 
-  constructor(private readonly provider: PhotoSourceProvider = new FakePhotoSourceProvider()) {}
+  constructor(
+    private readonly provider: PhotoSourceProvider = new FakePhotoSourceProvider(),
+    options: PhotoServiceOptions = {},
+  ) {
+    this.adminRepository = options.adminRepository;
+    this.database = options.database;
+    this.clock = options.clock ?? new SystemClock();
+  }
 
   async getGallery(householdId: string): Promise<PhotoGallery> {
     if (this.failNext) {
@@ -26,7 +79,7 @@ export class PhotoService implements PhotoRepository {
     }
     const snapshot = await this.provider.listApprovedPhotos(householdId);
     const empty = this.scenario === 'empty';
-    const unavailable = this.scenario === 'unavailable';
+    const unavailable = this.scenario === 'unavailable' || snapshot.source.status === 'unavailable';
     const stale = this.scenario === 'stale' || unavailable;
     const photos = empty ? [] : snapshot.photos;
     return PhotoGallerySchema.parse({
@@ -37,31 +90,174 @@ export class PhotoService implements PhotoRepository {
         : stale
           ? 'Photos were last checked yesterday · Trying again quietly.'
           : null,
-      collection: {
-        id: snapshot.collectionId,
-        name: snapshot.collectionName,
-        photoCount: photos.length,
-        updatedAt: snapshot.updatedAt,
-        source: unavailable
-          ? {
-              ...snapshot.source,
-              status: 'unavailable',
-              message: 'Saved photos remain available while Hearth reconnects.',
-            }
-          : snapshot.source,
-      },
+      collection: collectionFromSnapshot(snapshot, photos.length, unavailable),
       featuredPhotoId: empty ? null : snapshot.featuredPhotoId,
       photos,
     });
   }
 
+  async getSourceStatus(householdId: string): Promise<PhotoSourceIndexStatus> {
+    const snapshot = await this.provider.listApprovedPhotos(householdId);
+    return statusFromSnapshot(householdId, snapshot);
+  }
+
+  async refreshSource(
+    householdId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<PhotoSourceRefreshResult> {
+    if (actor.type !== 'member' || actor.source !== 'companion') {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult using the companion can scan photos.');
+    }
+    await this.adminRepository?.getOverview(householdId, actor.id);
+    const receiptKey = `${householdId}:${REFRESH_COMMAND_TYPE}:${requestId}`;
+    const active = this.refreshes.get(receiptKey);
+    if (active !== undefined) {
+      const result = await active;
+      return { ...structuredClone(result), replayed: true };
+    }
+    const refresh = this.runRefresh(householdId, requestId, actor, receiptKey).finally(() => {
+      if (this.refreshes.get(receiptKey) === refresh) this.refreshes.delete(receiptKey);
+    });
+    this.refreshes.set(receiptKey, refresh);
+    return refresh;
+  }
+
+  private async runRefresh(
+    householdId: string,
+    requestId: string,
+    actor: CommandActor,
+    receiptKey: string,
+  ): Promise<PhotoSourceRefreshResult> {
+    const receipt = this.readReceipt(householdId, requestId) ?? this.receipts.get(receiptKey);
+    if (receipt !== undefined) return { ...structuredClone(receipt), replayed: true };
+
+    const snapshot = await this.provider.refreshApprovedPhotos(householdId);
+    const audit = AuditSummarySchema.parse({
+      id: `audit_${randomUUID()}`,
+      actorType: actor.type,
+      actorId: actor.id,
+      source: actor.source,
+      action: 'photo.source.refresh',
+      targetId: snapshot.collectionId,
+      occurredAt: this.clock.now().toISOString(),
+      result: snapshot.source.status === 'unavailable' ? 'failed' : 'succeeded',
+    });
+    const result = PhotoSourceRefreshResultSchema.parse({
+      status: statusFromSnapshot(householdId, snapshot),
+      audit,
+      replayed: false,
+    });
+    if (this.database === undefined) this.receipts.set(receiptKey, result);
+    else this.writeReceipt(householdId, requestId, result);
+    return structuredClone(result);
+  }
+
+  getDerivative(
+    householdId: string,
+    assetId: string,
+    variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null> {
+    return this.provider.getDerivative(householdId, assetId, variant);
+  }
+
   reset(): void {
     this.scenario = 'healthy';
     this.failNext = false;
+    this.receipts.clear();
+    this.refreshes.clear();
   }
 
   setScenario(scenario: DemoScenario): void {
     this.scenario = scenario;
     this.failNext = scenario === 'fail-next';
   }
+
+  async close(): Promise<void> {
+    await this.provider.close();
+  }
+
+  private readReceipt(
+    householdId: string,
+    requestId: string,
+  ): PhotoSourceRefreshResult | undefined {
+    if (this.database === undefined) return undefined;
+    const row = this.database
+      .prepare(
+        `SELECT response_json FROM command_receipts
+         WHERE household_id = ? AND request_id = ? AND command_type = ?`,
+      )
+      .get(householdId, requestId, REFRESH_COMMAND_TYPE) as { response_json: string } | undefined;
+    return row === undefined
+      ? undefined
+      : PhotoSourceRefreshResultSchema.parse(JSON.parse(row.response_json));
+  }
+
+  private writeReceipt(
+    householdId: string,
+    requestId: string,
+    result: PhotoSourceRefreshResult,
+  ): void {
+    this.database!.transaction(() => {
+      this.database!.prepare(
+        `INSERT INTO command_receipts
+          (household_id, request_id, command_type, response_json, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run(
+        householdId,
+        requestId,
+        REFRESH_COMMAND_TYPE,
+        JSON.stringify(result),
+        this.clock.now().toISOString(),
+      );
+      this.database!.prepare(
+        `INSERT INTO audit_events
+          (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
+           target_type, target_id, request_id, result, safe_summary_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'photo-source', ?, ?, ?, '{}')`,
+      ).run(
+        result.audit.id,
+        result.audit.occurredAt,
+        householdId,
+        result.audit.actorType,
+        result.audit.actorId,
+        result.audit.source,
+        result.audit.action,
+        result.audit.targetId,
+        requestId,
+        result.audit.result,
+      );
+    })();
+  }
+}
+
+function statusFromSnapshot(
+  householdId: string,
+  snapshot: PhotoSourceSnapshot,
+): PhotoSourceIndexStatus {
+  return PhotoSourceIndexStatusSchema.parse({
+    householdId,
+    collection: collectionFromSnapshot(snapshot, snapshot.photos.length, false),
+    ...snapshot.index,
+  });
+}
+
+function collectionFromSnapshot(
+  snapshot: PhotoSourceSnapshot,
+  photoCount: number,
+  forceUnavailable: boolean,
+) {
+  return {
+    id: snapshot.collectionId,
+    name: snapshot.collectionName,
+    photoCount,
+    updatedAt: snapshot.updatedAt,
+    source: forceUnavailable
+      ? {
+          ...snapshot.source,
+          status: 'unavailable' as const,
+          message: 'Saved photos remain available while Hearth reconnects.',
+        }
+      : snapshot.source,
+  };
 }

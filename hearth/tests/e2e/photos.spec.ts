@@ -281,22 +281,28 @@ test('a corrupt display derivative fails without revealing its URL', async ({ pa
   await expect(page.locator('body')).not.toContainText('bush-camping.webp');
 });
 
-test('@visual phone administration explains Synology and Apple photo-source boundaries', async ({
+test('@visual phone administration reports and refreshes the safe photo index', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/photos');
   await expect(page.getByRole('heading', { name: 'Photo source' })).toBeVisible();
-  await expect(page.locator('[data-focus-id="admin-back"]')).toBeFocused();
-  await expect(page.getByText('Approved Synology folder')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Scan now' })).toBeFocused();
+  await expect(page.getByText('Read-only Synology folder')).toBeVisible();
+  await expect(page.getByText('5 ready')).toBeVisible();
+  await expect(page.getByText('3 Aug 2026, 7:30 am')).toBeVisible();
+  await page.getByRole('button', { name: 'Scan now' }).click();
+  await expect(page.getByRole('status')).toContainText('Photo folder checked. 5 photos are ready.');
   await expect(page.getByText('Apple Shared Album link')).toBeVisible();
-  await expect(page.getByText(/not a supported Hearth photo feed/)).toBeVisible();
+  await expect(page.getByText(/not a supported private Hearth feed/)).toBeVisible();
+  await expect(page.locator('body')).not.toContainText('/volume1');
   const results = await new AxeBuilder({ page }).analyze();
   expect(
     results.violations.filter((violation) =>
       ['serious', 'critical'].includes(violation.impact ?? ''),
     ),
   ).toEqual([]);
+  await page.evaluate(() => window.scrollTo({ top: 0 }));
   await page.screenshot({
     path: resolve(evidence, 'photos-admin-phone.png'),
     animations: 'disabled',

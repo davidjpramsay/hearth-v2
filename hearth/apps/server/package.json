@@ -9,7 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
-    "test:unit": "vitest run src/repository.unit.test.ts src/realtime.unit.test.ts src/home-repository.unit.test.ts src/photo-repository.unit.test.ts",
+    "test:unit": "vitest run src/repository.unit.test.ts src/realtime.unit.test.ts src/home-repository.unit.test.ts src/photo-repository.unit.test.ts src/integrations/synology-photo-source.unit.test.ts",
     "test:integration": "vitest run src/app.integration.test.ts src/admin-repository.integration.test.ts src/calendar-connection-repository.integration.test.ts src/companion-auth.integration.test.ts src/companion-auth.browser.integration.test.ts src/sqlite-hearth-repository.integration.test.ts src/calendar-projection.integration.test.ts src/planning-repository.integration.test.ts src/pocket-money-repository.integration.test.ts src/home-repository.integration.test.ts src/today-content-repository.integration.test.ts src/integrations/caldav-calendar-provider.integration.test.ts",
     "test:migrations": "vitest run src/migrations/migration.migration.test.ts"
   },
@@ -20,6 +20,7 @@
     "better-sqlite3": "13.0.2",
     "fastify": "5.11.0",
     "ical.js": "2.2.1",
+    "sharp": "0.35.3",
     "tsdav": "2.3.1",
     "zod": "4.4.3"
   },

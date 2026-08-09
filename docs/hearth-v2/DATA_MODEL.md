@@ -221,6 +221,7 @@ Recipe/ingredient modelling is deferred. Grocery linkage should use explicit gen
 - dimensions, orientation, capture time where available
 - favourite/hidden state
 - last shown time
+- source fingerprint, asset readiness and index time
 
 Do not expose Synology filesystem paths to clients. Derivatives should avoid repeatedly sending original multi-megabyte files to the television.
 
@@ -231,7 +232,11 @@ nullable featured opaque ID and orientation-aware assets containing only safe
 same-origin display/thumbnail URLs. Phase 7 selects the Today preview through
 that same injected adapter. Demo mode uses fictional bundled derivatives;
 private mode returns an unconfigured empty collection until one approved
-Synology source is selected. Neither response exposes its Synology path.
+Synology source is selected. `PhotoSourceIndexStatus` adds only aggregate ready, hidden,
+unsupported and corrupt counts plus scan state. Neither response exposes its Synology path.
+Migration `0015_synology_photo_index.sql` adds the source fingerprint and scan-status index used for
+incremental refresh; the first adapter uses filesystem modification time as `capturedAt` after
+orientation correction rather than claiming EXIF capture-date fidelity.
 
 ### Announcement
 
@@ -355,6 +360,8 @@ approved photo projection, proportional pocket-money records, bounded member
 avatar derivatives and credential-free calendar-setup metadata respectively. Migration
 `0012_passkey_authentication.sql` adds public-key credentials and hash-only revocable companion
 sessions without storing a setup code or raw bearer token.
+Migration `0015_synology_photo_index.sql` adds the fingerprint and bounded status index required by
+the read-only Synology photo scanner without storing a source filesystem path in asset rows.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported daily and weekly occurrences on

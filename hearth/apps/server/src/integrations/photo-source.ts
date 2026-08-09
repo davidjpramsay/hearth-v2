@@ -7,10 +7,35 @@ export interface PhotoSourceSnapshot {
   source: PhotoSourceSummary;
   featuredPhotoId: string | null;
   photos: PhotoAsset[];
+  index: PhotoSourceIndexSnapshot;
+}
+
+export interface PhotoSourceIndexSnapshot {
+  scanInProgress: boolean;
+  indexedFileCount: number;
+  visiblePhotoCount: number;
+  hiddenPhotoCount: number;
+  unsupportedFileCount: number;
+  corruptFileCount: number;
+}
+
+export type PhotoDerivativeVariant = 'display' | 'thumbnail';
+
+export interface PhotoDerivativeAsset {
+  bytes: Uint8Array;
+  mimeType: 'image/webp';
+  cacheKey: string;
 }
 
 export interface PhotoSourceProvider {
   listApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
+  refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
+  getDerivative(
+    householdId: string,
+    assetId: string,
+    variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null>;
+  close(): Promise<void> | void;
 }
 
 const DEMO_PHOTOS: PhotoAsset[] = [
@@ -85,8 +110,23 @@ export class FakePhotoSourceProvider implements PhotoSourceProvider {
       },
       featuredPhotoId: 'photo_family_breakfast',
       photos: DEMO_PHOTOS.map((photo) => ({ ...photo })),
+      index: readyIndex(DEMO_PHOTOS.length),
     };
   }
+
+  async refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot> {
+    return this.listApprovedPhotos(householdId);
+  }
+
+  async getDerivative(
+    _householdId: string,
+    _assetId: string,
+    _variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null> {
+    return null;
+  }
+
+  close(): void {}
 }
 
 export class UnconfiguredPhotoSourceProvider implements PhotoSourceProvider {
@@ -103,6 +143,32 @@ export class UnconfiguredPhotoSourceProvider implements PhotoSourceProvider {
       },
       featuredPhotoId: null,
       photos: [],
+      index: readyIndex(0),
     };
   }
+
+  async refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot> {
+    return this.listApprovedPhotos(householdId);
+  }
+
+  async getDerivative(
+    _householdId: string,
+    _assetId: string,
+    _variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null> {
+    return null;
+  }
+
+  close(): void {}
+}
+
+function readyIndex(count: number): PhotoSourceIndexSnapshot {
+  return {
+    scanInProgress: false,
+    indexedFileCount: count,
+    visiblePhotoCount: count,
+    hiddenPhotoCount: 0,
+    unsupportedFileCount: 0,
+    corruptFileCount: 0,
+  };
 }

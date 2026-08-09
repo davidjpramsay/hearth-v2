@@ -479,3 +479,27 @@ Record durable choices here. New decisions should include date, status, context,
   `0014_pocket_money_payment_history.sql` rebuilds the payment table without its old one-row-per-week
   constraint, adds optional notes and adds a one-to-one void table. D-027 still governs proportional
   calculation and supersedes stars, but its single-payment choice is replaced by this decision.
+
+## D-036 — Synology photos use one read-only folder and opaque local derivatives
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: D-025 selected Synology as the family-photo authority but left the concrete private
+  indexing and serving boundary open. The collage needs correct portrait/landscape geometry and
+  slow automatic rotation without sending full originals, private NAS paths or a whole-library
+  credential to the television.
+- Choice: Mount exactly one adult-approved Synology folder read-only into the server. Ignore
+  symlinks and bound discovery by depth, file count, size and decoded pixels. Store only a hash of
+  each relative source identity plus a size/mtime fingerprint; use Sharp `autoOrient()` to create
+  atomic, bounded WebP display and thumbnail derivatives in Hearth writable data. Serve them by
+  opaque, immutable same-origin asset routes. Keep cached derivatives visible when the source is
+  unavailable. Permit automatic interval rescans and an adult-companion-only, idempotent, audited
+  manual scan that returns aggregate status—not a source path. Leave the adapter unconfigured when
+  the environment path is absent; selecting and mounting the live folder still requires explicit
+  approval.
+- Consequence: The existing clever collage and ambient views can rotate real mixed-orientation
+  family photos efficiently while Synology remains the original-file authority. Migration
+  `0015_synology_photo_index.sql` adds incremental fingerprints and a status index. The initial
+  adapter uses filesystem modification time for ordering/`capturedAt`; richer EXIF capture dates,
+  hiding/favourite administration and any iPhone PhotoKit import remain later, separately bounded
+  work.

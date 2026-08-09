@@ -139,6 +139,10 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist
 - `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
+- adult-only `GET /api/v1/households/:id/photo-source` and idempotent
+  `POST /api/v1/households/:id/photo-source/refreshes` for safe index status and manual rescans
+- `GET /api/v1/households/:id/photo-assets/:assetId/:variant` for immutable, opaque WebP display
+  and thumbnail derivatives; source paths and originals never cross this boundary
 - `GET /api/v1/auth/status`, first-use registration options/verification, discoverable-passkey
   authentication options/verification, session and sign-out routes for the private companion
 
@@ -161,8 +165,11 @@ dates, provider version, recurrence-master identity and an explicit exception
 flag. `TodaySummary` may include one nullable same-origin photo derivative and
 family-readable alternative text. Phase 7 now selects that preview through the
 same injected photo-source adapter as the Photos gallery; demo mode returns
-fictional bundled derivatives and private mode remains unconfigured until one
-approved Synology source is selected. Each
+fictional bundled derivatives. Private mode constructs the read-only Synology-folder adapter only
+when its server-only source environment is configured; otherwise the source remains explicitly
+unconfigured. The adapter ignores symlinks, incrementally fingerprints source files, applies EXIF
+orientation, writes bounded WebP derivatives atomically and preserves the last safe index while the
+NAS is unavailable. Each
 `WeekSchedule` day also carries a nullable, presentation-safe daily forecast
 summary (condition code, family-readable label and Celsius temperature). The
 existing query routes read calendar values from the durable SQLite projection

@@ -262,6 +262,9 @@ describe('0001 household core migration', () => {
     expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 8').get()).toEqual({
       name: 'photo_library',
     });
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 15').get()).toEqual(
+      { name: 'synology_photo_index' },
+    );
     database.exec(`
       INSERT INTO households VALUES ('household_photo', 'Photo', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
       INSERT INTO photo_sources VALUES (
@@ -270,14 +273,14 @@ describe('0001 household core migration', () => {
       );
       INSERT INTO photo_assets VALUES (
         'asset_photo', 'source_photo', 'opaque:1', 'derivative:1', 'thumbnail:1',
-        'A family photo.', 1600, 1067, 'landscape', NULL, 1, 0, 'ready', NULL, 'now'
+        'A family photo.', 1600, 1067, 'landscape', NULL, 1, 0, 'ready', NULL, 'now', 'fingerprint:1'
       );
     `);
     expect(() =>
       database.exec(`
         INSERT INTO photo_assets VALUES (
           'asset_duplicate', 'source_photo', 'opaque:1', 'derivative:2', 'thumbnail:2',
-          'Duplicate.', 1600, 1067, 'landscape', NULL, 0, 0, 'ready', NULL, 'now'
+          'Duplicate.', 1600, 1067, 'landscape', NULL, 0, 0, 'ready', NULL, 'now', 'fingerprint:2'
         );
       `),
     ).toThrow(/UNIQUE/);
@@ -285,7 +288,7 @@ describe('0001 household core migration', () => {
       database.exec(`
         INSERT INTO photo_assets VALUES (
           'asset_bad', 'source_photo', 'opaque:bad', 'derivative:bad', 'thumbnail:bad',
-          'Bad.', 0, 1067, 'upside-down', NULL, 0, 0, 'ready', NULL, 'now'
+          'Bad.', 0, 1067, 'upside-down', NULL, 0, 0, 'ready', NULL, 'now', 'fingerprint:bad'
         );
       `),
     ).toThrow(/CHECK/);
@@ -293,6 +296,11 @@ describe('0001 household core migration', () => {
       name: string;
     }>;
     expect(columns.map((column) => column.name)).not.toContain('filesystem_path');
+    expect(columns.map((column) => column.name)).toContain('source_fingerprint');
+    const indexes = database.prepare('PRAGMA index_list(photo_assets)').all() as Array<{
+      name: string;
+    }>;
+    expect(indexes.map((index) => index.name)).toContain('photo_assets_source_status_idx');
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();

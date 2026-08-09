@@ -49,6 +49,15 @@ export function usePhotosQuery(enabled = true) {
   });
 }
 
+export function usePhotoSourceQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.photoSource,
+    queryFn: hearthApi.getPhotoSource,
+    enabled,
+    retry: false,
+  });
+}
+
 export function useAdminQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.admin, queryFn: hearthApi.getAdmin, enabled });
 }

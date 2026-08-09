@@ -28,6 +28,10 @@ import {
   FakePhotoSourceProvider,
   UnconfiguredPhotoSourceProvider,
 } from './integrations/photo-source.js';
+import {
+  SynologyFolderPhotoSourceProvider,
+  resolveSynologyPhotoSourceConfiguration,
+} from './integrations/synology-photo-source.js';
 import { HomeService } from './home-repository.js';
 import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
@@ -83,9 +87,17 @@ const homeRepository = new HomeService(
   database,
   { householdId: runtimeHouseholdId, clock },
 );
-const photoRepository = new PhotoService(
-  demoMode ? new FakePhotoSourceProvider() : new UnconfiguredPhotoSourceProvider(),
-);
+const photoConfiguration = demoMode ? null : resolveSynologyPhotoSourceConfiguration(process.env);
+const photoProvider = demoMode
+  ? new FakePhotoSourceProvider()
+  : photoConfiguration === null
+    ? new UnconfiguredPhotoSourceProvider()
+    : new SynologyFolderPhotoSourceProvider(database, photoConfiguration, clock);
+const photoRepository = new PhotoService(photoProvider, {
+  adminRepository,
+  database,
+  clock,
+});
 const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository, database, {
   seedDemo: demoMode,
   clock,

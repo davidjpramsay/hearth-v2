@@ -11,6 +11,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
 import { usePhotosQuery } from '../hooks/useHearthQueries';
+import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   arrangePhotoCollage,
@@ -44,6 +45,7 @@ export function PhotosScreen({
     () => window.matchMedia('(max-width: 900px) and (orientation: landscape)').matches,
   );
   const wasAmbient = useRef(false);
+  const householdTime = useHouseholdClock();
 
   const gallery = query.data;
   const selected =
@@ -257,7 +259,7 @@ export function PhotosScreen({
             src={selected.displayUrl}
           />
           <div className="photo-ambient__overlay">
-            <strong>7:42</strong>
+            <strong>{householdTime}</strong>
             <span>Press any button to return</span>
           </div>
           <button

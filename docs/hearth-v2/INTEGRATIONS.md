@@ -269,9 +269,13 @@ are wanted in Hearth, export or sync them into the one approved Synology source,
 or add a separately reviewed future iPhone PhotoKit upload flow.
 
 The current Phase 7 product slice provides the typed source boundary, safe demo
-display/thumbnail derivatives, gallery, cached-source states and ambient exit.
-Selecting and indexing the live Synology folder remains an owner-approved
-deployment step and must not broaden beyond the configured collection.
+display/thumbnail derivatives, gallery, cached-source states and ambient exit. Private mode now
+provides a concrete read-only folder adapter: it ignores symbolic links, bounds file count/depth/
+size, fingerprints files for incremental rescans, corrects orientation and creates atomic WebP
+display/thumbnail derivatives. The browser receives opaque, versioned asset routes and aggregate
+scan counts only. An adult companion may request an idempotent, audited rescan; an automatic quiet
+rescan runs after the configured interval. Selecting and mounting the live Synology folder remains
+an owner-approved deployment step and must not broaden beyond the configured collection.
 
 ## Presence and IR
 

@@ -197,13 +197,15 @@ live-system commissioning tasks requiring owner approval.
 - The same static dashboard is not left illuminated overnight.
 - Missing/corrupt photos fail gracefully.
 
-Status as of 2026-08-08: the local browser/server slice passes a unique-image,
+Status as of 2026-08-09: the local browser/server slice passes a unique-image,
 orientation-selected full-screen collage with bounded tile geometry, calm 45-second occupant
 rotation and a reduced-motion pause, mixed landscape and portrait rendering, path-safe typed
 responses, D-pad gallery selection,
 immediate keyboard/Back-equivalent ambient exit, real offline cached content,
 empty/unavailable/failure-retry states and a corrupt-derivative fallback at TV
-and phone viewports. Live Synology indexing, voice exit, physical-TCL rendering
+and phone viewports. The private folder adapter additionally passes local mixed-orientation,
+unsupported/corrupt/symlink, incremental-change, opaque-route and cached-unavailable tests, with an
+adult-only audited manual scan contract. Live Synology folder selection/mount/scan, voice exit, physical-TCL rendering
 and Home Assistant presence/quiet-hours coordination are not run, so this
 acceptance section and Phase 7 remain incomplete.
 

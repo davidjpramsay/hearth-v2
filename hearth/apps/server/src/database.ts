@@ -26,6 +26,10 @@ const migrations = [
     version: 14,
     url: new URL('./migrations/0014_pocket_money_payment_history.sql', import.meta.url),
   },
+  {
+    version: 15,
+    url: new URL('./migrations/0015_synology_photo_index.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

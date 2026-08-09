@@ -64,6 +64,9 @@ import {
   PasskeySessionSchema,
   PasskeySignOutResultSchema,
   PhotoGallerySchema,
+  PhotoSourceIndexStatusSchema,
+  PhotoSourceRefreshResultSchema,
+  RefreshPhotoSourceRequestSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
   PocketMoneyPaymentVoidCommandResultSchema,
@@ -138,6 +141,10 @@ const ListItemParamsSchema = HouseholdParamsSchema.extend({ itemId: OpaqueIdSche
 const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: OpaqueIdSchema });
 const NoticeParamsSchema = HouseholdParamsSchema.extend({ noticeId: OpaqueIdSchema });
 const PocketMoneyPaymentParamsSchema = HouseholdParamsSchema.extend({ paymentId: OpaqueIdSchema });
+const PhotoAssetParamsSchema = HouseholdParamsSchema.extend({
+  assetId: OpaqueIdSchema,
+  variant: z.enum(['display', 'thumbnail']),
+});
 const PairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
 const TodayQuerySchema = z.object({ date: LocalDateSchema });
 const WeekQuerySchema = z.object({ start: LocalDateSchema });
@@ -825,6 +832,56 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     );
   });
 
+  server.get('/api/v1/households/:householdId/photo-source', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
+      return PhotoSourceIndexStatusSchema.parse(
+        await photoRepository.getSourceStatus(params.householdId),
+      );
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/photo-source/refreshes', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(RefreshPhotoSourceRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = PhotoSourceRefreshResultSchema.parse(
+        await photoRepository.refreshSource(params.householdId, body.requestId, actor),
+      );
+      realtime.publish(params.householdId, 'photos.changed', result.status.collection.id);
+      return result;
+    });
+  });
+
+  server.get(
+    '/api/v1/households/:householdId/photo-assets/:assetId/:variant',
+    async (request, reply) => {
+      const params = parse(PhotoAssetParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () => {
+        const asset = await photoRepository.getDerivative(
+          params.householdId,
+          params.assetId,
+          params.variant,
+        );
+        if (asset === null) {
+          throw new RepositoryError('NOT_FOUND', 'That family photo could not be found.');
+        }
+        return reply
+          .header('Cache-Control', 'private, max-age=31536000, immutable')
+          .header('Content-Length', String(asset.bytes.byteLength))
+          .header('X-Content-Type-Options', 'nosniff')
+          .type(asset.mimeType)
+          .send(Buffer.from(asset.bytes));
+      });
+    },
+  );
+
   server.get('/api/v1/households/:householdId/chore-occurrences', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     const query = parse(TodayQuerySchema, request.query, reply);
@@ -1301,6 +1358,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   }
 
   server.addHook('onClose', async () => {
+    await photoRepository.close();
     planningRepository.close();
     adminRepository.close();
     pocketMoneyRepository.close();

@@ -300,12 +300,15 @@ implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
 responsive full-screen collage templates with no skinny leftover strips, calm
 45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
-slideshow, immediate remote exit, cached-source
-states and corrupt-image fallback. A production-oriented two-container Synology
+slideshow, immediate remote exit, cached-source states and corrupt-image fallback. The private
+server now includes the concrete read-only Synology-folder indexer, incremental fingerprinting,
+orientation-correct display/thumbnail WebPs, opaque immutable asset routes, adult-only audited
+manual scans and aggregate Admin status. A production-oriented two-container Synology
 scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
 with same-origin proxying, non-root/read-only processes, readiness gating,
 forward migrations and clean shutdown verified locally. Live Synology
-commissioning, hostname/TLS and real-device passkey enrolment/recovery, approved photo selection/indexing,
+commissioning, hostname/TLS and real-device passkey enrolment/recovery, approved live photo-folder
+selection/mount and scan evidence,
 Home Assistant presence/quiet-hours coordination,
 restore evidence and the household pilot remain open; Phase 7 is not complete.
 
@@ -319,7 +322,7 @@ checks pass; physical-TCL comfort assessment remains part of the household pilot
 
 ### Work
 
-- Add approved Synology photo source, indexing and derivatives.
+- Commission the implemented Synology photo source against one explicitly approved read-only folder.
 - Add ambient slideshow and screen/presence coordination.
 - Commission the verified Docker/Compose scaffold on the approved private Synology HTTPS origin.
 - Implement health monitoring, backup, restore and update procedures.

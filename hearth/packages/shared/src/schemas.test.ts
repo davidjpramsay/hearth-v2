@@ -19,6 +19,8 @@ import {
   MonthScheduleSchema,
   UpdateMemberAvatarRequestSchema,
   PhotoGallerySchema,
+  PhotoSourceIndexStatusSchema,
+  PhotoSourceRefreshResultSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentSchema,
   RecordPocketMoneyPaymentRequestSchema,
@@ -213,6 +215,46 @@ describe('shared wire schemas', () => {
         photos: [{ ...parsed.photos[0], displayUrl: '/demo/../private/family.jpg' }],
       }).success,
     ).toBe(false);
+  });
+
+  it('validates path-free photo index and audited refresh results', () => {
+    const status = PhotoSourceIndexStatusSchema.parse({
+      householdId: 'household_demo',
+      collection: {
+        id: 'photo_collection_demo',
+        name: 'Family photos',
+        photoCount: 12,
+        updatedAt: '2026-08-09T10:00:00.000Z',
+        source: {
+          kind: 'synology-folder',
+          label: 'Synology photos',
+          status: 'ready',
+          message: '12 approved photos are indexed locally.',
+        },
+      },
+      scanInProgress: false,
+      indexedFileCount: 14,
+      visiblePhotoCount: 12,
+      hiddenPhotoCount: 0,
+      unsupportedFileCount: 1,
+      corruptFileCount: 1,
+    });
+    const result = PhotoSourceRefreshResultSchema.parse({
+      status,
+      replayed: false,
+      audit: {
+        id: 'audit_photo_refresh',
+        actorType: 'member',
+        actorId: 'member_adult',
+        source: 'companion',
+        action: 'photo.source.refresh',
+        targetId: 'photo_collection_demo',
+        occurredAt: '2026-08-09T10:00:00.000Z',
+        result: 'succeeded',
+      },
+    });
+    expect(result.status.visiblePhotoCount).toBe(12);
+    expect(JSON.stringify(result)).not.toMatch(/volume1|sourceDirectory|derivativeDirectory/);
   });
 
   it('keeps native television media outside Hearth integration contracts', () => {

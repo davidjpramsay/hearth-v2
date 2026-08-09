@@ -222,6 +222,17 @@ export const PhotoGallerySchema = z.object({
   photos: z.array(PhotoAssetSchema),
 });
 
+export const PhotoSourceIndexStatusSchema = z.object({
+  householdId: OpaqueIdSchema,
+  collection: PhotoCollectionSchema,
+  scanInProgress: z.boolean(),
+  indexedFileCount: z.number().int().nonnegative(),
+  visiblePhotoCount: z.number().int().nonnegative(),
+  hiddenPhotoCount: z.number().int().nonnegative(),
+  unsupportedFileCount: z.number().int().nonnegative(),
+  corruptFileCount: z.number().int().nonnegative(),
+});
+
 export const TodaySectionVisibilitySchema = z.object({
   dinner: z.boolean(),
   listSummary: z.boolean(),
@@ -673,6 +684,7 @@ export const AuditSummarySchema = z.object({
     'pocket-money.payment.void',
     'calendar.connection.save',
     'calendar.connection.remove',
+    'photo.source.refresh',
     'auth.passkey.register',
     'home.action.execute',
     'notice.create',
@@ -713,6 +725,14 @@ export const ArchiveHouseholdNoticeRequestSchema = CommandRequestSchema;
 export const UpdateTodaySectionsRequestSchema = CommandRequestSchema.extend(
   TodaySectionVisibilitySchema.shape,
 );
+
+export const RefreshPhotoSourceRequestSchema = CommandRequestSchema;
+
+export const PhotoSourceRefreshResultSchema = z.object({
+  status: PhotoSourceIndexStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
 
 export const TodayConfigurationCommandResultSchema = z.object({
   configuration: TodayConfigurationSchema,
@@ -765,6 +785,7 @@ export const RealtimeEventSchema = z.object({
     'home.changed',
     'calendar.changed',
     'today.changed',
+    'photos.changed',
   ]),
   householdId: OpaqueIdSchema,
   targetId: OpaqueIdSchema,
@@ -1046,6 +1067,9 @@ export type PhotoAsset = z.infer<typeof PhotoAssetSchema>;
 export type PhotoSourceSummary = z.infer<typeof PhotoSourceSummarySchema>;
 export type PhotoCollection = z.infer<typeof PhotoCollectionSchema>;
 export type PhotoGallery = z.infer<typeof PhotoGallerySchema>;
+export type PhotoSourceIndexStatus = z.infer<typeof PhotoSourceIndexStatusSchema>;
+export type RefreshPhotoSourceRequest = z.infer<typeof RefreshPhotoSourceRequestSchema>;
+export type PhotoSourceRefreshResult = z.infer<typeof PhotoSourceRefreshResultSchema>;
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 export type WeekDay = z.infer<typeof WeekDaySchema>;
 export type WeekSchedule = z.infer<typeof WeekScheduleSchema>;

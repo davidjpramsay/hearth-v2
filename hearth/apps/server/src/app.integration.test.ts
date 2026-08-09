@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildServer, LOGGER_REDACT_PATHS } from './app.js';
 import { HomeService } from './home-repository.js';
 import { FakeHomeAssistantProvider } from './integrations/home-assistant-provider.js';
+import {
+  FakePhotoSourceProvider,
+  type PhotoDerivativeAsset,
+  type PhotoDerivativeVariant,
+} from './integrations/photo-source.js';
+import { PhotoService } from './photo-repository.js';
 import { FixedClock } from './runtime-context.js';
 
 const servers: ReturnType<typeof buildServer>[] = [];
@@ -15,6 +21,20 @@ function server() {
   const instance = buildServer({ logger: false });
   servers.push(instance);
   return instance;
+}
+
+class DerivativePhotoSourceProvider extends FakePhotoSourceProvider {
+  override async getDerivative(
+    _householdId: string,
+    _assetId: string,
+    _variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null> {
+    return {
+      bytes: new Uint8Array([82, 73, 70, 70]),
+      mimeType: 'image/webp',
+      cacheKey: 'opaque-display.webp',
+    };
+  }
 }
 
 describe('Hearth v2 API', () => {
@@ -316,6 +336,69 @@ describe('Hearth v2 API', () => {
         source: { kind: 'synology-folder', status: 'unconfigured' },
       },
     });
+  });
+
+  it('reports and refreshes the photo index through an adult-only idempotent command', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo/photo-source';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const status = await app.inject({ method: 'GET', url: base, headers });
+    const first = await app.inject({
+      method: 'POST',
+      url: `${base}/refreshes`,
+      headers,
+      payload: { requestId: 'request_photo_scan_http' },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${base}/refreshes`,
+      headers,
+      payload: { requestId: 'request_photo_scan_http' },
+    });
+    const child = await app.inject({
+      method: 'POST',
+      url: `${base}/refreshes`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: { requestId: 'request_photo_scan_child' },
+    });
+    const missingDerivative = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/photo-assets/photo_missing/display',
+    });
+
+    expect(status.json()).toMatchObject({
+      visiblePhotoCount: 5,
+      scanInProgress: false,
+      collection: { source: { status: 'ready' } },
+    });
+    expect(first.json()).toMatchObject({
+      replayed: false,
+      audit: { action: 'photo.source.refresh', actorId: 'member_maya' },
+    });
+    expect(replay.json()).toMatchObject({
+      replayed: true,
+      audit: { id: first.json().audit.id },
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(missingDerivative.statusCode).toBe(404);
+    expect(missingDerivative.json().error.code).toBe('NOT_FOUND');
+  });
+
+  it('serves only immutable same-origin photo derivatives with safe response headers', async () => {
+    const provider = new DerivativePhotoSourceProvider();
+    const app = buildServer({ logger: false, photoRepository: new PhotoService(provider) });
+    servers.push(app);
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/photo-assets/photo_family_breakfast/display',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('image/webp');
+    expect(response.headers['cache-control']).toBe('private, max-age=31536000, immutable');
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.rawPayload).toEqual(Buffer.from([82, 73, 70, 70]));
   });
 
   it('completes, replays and reverses through the HTTP contract', async () => {

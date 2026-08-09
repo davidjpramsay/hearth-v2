@@ -65,6 +65,14 @@ export function useRealtimeInvalidation(): void {
         ]);
         return;
       }
+      if (parsed.data.kind === 'photos.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.photoSource }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        ]);
+        return;
+      }
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
@@ -81,6 +89,7 @@ export function useRealtimeInvalidation(): void {
     source.addEventListener('chore-template.changed', receive as EventListener);
     source.addEventListener('home.changed', receive as EventListener);
     source.addEventListener('today.changed', receive as EventListener);
+    source.addEventListener('photos.changed', receive as EventListener);
     return () => source.close();
   }, [queryClient]);
 }
