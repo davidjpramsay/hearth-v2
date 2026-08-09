@@ -141,7 +141,9 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `PUT /api/v1/households/:id/members/:memberId/pocket-money-settings` for adult-only required weekly amount and payday changes
 - `POST /api/v1/households/:id/pocket-money-payments` for an adult-only, idempotent full or partial weekly payment snapshot with an optional note
 - `POST /api/v1/households/:id/pocket-money-payments/:paymentId/voids` for an adult-only, idempotent, reasoned correction that preserves the original record
-- adult-only recurring chore-template query/create/update commands
+- adult-only chore-template query/create/update commands, including explicit one-off schedules and
+  replay-safe archive/restore lifecycle commands (`POST .../:templateId/archivals` and
+  `POST .../:templateId/restorations` with a validated `resumeFrom` local date)
 - `GET /api/v1/households/:id/home` for curated presence, television power and power-safety state
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist

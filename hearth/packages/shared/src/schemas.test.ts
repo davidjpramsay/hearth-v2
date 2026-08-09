@@ -37,6 +37,8 @@ import {
   ReorderHouseholdListsRequestSchema,
   CreateHouseholdNoticeRequestSchema,
   TodaySectionVisibilitySchema,
+  ChoreTemplateSchema,
+  CreateChoreTemplateRequestSchema,
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
@@ -61,6 +63,48 @@ describe('shared wire schemas', () => {
       requestId: 'request_demo_001',
     });
     expect(() => CommandRequestSchema.parse({ requestId: 42 })).toThrow();
+  });
+
+  it('distinguishes one-off chores from recurring schedules at the wire boundary', () => {
+    const once = CreateChoreTemplateRequestSchema.parse({
+      requestId: 'request_chore_once_001',
+      title: 'Bring bins in',
+      description: null,
+      assigneeId: 'member_ezra',
+      routineLabel: 'Extra jobs',
+      repeat: 'once',
+      repeatDays: [],
+      activeFrom: '2026-08-04',
+    });
+    expect(once).toMatchObject({ repeat: 'once', repeatDays: [] });
+    const template = {
+      id: 'template_bins_once',
+      title: once.title,
+      description: null,
+      assignee: {
+        id: 'member_ezra',
+        displayName: 'Ezra',
+        color: '#1668b7',
+        avatarUrl: '/demo/ezra.png',
+        role: 'child',
+        capabilities: ['household.view', 'chores.complete'],
+      },
+      routineLabel: once.routineLabel,
+      repeat: once.repeat,
+      repeatDays: once.repeatDays,
+      activeFrom: once.activeFrom,
+      activeUntil: once.activeFrom,
+      archived: false,
+    };
+    expect(ChoreTemplateSchema.parse(template).activeUntil).toBe('2026-08-04');
+    expect(ChoreTemplateSchema.safeParse({ ...template, activeUntil: null }).success).toBe(false);
+    expect(
+      CreateChoreTemplateRequestSchema.safeParse({ ...once, repeat: 'weekly', repeatDays: [] })
+        .success,
+    ).toBe(false);
+    expect(
+      CreateChoreTemplateRequestSchema.safeParse({ ...once, repeatDays: ['MO'] }).success,
+    ).toBe(false);
   });
 
   it('validates list administration fields and exact-order command shapes', () => {

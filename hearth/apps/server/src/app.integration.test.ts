@@ -1426,24 +1426,95 @@ describe('Hearth v2 API', () => {
     ).toBe(true);
   });
 
-  it('keeps recurring chore administration adult-only at the HTTP boundary', async () => {
+  it('keeps chore scheduling adult-only and exposes replay-safe one-off lifecycle commands', async () => {
     const app = server();
     const url = '/api/v1/households/household_hearth_demo/chore-templates';
+    const adultHeaders = { 'x-hearth-demo-actor': 'member_maya' };
     const adult = await app.inject({
       method: 'GET',
       url,
-      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      headers: adultHeaders,
     });
     const child = await app.inject({
       method: 'GET',
       url,
       headers: { 'x-hearth-demo-actor': 'member_ezra' },
     });
+    const oneOffPayload = {
+      requestId: 'request_http_one_off_chore',
+      title: 'Bring bins in',
+      description: null,
+      assigneeId: 'member_ezra',
+      routineLabel: 'Extra jobs',
+      repeat: 'once',
+      repeatDays: [],
+      activeFrom: '2026-08-04',
+    };
+    const created = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: oneOffPayload,
+    });
+    const createReplay = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: oneOffPayload,
+    });
+    const templateId = created.json().template.id as string;
+    const invalid = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: { ...oneOffPayload, requestId: 'request_invalid_weekly_chore', repeat: 'weekly' },
+    });
+    const archiveUrl = `${url}/${templateId}/archivals`;
+    const archived = await app.inject({
+      method: 'POST',
+      url: archiveUrl,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_archive_chore' },
+    });
+    const archiveReplay = await app.inject({
+      method: 'POST',
+      url: archiveUrl,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_archive_chore' },
+    });
+    const restored = await app.inject({
+      method: 'POST',
+      url: `${url}/${templateId}/restorations`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_restore_chore', resumeFrom: '2026-08-05' },
+    });
 
     expect(adult.statusCode).toBe(200);
     expect(adult.json().templates.length).toBeGreaterThan(0);
     expect(child.statusCode).toBe(403);
     expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(created.json()).toMatchObject({
+      template: {
+        repeat: 'once',
+        repeatDays: [],
+        activeFrom: '2026-08-04',
+        activeUntil: '2026-08-04',
+      },
+      replayed: false,
+    });
+    expect(createReplay.json()).toMatchObject({ replayed: true });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+    expect(archived.json()).toMatchObject({
+      template: { archived: true },
+      audit: { action: 'chore-template.archive' },
+      replayed: false,
+    });
+    expect(archiveReplay.json()).toMatchObject({ replayed: true });
+    expect(restored.json()).toMatchObject({
+      template: { archived: false, activeFrom: '2026-08-05', activeUntil: '2026-08-05' },
+      audit: { action: 'chore-template.restore' },
+    });
   });
 
   it('serves curated Home Assistant state and idempotent allowlisted actions', async () => {

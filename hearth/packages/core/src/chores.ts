@@ -110,6 +110,7 @@ export function isChoreDueOnDate(
     }),
   );
   const frequency = fields.get('FREQ');
+  if (frequency === 'ONCE') return localDate === activeFrom;
   if (frequency === 'DAILY') return true;
   if (frequency !== 'WEEKLY') return false;
   const date = new Date(`${localDate}T12:00:00Z`);

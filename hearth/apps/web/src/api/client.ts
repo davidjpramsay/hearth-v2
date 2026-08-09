@@ -538,6 +538,26 @@ export const hearthApi = {
       ChoreTemplateCommandResultSchema,
       { method: 'PATCH', headers: demoAdminHeaders, body: JSON.stringify(input) },
     ),
+  archiveChoreTemplate: (templateId: string, requestId: string) =>
+    request(
+      `${householdApiBase()}/chore-templates/${templateId}/archivals`,
+      ChoreTemplateCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+    ),
+  restoreChoreTemplate: (templateId: string, requestId: string, resumeFrom: string) =>
+    request(
+      `${householdApiBase()}/chore-templates/${templateId}/restorations`,
+      ChoreTemplateCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId, resumeFrom }),
+      },
+    ),
   getAdmin: () =>
     request(`${householdApiBase()}/admin`, AdminOverviewSchema, {
       headers: demoAdminHeaders,
@@ -719,7 +739,7 @@ export interface ChoreTemplateInput {
   description: string | null;
   assigneeId: string;
   routineLabel: string;
-  repeat: 'daily' | 'weekdays' | 'weekly';
+  repeat: 'once' | 'daily' | 'weekdays' | 'weekly';
   repeatDays: Array<'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'>;
   activeFrom: string;
 }

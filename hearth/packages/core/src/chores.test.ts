@@ -79,7 +79,9 @@ describe('chore commands', () => {
     expect(() => skipChore(skipped.occurrence, context)).toThrow('can no longer be skipped');
   });
 
-  it('evaluates supported daily and weekly recurrence rules within active dates', () => {
+  it('evaluates supported one-off, daily and weekly recurrence rules within active dates', () => {
+    expect(isChoreDueOnDate('FREQ=ONCE', '2026-08-03', '2026-08-03', '2026-08-03')).toBe(true);
+    expect(isChoreDueOnDate('FREQ=ONCE', '2026-08-04', '2026-08-03', '2026-08-03')).toBe(false);
     expect(isChoreDueOnDate('FREQ=DAILY', '2026-08-03', '2026-08-01', null)).toBe(true);
     expect(isChoreDueOnDate('FREQ=WEEKLY;BYDAY=MO,WE,FR', '2026-08-03', '2026-08-01', null)).toBe(
       true,

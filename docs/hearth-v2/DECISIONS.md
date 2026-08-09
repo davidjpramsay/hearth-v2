@@ -526,3 +526,22 @@ Record durable choices here. New decisions should include date, status, context,
   index; the runtime repository still owns all command, receipt and audit transactions. Adding
   breakfast/lunch editing or grocery generation later requires demonstrated household need rather
   than a new integration boundary.
+
+## D-038 — One-off chores and archived schedules share the occurrence model
+
+- Date: 2026-08-09
+- Status: accepted
+- Context: Phone administration could edit simple recurring templates but could not schedule an
+  extra job or retire a schedule. Hard deletion would lose household history, while restoring an
+  archived recurring template with its old active range could manufacture jobs inside the paused
+  interval when an adult later browsed those dates.
+- Choice: Represent a one-off job as a normal chore template with `FREQ=ONCE` and equal household-
+  local start/end dates. Use the existing archive column rather than deletion. Require separate,
+  authenticated, receipt-idempotent archive and restore commands with audit events. Restore starts a
+  new active window on a validated local date; for a one-off it moves the sole due date to that day.
+  Previously generated occurrences remain unchanged. Keep multi-assignee schedules, due windows,
+  reasoned excuse/reassignment and a history screen as later bounded work.
+- Consequence: One-off and recurring jobs use one completion/pocket-money contract, retrying a
+  lifecycle command cannot duplicate state, and a paused interval does not silently acquire chores.
+  The existing schema already stores recurrence, active ranges and archive state, so this choice
+  needs no migration.

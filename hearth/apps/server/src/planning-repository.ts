@@ -58,6 +58,7 @@ import {
   type UpdateListItemRequest,
   type ReorderHouseholdListsRequest,
   type ReorderListItemsRequest,
+  type RestoreChoreTemplateRequest,
   type UpsertMealPlanRequest,
   type UpdateMealPlanWeekRequest,
   type UpdateSavedMealRequest,
@@ -200,6 +201,18 @@ export interface PlanningRepository {
     householdId: string,
     templateId: string,
     input: UpdateChoreTemplateRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult>;
+  archiveChoreTemplate(
+    householdId: string,
+    templateId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult>;
+  restoreChoreTemplate(
+    householdId: string,
+    templateId: string,
+    input: RestoreChoreTemplateRequest,
     actor: CommandActor,
   ): Promise<ChoreTemplateCommandResult>;
   reset(): void;
@@ -794,13 +807,79 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       ChoreTemplateCommandResultSchema,
       () => {
         const index = this.templates.findIndex((template) => template.id === templateId);
-        if (index < 0)
+        const current = this.templates[index];
+        if (current === undefined)
           throw new RepositoryError('NOT_FOUND', 'That recurring chore was not found.');
-        const template = templateFromInput(templateId, input);
+        const template = templateFromInput(templateId, input, current.archived);
         this.templates[index] = template;
         return {
           template,
           audit: this.audit('chore-template.update', template.id, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async archiveChoreTemplate(
+    householdId: string,
+    templateId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'chore-template-archive',
+      requestId,
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const index = this.templates.findIndex((template) => template.id === templateId);
+        const current = this.templates[index];
+        if (current === undefined)
+          throw new RepositoryError('NOT_FOUND', 'That chore was not found.');
+        if (current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already archived.');
+        const template = ChoreTemplateSchema.parse({ ...current, archived: true });
+        this.templates[index] = template;
+        return {
+          template,
+          audit: this.audit('chore-template.archive', template.id, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async restoreChoreTemplate(
+    householdId: string,
+    templateId: string,
+    input: RestoreChoreTemplateRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'chore-template-restore',
+      input.requestId,
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const index = this.templates.findIndex((template) => template.id === templateId);
+        const current = this.templates[index];
+        if (current === undefined)
+          throw new RepositoryError('NOT_FOUND', 'That chore was not found.');
+        if (!current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already active.');
+        const template = ChoreTemplateSchema.parse({
+          ...current,
+          archived: false,
+          activeFrom: input.resumeFrom,
+          activeUntil: current.repeat === 'once' ? input.resumeFrom : null,
+        });
+        this.templates[index] = template;
+        return {
+          template,
+          audit: this.audit('chore-template.restore', template.id, actor),
           replayed: false,
         };
       },
@@ -1769,7 +1848,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             `INSERT INTO chore_templates
               (id, household_id, title, description, recurrence_rule, routine_label, due_time,
                points_value, active_from, active_until, archived_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, NULL, NULL, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, ?, ?)`,
           )
           .run(
             templateId,
@@ -1780,6 +1859,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.routineLabel,
             0,
             input.activeFrom,
+            input.repeat === 'once' ? input.activeFrom : null,
             now,
             now,
           );
@@ -1815,7 +1895,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
           .prepare(
             `UPDATE chore_templates
              SET title = ?, description = ?, recurrence_rule = ?, routine_label = ?,
-                 points_value = ?, active_from = ?, updated_at = ?
+                 points_value = ?, active_from = ?, active_until = ?, updated_at = ?
              WHERE id = ? AND household_id = ?`,
           )
           .run(
@@ -1825,6 +1905,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.routineLabel,
             0,
             input.activeFrom,
+            input.repeat === 'once' ? input.activeFrom : null,
             new Date().toISOString(),
             templateId,
             householdId,
@@ -1838,6 +1919,75 @@ export class SqlitePlanningRepository implements PlanningRepository {
         return {
           template: this.readChoreTemplate(householdId, templateId),
           audit: audit('chore-template.update', templateId, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async archiveChoreTemplate(
+    householdId: string,
+    templateId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      requestId,
+      'chore-template-archive',
+      'chore_template',
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const current = this.readChoreTemplate(householdId, templateId);
+        if (current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already archived.');
+        const now = new Date().toISOString();
+        this.database
+          .prepare(
+            `UPDATE chore_templates SET archived_at = ?, updated_at = ?
+             WHERE id = ? AND household_id = ?`,
+          )
+          .run(now, now, templateId, householdId);
+        return {
+          template: this.readChoreTemplate(householdId, templateId),
+          audit: audit('chore-template.archive', templateId, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async restoreChoreTemplate(
+    householdId: string,
+    templateId: string,
+    input: RestoreChoreTemplateRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'chore-template-restore',
+      'chore_template',
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const current = this.readChoreTemplate(householdId, templateId);
+        if (!current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already active.');
+        const now = new Date().toISOString();
+        this.database
+          .prepare(
+            `UPDATE chore_templates
+             SET archived_at = NULL, active_from = ?,
+                 active_until = CASE WHEN recurrence_rule = 'FREQ=ONCE' THEN ? ELSE NULL END,
+                 updated_at = ?
+             WHERE id = ? AND household_id = ?`,
+          )
+          .run(input.resumeFrom, input.resumeFrom, now, templateId, householdId);
+        return {
+          template: this.readChoreTemplate(householdId, templateId),
+          audit: audit('chore-template.restore', templateId, actor),
           replayed: false,
         };
       },
@@ -2510,6 +2660,7 @@ function demoChoreTemplates(): ChoreTemplate[] {
       routineLabel: occurrence.routineLabel,
       ...parsed,
       activeFrom: DEMO_LOCAL_DATE,
+      activeUntil: null,
       archived: false,
     });
   });
@@ -2557,6 +2708,7 @@ function mealPlan(
 function templateFromInput(
   idValue: string,
   input: CreateChoreTemplateRequest | UpdateChoreTemplateRequest,
+  archived = false,
 ): ChoreTemplate {
   return ChoreTemplateSchema.parse({
     id: idValue,
@@ -2567,7 +2719,8 @@ function templateFromInput(
     repeat: input.repeat,
     repeatDays: input.repeatDays,
     activeFrom: input.activeFrom,
-    archived: false,
+    activeUntil: input.repeat === 'once' ? input.activeFrom : null,
+    archived,
   });
 }
 
@@ -2733,6 +2886,7 @@ function choreTemplateFromRow(row: ChoreTemplateRow): ChoreTemplate {
     routineLabel: row.routine_label,
     ...choreRepeatFromRule(row.recurrence_rule),
     activeFrom: row.active_from,
+    activeUntil: row.active_until,
     archived: row.archived_at !== null,
   });
 }
@@ -2804,5 +2958,6 @@ interface ChoreTemplateRow extends MemberRow {
   routine_label: string;
   points_value: number;
   active_from: string;
+  active_until: string | null;
   archived_at: string | null;
 }

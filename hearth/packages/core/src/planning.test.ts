@@ -32,6 +32,8 @@ describe('planning domain', () => {
   });
 
   it('round-trips the supported recurring chore patterns', () => {
+    expect(choreRecurrenceRule('once', [])).toBe('FREQ=ONCE');
+    expect(choreRepeatFromRule('FREQ=ONCE')).toEqual({ repeat: 'once', repeatDays: [] });
     expect(choreRecurrenceRule('weekdays', ['MO'])).toBe('FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR');
     expect(choreRepeatFromRule('FREQ=WEEKLY;BYDAY=MO,TH')).toEqual({
       repeat: 'weekly',

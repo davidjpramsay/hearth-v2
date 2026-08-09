@@ -135,6 +135,10 @@ The external credential/config file is never stored in SQLite.
 - completion timestamp, actor and optional note
 
 Template edits do not rewrite historical occurrences. Generate occurrences within a controlled horizon and enforce a uniqueness rule for template/date/instance.
+One-off templates use an explicit once-only recurrence and equal start/end local dates. Archiving
+stops new generation without deleting the template or occurrences. Restoring begins a new active
+window on the supplied household-local date (and moves a restored one-off to that date), so dates
+inside the archived gap cannot be manufactured later merely by browsing history.
 
 ### Routine
 
@@ -383,7 +387,7 @@ active/favourite saved-meal ordering. Existing meal-plan rows and historical sav
 valid without rewriting household data.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
-repository boundary. It generates supported daily and weekly occurrences on
+repository boundary. It generates supported one-off, daily and weekly occurrences on
 query, snapshots title/routine/assignee identity, and commits occurrence
 mutation, audit and idempotent receipt transactionally. Duplicate request IDs
 replay the stored typed result. The in-memory repository remains available only
@@ -400,3 +404,6 @@ written by the runtime.
 Saved meals and whole-week dinner mutations use the same repository boundary. Adult-only create,
 update, archive, restore, batch save, clear and copy operations are transactional, audited and
 receipt-idempotent in both the SQLite runtime and injected in-memory contract tests.
+Chore-template creation/update accepts one-off or recurring schedules. Archive and restore reuse the
+existing forward-compatible active-range/archive columns, keep generated history intact and write
+their own idempotent receipts and audit events; no migration is required.

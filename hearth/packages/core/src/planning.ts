@@ -67,6 +67,7 @@ export function assertNoActiveListDuplicate(items: readonly ListItem[], candidat
 }
 
 export function choreRecurrenceRule(repeat: ChoreRepeat, repeatDays: readonly string[]): string {
+  if (repeat === 'once') return 'FREQ=ONCE';
   if (repeat === 'daily') return 'FREQ=DAILY';
   const days = repeat === 'weekdays' ? WEEKDAYS : repeatDays;
   if (days.length === 0) {
@@ -79,6 +80,7 @@ export function choreRepeatFromRule(rule: string): {
   repeat: ChoreRepeat;
   repeatDays: string[];
 } {
+  if (rule === 'FREQ=ONCE') return { repeat: 'once', repeatDays: [] };
   if (rule === 'FREQ=DAILY') return { repeat: 'daily', repeatDays: [...WEEKDAYS] };
   const days = rule
     .split(';')

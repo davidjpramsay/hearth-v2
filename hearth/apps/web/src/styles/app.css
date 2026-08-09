@@ -5777,10 +5777,36 @@
   outline: 3px solid rgb(85 50 74 / 18%);
 }
 .routine-editor-list {
-  margin-top: 17px;
+  margin-top: 11px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.routine-settings-toolbar {
+  min-height: 62px;
+  margin-top: 17px;
+  padding: 8px 10px 8px 15px;
+  border: 1px solid var(--hairline);
+  border-radius: 15px;
+  background: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.routine-settings-error {
+  margin-top: 12px;
+}
+.routine-settings-error > .admin-secondary {
+  margin-top: 8px;
+}
+.routine-settings-toolbar strong,
+.routine-settings-toolbar small {
+  display: block;
+}
+.routine-settings-toolbar small {
+  margin-top: 2px;
+  color: var(--muted);
 }
 .routine-editor {
   border: 1px solid #e2d9d0;
@@ -5885,15 +5911,63 @@
   outline: 3px solid rgb(85 50 74 / 18%);
 }
 .routine-save {
-  width: 100%;
+  flex: 1 1 220px;
+}
+.routine-editor__actions {
   margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
 }
 .routine-add-form {
-  margin-top: 22px;
+  margin-top: 11px;
 }
 .routine-add-form h2 {
-  margin: 0 0 14px;
+  margin: 0 0 4px;
   font-size: 23px;
+}
+.routine-add-form > p {
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+.archived-routines {
+  margin-top: 18px;
+  padding: 15px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  background: var(--surface-muted);
+}
+.archived-routines > summary {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 720;
+  cursor: pointer;
+}
+.archived-routines > p {
+  margin: 7px 0 10px;
+  color: var(--muted);
+}
+.archived-routine {
+  min-height: 64px;
+  padding: 9px 0;
+  border-top: 1px solid var(--hairline);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+}
+.archived-routine .avatar {
+  width: 42px;
+  height: 42px;
+}
+.archived-routine strong,
+.archived-routine small {
+  display: block;
+}
+.archived-routine small {
+  margin-top: 2px;
+  color: var(--muted);
 }
 .pocket-money-week-nav {
   margin-top: 17px;

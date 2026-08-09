@@ -73,6 +73,7 @@ import {
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
   RefreshPhotoSourceRequestSchema,
+  RestoreChoreTemplateRequestSchema,
   ReorderHouseholdListsRequestSchema,
   ReorderListItemsRequestSchema,
   PocketMoneyOverviewSchema,
@@ -1548,6 +1549,48 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return run(reply, async () => {
         const result = ChoreTemplateCommandResultSchema.parse(
           await planningRepository.updateChoreTemplate(
+            params.householdId,
+            params.templateId,
+            body,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore-template.changed', result.template.id);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/chore-templates/:templateId/archivals',
+    async (request, reply) => {
+      const params = parse(ChoreTemplateParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreTemplateCommandResultSchema.parse(
+          await planningRepository.archiveChoreTemplate(
+            params.householdId,
+            params.templateId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore-template.changed', result.template.id);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/chore-templates/:templateId/restorations',
+    async (request, reply) => {
+      const params = parse(ChoreTemplateParamsSchema, request.params, reply);
+      const body = parse(RestoreChoreTemplateRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreTemplateCommandResultSchema.parse(
+          await planningRepository.restoreChoreTemplate(
             params.householdId,
             params.templateId,
             body,

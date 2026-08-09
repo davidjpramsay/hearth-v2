@@ -216,11 +216,49 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await expect(page.getByRole('heading', { name: 'Family planning' })).toBeVisible();
   await page.getByRole('link', { name: /Routines and chores/ }).click();
   const schoolBag = page.locator('.routine-editor').filter({ hasText: 'Pack school bag' });
-  await schoolBag.getByLabel('Routine').fill('School morning');
-  await schoolBag.getByRole('button', { name: 'Save future routine' }).click();
+  await schoolBag.locator('summary').click();
+  await schoolBag.getByLabel('Routine group').fill('School morning');
+  await schoolBag.getByRole('button', { name: 'Save future schedule' }).click();
   await expect(page.getByRole('status')).toContainText('updated from today forward');
   await page.reload();
-  await expect(schoolBag.getByLabel('Routine')).toHaveValue('School morning');
+  await schoolBag.locator('summary').click();
+  await expect(schoolBag.getByLabel('Routine group')).toHaveValue('School morning');
+
+  await page.getByRole('button', { name: 'New chore' }).click();
+  const addChore = page.locator('.routine-add-form');
+  await addChore.getByLabel('Chore').fill('Bring bins in');
+  await addChore.getByLabel('Repeat').selectOption('once');
+  await addChore.getByLabel('Routine group').fill('Extra jobs');
+  await addChore.getByLabel('Due date').fill('2026-08-03');
+  await addChore.getByRole('button', { name: 'Add chore' }).click();
+  await expect(page.getByRole('status')).toContainText('Bring bins in was scheduled');
+  const oneOff = page.locator('.routine-editor').filter({ hasText: 'Bring bins in' });
+  await expect(oneOff).toContainText('One-off · 3 Aug 2026');
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/chores');
+  await expect(page.getByText('Bring bins in')).toBeVisible();
+  await page.screenshot({
+    path: resolve(evidence, 'chores-one-off-tv-1080.png'),
+    animations: 'disabled',
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/routines');
+  const oneOffEditor = page.locator('.routine-editor').filter({ hasText: 'Bring bins in' });
+  await oneOffEditor.locator('summary').click();
+  await oneOffEditor.getByRole('button', { name: 'Archive', exact: true }).click();
+  await oneOffEditor.getByRole('button', { name: 'Archive Bring bins in?' }).click();
+  await expect(page.getByRole('status')).toContainText('Past chore history is unchanged');
+  const archived = page.locator('.archived-routines');
+  await archived.locator('summary').click();
+  await expect(archived).toContainText('Bring bins in');
+  await archived.getByRole('button', { name: 'Restore' }).click();
+  await expect(page.getByRole('status')).toContainText('Bring bins in is active again from today');
+  await page.screenshot({
+    path: resolve(evidence, 'routines-one-off-phone.png'),
+    animations: 'disabled',
+    fullPage: true,
+  });
 
   await page.goto('/admin/pocket-money');
   await page.getByLabel('Weekly pocket money').fill('15.00');
@@ -232,31 +270,31 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
 
   await page.goto('/chores');
   await page.locator('[data-focus-id="chore-primary"]').click();
-  await expect(page.getByText('33% this week')).toBeVisible();
-  await expect(page.getByText('$5.00 of $15.00')).toBeVisible();
+  await expect(page.getByText('25% this week')).toBeVisible();
+  await expect(page.getByText('$3.75 of $15.00')).toBeVisible();
 
   await page.goto('/admin/pocket-money');
   await page.getByLabel('Payment amount').fill('2.00');
   await page.getByLabel(/Note optional/).fill('Cash');
   await page.getByRole('button', { name: 'Record payment' }).click();
   await expect(page.getByRole('status')).toContainText('$2.00 recorded');
-  await expect(page.getByText('$3.00 still to pay')).toBeVisible();
+  await expect(page.getByText('$1.75 still to pay')).toBeVisible();
   const history = page.getByRole('region', { name: 'Payment history' });
   await expect(history.getByText('Cash')).toBeVisible();
   await expect(history.getByText('$2.00')).toBeVisible();
 
-  await page.getByLabel('Payment amount').fill('3.00');
+  await page.getByLabel('Payment amount').fill('1.75');
   await page.getByRole('button', { name: 'Record payment' }).click();
   await expect(
     page.locator('.pocket-money-admin-card').getByText('Paid in full').first(),
   ).toBeVisible();
 
-  const remainderPayment = history.locator('article').filter({ hasText: '$3.00' });
+  const remainderPayment = history.locator('article').filter({ hasText: '$1.75' });
   await remainderPayment.getByRole('button', { name: 'Correct' }).click();
   await remainderPayment.getByLabel('Correction reason').fill('Recorded from wrong account');
   await remainderPayment.getByRole('button', { name: 'Void payment' }).click();
   await expect(history.getByText('Voided · Recorded from wrong account')).toBeVisible();
-  await expect(page.getByText('$3.00 still to pay')).toBeVisible();
+  await expect(page.getByText('$1.75 still to pay')).toBeVisible();
 
   await page.getByRole('button', { name: 'Previous' }).click();
   await expect(page).toHaveURL(/week=2026-07-27/);
@@ -267,6 +305,25 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await page.getByRole('button', { name: 'This week' }).click();
   await expect(page).not.toHaveURL(/week=/);
   await expect(page.getByLabel('Weekly pocket money')).toBeVisible();
+});
+
+test('one-off chore creation reports a failed save and retries the same safe command', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/routines?scenario=fail-next');
+  await page.getByRole('button', { name: 'New chore' }).click();
+  const addChore = page.locator('.routine-add-form');
+  await addChore.getByLabel('Chore').fill('Clean football boots');
+  await addChore.getByLabel('Repeat').selectOption('once');
+  await addChore.getByLabel('Routine group').fill('Extra jobs');
+  await addChore.getByRole('button', { name: 'Add chore' }).click();
+  await expect(page.getByRole('alert')).toContainText('That change did not save');
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('status')).toContainText('Clean football boots was scheduled');
+  await expect(
+    page.locator('.routine-editor').filter({ hasText: 'Clean football boots' }),
+  ).toHaveCount(1);
 });
 
 test('pocket-money setup names every child missing a weekly amount', async ({ page, request }) => {
@@ -357,6 +414,12 @@ for (const path of [
     });
     await page.goto(path);
     await expect(page.locator('h1')).toBeVisible();
+    if (path === '/admin/routines') {
+      await page.getByRole('button', { name: 'New chore' }).click();
+      const createForm = page.locator('.routine-add-form');
+      await createForm.getByLabel('Repeat').selectOption('once');
+      await expect(createForm.getByLabel('Due date')).toBeVisible();
+    }
     const results = await new AxeBuilder({ page }).analyze();
     expect(
       results.violations.filter((violation) =>

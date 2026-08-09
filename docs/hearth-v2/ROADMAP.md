@@ -178,7 +178,10 @@ creates, renames, colours, orders, archives and restores lists; edits, orders
 and removes list items; and explicitly clears checked history. Meal administration now edits all
 seven dinner names together, expands saved-meal/note details only when needed, copies or clears a
 week with confirmation, and creates, searches, favourites, updates, archives and restores reusable
-meals with optional preparation time and notes. It also edits future recurring chores, child weekly amounts,
+meals with optional preparation time and notes. Chore administration now creates explicit one-off
+or recurring schedules, keeps the everyday list compact, confirms archive, restores from today's
+local date and retains previously generated occurrence history through idempotent audited commands.
+It also edits future recurring chores, child weekly amounts,
 paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted

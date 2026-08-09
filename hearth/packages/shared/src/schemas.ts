@@ -396,19 +396,63 @@ export const AssistChoreCompletionRequestSchema = CommandRequestSchema.extend({
   choreTitle: z.string().trim().min(1).max(140),
 });
 
-export const ChoreRepeatSchema = z.enum(['daily', 'weekdays', 'weekly']);
+export const ChoreRepeatSchema = z.enum(['once', 'daily', 'weekdays', 'weekly']);
 
-export const ChoreTemplateSchema = z.object({
-  id: OpaqueIdSchema,
-  title: z.string().min(1).max(140),
-  description: z.string().max(320).nullable(),
-  assignee: MemberSchema,
-  routineLabel: z.string().min(1).max(80),
-  repeat: ChoreRepeatSchema,
-  repeatDays: z.array(z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])).min(1),
-  activeFrom: LocalDateSchema,
-  archived: z.boolean(),
-});
+const ChoreDaySchema = z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']);
+
+function validateChoreSchedule(
+  value: { repeat: z.infer<typeof ChoreRepeatSchema>; repeatDays: string[] },
+  context: z.core.$RefinementCtx,
+) {
+  if (value.repeat !== 'once' && value.repeatDays.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Choose at least one day for a recurring chore.',
+      path: ['repeatDays'],
+    });
+  }
+  if (value.repeat === 'once' && value.repeatDays.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A one-off chore must not contain recurring days.',
+      path: ['repeatDays'],
+    });
+  }
+}
+
+function validateChoreTemplate(
+  value: {
+    repeat: z.infer<typeof ChoreRepeatSchema>;
+    repeatDays: string[];
+    activeFrom: string;
+    activeUntil: string | null;
+  },
+  context: z.core.$RefinementCtx,
+) {
+  validateChoreSchedule(value, context);
+  if (value.repeat === 'once' && value.activeUntil !== value.activeFrom) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A one-off chore must begin and end on its due date.',
+      path: ['activeUntil'],
+    });
+  }
+}
+
+export const ChoreTemplateSchema = z
+  .object({
+    id: OpaqueIdSchema,
+    title: z.string().min(1).max(140),
+    description: z.string().max(320).nullable(),
+    assignee: MemberSchema,
+    routineLabel: z.string().min(1).max(80),
+    repeat: ChoreRepeatSchema,
+    repeatDays: z.array(ChoreDaySchema),
+    activeFrom: LocalDateSchema,
+    activeUntil: LocalDateSchema.nullable(),
+    archived: z.boolean(),
+  })
+  .superRefine(validateChoreTemplate);
 
 export const ChoreTemplateListSchema = z.object({
   householdId: OpaqueIdSchema,
@@ -421,16 +465,19 @@ const ChoreTemplateFieldsSchema = z.object({
   assigneeId: OpaqueIdSchema,
   routineLabel: z.string().trim().min(1).max(80),
   repeat: ChoreRepeatSchema,
-  repeatDays: z.array(z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])).min(1),
+  repeatDays: z.array(ChoreDaySchema),
   activeFrom: LocalDateSchema,
 });
 
 export const CreateChoreTemplateRequestSchema = CommandRequestSchema.extend(
   ChoreTemplateFieldsSchema.shape,
-);
+).superRefine(validateChoreSchedule);
 export const UpdateChoreTemplateRequestSchema = CommandRequestSchema.extend(
   ChoreTemplateFieldsSchema.shape,
-);
+).superRefine(validateChoreSchedule);
+export const RestoreChoreTemplateRequestSchema = CommandRequestSchema.extend({
+  resumeFrom: LocalDateSchema,
+});
 
 export const ChoreTemplateCommandResultSchema = z.object({
   template: ChoreTemplateSchema,
@@ -793,6 +840,8 @@ export const AuditSummarySchema = z.object({
     'device.revoke',
     'chore-template.create',
     'chore-template.update',
+    'chore-template.archive',
+    'chore-template.restore',
     'list.create',
     'list.update',
     'list.archive',
@@ -1224,6 +1273,7 @@ export type ChoreTemplate = z.infer<typeof ChoreTemplateSchema>;
 export type ChoreTemplateList = z.infer<typeof ChoreTemplateListSchema>;
 export type CreateChoreTemplateRequest = z.infer<typeof CreateChoreTemplateRequestSchema>;
 export type UpdateChoreTemplateRequest = z.infer<typeof UpdateChoreTemplateRequestSchema>;
+export type RestoreChoreTemplateRequest = z.infer<typeof RestoreChoreTemplateRequestSchema>;
 export type ChoreTemplateCommandResult = z.infer<typeof ChoreTemplateCommandResultSchema>;
 export type HouseholdListType = z.infer<typeof HouseholdListTypeSchema>;
 export type ListItem = z.infer<typeof ListItemSchema>;

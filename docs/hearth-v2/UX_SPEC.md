@@ -98,6 +98,10 @@ the phone More hub.
 - One Select should complete an ordinary chore; undo remains available.
 - Adults can open detail/reassignment functions; children see fewer controls.
 - Completion feedback is satisfying but brief and respects reduced motion.
+- Phone administration keeps active schedules compact, opens creation only on request and clearly
+  distinguishes **One day only**, daily, weekdays and selected weekly days. Archiving requires a
+  second explicit action; archived chores retain past completions and can resume from today without
+  filling the paused interval with newly generated occurrences.
 
 ### Lists
 
@@ -193,7 +197,7 @@ the phone More hub.
 The same web application may present a phone-oriented shell for:
 
 - adding/editing events
-- managing recurring chores, weekly pocket-money amounts, paydays and payment records
+- managing one-off and recurring chores, weekly pocket-money amounts, paydays and payment records
 - maintaining meals and lists
 - uploading/approving photos
 - reviewing connection problems

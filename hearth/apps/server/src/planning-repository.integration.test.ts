@@ -475,4 +475,97 @@ describe('SQLite household planning repository', () => {
       code: 'FORBIDDEN',
     } satisfies Partial<RepositoryError>);
   });
+
+  it('schedules a one-off chore and archives or restores it without rewriting generated history', async () => {
+    const { chores, planning } = await repositories();
+    const created = await planning.createChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_create_one_off_bins',
+        title: 'Bring bins in',
+        description: 'After the truck has passed',
+        assigneeId: 'member_ezra',
+        routineLabel: 'Extra jobs',
+        repeat: 'once',
+        repeatDays: [],
+        activeFrom: '2026-08-04',
+      },
+      adult,
+    );
+    const createReplay = await planning.createChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_create_one_off_bins',
+        title: 'Bring bins in',
+        description: 'After the truck has passed',
+        assigneeId: 'member_ezra',
+        routineLabel: 'Extra jobs',
+        repeat: 'once',
+        repeatDays: [],
+        activeFrom: '2026-08-04',
+      },
+      adult,
+    );
+    expect(created.template).toMatchObject({
+      repeat: 'once',
+      repeatDays: [],
+      activeFrom: '2026-08-04',
+      activeUntil: '2026-08-04',
+      archived: false,
+    });
+    expect(createReplay).toMatchObject({ replayed: true, template: { id: created.template.id } });
+
+    const firstDay = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-04');
+    expect(
+      firstDay.groups
+        .flatMap((group) => group.occurrences)
+        .find((occurrence) => occurrence.title === 'Bring bins in'),
+    ).toMatchObject({ localDate: '2026-08-04', state: 'pending' });
+
+    const archived = await planning.archiveChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      created.template.id,
+      'request_archive_one_off_bins',
+      adult,
+    );
+    const archiveReplay = await planning.archiveChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      created.template.id,
+      'request_archive_one_off_bins',
+      adult,
+    );
+    expect(archived).toMatchObject({ template: { archived: true }, replayed: false });
+    expect(archiveReplay).toMatchObject({ template: { archived: true }, replayed: true });
+
+    const preserved = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-04');
+    expect(
+      preserved.groups
+        .flatMap((group) => group.occurrences)
+        .some((occurrence) => occurrence.title === 'Bring bins in'),
+    ).toBe(true);
+
+    const restored = await planning.restoreChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      created.template.id,
+      { requestId: 'request_restore_one_off_bins', resumeFrom: '2026-08-05' },
+      adult,
+    );
+    const restoreReplay = await planning.restoreChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      created.template.id,
+      { requestId: 'request_restore_one_off_bins', resumeFrom: '2026-08-05' },
+      adult,
+    );
+    expect(restored).toMatchObject({
+      template: { archived: false, activeFrom: '2026-08-05', activeUntil: '2026-08-05' },
+      replayed: false,
+    });
+    expect(restoreReplay).toMatchObject({ replayed: true });
+    const resumedDay = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-05');
+    expect(
+      resumedDay.groups
+        .flatMap((group) => group.occurrences)
+        .some((occurrence) => occurrence.title === 'Bring bins in'),
+    ).toBe(true);
+  });
 });
