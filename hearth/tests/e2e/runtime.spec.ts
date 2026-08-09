@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/runtime');
 
 test.beforeAll(async () => {
@@ -50,7 +52,7 @@ test('private first use is honest and does not request demo household data', asy
   await expect(page.getByText('Finish setup on your iPhone')).toBeVisible();
   await expect(page.locator('form')).toBeHidden();
   expect(householdRequests).toBe(0);
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'private-first-use-tv-1080.png'),
     animations: 'disabled',
   });
@@ -58,7 +60,7 @@ test('private first use is honest and does not request demo household data', asy
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('form')).toBeVisible();
   await expect(page.getByLabel('Local first-use code')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'private-first-use-phone-portrait.png'),
     animations: 'disabled',
   });

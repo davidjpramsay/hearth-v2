@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/calendar-navigation');
 
 test.beforeAll(async () => {
@@ -105,7 +107,7 @@ for (const viewport of [
         ['serious', 'critical'].includes(violation.impact ?? ''),
       ),
     ).toEqual([]);
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `${viewport.name}.png`),
       animations: 'disabled',
     });

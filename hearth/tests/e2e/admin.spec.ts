@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/phase-2/screenshots');
 const peopleEvidence = resolve('docs/evidence/admin-people');
 const calendarEvidence = resolve('docs/evidence/calendar-connection');
@@ -117,7 +119,7 @@ test('adult can test, select, map, save and remove a read-only calendar connecti
   await expect(page.getByText('Family calendars')).toBeVisible();
   await expect(page.getByText('caldav.icloud.com · f•••@example.com')).toBeVisible();
   await expect(page.getByText('2 calendars connected · Read-only')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(calendarEvidence, 'calendar-connected-phone-portrait.png'),
     animations: 'disabled',
   });
@@ -169,7 +171,7 @@ test('adult can test, map, save and remove a tightly scoped Home Assistant conne
   await expect(page.getByLabel('Evening', { exact: true })).toContainText('Evening · Script');
   await expect(page.getByLabel('Goodnight', { exact: true })).toContainText('Goodnight · Script');
   await expect(page.getByLabel('Screen off', { exact: true })).toContainText('Screen off · Script');
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(homeAssistantEvidence, 'home-assistant-mapping-phone-portrait.png'),
     animations: 'disabled',
   });
@@ -183,7 +185,7 @@ test('adult can test, map, save and remove a tightly scoped Home Assistant conne
   await page.getByLabel('Connection name').fill('Living room');
   const saveConnection = page.getByRole('button', { name: 'Save connection' });
   await saveConnection.scrollIntoViewIfNeeded();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(homeAssistantEvidence, 'home-assistant-mapping-actions-phone-portrait.png'),
     animations: 'disabled',
   });
@@ -195,13 +197,13 @@ test('adult can test, map, save and remove a tightly scoped Home Assistant conne
     page.getByText('homeassistant.local · Last checked 3 Aug 2026, 7:42 am'),
   ).toBeVisible();
   await expect(page.getByText(token)).toHaveCount(0);
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(homeAssistantEvidence, 'home-assistant-connected-phone-portrait.png'),
     animations: 'disabled',
   });
   const removeConnection = page.getByRole('button', { name: 'Remove connection' });
   await removeConnection.scrollIntoViewIfNeeded();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(homeAssistantEvidence, 'home-assistant-connected-actions-phone-portrait.png'),
     animations: 'disabled',
   });
@@ -445,16 +447,16 @@ test('People can crop, persist, replace and restore a local profile photo', asyn
     fire('pointerup', 2, centreX + 50, centreY + 8);
   });
   await expect(crop).toHaveAttribute('aria-label', /Zoom 1[6-7]\d percent/);
-  await page.screenshot({ path: '/tmp/hearth-profile-photo-touch-crop-phone.png' });
+  await captureEvidence(page, { path: '/tmp/hearth-profile-photo-touch-crop-phone.png' });
   await page.setViewportSize({ width: 844, height: 390 });
-  await page.screenshot({ path: '/tmp/hearth-profile-photo-touch-crop-phone-landscape.png' });
+  await captureEvidence(page, { path: '/tmp/hearth-profile-photo-touch-crop-phone-landscape.png' });
   await dialog.getByRole('button', { name: 'Use this photo' }).click();
 
   await expect(dialog).toBeHidden();
   await expect(ezra.locator('.avatar')).toHaveAttribute('src', /\/member_ezra\/avatar\?v=/);
   const customAvatar = await ezra.locator('.avatar').getAttribute('src');
   expect(customAvatar).not.toBe(originalAvatar);
-  await page.screenshot({ path: '/tmp/hearth-profile-photo-saved-phone.png' });
+  await captureEvidence(page, { path: '/tmp/hearth-profile-photo-saved-phone.png' });
   await page.reload();
   const reloadedEzra = page.locator('.member-editor').filter({ hasText: 'Ezra' });
   await expect(reloadedEzra.locator('.avatar')).toHaveAttribute('src', customAvatar ?? '');
@@ -535,7 +537,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto('/admin/system');
     await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(systemEvidence, `system-health-${viewport.name}.png`),
       animations: 'disabled',
     });
@@ -547,7 +549,7 @@ test('@visual System health recovery action at phone portrait', async ({ page })
   await page.goto('/admin/system');
   const create = page.getByRole('button', { name: 'Create backup now' });
   await create.scrollIntoViewIfNeeded();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(systemEvidence, 'system-health-actions-phone-portrait.png'),
     animations: 'disabled',
   });
@@ -569,7 +571,7 @@ test('@visual @a11y dark System health at phone portrait', async ({ page }) => {
       ['serious', 'critical'].includes(violation.impact ?? ''),
     ),
   ).toEqual([]);
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(systemEvidence, 'system-health-dark-phone-portrait.png'),
     animations: 'disabled',
   });
@@ -583,7 +585,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto('/admin/connections/calendar');
     await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(calendarEvidence, `calendar-setup-${viewport.name}.png`),
       animations: 'disabled',
       fullPage: true,
@@ -598,7 +600,7 @@ test('@visual calendar selection at phone portrait', async ({ page }) => {
   await page.getByLabel('App-specific password').fill('fictional-app-password');
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(page.getByText('Connection works')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(calendarEvidence, 'calendar-selection-phone-portrait.png'),
     animations: 'disabled',
     fullPage: true,
@@ -613,7 +615,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto('/admin/connections/home-assistant');
     await expect(page.getByRole('heading', { name: 'Home Assistant' })).toBeVisible();
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(homeAssistantEvidence, `home-assistant-setup-${viewport.name}.png`),
       animations: 'disabled',
     });
@@ -640,7 +642,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto('/admin');
     await expect(page.getByRole('heading', { name: 'Hearth settings' })).toBeVisible();
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `admin-${viewport.name}.png`),
       animations: 'disabled',
     });
@@ -651,7 +653,7 @@ test('@visual television pairing at 1080p', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/pair');
   await expect(page.locator('.pairing-code')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'pairing-tv-1080.png'),
     animations: 'disabled',
   });
@@ -666,7 +668,7 @@ for (const viewport of [
     await page.goto('/admin/people');
     await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
     await expect(page.locator('.member-editor').first().getByRole('radio')).toHaveCount(12);
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(peopleEvidence, `people-colour-picker-${viewport.name}.png`),
       animations: 'disabled',
       fullPage: true,

@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/phase-5/screenshots');
 
 test.beforeAll(async () => {
@@ -137,7 +139,7 @@ for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/home');
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `home-${viewport.name}.png`),
       animations: 'disabled',
     });
@@ -148,11 +150,16 @@ for (const state of ['unavailable', 'protected-media', 'fail-next'] as const) {
   test(`@visual Home ${state} state`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(`/home?scenario=${state}`);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     if (state === 'fail-next') {
       await page.locator('[data-focus-id="home-action-evening-mode"]').press('Enter');
       await expect(page.getByRole('alert')).toBeVisible();
+    } else if (state === 'unavailable') {
+      await expect(page.getByRole('status').first()).toContainText('last known room state');
+    } else {
+      await expect(page.getByText('Playback is protected')).toBeVisible();
     }
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `home-state-${state}.png`),
       animations: 'disabled',
     });
@@ -164,7 +171,7 @@ test('@visual Home confirmation state', async ({ page }) => {
   await page.goto('/home');
   await page.locator('[data-focus-id="home-action-goodnight"]').press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'home-state-confirmation.png'),
     animations: 'disabled',
   });

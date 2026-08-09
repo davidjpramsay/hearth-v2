@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/phase-7/screenshots');
 
 test.beforeAll(async () => {
@@ -179,7 +181,7 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     { timeout: 2_000 },
   );
   await expect(page.locator('.photos-collage--portrait')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     animations: 'disabled',
     path: resolve(evidence, 'photos-auto-portrait-tv-1080.png'),
   });
@@ -316,7 +318,7 @@ test('@visual phone administration reports and refreshes the safe photo index', 
     ),
   ).toEqual([]);
   await page.evaluate(() => window.scrollTo({ top: 0 }));
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'photos-admin-phone.png'),
     animations: 'disabled',
   });
@@ -338,7 +340,7 @@ for (const viewport of [
     await expect(page.locator('.photos-grid img')).toHaveCount(
       viewport.name === 'phone-landscape' ? 3 : 5,
     );
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `photos-${viewport.name}.png`),
       animations: 'disabled',
     });
@@ -351,7 +353,7 @@ test('@visual Photos empty, unavailable, failure, portrait and ambient states', 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos?scenario=empty');
   await expect(page.getByRole('heading', { name: 'No family photos selected' })).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'photos-state-empty.png'),
     animations: 'disabled',
   });
@@ -360,14 +362,14 @@ test('@visual Photos empty, unavailable, failure, portrait and ambient states', 
   await expect(
     page.getByRole('status').filter({ hasText: 'Showing saved favourites' }),
   ).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'photos-state-unavailable.png'),
     animations: 'disabled',
   });
 
   await page.goto('/photos?scenario=fail-next');
   await expect(page.getByRole('heading', { name: 'Hearth couldn’t load this view' })).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'photos-state-failure.png'),
     animations: 'disabled',
   });
@@ -386,13 +388,13 @@ test('@visual Photos empty, unavailable, failure, portrait and ambient states', 
         .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
     )
     .toBe(true);
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'photos-portrait-selected.png'),
     animations: 'disabled',
   });
   await page.getByRole('button', { name: 'Start ambient' }).click();
   await expect(page.getByRole('dialog', { name: /Ambient family photo/ })).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'photos-ambient.png'),
     animations: 'disabled',
   });

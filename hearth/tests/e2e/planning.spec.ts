@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/phase-4/screenshots');
 
 test.beforeAll(async () => {
@@ -242,7 +244,7 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await page.goto('/chores');
   await expect(page.getByText('Bring bins in')).toBeVisible();
   await expect(page.getByText('Extra jobs · Due 5:30 pm')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'chores-one-off-tv-1080.png'),
     animations: 'disabled',
   });
@@ -258,7 +260,7 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await expect(archived).toContainText('Bring bins in');
   await archived.getByRole('button', { name: 'Restore' }).click();
   await expect(page.getByRole('status')).toContainText('Bring bins in is active again from today');
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'routines-one-off-phone.png'),
     animations: 'disabled',
     fullPage: true,
@@ -336,13 +338,13 @@ test('phone adults reason, skip, excuse and reassign today’s chores with visib
   await expect(schoolBag.getByRole('region', { name: /History/ })).toContainText(
     'Away at school camp',
   );
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'chore-exception-history-phone.png'),
     animations: 'disabled',
     fullPage: true,
   });
   await page.setViewportSize({ width: 844, height: 390 });
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'chore-exception-history-phone-landscape.png'),
     animations: 'disabled',
     fullPage: true,
@@ -392,7 +394,7 @@ test('phone adults reason, skip, excuse and reassign today’s chores with visib
   await expect(page.getByRole('button', { name: 'Complete Feed Pepper' })).toContainText(
     'Due 7:15 am',
   );
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'chores-due-times-reassigned-tv-1080.png'),
     animations: 'disabled',
   });
@@ -477,7 +479,7 @@ test('phone routines assign one schedule to several people and TV expands separa
   ).toBeVisible();
   expect((await titles.allTextContents()).indexOf('Put sports gear away')).toBe(beforeIndex - 1);
   await editorItem.scrollIntoViewIfNeeded();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'routines-order-phone.png'),
     animations: 'disabled',
   });
@@ -487,12 +489,12 @@ test('phone routines assign one schedule to several people and TV expands separa
   await expect(editor.getByRole('checkbox', { name: /Ezra/ })).toBeChecked();
   await expect(editor.getByRole('checkbox', { name: /Alex/ })).toBeChecked();
   await editor.locator('.routine-assignees').scrollIntoViewIfNeeded();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'routines-multi-assignee-phone.png'),
     animations: 'disabled',
   });
   await editor.locator('.routine-time-window').scrollIntoViewIfNeeded();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'routines-time-window-phone.png'),
     animations: 'disabled',
   });
@@ -514,7 +516,7 @@ test('phone routines assign one schedule to several people and TV expands separa
   await expect(
     ezraColumn.getByRole('button', { name: 'Complete Put sports gear away' }),
   ).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'chores-multi-assignee-tv-1080.png'),
     animations: 'disabled',
   });
@@ -699,7 +701,7 @@ test('@visual @a11y dark meal administration remains readable on phone', async (
       ['serious', 'critical'].includes(violation.impact ?? ''),
     ),
   ).toEqual([]);
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'admin-meals-dark-phone-portrait.png'),
     animations: 'disabled',
     fullPage: true,
@@ -722,7 +724,7 @@ for (const viewport of planningViewports) {
       await expect(
         page.getByRole('heading', { name: route === 'lists' ? 'Lists' : 'Meals' }),
       ).toBeVisible();
-      await page.screenshot({
+      await captureEvidence(page, {
         path: resolve(evidence, `${route}-${viewport.name}.png`),
         animations: 'disabled',
       });
@@ -742,7 +744,7 @@ for (const route of [
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/admin/${route}`);
     await expect(page.locator('.admin-page, .admin-home')).toBeVisible();
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `admin-${route}-phone-portrait.png`),
       animations: 'disabled',
       fullPage: true,
@@ -754,7 +756,7 @@ test('@visual Phase 4 empty, offline and mutation-failure states', async ({ page
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/lists?scenario=empty');
   await expect(page.getByText('Nothing is planned yet')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'lists-state-empty.png'),
     animations: 'disabled',
   });
@@ -763,7 +765,7 @@ test('@visual Phase 4 empty, offline and mutation-failure states', async ({ page
   await expect(page.getByText('Milk')).toBeVisible();
   await page.goto('/lists?scenario=offline');
   await expect(page.getByRole('status')).toContainText('Saved lists remain available');
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'lists-state-offline.png'),
     animations: 'disabled',
   });
@@ -771,7 +773,7 @@ test('@visual Phase 4 empty, offline and mutation-failure states', async ({ page
   await page.goto('/lists?scenario=fail-next');
   await page.locator('[data-focus-id="list-item-list_item_milk"]').press('Enter');
   await expect(page.getByRole('alert')).toContainText('That change did not save');
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'lists-state-failure.png'),
     animations: 'disabled',
   });

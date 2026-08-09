@@ -178,7 +178,10 @@ gate, Android TV test/lint/build and both Synology image targets. The workflow h
 repository permission, pins every external action to a full commit and performs no deployment or
 provider connection.
 
-`pnpm test:visual` writes retained screenshots to the phase evidence folders.
+`pnpm test:visual` writes retained screenshots to the phase evidence folders. Captures wait for the
+final route, local fonts and visible image assets. The evidence helper preserves an existing PNG
+when Chromium changes only a microscopic number of antialiased pixels, while material layout,
+content and focus changes still replace the retained evidence.
 Browser code receives the demo household only through the API; it does not
 import server fixtures.
 

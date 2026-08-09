@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const screenshotDirectory = '/tmp/hearth-appearance-evidence';
 
 test.beforeAll(async () => {
@@ -127,7 +129,7 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(screenshotDirectory, 'dark-today-tv-1080.png'),
     animations: 'disabled',
   });
@@ -135,7 +137,7 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/appearance');
   await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(screenshotDirectory, 'dark-appearance-phone.png'),
     animations: 'disabled',
     fullPage: true,
@@ -185,7 +187,7 @@ for (const viewport of darkViewportCases) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(screenshotDirectory, `dark-${viewport.name}.png`),
       animations: 'disabled',
     });

@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/today-notices');
 
 test.beforeAll(async () => {
@@ -65,7 +67,7 @@ test('@visual and @a11y Today notice administration and customised television ov
       ['serious', 'critical'].includes(violation.impact ?? ''),
     ),
   ).toEqual([]);
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'today-notices-phone-portrait.png'),
     animations: 'disabled',
   });
@@ -76,7 +78,7 @@ test('@visual and @a11y Today notice administration and customised television ov
   await page.goto('/today');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   await expect(page.getByText('Bins go out tonight')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'today-customised-tv-1080.png'),
     animations: 'disabled',
   });

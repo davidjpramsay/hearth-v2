@@ -8,15 +8,32 @@ import { LoadingState } from './components/Status';
 import { useRemoteNavigation } from './focus/useRemoteNavigation';
 import { useScenario } from './hooks/useScenario';
 import { useRealtimeInvalidation } from './hooks/useRealtimeInvalidation';
-import { ChoresScreen } from './screens/ChoresScreen';
-import { HomeScreen } from './screens/HomeScreen';
-import { ListsScreen } from './screens/ListsScreen';
-import { MealsScreen } from './screens/MealsScreen';
-import { MonthScreen } from './screens/MonthScreen';
-import { PairingScreen } from './screens/PairingScreen';
-import { PhotosScreen } from './screens/PhotosScreen';
 import { TodayScreen } from './screens/TodayScreen';
-import { WeekScreen } from './screens/WeekScreen';
+
+const WeekScreen = lazy(async () => ({
+  default: (await import('./screens/WeekScreen')).WeekScreen,
+}));
+const MonthScreen = lazy(async () => ({
+  default: (await import('./screens/MonthScreen')).MonthScreen,
+}));
+const ChoresScreen = lazy(async () => ({
+  default: (await import('./screens/ChoresScreen')).ChoresScreen,
+}));
+const ListsScreen = lazy(async () => ({
+  default: (await import('./screens/ListsScreen')).ListsScreen,
+}));
+const MealsScreen = lazy(async () => ({
+  default: (await import('./screens/MealsScreen')).MealsScreen,
+}));
+const HomeScreen = lazy(async () => ({
+  default: (await import('./screens/HomeScreen')).HomeScreen,
+}));
+const PhotosScreen = lazy(async () => ({
+  default: (await import('./screens/PhotosScreen')).PhotosScreen,
+}));
+const PairingScreen = lazy(async () => ({
+  default: (await import('./screens/PairingScreen')).PairingScreen,
+}));
 
 const AgendaScreen = lazy(async () => ({
   default: (await import('./screens/AgendaScreen')).AgendaScreen,
