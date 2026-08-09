@@ -173,6 +173,11 @@ pnpm verify
 pnpm verify:tv
 ```
 
+Pull requests and `main` also run `.github/workflows/verify.yml`: the complete web/server/browser
+gate, Android TV test/lint/build and both Synology image targets. The workflow has read-only
+repository permission, pins every external action to a full commit and performs no deployment or
+provider connection.
+
 `pnpm test:visual` writes retained screenshots to the phase evidence folders.
 Browser code receives the demo household only through the API; it does not
 import server fixtures.

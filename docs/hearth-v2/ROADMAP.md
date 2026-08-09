@@ -335,7 +335,9 @@ orientation-correct display/thumbnail WebPs, opaque immutable asset routes, adul
 manual scans and aggregate Admin status. A production-oriented two-container Synology
 scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
 with same-origin proxying, non-root/read-only processes, readiness gating,
-forward migrations and clean shutdown verified locally. Live Synology
+forward migrations and clean shutdown verified locally. A three-job GitHub Actions gate now mirrors
+the complete web/server/browser suite, Android TV shell and production container image builds; its
+first hosted run must pass before it counts as release evidence. Live Synology
 commissioning, hostname/TLS and real-device passkey enrolment/recovery, approved live photo-folder
 selection/mount and scan evidence,
 Home Assistant presence/quiet-hours coordination,

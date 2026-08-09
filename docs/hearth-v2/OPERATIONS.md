@@ -256,6 +256,19 @@ provider is deliberately unreachable.
 - Retain the prior compatible image for rollback.
 - Database rollback is restore-based unless a specific migration has a verified reverse path.
 
+## Continuous verification
+
+`.github/workflows/verify.yml` is the merge gate for `main` and pull requests. It uses pinned
+full-commit action references, read-only repository permissions and no household secrets. Three
+independent jobs run the complete pnpm/Playwright gate on Node 24.18.0, the Android TV
+test/lint/debug-and-release build on Java 21 plus SDK 36, and both Synology production image builds
+after validating the Compose configuration. The workflow never deploys, signs an APK, contacts a
+provider or changes a live household system.
+
+Keep local verification authoritative while changing the workflow itself, then confirm the first
+GitHub run before requiring it in branch protection. Retain Playwright's single CI worker for
+deterministic demo/reset state.
+
 Android TV releases should be signed consistently, versioned and initially
 sideloaded. Preserve the signing key outside the repository with a secure
 recovery record. `apps/tv/local.properties` is an ignored machine-local SDK path;
