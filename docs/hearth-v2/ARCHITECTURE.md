@@ -128,6 +128,8 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `POST /api/v1/households/:id/members/:memberId/avatar-resets` with `{ requestId }`
 - one-time pairing request, approval/status and paired-device revocation commands
 - `GET /api/v1/households/:id/lists` plus typed item add, complete and reversal commands
+- adult-only `GET /api/v1/households/:id/list-settings` plus idempotent list
+  create/update/archive/restore/order and item update/archive/order/clear-checked commands
 - `POST /api/v1/households/:id/assist/list-items`, which resolves a named list without guessing and rejects active duplicates
 - `GET /api/v1/households/:id/meal-plan?start=` plus typed meal-plan and saved-meal commands
 - `GET /api/v1/households/:id/pocket-money?weekStart=&asOf=` for child weekly progress and amounts due

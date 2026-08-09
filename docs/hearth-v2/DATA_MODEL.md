@@ -194,6 +194,12 @@ A payment is never edited or deleted. A mistaken record receives at most one sep
 
 Repeated voice additions should use a command request ID and sensible normalisation to avoid accidental duplicates without preventing intentional duplicates.
 
+Migration `0005_household_planning.sql` already supplies the forward-only list
+and item archive/order columns used by the adult management commands. Clearing
+checked items soft-archives them; it does not erase their audit or command
+history. An archived list remains recoverable, and the final active list cannot
+be archived.
+
 ## Meals
 
 ### Meal

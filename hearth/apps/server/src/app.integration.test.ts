@@ -956,6 +956,88 @@ describe('Hearth v2 API', () => {
     expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('protects and serves typed list administration commands with stable failures', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const adultHeaders = { 'x-hearth-demo-actor': 'member_maya' };
+    const denied = await app.inject({ method: 'GET', url: `${base}/list-settings` });
+    const created = await app.inject({
+      method: 'POST',
+      url: `${base}/lists`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_create_001',
+        name: 'School camp',
+        type: 'packing',
+        color: '#6d5b8f',
+      },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${base}/lists`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_create_001',
+        name: 'School camp',
+        type: 'packing',
+        color: '#6d5b8f',
+      },
+    });
+    const listId = created.json().audit.targetId as string;
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `${base}/lists/${listId}`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_update_001',
+        name: 'Year 8 camp',
+        type: 'packing',
+        color: '#1668b7',
+      },
+    });
+    const invalidOrder = await app.inject({
+      method: 'PUT',
+      url: `${base}/list-order`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_order_invalid',
+        orderedListIds: [listId, listId],
+      },
+    });
+    const archived = await app.inject({
+      method: 'POST',
+      url: `${base}/lists/${listId}/archives`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_list_archive_001' },
+    });
+    const restored = await app.inject({
+      method: 'POST',
+      url: `${base}/lists/${listId}/restorations`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_list_restore_001' },
+    });
+
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error.code).toBe('FORBIDDEN');
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toMatchObject({
+      replayed: false,
+      audit: { action: 'list.create' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true, audit: { targetId: listId } });
+    expect(updated.json().settings.activeLists).toContainEqual(
+      expect.objectContaining({ id: listId, name: 'Year 8 camp', color: '#1668b7' }),
+    );
+    expect(invalidOrder.statusCode).toBe(400);
+    expect(invalidOrder.json().error.code).toBe('VALIDATION_ERROR');
+    expect(archived.json().settings.archivedLists).toContainEqual(
+      expect.objectContaining({ id: listId }),
+    );
+    expect(restored.json().settings.activeLists).toContainEqual(
+      expect.objectContaining({ id: listId }),
+    );
+  });
+
   it('plans meals and exposes idempotent partial payment and void commands', async () => {
     const app = server();
     const headers = { 'x-hearth-demo-actor': 'member_maya' };

@@ -43,6 +43,9 @@ const HouseholdSettingsScreen = lazy(async () => ({
 const PlanningSettingsScreen = lazy(async () => ({
   default: (await import('./screens/PlanningSettingsScreen')).PlanningSettingsScreen,
 }));
+const ListsSettingsScreen = lazy(async () => ({
+  default: (await import('./screens/ListsSettingsScreen')).ListsSettingsScreen,
+}));
 const PhotosSettingsScreen = lazy(async () => ({
   default: (await import('./screens/PhotosSettingsScreen')).PhotosSettingsScreen,
 }));
@@ -135,6 +138,7 @@ export function App() {
               element={<CalendarConnectionSettingsScreen />}
             />
             <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
+            <Route path="/admin/lists" element={<ListsSettingsScreen />} />
             <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
             <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
             <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />

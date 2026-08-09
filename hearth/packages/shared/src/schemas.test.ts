@@ -30,6 +30,9 @@ import {
   TvPairingSessionSchema,
   TodayPhotoSummarySchema,
   AssistAddListItemRequestSchema,
+  CreateHouseholdListRequestSchema,
+  HouseholdListSettingsSchema,
+  ReorderHouseholdListsRequestSchema,
   CreateHouseholdNoticeRequestSchema,
   TodaySectionVisibilitySchema,
 } from './schemas.js';
@@ -56,6 +59,38 @@ describe('shared wire schemas', () => {
       requestId: 'request_demo_001',
     });
     expect(() => CommandRequestSchema.parse({ requestId: 42 })).toThrow();
+  });
+
+  it('validates list administration fields and exact-order command shapes', () => {
+    expect(
+      CreateHouseholdListRequestSchema.parse({
+        requestId: 'request_list_create_001',
+        name: '  School camp  ',
+        type: 'packing',
+        color: '#3f7251',
+      }),
+    ).toMatchObject({ name: 'School camp', type: 'packing' });
+    expect(
+      ReorderHouseholdListsRequestSchema.safeParse({
+        requestId: 'request_list_order_001',
+        orderedListIds: ['list_one', 'list_one'],
+      }).success,
+    ).toBe(false);
+    expect(
+      HouseholdListSettingsSchema.parse({
+        householdId: 'household_demo',
+        activeLists: [],
+        archivedLists: [
+          {
+            id: 'list_old',
+            name: 'Old list',
+            type: 'custom',
+            color: '#1668b7',
+            archivedAt: '2026-08-03T07:42:00+08:00',
+          },
+        ],
+      }).archivedLists,
+    ).toHaveLength(1);
   });
 
   it('requires explicit local dates', () => {

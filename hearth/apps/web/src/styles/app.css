@@ -5026,6 +5026,27 @@
 .list-items {
   margin-top: 10px;
 }
+.list-completed-divider {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 680;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.list-completed-divider::before,
+.list-completed-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--hairline);
+  content: '';
+}
+.list-completed-divider small {
+  font: inherit;
+}
 .list-item-wrap + .list-item-wrap {
   border-top: 1px solid #ebe7df;
 }
@@ -5055,8 +5076,17 @@
 .list-item-check svg {
   width: 22px;
 }
-.list-item-row strong {
+.list-item-copy strong,
+.list-item-copy small {
+  display: block;
+}
+.list-item-copy strong {
   font-size: 27px;
+}
+.list-item-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 18px;
 }
 .list-item-state {
   color: var(--muted);
@@ -5066,7 +5096,7 @@
   color: #697170;
   background: #f4f2ec;
 }
-.list-item-row--checked strong {
+.list-item-row--checked .list-item-copy strong {
   text-decoration: line-through;
 }
 .list-item-row--checked .list-item-check {
@@ -5104,6 +5134,9 @@
   font-size: 18px;
 }
 .phone-list-add {
+  display: none;
+}
+.lists-manage-link {
   display: none;
 }
 .list-command-error {
@@ -5921,8 +5954,15 @@
     grid-template-columns: 34px minmax(0, 1fr) 22px;
     gap: 10px;
   }
-  .list-item-row strong {
+  .list-completed-divider {
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .list-item-copy strong {
     font-size: 19px;
+  }
+  .list-item-copy small {
+    font-size: 13px;
   }
   .list-item-state {
     display: none;
@@ -5930,7 +5970,7 @@
   .phone-list-add {
     margin-top: 13px;
     display: grid;
-    grid-template-columns: 1fr 70px;
+    grid-template-columns: minmax(0, 1fr) 72px 70px;
     gap: 8px;
   }
   .phone-list-add input,
@@ -5949,6 +5989,19 @@
     color: white;
     background: var(--plum);
     font-weight: 700;
+  }
+  .lists-manage-link {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    color: var(--plum);
+    background: var(--surface-raised);
+    font-size: 14px;
+    font-weight: 720;
+    text-decoration: none;
   }
   .list-actions {
     display: block;
@@ -6257,6 +6310,434 @@
 }
 
 /* Dark theme preserves the accepted layout while replacing light-only literals. */
+.list-settings-intro {
+  min-height: 70px;
+  padding: 15px 17px;
+  border: 1px solid #bac8b5;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #455b47;
+  background: var(--sage-soft);
+}
+.list-settings-intro svg {
+  flex: 0 0 auto;
+}
+.list-settings-intro p,
+.list-settings-overview header p,
+.list-settings-editor header p,
+.list-settings-items__heading p,
+.archived-list-settings > p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.list-settings-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.list-settings-error .admin-feedback {
+  flex: 1;
+}
+.list-settings-overview,
+.list-settings-editor,
+.archived-list-settings {
+  margin-top: 20px;
+}
+.list-settings-overview > header,
+.list-settings-editor > header,
+.list-settings-items__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.list-settings-overview h2,
+.list-settings-editor h2,
+.archived-list-settings h2,
+.list-settings-items h3 {
+  margin: 0;
+  color: var(--ink);
+}
+.list-settings-overview h2,
+.list-settings-editor h2,
+.archived-list-settings h2 {
+  font-size: 24px;
+}
+.list-settings-items h3 {
+  font-size: 21px;
+}
+.list-settings-new {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.list-settings-new svg,
+.archived-list-settings button svg,
+.list-settings-details__actions button svg,
+.clear-checked-actions button svg,
+.list-settings-item button svg {
+  width: 18px;
+  height: 18px;
+}
+.list-settings-create {
+  margin-top: 14px;
+}
+.list-settings-create h3 {
+  margin: 0;
+}
+.list-settings-cards {
+  margin-top: 13px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.list-settings-card {
+  min-width: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 17px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  background: var(--surface-glass);
+  overflow: hidden;
+}
+.list-settings-card--selected {
+  border-color: #9cb6a3;
+  box-shadow: 0 0 0 3px rgb(63 114 81 / 11%);
+}
+.list-settings-card__select {
+  min-width: 0;
+  min-height: 76px;
+  padding: 12px 8px 12px 14px;
+  border: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 21px;
+  align-items: center;
+  gap: 11px;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.list-settings-card__select:focus-visible {
+  outline: 3px solid rgb(85 50 74 / 18%);
+  outline-offset: -4px;
+}
+.list-settings-card__select strong,
+.list-settings-card__select small,
+.archived-list-settings article strong,
+.archived-list-settings article small {
+  display: block;
+}
+.list-settings-card__select strong {
+  font-size: 18px;
+}
+.list-settings-card__select small,
+.archived-list-settings article small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.list-settings-card__swatch {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(45 42 41 / 18%);
+}
+.list-settings-order,
+.list-settings-item__order {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  border-left: 1px solid var(--hairline);
+}
+.list-settings-order button,
+.list-settings-item__order button {
+  width: 42px;
+  min-height: 34px;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+.list-settings-order button + button,
+.list-settings-item__order button + button {
+  border-top: 1px solid var(--hairline);
+}
+.list-settings-order button:disabled,
+.list-settings-item__order button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.list-settings-order svg,
+.list-settings-item__order svg {
+  width: 17px;
+  height: 17px;
+}
+.list-settings-editor {
+  padding: 19px;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: var(--surface-glass);
+}
+.list-settings-editor > header > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.list-settings-details {
+  margin-top: 16px;
+  background: var(--surface-raised);
+}
+.list-settings-details__actions,
+.clear-checked-actions {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.list-settings-details__actions button,
+.clear-checked-actions button,
+.archived-list-settings button,
+.list-settings-item > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.list-colour-picker {
+  margin: 17px 0 0;
+  padding: 0;
+  border: 0;
+}
+.list-colour-picker legend {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 680;
+}
+.list-colour-picker > div {
+  margin-top: 9px;
+  display: flex;
+  gap: 11px;
+  flex-wrap: wrap;
+}
+.admin-form .list-colour-picker label,
+.admin-form .list-colour-picker label + label {
+  width: 38px;
+  height: 38px;
+  margin: 0;
+  display: block;
+  cursor: pointer;
+}
+.list-colour-picker input {
+  position: absolute;
+  width: 1px !important;
+  min-height: 1px !important;
+  opacity: 0;
+}
+.list-colour-picker span {
+  width: 38px;
+  height: 38px;
+  border: 3px solid var(--surface);
+  border-radius: 13px;
+  display: block;
+  box-shadow: 0 0 0 1px rgb(45 42 41 / 22%);
+}
+.list-colour-picker input:checked + span {
+  box-shadow:
+    0 0 0 3px var(--surface),
+    0 0 0 6px var(--plum);
+}
+.list-colour-picker input:focus-visible + span {
+  outline: 3px solid rgb(85 50 74 / 24%);
+  outline-offset: 5px;
+}
+.list-settings-items {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+.clear-checked-actions {
+  margin-top: 0;
+  justify-content: flex-end;
+}
+.list-settings-item-list {
+  margin-top: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list-settings-add-item {
+  margin-top: 13px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
+  align-items: center;
+  gap: 8px;
+}
+.list-settings-add-item input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--input-surface);
+  font: inherit;
+}
+.list-settings-add-item button {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.list-settings-item {
+  padding: 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 30px minmax(150px, 1fr) 90px auto 42px auto;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-raised);
+}
+.list-settings-item--checked {
+  background: var(--eucalyptus-soft);
+}
+.list-settings-item__state {
+  width: 29px;
+  height: 29px;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--eucalyptus);
+}
+.list-settings-item__state svg {
+  width: 17px;
+  height: 17px;
+}
+.list-settings-item label {
+  min-width: 0;
+}
+.list-settings-item input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--input-surface);
+  font: inherit;
+}
+.list-settings-item input:focus-visible {
+  border-color: var(--plum);
+  outline: 3px solid rgb(85 50 74 / 18%);
+}
+.list-settings-item > .admin-secondary,
+.list-settings-item > .admin-danger {
+  min-height: 42px;
+  padding: 0 12px;
+}
+.list-settings-empty {
+  margin: 13px 0 0;
+  padding: 18px;
+  border: 1px dashed var(--hairline);
+  border-radius: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+.archived-list-settings > p {
+  margin-bottom: 12px;
+}
+.archived-list-settings article {
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 15px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  background: var(--surface-glass);
+}
+.archived-list-settings article + article {
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .list-settings-cards {
+    grid-template-columns: 1fr;
+  }
+  .list-settings-editor {
+    margin-right: -4px;
+    margin-left: -4px;
+    padding: 15px;
+  }
+  .list-settings-details {
+    padding: 15px;
+  }
+  .list-settings-item {
+    grid-template-columns: 29px minmax(0, 1fr) 72px;
+  }
+  .list-settings-add-item {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+  .list-settings-add-item button {
+    grid-column: 1 / -1;
+  }
+  .list-settings-item > .admin-secondary,
+  .list-settings-item > .admin-danger,
+  .list-settings-item__order {
+    grid-column: auto / span 1;
+  }
+  .list-settings-item > .admin-secondary {
+    grid-column: 2;
+  }
+  .list-settings-item__order {
+    grid-column: 3;
+    grid-row: 2 / span 2;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .list-settings-item > .admin-danger {
+    grid-column: 2 / -1;
+  }
+  .list-settings-item > .admin-danger + .admin-secondary {
+    grid-column: 2 / -1;
+  }
+  .list-settings-items__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .clear-checked-actions {
+    justify-content: flex-start;
+  }
+}
+
+:root[data-theme='dark'] .list-settings-intro {
+  border-color: #48604f;
+  color: #d6e8d9;
+}
+:root[data-theme='dark'] .list-settings-card,
+:root[data-theme='dark'] .list-settings-editor,
+:root[data-theme='dark'] .archived-list-settings article {
+  background: var(--surface-glass);
+}
+:root[data-theme='dark'] .list-settings-details,
+:root[data-theme='dark'] .list-settings-item {
+  background: var(--surface-raised);
+}
+:root[data-theme='dark'] .list-settings-item--checked {
+  background: var(--eucalyptus-soft);
+}
+
 :root[data-theme='dark'] .rail-item--active {
   border-color: #365a75;
 }

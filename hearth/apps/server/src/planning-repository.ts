@@ -15,10 +15,12 @@ import {
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
   ChoreTemplateSchema,
+  HouseholdListSettingsSchema,
   HouseholdListSchema,
   HouseholdListsSchema,
   ListItemCommandResultSchema,
   ListItemSchema,
+  ListSettingsCommandResultSchema,
   MealCommandResultSchema,
   MealPlanEntrySchema,
   MealPlanSchema,
@@ -30,19 +32,26 @@ import {
   type ChoreTemplate,
   type ChoreTemplateCommandResult,
   type ChoreTemplateList,
+  type CreateHouseholdListRequest,
   type CreateChoreTemplateRequest,
   type CreateSavedMealRequest,
   type DemoScenario,
   type HouseholdList,
+  type HouseholdListSettings,
   type HouseholdLists,
   type ListItem,
   type ListItemCommandResult,
+  type ListSettingsCommandResult,
   type MealCommandResult,
   type MealPlan,
   type Member,
   type SavedMeal,
   type SavedMealCommandResult,
   type UpdateChoreTemplateRequest,
+  type UpdateHouseholdListRequest,
+  type UpdateListItemRequest,
+  type ReorderHouseholdListsRequest,
+  type ReorderListItemsRequest,
   type UpsertMealPlanRequest,
 } from '@hearth/shared';
 
@@ -57,6 +66,59 @@ interface AuditedResult {
 
 export interface PlanningRepository {
   getLists(householdId: string): Promise<HouseholdLists>;
+  getListSettings(householdId: string, actor: CommandActor): Promise<HouseholdListSettings>;
+  createList(
+    householdId: string,
+    input: CreateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  updateList(
+    householdId: string,
+    listId: string,
+    input: UpdateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  archiveList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  restoreList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  reorderLists(
+    householdId: string,
+    input: ReorderHouseholdListsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  updateListItem(
+    householdId: string,
+    itemId: string,
+    input: UpdateListItemRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  archiveListItem(
+    householdId: string,
+    itemId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  reorderListItems(
+    householdId: string,
+    listId: string,
+    input: ReorderListItemsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  clearCheckedListItems(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
   addListItem(
     householdId: string,
     listId: string,
@@ -105,6 +167,7 @@ export interface PlanningRepository {
 
 export class InMemoryPlanningRepository implements PlanningRepository {
   private lists = demoLists();
+  private archivedLists: Array<{ list: HouseholdList; archivedAt: string }> = [];
   private savedMeals = demoSavedMeals();
   private mealEntries = demoMealEntries();
   private templates = demoChoreTemplates();
@@ -112,12 +175,208 @@ export class InMemoryPlanningRepository implements PlanningRepository {
   private sequence = 100;
   private scenario: DemoScenario = 'healthy';
 
+  constructor(private readonly clock: HearthClock = new FixedClock(DEMO_NOW)) {}
+
   async getLists(householdId: string): Promise<HouseholdLists> {
     this.assertHousehold(householdId);
     return HouseholdListsSchema.parse({
       householdId,
       lists: this.scenario === 'empty' ? [] : this.lists,
     });
+  }
+
+  async getListSettings(householdId: string, actor: CommandActor): Promise<HouseholdListSettings> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.listSettings(householdId);
+  }
+
+  async createList(
+    householdId: string,
+    input: CreateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-create', input.requestId, ListSettingsCommandResultSchema, () => {
+      this.assertUniqueListName(input.name);
+      const created = list(this.id('list'), input.name, input.type, input.color, []);
+      this.lists.push(created);
+      return this.settingsResult(householdId, 'list.create', created.id, actor);
+    });
+  }
+
+  async updateList(
+    householdId: string,
+    listId: string,
+    input: UpdateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-update', input.requestId, ListSettingsCommandResultSchema, () => {
+      const current = this.list(listId);
+      this.assertUniqueListName(input.name, listId);
+      current.name = input.name;
+      current.type = input.type;
+      current.color = input.color;
+      return this.settingsResult(householdId, 'list.update', listId, actor);
+    });
+  }
+
+  async archiveList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-archive', requestId, ListSettingsCommandResultSchema, () => {
+      if (this.lists.length <= 1) {
+        throw new RepositoryError('CONFLICT', 'Keep at least one household list active.');
+      }
+      const index = this.lists.findIndex((candidate) => candidate.id === listId);
+      if (index < 0) throw new RepositoryError('NOT_FOUND', 'That list was not found.');
+      const [removed] = this.lists.splice(index, 1);
+      if (removed === undefined) throw new RepositoryError('NOT_FOUND', 'That list was not found.');
+      this.archivedLists.push({ list: removed, archivedAt: this.now() });
+      return this.settingsResult(householdId, 'list.archive', listId, actor);
+    });
+  }
+
+  async restoreList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-restore', requestId, ListSettingsCommandResultSchema, () => {
+      const index = this.archivedLists.findIndex((candidate) => candidate.list.id === listId);
+      if (index < 0) throw new RepositoryError('NOT_FOUND', 'That archived list was not found.');
+      const [restored] = this.archivedLists.splice(index, 1);
+      if (restored === undefined)
+        throw new RepositoryError('NOT_FOUND', 'That archived list was not found.');
+      this.lists.push(restored.list);
+      return this.settingsResult(householdId, 'list.restore', listId, actor, 'reversed');
+    });
+  }
+
+  async reorderLists(
+    householdId: string,
+    input: ReorderHouseholdListsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-reorder',
+      input.requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        assertExactOrder(
+          this.lists.map((candidate) => candidate.id),
+          input.orderedListIds,
+          'List order must include every active list exactly once.',
+        );
+        const byId = new Map(this.lists.map((candidate) => [candidate.id, candidate]));
+        this.lists = input.orderedListIds.map((idValue) => byId.get(idValue)!);
+        return this.settingsResult(householdId, 'list.reorder', householdId, actor);
+      },
+    );
+  }
+
+  async updateListItem(
+    householdId: string,
+    itemId: string,
+    input: UpdateListItemRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-item-update',
+      input.requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        const owner = this.listContainingItem(itemId);
+        assertNoActiveListDuplicate(
+          owner.list.items.filter((candidate) => candidate.id !== itemId),
+          input.text,
+        );
+        owner.item.text = input.text;
+        owner.item.quantity = input.quantity;
+        return this.settingsResult(householdId, 'list.item.update', itemId, actor);
+      },
+    );
+  }
+
+  async archiveListItem(
+    householdId: string,
+    itemId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-item-archive', requestId, ListSettingsCommandResultSchema, () => {
+      const owner = this.listContainingItem(itemId);
+      owner.list.items.splice(owner.list.items.indexOf(owner.item), 1);
+      refreshListCounts(owner.list);
+      return this.settingsResult(householdId, 'list.item.archive', itemId, actor);
+    });
+  }
+
+  async reorderListItems(
+    householdId: string,
+    listId: string,
+    input: ReorderListItemsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-item-reorder',
+      input.requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        const current = this.list(listId);
+        assertExactOrder(
+          current.items.map((candidate) => candidate.id),
+          input.orderedItemIds,
+          'Item order must include every item exactly once.',
+        );
+        const byId = new Map(current.items.map((candidate) => [candidate.id, candidate]));
+        current.items = input.orderedItemIds.map((idValue) => byId.get(idValue)!);
+        return this.settingsResult(householdId, 'list.item.reorder', listId, actor);
+      },
+    );
+  }
+
+  async clearCheckedListItems(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-item-clear-checked',
+      requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        const current = this.list(listId);
+        if (!current.items.some((itemValue) => itemValue.checked)) {
+          throw new RepositoryError('CONFLICT', 'There are no checked items to clear.');
+        }
+        current.items = current.items.filter((itemValue) => !itemValue.checked);
+        refreshListCounts(current);
+        return this.settingsResult(householdId, 'list.item.clear-checked', listId, actor);
+      },
+    );
   }
 
   async addListItem(
@@ -301,6 +560,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
 
   reset(): void {
     this.lists = demoLists();
+    this.archivedLists = [];
     this.savedMeals = demoSavedMeals();
     this.mealEntries = demoMealEntries();
     this.templates = demoChoreTemplates();
@@ -342,7 +602,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       const changed = ListItemSchema.parse({
         ...item,
         checked,
-        checkedAt: checked ? new Date().toISOString() : null,
+        checkedAt: checked ? this.now() : null,
         checkedByActorId: checked ? actor.id : null,
       });
       list.items[list.items.indexOf(item)] = changed;
@@ -399,6 +659,59 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     return list;
   }
 
+  private listContainingItem(itemId: string): { list: HouseholdList; item: ListItem } {
+    const owner = this.lists.find((candidate) =>
+      candidate.items.some((itemValue) => itemValue.id === itemId),
+    );
+    const itemValue = owner?.items.find((candidate) => candidate.id === itemId);
+    if (owner === undefined || itemValue === undefined) {
+      throw new RepositoryError('NOT_FOUND', 'That list item was not found.');
+    }
+    return { list: owner, item: itemValue };
+  }
+
+  private assertUniqueListName(name: string, excludingId?: string): void {
+    const exists = [...this.lists, ...this.archivedLists.map((entry) => entry.list)].some(
+      (candidate) => candidate.id !== excludingId && sameText(candidate.name, name),
+    );
+    if (exists) throw new RepositoryError('CONFLICT', 'A list with that name already exists.');
+  }
+
+  private listSettings(householdId: string): HouseholdListSettings {
+    return HouseholdListSettingsSchema.parse({
+      householdId,
+      activeLists: this.scenario === 'empty' ? [] : this.lists,
+      archivedLists:
+        this.scenario === 'empty'
+          ? []
+          : this.archivedLists.map(({ list: archived, archivedAt }) => ({
+              id: archived.id,
+              name: archived.name,
+              type: archived.type,
+              color: archived.color,
+              archivedAt,
+            })),
+    });
+  }
+
+  private settingsResult(
+    householdId: string,
+    action: AuditSummary['action'],
+    targetId: string,
+    actor: CommandActor,
+    result: AuditSummary['result'] = 'succeeded',
+  ): ListSettingsCommandResult {
+    return {
+      settings: this.listSettings(householdId),
+      audit: this.audit(action, targetId, actor, result),
+      replayed: false,
+    };
+  }
+
+  private now(): string {
+    return this.clock.now().toISOString();
+  }
+
   private assertHousehold(householdId: string): void {
     if (householdId !== DEMO_HOUSEHOLD_ID) {
       throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
@@ -431,7 +744,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       source: actor.source,
       action,
       targetId,
-      occurredAt: new Date().toISOString(),
+      occurredAt: this.now(),
       result,
     };
   }
@@ -470,6 +783,292 @@ export class SqlitePlanningRepository implements PlanningRepository {
     });
   }
 
+  async getListSettings(householdId: string, actor: CommandActor): Promise<HouseholdListSettings> {
+    this.assertAdmin(householdId, actor);
+    return this.readListSettings(householdId);
+  }
+
+  async createList(
+    householdId: string,
+    input: CreateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-create',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        this.assertUniqueListName(householdId, input.name);
+        const listId = id('list');
+        const now = this.now();
+        const sortOrder = this.nextListSortOrder(householdId);
+        this.database
+          .prepare(
+            `INSERT INTO household_lists
+              (id, household_id, name, list_type, colour, sort_order, archived_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+          )
+          .run(listId, householdId, input.name, input.type, input.color, sortOrder, now, now);
+        return this.settingsResult(householdId, 'list.create', listId, actor);
+      },
+    );
+  }
+
+  async updateList(
+    householdId: string,
+    listId: string,
+    input: UpdateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-update',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        this.assertUniqueListName(householdId, input.name, listId);
+        this.database
+          .prepare(
+            `UPDATE household_lists
+             SET name = ?, list_type = ?, colour = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+          )
+          .run(input.name, input.type, input.color, this.now(), listId, householdId);
+        return this.settingsResult(householdId, 'list.update', listId, actor);
+      },
+    );
+  }
+
+  async archiveList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      requestId,
+      'list-archive',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        const activeCount = (
+          this.database
+            .prepare(
+              'SELECT COUNT(*) AS count FROM household_lists WHERE household_id = ? AND archived_at IS NULL',
+            )
+            .get(householdId) as { count: number }
+        ).count;
+        if (activeCount <= 1) {
+          throw new RepositoryError('CONFLICT', 'Keep at least one household list active.');
+        }
+        const now = this.now();
+        this.database
+          .prepare(
+            `UPDATE household_lists SET archived_at = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+          )
+          .run(now, now, listId, householdId);
+        return this.settingsResult(householdId, 'list.archive', listId, actor);
+      },
+    );
+  }
+
+  async restoreList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    const archived = this.database
+      .prepare(
+        'SELECT id FROM household_lists WHERE id = ? AND household_id = ? AND archived_at IS NOT NULL',
+      )
+      .get(listId, householdId);
+    if (archived === undefined)
+      throw new RepositoryError('NOT_FOUND', 'That archived list was not found.');
+    return this.execute(
+      householdId,
+      requestId,
+      'list-restore',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        this.database
+          .prepare(
+            `UPDATE household_lists
+             SET archived_at = NULL, sort_order = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NOT NULL`,
+          )
+          .run(this.nextListSortOrder(householdId), this.now(), listId, householdId);
+        return this.settingsResult(householdId, 'list.restore', listId, actor, 'reversed');
+      },
+    );
+  }
+
+  async reorderLists(
+    householdId: string,
+    input: ReorderHouseholdListsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-reorder',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        const activeIds = (
+          this.database
+            .prepare(
+              `SELECT id FROM household_lists
+               WHERE household_id = ? AND archived_at IS NULL ORDER BY sort_order, id`,
+            )
+            .all(householdId) as Array<{ id: string }>
+        ).map((row) => row.id);
+        assertExactOrder(
+          activeIds,
+          input.orderedListIds,
+          'List order must include every active list exactly once.',
+        );
+        const update = this.database.prepare(
+          'UPDATE household_lists SET sort_order = ?, updated_at = ? WHERE id = ? AND household_id = ?',
+        );
+        const now = this.now();
+        input.orderedListIds.forEach((idValue, index) =>
+          update.run(index, now, idValue, householdId),
+        );
+        return this.settingsResult(householdId, 'list.reorder', householdId, actor);
+      },
+    );
+  }
+
+  async updateListItem(
+    householdId: string,
+    itemId: string,
+    input: UpdateListItemRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    const owner = this.readItemOwner(householdId, itemId);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-item-update',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        const current = this.readList(owner.listId);
+        assertNoActiveListDuplicate(
+          current.items.filter((candidate) => candidate.id !== itemId),
+          input.text,
+        );
+        this.database
+          .prepare(
+            `UPDATE list_items
+             SET text = ?, normalised_text = ?, quantity = ?, updated_at = ?
+             WHERE id = ? AND archived_at IS NULL`,
+          )
+          .run(input.text, normaliseListItemText(input.text), input.quantity, this.now(), itemId);
+        return this.settingsResult(householdId, 'list.item.update', itemId, actor);
+      },
+    );
+  }
+
+  async archiveListItem(
+    householdId: string,
+    itemId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readItemOwner(householdId, itemId);
+    return this.execute(
+      householdId,
+      requestId,
+      'list-item-archive',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        const now = this.now();
+        this.database
+          .prepare('UPDATE list_items SET archived_at = ?, updated_at = ? WHERE id = ?')
+          .run(now, now, itemId);
+        return this.settingsResult(householdId, 'list.item.archive', itemId, actor);
+      },
+    );
+  }
+
+  async reorderListItems(
+    householdId: string,
+    listId: string,
+    input: ReorderListItemsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    const current = this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-item-reorder',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        assertExactOrder(
+          current.items.map((candidate) => candidate.id),
+          input.orderedItemIds,
+          'Item order must include every item exactly once.',
+        );
+        const update = this.database.prepare(
+          'UPDATE list_items SET position = ?, updated_at = ? WHERE id = ? AND list_id = ?',
+        );
+        const now = this.now();
+        input.orderedItemIds.forEach((idValue, index) => update.run(index, now, idValue, listId));
+        return this.settingsResult(householdId, 'list.item.reorder', listId, actor);
+      },
+    );
+  }
+
+  async clearCheckedListItems(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      requestId,
+      'list-item-clear-checked',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        const now = this.now();
+        const result = this.database
+          .prepare(
+            `UPDATE list_items SET archived_at = ?, updated_at = ?
+             WHERE list_id = ? AND archived_at IS NULL AND checked_at IS NOT NULL`,
+          )
+          .run(now, now, listId);
+        if (result.changes === 0) {
+          throw new RepositoryError('CONFLICT', 'There are no checked items to clear.');
+        }
+        return this.settingsResult(householdId, 'list.item.clear-checked', listId, actor);
+      },
+    );
+  }
+
   async addListItem(
     householdId: string,
     listId: string,
@@ -487,7 +1086,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
       () => {
         const list = this.readListForHousehold(householdId, listId);
         assertNoActiveListDuplicate(list.items, input.text);
-        const now = new Date().toISOString();
+        const now = this.now();
         const itemId = id('list_item');
         const position = (
           this.database
@@ -517,7 +1116,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
         return {
           list: this.readList(listId),
           item,
-          audit: audit('list.item.add', itemId, actor),
+          audit: audit('list.item.add', itemId, actor, 'succeeded', now),
           replayed: false,
         };
       },
@@ -580,7 +1179,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
           )
           .get(householdId, input.localDate, input.slot) as { id: string } | undefined;
         const entryId = existing?.id ?? id('meal_plan');
-        const now = new Date().toISOString();
+        const now = this.now();
         this.database
           .prepare(
             `INSERT INTO meal_plan_entries
@@ -830,6 +1429,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             itemId,
             actor,
             checked ? 'succeeded' : 'reversed',
+            now,
           ),
           replayed: false,
         };
@@ -903,6 +1503,87 @@ export class SqlitePlanningRepository implements PlanningRepository {
       .get(listId, householdId);
     if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That list was not found.');
     return this.readList(listId);
+  }
+
+  private readListSettings(householdId: string): HouseholdListSettings {
+    this.assertHousehold(householdId);
+    const activeRows = this.database
+      .prepare(
+        `SELECT * FROM household_lists
+         WHERE household_id = ? AND archived_at IS NULL ORDER BY sort_order, id`,
+      )
+      .all(householdId) as ListRow[];
+    const archivedRows = this.database
+      .prepare(
+        `SELECT * FROM household_lists
+         WHERE household_id = ? AND archived_at IS NOT NULL ORDER BY archived_at DESC, name`,
+      )
+      .all(householdId) as ListRow[];
+    return HouseholdListSettingsSchema.parse({
+      householdId,
+      activeLists: this.scenario === 'empty' ? [] : activeRows.map((row) => this.readList(row.id)),
+      archivedLists:
+        this.scenario === 'empty'
+          ? []
+          : archivedRows.map((row) => ({
+              id: row.id,
+              name: row.name,
+              type: row.list_type,
+              color: row.colour,
+              archivedAt: row.archived_at,
+            })),
+    });
+  }
+
+  private readItemOwner(householdId: string, itemId: string): { listId: string } {
+    const row = this.database
+      .prepare(
+        `SELECT i.list_id FROM list_items i
+         JOIN household_lists l ON l.id = i.list_id
+         WHERE i.id = ? AND i.archived_at IS NULL
+           AND l.household_id = ? AND l.archived_at IS NULL`,
+      )
+      .get(itemId, householdId) as { list_id: string } | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That list item was not found.');
+    return { listId: row.list_id };
+  }
+
+  private assertUniqueListName(householdId: string, name: string, excludingId?: string): void {
+    const rows = this.database
+      .prepare('SELECT id, name FROM household_lists WHERE household_id = ?')
+      .all(householdId) as Array<{ id: string; name: string }>;
+    if (rows.some((row) => row.id !== excludingId && sameText(row.name, name))) {
+      throw new RepositoryError('CONFLICT', 'A list with that name already exists.');
+    }
+  }
+
+  private nextListSortOrder(householdId: string): number {
+    return (
+      this.database
+        .prepare(
+          `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next
+           FROM household_lists WHERE household_id = ? AND archived_at IS NULL`,
+        )
+        .get(householdId) as { next: number }
+    ).next;
+  }
+
+  private settingsResult(
+    householdId: string,
+    action: AuditSummary['action'],
+    targetId: string,
+    actor: CommandActor,
+    result: AuditSummary['result'] = 'succeeded',
+  ): ListSettingsCommandResult {
+    return {
+      settings: this.readListSettings(householdId),
+      audit: audit(action, targetId, actor, result, this.now()),
+      replayed: false,
+    };
+  }
+
+  private now(): string {
+    return this.clock.now().toISOString();
   }
 
   private readList(listId: string): HouseholdList {
@@ -1348,11 +2029,26 @@ function sameText(left: string, right: string): boolean {
   return normaliseListItemText(left) === normaliseListItemText(right);
 }
 
+function assertExactOrder(
+  currentIds: readonly string[],
+  orderedIds: readonly string[],
+  message: string,
+) {
+  if (
+    currentIds.length !== orderedIds.length ||
+    currentIds.some((idValue) => !orderedIds.includes(idValue)) ||
+    new Set(orderedIds).size !== orderedIds.length
+  ) {
+    throw new RepositoryError('CONFLICT', message);
+  }
+}
+
 function audit(
   action: AuditSummary['action'],
   targetId: string,
   actor: CommandActor,
   result: AuditSummary['result'] = 'succeeded',
+  occurredAt = new Date().toISOString(),
 ): AuditSummary {
   return {
     id: id('audit'),
@@ -1361,7 +2057,7 @@ function audit(
     source: actor.source,
     action,
     targetId,
-    occurredAt: new Date().toISOString(),
+    occurredAt,
     result,
   };
 }
@@ -1446,6 +2142,7 @@ interface ListRow {
   name: string;
   list_type: HouseholdList['type'];
   colour: string;
+  archived_at: string | null;
 }
 
 interface ListItemRow {

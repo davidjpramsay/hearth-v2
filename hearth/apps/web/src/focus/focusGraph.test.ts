@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { FocusMemory, focusById, nextFocusId } from './focusGraph';
 
@@ -16,6 +16,15 @@ describe('focus graph', () => {
     document.body.innerHTML = '<button data-focus-id="chore-one">Complete</button>';
     expect(focusById('chore-one')).toBe(true);
     expect(document.activeElement).toHaveAttribute('data-focus-id', 'chore-one');
+  });
+
+  it('can focus a phone entry control without shifting the initial viewport', () => {
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+    document.body.innerHTML = '<button data-focus-id="phone-entry">Open</button>';
+    expect(focusById('phone-entry', { scroll: false })).toBe(true);
+    expect(document.activeElement).toHaveAttribute('data-focus-id', 'phone-entry');
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    scrollIntoView.mockRestore();
   });
 
   it('focuses the meaningful entry control without depending on demo identifiers', () => {

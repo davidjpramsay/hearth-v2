@@ -9,10 +9,12 @@ import {
   ChoreSkipResultSchema,
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
+  HouseholdListSettingsSchema,
   HouseholdListsSchema,
   HomeActionResultSchema,
   HomeStatusSchema,
   ListItemCommandResultSchema,
+  ListSettingsCommandResultSchema,
   MealCommandResultSchema,
   MealPlanSchema,
   MemberAvatarCommandResultSchema,
@@ -49,10 +51,13 @@ import {
   type ChoreTemplateList,
   type DemoScenario,
   type HouseholdLists,
+  type HouseholdListSettings,
+  type HouseholdListType,
   type HomeActionId,
   type HomeActionResult,
   type HomeStatus,
   type ListItemCommandResult,
+  type ListSettingsCommandResult,
   type MealCommandResult,
   type MealPlan,
   type Member,
@@ -126,6 +131,9 @@ export const queryKeys = {
   },
   get lists() {
     return [householdId(getHearthRuntime()), 'lists'] as const;
+  },
+  get listSettings() {
+    return [householdId(getHearthRuntime()), 'list-settings'] as const;
   },
   meals: (startDate = getHearthRuntime().weekStart) =>
     [householdId(getHearthRuntime()), 'meals', startDate] as const,
@@ -246,6 +254,92 @@ export const hearthApi = {
       body: JSON.stringify({ requestId, confirmed }),
     }),
   getLists: () => request(`${householdApiBase()}/lists`, HouseholdListsSchema),
+  getListSettings: (): Promise<HouseholdListSettings> =>
+    request(`${householdApiBase()}/list-settings`, HouseholdListSettingsSchema, {
+      headers: demoAdminHeaders,
+    }),
+  createList: (input: {
+    requestId: string;
+    name: string;
+    type: HouseholdListType;
+    color: string;
+  }): Promise<ListSettingsCommandResult> =>
+    request(`${householdApiBase()}/lists`, ListSettingsCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  updateList: (
+    listId: string,
+    input: {
+      requestId: string;
+      name: string;
+      type: HouseholdListType;
+      color: string;
+    },
+  ): Promise<ListSettingsCommandResult> =>
+    request(`${householdApiBase()}/lists/${listId}`, ListSettingsCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  archiveList: (listId: string, requestId: string): Promise<ListSettingsCommandResult> =>
+    request(`${householdApiBase()}/lists/${listId}/archives`, ListSettingsCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId }),
+    }),
+  restoreList: (listId: string, requestId: string): Promise<ListSettingsCommandResult> =>
+    request(`${householdApiBase()}/lists/${listId}/restorations`, ListSettingsCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId }),
+    }),
+  reorderLists: (orderedListIds: string[], requestId: string): Promise<ListSettingsCommandResult> =>
+    request(`${householdApiBase()}/list-order`, ListSettingsCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId, orderedListIds }),
+    }),
+  updateListItem: (
+    itemId: string,
+    input: { requestId: string; text: string; quantity: string | null },
+  ): Promise<ListSettingsCommandResult> =>
+    request(`${householdApiBase()}/list-items/${itemId}`, ListSettingsCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify(input),
+    }),
+  archiveListItem: (itemId: string, requestId: string): Promise<ListSettingsCommandResult> =>
+    request(
+      `${householdApiBase()}/list-items/${itemId}/archives`,
+      ListSettingsCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+    ),
+  reorderListItems: (
+    listId: string,
+    orderedItemIds: string[],
+    requestId: string,
+  ): Promise<ListSettingsCommandResult> =>
+    request(`${householdApiBase()}/lists/${listId}/item-order`, ListSettingsCommandResultSchema, {
+      method: 'PUT',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId, orderedItemIds }),
+    }),
+  clearCheckedListItems: (listId: string, requestId: string): Promise<ListSettingsCommandResult> =>
+    request(
+      `${householdApiBase()}/lists/${listId}/checked-item-clears`,
+      ListSettingsCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+    ),
   addListItem: (
     listId: string,
     input: { requestId: string; text: string; quantity: string | null },

@@ -464,6 +464,67 @@ export const HouseholdListsSchema = z.object({
   lists: z.array(HouseholdListSchema),
 });
 
+export const ArchivedHouseholdListSchema = z.object({
+  id: OpaqueIdSchema,
+  name: z.string().min(1).max(100),
+  type: HouseholdListTypeSchema,
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  archivedAt: TimestampSchema,
+});
+
+export const HouseholdListSettingsSchema = z.object({
+  householdId: OpaqueIdSchema,
+  activeLists: z.array(HouseholdListSchema),
+  archivedLists: z.array(ArchivedHouseholdListSchema),
+});
+
+const HouseholdListFieldsSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  type: HouseholdListTypeSchema,
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
+export const CreateHouseholdListRequestSchema = CommandRequestSchema.extend(
+  HouseholdListFieldsSchema.shape,
+);
+export const UpdateHouseholdListRequestSchema = CommandRequestSchema.extend(
+  HouseholdListFieldsSchema.shape,
+);
+
+function uniqueIdOrder<T extends z.ZodTypeAny>(schema: T) {
+  return z
+    .array(schema)
+    .min(1)
+    .max(100)
+    .superRefine((ids, context) => {
+      if (new Set(ids).size !== ids.length) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Order cannot contain duplicate identifiers.',
+        });
+      }
+    });
+}
+
+export const ReorderHouseholdListsRequestSchema = CommandRequestSchema.extend({
+  orderedListIds: uniqueIdOrder(OpaqueIdSchema),
+});
+
+export const UpdateListItemRequestSchema = CommandRequestSchema.extend({
+  text: z.string().trim().min(1).max(160),
+  quantity: z.string().trim().max(40).nullable(),
+});
+
+export const ReorderListItemsRequestSchema = CommandRequestSchema.extend({
+  orderedItemIds: uniqueIdOrder(OpaqueIdSchema),
+});
+
+export const ListSettingsCommandResultSchema = z.object({
+  settings: HouseholdListSettingsSchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
 export const AddListItemRequestSchema = CommandRequestSchema.extend({
   text: z.string().trim().min(1).max(160),
   quantity: z.string().trim().max(40).nullable(),
@@ -674,7 +735,16 @@ export const AuditSummarySchema = z.object({
     'device.revoke',
     'chore-template.create',
     'chore-template.update',
+    'list.create',
+    'list.update',
+    'list.archive',
+    'list.restore',
+    'list.reorder',
     'list.item.add',
+    'list.item.update',
+    'list.item.archive',
+    'list.item.reorder',
+    'list.item.clear-checked',
     'list.item.complete',
     'list.item.undo',
     'meal.plan',
@@ -1095,6 +1165,14 @@ export type HouseholdListType = z.infer<typeof HouseholdListTypeSchema>;
 export type ListItem = z.infer<typeof ListItemSchema>;
 export type HouseholdList = z.infer<typeof HouseholdListSchema>;
 export type HouseholdLists = z.infer<typeof HouseholdListsSchema>;
+export type ArchivedHouseholdList = z.infer<typeof ArchivedHouseholdListSchema>;
+export type HouseholdListSettings = z.infer<typeof HouseholdListSettingsSchema>;
+export type CreateHouseholdListRequest = z.infer<typeof CreateHouseholdListRequestSchema>;
+export type UpdateHouseholdListRequest = z.infer<typeof UpdateHouseholdListRequestSchema>;
+export type ReorderHouseholdListsRequest = z.infer<typeof ReorderHouseholdListsRequestSchema>;
+export type UpdateListItemRequest = z.infer<typeof UpdateListItemRequestSchema>;
+export type ReorderListItemsRequest = z.infer<typeof ReorderListItemsRequestSchema>;
+export type ListSettingsCommandResult = z.infer<typeof ListSettingsCommandResultSchema>;
 export type AddListItemRequest = z.infer<typeof AddListItemRequestSchema>;
 export type AssistAddListItemRequest = z.infer<typeof AssistAddListItemRequestSchema>;
 export type ListItemCommandResult = z.infer<typeof ListItemCommandResultSchema>;

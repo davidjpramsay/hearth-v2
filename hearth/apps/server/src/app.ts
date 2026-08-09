@@ -37,16 +37,19 @@ import {
   CreatePairingRequestSchema,
   CreateTvPairingSessionRequestSchema,
   CreateChoreTemplateRequestSchema,
+  CreateHouseholdListRequestSchema,
   CreateSavedMealRequestSchema,
   DemoScenarioRequestSchema,
   ExecuteHomeActionRequestSchema,
   ExchangeTvPairingRequestSchema,
   FirstUsePasskeyOptionsRequestSchema,
   HouseholdListsSchema,
+  HouseholdListSettingsSchema,
   HomeActionIdSchema,
   HomeActionResultSchema,
   HomeStatusSchema,
   ListItemCommandResultSchema,
+  ListSettingsCommandResultSchema,
   LocalDateSchema,
   MealCommandResultSchema,
   MealPlanSchema,
@@ -67,6 +70,8 @@ import {
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
   RefreshPhotoSourceRequestSchema,
+  ReorderHouseholdListsRequestSchema,
+  ReorderListItemsRequestSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
   PocketMoneyPaymentVoidCommandResultSchema,
@@ -87,6 +92,8 @@ import {
   UpdateHouseholdRequestSchema,
   UpdateHouseholdNoticeRequestSchema,
   UpdateChoreTemplateRequestSchema,
+  UpdateHouseholdListRequestSchema,
+  UpdateListItemRequestSchema,
   UpdateMemberRequestSchema,
   UpdateMemberAvatarRequestSchema,
   UpdatePocketMoneySettingsRequestSchema,
@@ -987,6 +994,188 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       HouseholdListsSchema.parse(await planningRepository.getLists(params.householdId)),
     );
   });
+
+  server.get('/api/v1/households/:householdId/list-settings', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      HouseholdListSettingsSchema.parse(
+        await planningRepository.getListSettings(
+          params.householdId,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      ),
+    );
+  });
+
+  server.post('/api/v1/households/:householdId/lists', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CreateHouseholdListRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.createList(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/lists/:listId', async (request, reply) => {
+    const params = parse(ListParamsSchema, request.params, reply);
+    const body = parse(UpdateHouseholdListRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.updateList(
+          params.householdId,
+          params.listId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.listId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/lists/:listId/archives', async (request, reply) => {
+    const params = parse(ListParamsSchema, request.params, reply);
+    const body = parse(CommandRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.archiveList(
+          params.householdId,
+          params.listId,
+          body.requestId,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.listId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/lists/:listId/restorations',
+    async (request, reply) => {
+      const params = parse(ListParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ListSettingsCommandResultSchema.parse(
+          await planningRepository.restoreList(
+            params.householdId,
+            params.listId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'list.changed', params.listId);
+        return result;
+      });
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/list-order', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(ReorderHouseholdListsRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.reorderLists(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.householdId);
+      return result;
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/list-items/:itemId', async (request, reply) => {
+    const params = parse(ListItemParamsSchema, request.params, reply);
+    const body = parse(UpdateListItemRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.updateListItem(
+          params.householdId,
+          params.itemId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.itemId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/list-items/:itemId/archives',
+    async (request, reply) => {
+      const params = parse(ListItemParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ListSettingsCommandResultSchema.parse(
+          await planningRepository.archiveListItem(
+            params.householdId,
+            params.itemId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'list.changed', params.itemId);
+        return result;
+      });
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/lists/:listId/item-order', async (request, reply) => {
+    const params = parse(ListParamsSchema, request.params, reply);
+    const body = parse(ReorderListItemsRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.reorderListItems(
+          params.householdId,
+          params.listId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.listId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/lists/:listId/checked-item-clears',
+    async (request, reply) => {
+      const params = parse(ListParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ListSettingsCommandResultSchema.parse(
+          await planningRepository.clearCheckedListItems(
+            params.householdId,
+            params.listId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'list.changed', params.listId);
+        return result;
+      });
+    },
+  );
 
   server.post('/api/v1/households/:householdId/lists/:listId/items', async (request, reply) => {
     const params = parse(ListParamsSchema, request.params, reply);

@@ -105,6 +105,10 @@ the phone More hub.
 - Large checkable rows and visible item count.
 - Home Assistant Assist can add items through Hearth's typed command API; Hearth does not show a listening control.
 - Editing long text is primarily a phone/admin-web action.
+- The phone Family Planning surface can create, rename, type, colour, order,
+  archive and restore lists; it can edit quantities, order or remove items and
+  clear checked history only after explicit confirmation. The television keeps
+  only the family check/undo interaction.
 
 ### Meals
 

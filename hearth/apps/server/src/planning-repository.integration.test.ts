@@ -85,6 +85,170 @@ describe('SQLite household planning repository', () => {
     ).toEqual({ count: 3 });
   });
 
+  it('manages lists and items with replay-safe archive, restore, ordering and clear commands', async () => {
+    const { database, planning } = await repositories();
+    const created = await planning.createList(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_list_create_camp',
+        name: 'School camp',
+        type: 'packing',
+        color: '#6d5b8f',
+      },
+      adult,
+    );
+    const listId = created.audit.targetId;
+    const replay = await planning.createList(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_list_create_camp',
+        name: 'School camp',
+        type: 'packing',
+        color: '#6d5b8f',
+      },
+      adult,
+    );
+    expect(replay).toMatchObject({ replayed: true, audit: { targetId: listId } });
+
+    const first = await planning.addListItem(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      { requestId: 'request_list_add_sleeping_bag', text: 'Sleeping bag', quantity: '1' },
+      adult,
+    );
+    const second = await planning.addListItem(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      { requestId: 'request_list_add_socks', text: 'Socks', quantity: '4 pairs' },
+      adult,
+    );
+    await planning.updateListItem(
+      DEMO_HOUSEHOLD_ID,
+      first.item.id,
+      { requestId: 'request_list_update_sleeping_bag', text: 'Warm sleeping bag', quantity: '1' },
+      adult,
+    );
+    await planning.reorderListItems(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      {
+        requestId: 'request_list_reorder_items',
+        orderedItemIds: [second.item.id, first.item.id],
+      },
+      adult,
+    );
+    await planning.completeListItem(
+      DEMO_HOUSEHOLD_ID,
+      second.item.id,
+      'request_list_complete_socks',
+      adult,
+    );
+    const cleared = await planning.clearCheckedListItems(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      'request_list_clear_checked',
+      adult,
+    );
+    expect(cleared.settings.activeLists.find((list) => list.id === listId)?.items).toEqual([
+      expect.objectContaining({ text: 'Warm sleeping bag', quantity: '1' }),
+    ]);
+    const removable = await planning.addListItem(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      { requestId: 'request_list_add_torch', text: 'Torch', quantity: null },
+      adult,
+    );
+    const removed = await planning.archiveListItem(
+      DEMO_HOUSEHOLD_ID,
+      removable.item.id,
+      'request_list_remove_torch',
+      adult,
+    );
+    expect(
+      removed.settings.activeLists
+        .find((list) => list.id === listId)
+        ?.items.some((item) => item.id === removable.item.id),
+    ).toBe(false);
+
+    const current = await planning.getListSettings(DEMO_HOUSEHOLD_ID, adult);
+    const reorderedIds = [
+      listId,
+      ...current.activeLists.map((list) => list.id).filter((id) => id !== listId),
+    ];
+    await planning.reorderLists(
+      DEMO_HOUSEHOLD_ID,
+      { requestId: 'request_list_reorder_lists', orderedListIds: reorderedIds },
+      adult,
+    );
+    await planning.updateList(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      {
+        requestId: 'request_list_update_camp',
+        name: 'Year 8 camp',
+        type: 'packing',
+        color: '#1668b7',
+      },
+      adult,
+    );
+    const archived = await planning.archiveList(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      'request_list_archive_camp',
+      adult,
+    );
+    expect(archived.settings.archivedLists).toContainEqual(
+      expect.objectContaining({ id: listId, name: 'Year 8 camp' }),
+    );
+    const restored = await planning.restoreList(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      'request_list_restore_camp',
+      adult,
+    );
+    expect(restored.settings.activeLists.at(-1)).toMatchObject({ id: listId, name: 'Year 8 camp' });
+    await expect(planning.getListSettings(DEMO_HOUSEHOLD_ID, child)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    } satisfies Partial<RepositoryError>);
+    await expect(
+      planning.reorderLists(
+        DEMO_HOUSEHOLD_ID,
+        { requestId: 'request_bad_list_order', orderedListIds: [listId] },
+        adult,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT' } satisfies Partial<RepositoryError>);
+    expect(
+      database
+        .prepare("SELECT COUNT(*) AS count FROM audit_events WHERE action_type LIKE 'list.%'")
+        .get(),
+    ).toEqual({ count: 13 });
+  });
+
+  it('keeps the final household list active', async () => {
+    const { planning } = await repositories();
+    await planning.archiveList(
+      DEMO_HOUSEHOLD_ID,
+      'list_weekend_away',
+      'request_archive_weekend',
+      adult,
+    );
+    await planning.archiveList(
+      DEMO_HOUSEHOLD_ID,
+      'list_hardware',
+      'request_archive_hardware',
+      adult,
+    );
+    await expect(
+      planning.archiveList(
+        DEMO_HOUSEHOLD_ID,
+        'list_groceries',
+        'request_archive_final_list',
+        adult,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT' } satisfies Partial<RepositoryError>);
+    expect((await planning.getLists(DEMO_HOUSEHOLD_ID)).lists).toHaveLength(1);
+  });
+
   it('persists meal planning and keeps saved meals separately reusable', async () => {
     const { database, planning } = await repositories();
     const saved = await planning.createSavedMeal(

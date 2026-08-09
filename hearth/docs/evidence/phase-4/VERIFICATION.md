@@ -1,5 +1,32 @@
 # Phase 4 household-planning verification
 
+## 2026-08-09 list-management polish addendum
+
+The current Phase 4 list slice now includes phone-first adult administration:
+create, rename, type, colour, order, archive and restore lists; add, edit,
+order and remove items; confirmed clear-checked soft archive; and the existing
+TV check/undo path. The original migration 0005 already contained the required
+archive and ordering columns, so no redundant migration was added.
+
+Passed from `hearth/`:
+
+- `pnpm install --frozen-lockfile` — lockfile current across all five projects.
+- `pnpm verify` — formatting, lint, strict type checks, 96 unit tests, 69 server
+  integration tests, 14 migration tests, web/server production builds and 164
+  Playwright tests all passed.
+- `git diff --check` — passed.
+- Playwright covered same-request retry, adult authorization, invalid order,
+  final-list protection, create/edit/order/archive/restore/clear flows, Back,
+  TV control isolation, quantity display and axe checks.
+
+The production list-admin chunk is 14.18 kB JavaScript (4.07 kB gzip). The
+main entry is 461.16 kB JavaScript (134.10 kB gzip), and the stylesheet is
+121.91 kB (22.40 kB gzip). The installed Playwright Chromium remained the
+rendering fallback because no Browser/IAB controller was available. Fresh 4K,
+1080p, 1366, phone portrait, phone landscape, Admin and list-state evidence was
+retained and inspected against the accepted Phase 4 concepts. The inspection
+also found and fixed initial focus clipping the short phone-landscape header.
+
 > Historical 2026-08-03 checkpoint. Its reward-ledger counts describe the then-current migration-5
 > implementation, not the active product. D-027/D-035 and the pocket-money evidence supersede those
 > runtime claims; the old tables remain only for forward-only database upgrades.

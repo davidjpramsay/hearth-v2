@@ -109,6 +109,12 @@ Chromium fallback produced the retained evidence.
 
 - Items can be checked with one obvious action.
 - Voice addition handles exact duplicates and ambiguous list names safely.
+- An authenticated adult can create, rename, type, colour, order, archive and
+  restore a list from the phone, while the final active list is protected.
+- An authenticated adult can edit an item's text and quantity, reorder or
+  remove it, and clear checked items only through an explicit confirmation.
+  These commands are idempotent, audited and survive restart.
+- The television list surface does not expose dense administration controls.
 - Today's meal is visible without entering the Meals module.
 - Long-form editing is comfortable from the phone companion.
 

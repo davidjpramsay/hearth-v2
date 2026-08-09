@@ -17,6 +17,7 @@ test.beforeEach(async ({ request }) => {
 test('remote-only Lists check, undo, Meals navigation and Back restoration', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/lists');
+  await expect(page.locator('.lists-manage-link')).toBeHidden();
   const milk = page.locator('[data-focus-id="list-item-list_item_milk"]');
   await expect(milk).toBeFocused();
   await page.keyboard.press('Enter');
@@ -43,8 +44,11 @@ test('phone adds a list item and edits a dinner through the typed API', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/lists');
   await page.getByPlaceholder('Add an item').fill('Oranges');
+  await page.getByLabel('Quantity (optional)').fill('6');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Check Oranges' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Check Oranges' })).toContainText('6');
+  await expect(page.getByRole('link', { name: 'Manage lists' })).toBeVisible();
 
   await page.goto('/meals');
   await page.locator('[data-focus-id="meal-day-2026-08-04"]').click();
@@ -56,6 +60,74 @@ test('phone adds a list item and edits a dinner through the typed API', async ({
   await page.reload();
   await page.locator('[data-focus-id="meal-day-2026-08-04"]').click();
   await expect(editor.getByLabel('Dinner')).toHaveValue('Vegetable curry');
+});
+
+test('phone adults create, edit, order, clear, archive and restore household lists', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/planning');
+  await page.getByRole('link', { name: /Household lists/ }).click();
+  await expect(page.getByRole('heading', { name: 'Household lists' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'New list' }).click();
+  const createForm = page.locator('.list-settings-create');
+  await createForm.getByLabel('List name').fill('School camp');
+  await createForm.getByLabel('List type').selectOption('packing');
+  await createForm.getByLabel('Use list colour #6d5b8f').check();
+  await createForm.getByRole('button', { name: 'Create list' }).click();
+  await expect(page.getByRole('status')).toContainText('School camp was created');
+
+  await page.getByPlaceholder('Add an item').fill('Sleeping bag');
+  await page.getByPlaceholder('Qty').fill('1');
+  await page.getByRole('button', { name: 'Add item' }).click();
+  await expect(page.getByRole('status')).toContainText('Sleeping bag was added');
+  await expect(page.getByLabel('Item name for Sleeping bag')).toBeVisible();
+
+  const details = page.locator('.list-settings-details');
+  await details.getByLabel('List name').fill('Year 8 camp');
+  await details.getByLabel('Use list colour #1668b7').check();
+  await details.getByRole('button', { name: 'Save list details' }).click();
+  await expect(page.getByRole('status')).toContainText('Year 8 camp was updated');
+
+  await page.getByRole('button', { name: /Groceries 6 waiting/ }).click();
+  const milk = page.getByLabel('Item name for Milk').locator('xpath=ancestor::form');
+  await milk.getByLabel('Item name for Milk').fill('Oat milk');
+  await milk.getByLabel('Quantity for Milk').fill('2');
+  await milk.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Oat milk was updated');
+  await page.getByRole('button', { name: 'Move Oat milk down' }).click();
+  await expect(page.getByRole('status')).toContainText('Oat milk was moved');
+
+  const oats = page.getByLabel('Item name for Oats').locator('xpath=ancestor::form');
+  await expect(oats).toHaveClass(/list-settings-item--checked/);
+  await page.getByRole('button', { name: 'Clear checked' }).click();
+  await page.getByRole('button', { name: 'Clear 1 checked item?' }).click();
+  await expect(page.getByRole('status')).toContainText('Checked items were cleared');
+  await expect(page.getByLabel('Item name for Oats')).toHaveCount(0);
+
+  await page.getByRole('button', { name: /Year 8 camp 1 waiting/ }).click();
+  await page.getByRole('button', { name: 'Archive list' }).click();
+  await page.getByRole('button', { name: 'Archive Year 8 camp?' }).click();
+  await expect(page.getByRole('status')).toContainText('can be restored');
+  await page.getByRole('button', { name: 'Restore' }).click();
+  await expect(page.getByRole('status')).toContainText('Year 8 camp is active again');
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', { name: 'Family planning' })).toBeVisible();
+});
+
+test('list administration reports a failed save and retries the same safe command', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/lists?scenario=fail-next');
+  const details = page.locator('.list-settings-details');
+  await details.getByLabel('List name').fill('Weekly groceries');
+  await details.getByRole('button', { name: 'Save list details' }).click();
+  await expect(page.getByRole('alert')).toContainText('That change did not save');
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('status')).toContainText('Weekly groceries was updated');
 });
 
 test('phone Family Planning edits future routines and manages weekly pocket money', async ({
@@ -196,6 +268,7 @@ for (const path of [
   '/lists',
   '/meals',
   '/admin/planning',
+  '/admin/lists',
   '/admin/routines',
   '/admin/pocket-money',
 ]) {
@@ -279,11 +352,11 @@ for (const viewport of planningViewports) {
   }
 }
 
-for (const route of ['planning', 'routines', 'pocket-money'] as const) {
+for (const route of ['planning', 'lists', 'routines', 'pocket-money'] as const) {
   test(`@visual ${route} phone administration`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/admin/${route}`);
-    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.locator('.admin-page, .admin-home')).toBeVisible();
     await page.screenshot({
       path: resolve(evidence, `admin-${route}-phone-portrait.png`),
       animations: 'disabled',

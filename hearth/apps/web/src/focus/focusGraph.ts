@@ -11,7 +11,7 @@ export function nextFocusId(element: HTMLElement, direction: FocusDirection): st
   return element.dataset[attributeByDirection[direction]] ?? null;
 }
 
-export function focusById(id: string | null): boolean {
+export function focusById(id: string | null, options: { scroll?: boolean } = {}): boolean {
   if (id === null) return false;
   const target =
     id === 'screen-entry'
@@ -20,11 +20,13 @@ export function focusById(id: string | null): boolean {
       : document.querySelector<HTMLElement>(`[data-focus-id="${CSS.escape(id)}"]`);
   if (target === null || target.getAttribute('aria-disabled') === 'true') return false;
   target.focus({ preventScroll: true });
-  target.scrollIntoView({
-    block: 'nearest',
-    inline: 'nearest',
-    behavior: reducedMotion() ? 'auto' : 'smooth',
-  });
+  if (options.scroll ?? true) {
+    target.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: reducedMotion() ? 'auto' : 'smooth',
+    });
+  }
   return true;
 }
 

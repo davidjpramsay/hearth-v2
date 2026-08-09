@@ -75,6 +75,14 @@ export function useListsQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.lists, queryFn: hearthApi.getLists, enabled });
 }
 
+export function useListSettingsQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.listSettings,
+    queryFn: hearthApi.getListSettings,
+    enabled,
+  });
+}
+
 export function useMealPlanQuery(startDate = getHearthRuntime().weekStart, enabled = true) {
   return useQuery({
     queryKey: queryKeys.meals(startDate),

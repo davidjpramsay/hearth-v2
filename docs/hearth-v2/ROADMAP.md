@@ -158,7 +158,7 @@ Status: complete and locally verified with deterministic demo household data.
 
 ### Work
 
-- Lists and item completion/addition.
+- Lists, item completion/addition and phone-first adult list administration.
 - Meal plan and saved meals.
 - Required weekly pocket-money amount and payday for each child.
 - Week-to-date chore proportion, amount due and immutable payment snapshots.
@@ -174,7 +174,9 @@ Status: complete and locally verified with deterministic demo household data.
 
 Implementation note (updated 2026-08-06): Lists and Meals have D-pad television
 surfaces and responsive phone presentations. The phone Family Planning area
-edits future recurring chores, dinners/saved meals, child weekly amounts,
+creates, renames, colours, orders, archives and restores lists; edits, orders
+and removes list items; and explicitly clears checked history. It also edits
+future recurring chores, dinners/saved meals, child weekly amounts,
 paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted

@@ -34,7 +34,7 @@ const planningAreas: Array<{
   {
     title: 'Household lists',
     description: 'Groceries, packing and shared reminders',
-    path: '/lists',
+    path: '/admin/lists',
     icon: 'list',
     focusId: 'planning-lists',
   },

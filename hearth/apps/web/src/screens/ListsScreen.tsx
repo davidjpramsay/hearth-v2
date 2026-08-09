@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 
 import type { DemoScenario, ListItem } from '@hearth/shared';
 
@@ -21,14 +22,22 @@ export function ListsScreen({
   const query = useListsQuery(!preparing);
   const queryClient = useQueryClient();
   const itemMutation = useListMutation();
-  const [selectedListId, setSelectedListId] = useState('list_groceries');
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const online = useOnlineStatus(scenario === 'offline');
   const add = useMutation({
-    mutationFn: ({ listId, text }: { listId: string; text: string }) =>
+    mutationFn: ({
+      listId,
+      text,
+      quantity,
+    }: {
+      listId: string;
+      text: string;
+      quantity: string | null;
+    }) =>
       hearthApi.addListItem(
         listId,
-        { requestId: createRequestId('list_add_companion'), text, quantity: null },
+        { requestId: createRequestId('list_add_companion'), text, quantity },
         'companion',
       ),
     onSuccess: (result) => {
@@ -60,15 +69,22 @@ export function ListsScreen({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const text = String(new FormData(form).get('item') ?? '').trim();
+    const data = new FormData(form);
+    const text = String(data.get('item') ?? '').trim();
+    const quantityValue = String(data.get('quantity') ?? '').trim();
     if (text.length === 0) return;
-    add.mutate({ listId: selectedListIdForCommand, text });
+    add.mutate({ listId: selectedListIdForCommand, text, quantity: quantityValue || null });
     form.reset();
   }
 
   return (
     <div className="screen lists-screen">
       <ScreenHeader
+        actions={
+          <Link className="lists-manage-link" to="/admin/lists">
+            Manage lists
+          </Link>
+        }
         eyebrow="Local household lists"
         title="Lists"
         meta={`${selected.remainingCount} remaining in ${selected.name}`}
@@ -113,6 +129,7 @@ export function ListsScreen({
             {orderedItems.map((item, index) => (
               <ListItemRow
                 failed={itemMutation.failedItemId === item.id}
+                completedCount={selected.items.filter((candidate) => candidate.checked).length}
                 focusDown={`list-item-${orderedItems[Math.min(index + 1, orderedItems.length - 1)]?.id ?? item.id}`}
                 focusUp={`list-item-${orderedItems[Math.max(index - 1, 0)]?.id ?? item.id}`}
                 item={item}
@@ -126,6 +143,7 @@ export function ListsScreen({
                 pending={itemMutation.pendingItemId === item.id}
                 primary={index === 0}
                 selectedListId={selected.id}
+                startsCompleted={item.checked && orderedItems[index - 1]?.checked !== true}
               />
             ))}
           </div>
@@ -134,6 +152,13 @@ export function ListsScreen({
               Add an item
             </label>
             <input id="new-list-item" maxLength={160} name="item" placeholder="Add an item" />
+            <input
+              aria-label="Quantity (optional)"
+              className="phone-list-quantity"
+              maxLength={40}
+              name="quantity"
+              placeholder="Qty"
+            />
             <button disabled={add.isPending} type="submit">
               {add.isPending ? 'Adding…' : 'Add'}
             </button>
@@ -163,6 +188,8 @@ function ListItemRow({
   pending,
   primary,
   failed,
+  startsCompleted,
+  completedCount,
   message,
   onActivate,
   onRetry,
@@ -174,40 +201,53 @@ function ListItemRow({
   pending: boolean;
   primary: boolean;
   failed: boolean;
+  startsCompleted: boolean;
+  completedCount: number;
   message: string | null;
   onActivate: () => void;
   onRetry: () => void;
 }) {
   return (
-    <div className={`list-item-wrap${failed ? ' list-item-wrap--failed' : ''}`}>
-      <button
-        aria-label={item.checked ? `${item.text}, checked. Undo` : `Check ${item.text}`}
-        className={`list-item-row focusable${item.checked ? ' list-item-row--checked' : ''}`}
-        data-focus-entry={primary ? 'true' : undefined}
-        data-focus-down={focusDown}
-        data-focus-id={`list-item-${item.id}`}
-        data-focus-left={`list-choice-${selectedListId}`}
-        data-focus-up={focusUp}
-        onClick={onActivate}
-        type="button"
-      >
-        <span className="list-item-check">
-          <Icon name="check" />
-        </span>
-        <strong>{item.text}</strong>
-        <span className="list-item-state">
-          {pending ? 'Saving…' : item.checked ? 'Checked · Undo' : 'Check item'}
-        </span>
-        <Icon name="chevron-right" />
-      </button>
-      {failed ? (
-        <div className="inline-error" role="alert">
-          <span>{message}</span>
-          <button className="text-action" onClick={onRetry} type="button">
-            Try again
-          </button>
+    <>
+      {startsCompleted ? (
+        <div className="list-completed-divider">
+          <span>Completed</span>
+          <small>{completedCount}</small>
         </div>
       ) : null}
-    </div>
+      <div className={`list-item-wrap${failed ? ' list-item-wrap--failed' : ''}`}>
+        <button
+          aria-label={item.checked ? `${item.text}, checked. Undo` : `Check ${item.text}`}
+          className={`list-item-row focusable${item.checked ? ' list-item-row--checked' : ''}`}
+          data-focus-entry={primary ? 'true' : undefined}
+          data-focus-down={focusDown}
+          data-focus-id={`list-item-${item.id}`}
+          data-focus-left={`list-choice-${selectedListId}`}
+          data-focus-up={focusUp}
+          onClick={onActivate}
+          type="button"
+        >
+          <span className="list-item-check">
+            <Icon name="check" />
+          </span>
+          <span className="list-item-copy">
+            <strong>{item.text}</strong>
+            {item.quantity === null ? null : <small>{item.quantity}</small>}
+          </span>
+          <span className="list-item-state">
+            {pending ? 'Saving…' : item.checked ? 'Checked · Undo' : 'Check item'}
+          </span>
+          <Icon name="chevron-right" />
+        </button>
+        {failed ? (
+          <div className="inline-error" role="alert">
+            <span>{message}</span>
+            <button className="text-action" onClick={onRetry} type="button">
+              Try again
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }
