@@ -40,7 +40,9 @@ test('adult publishes an important notice and chooses the Today overview section
   await page.getByLabel('Priority').selectOption('important');
   await page.getByRole('button', { name: 'Publish notice' }).click();
   await expect(page.getByText('Showing on Today')).toBeVisible();
-  await expect(page.getByText('Bring library books tomorrow')).toBeVisible();
+  await expect(
+    page.locator('.notice-card p').filter({ hasText: 'Bring library books tomorrow' }),
+  ).toBeVisible();
 
   await page.goto('/today');
   await expect(page.getByText('Bring library books tomorrow')).toBeVisible();
