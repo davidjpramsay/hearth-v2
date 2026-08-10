@@ -84,6 +84,7 @@ export class InMemorySystemOperations implements SystemOperationsRepository {
       replayed: false,
     });
     this.receipts.set(receiptKey, result);
+    this.adminRepository.recordActivity(householdId, audit, requestId);
     return result;
   }
 

@@ -2482,7 +2482,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
          JOIN chore_template_assignees a ON a.template_id = t.id
          JOIN members m ON m.id = a.member_id
          WHERE t.id = ? AND t.household_id = ?
-         ORDER BY m.created_at, m.id`,
+         ORDER BY datetime(m.created_at), m.rowid`,
       )
       .all(templateId, householdId) as ChoreTemplateRow[];
     if (rows.length === 0)
@@ -2499,7 +2499,8 @@ export class SqlitePlanningRepository implements PlanningRepository {
          JOIN chore_template_assignees a ON a.template_id = t.id
          JOIN members m ON m.id = a.member_id
          WHERE t.household_id = ?
-         ORDER BY t.archived_at IS NOT NULL, t.sort_order, t.id, m.created_at, m.id`,
+         ORDER BY t.archived_at IS NOT NULL, t.sort_order, t.id,
+                  datetime(m.created_at), m.rowid`,
       )
       .all(householdId) as ChoreTemplateRow[];
     return ChoreTemplateListSchema.parse({

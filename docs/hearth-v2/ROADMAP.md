@@ -66,6 +66,13 @@ Replace, restart persistence, restore-original, permission, malformed-image, mig
 and rendered companion flows are covered without coupling member identity photos to the Phase 7
 Synology gallery.
 
+Polish extension (2026-08-10): System Health and More now open an adult-only Recent activity
+projection over the existing audit table. It groups the newest changes into family-readable rows,
+supports Family/Planning/Connections/System filters and keeps target/request identifiers and
+secret-bearing fields out of visible copy. SQLite integration coverage proves cross-repository
+events share the same feed; browser coverage exercises child denial, empty/unavailable states,
+D-pad filtering, Back focus restoration, accessibility and light/dark phone layouts.
+
 ### Work
 
 - Implement household, member, role/capability and paired-device domain models.

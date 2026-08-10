@@ -128,6 +128,9 @@ summaries and stable family-safe API errors. The implemented routes are:
   `{ requestId, reason, assigneeId }`
 - `GET /api/v1/households/:id/events` as a same-origin Server-Sent Events invalidation stream
 - `GET /api/v1/households/:id/admin` and typed household/member setup commands
+- adult-only `GET /api/v1/households/:id/activity?limit=` for the newest 1–100 safe audit
+  summaries; the companion currently requests 50 and presents family-readable filters without
+  rendering opaque target or request identifiers
 - `GET /api/v1/households/:id/members/:memberId/avatar` for the same-origin normalized profile derivative
 - `PUT /api/v1/households/:id/members/:memberId/avatar` with `{ requestId, mimeType: "image/jpeg", dataBase64 }`
 - `POST /api/v1/households/:id/members/:memberId/avatar-resets` with `{ requestId }`

@@ -74,6 +74,12 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
         icon: 'shield',
         path: '/admin/system',
       },
+      {
+        title: 'Recent activity',
+        description: 'Private household change history',
+        icon: 'list',
+        path: '/admin/activity',
+      },
     ],
   },
 ];

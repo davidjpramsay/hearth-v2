@@ -94,6 +94,9 @@ const TodaySettingsScreen = lazy(async () => ({
 const SystemHealthScreen = lazy(async () => ({
   default: (await import('./screens/SystemHealthScreen')).SystemHealthScreen,
 }));
+const SystemActivityScreen = lazy(async () => ({
+  default: (await import('./screens/SystemActivityScreen')).SystemActivityScreen,
+}));
 
 export function App() {
   const location = useLocation();
@@ -179,6 +182,7 @@ export function App() {
             <Route path="/admin/chore-day" element={<ChoreDaySettingsScreen />} />
             <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
             <Route path="/admin/system" element={<SystemHealthScreen />} />
+            <Route path="/admin/activity" element={<SystemActivityScreen />} />
             <Route path="/admin/rewards" element={<Navigate replace to="/admin/pocket-money" />} />
           </Route>
           <Route path="/pair" element={<PairingScreen />} />

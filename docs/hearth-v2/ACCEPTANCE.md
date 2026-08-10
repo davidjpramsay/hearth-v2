@@ -285,6 +285,11 @@ theme reporting remain untested until the physical-TV pilot.
   session. The database stores public-key material and session hashes, never the setup code or raw
   session token.
 - Mutation audit records include actor, channel, target, time and result.
+- A household administrator can review the latest family, planning, connection and system changes
+  in a family-readable Recent activity screen. A child receives `FORBIDDEN`; the screen does not
+  render opaque audit/request/target identifiers or provider secrets, and its filter, Back/focus
+  restoration, empty, unavailable, phone landscape/portrait and dark presentations work without
+  touch.
 - Logs do not include tokens or full sensitive calendar content by default; calendar and Home
   Assistant connection tests explicitly redact their credential fields.
 - Public internet exposure is absent unless separately reviewed and approved.

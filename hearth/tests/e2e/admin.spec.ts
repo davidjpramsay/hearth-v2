@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type APIRequestContext } from '@playwright/test';
 
 import { captureEvidence } from './visualEvidence';
 
@@ -11,6 +11,7 @@ const peopleEvidence = resolve('docs/evidence/admin-people');
 const calendarEvidence = resolve('docs/evidence/calendar-connection');
 const homeAssistantEvidence = resolve('docs/evidence/home-assistant-connection');
 const systemEvidence = resolve('docs/evidence/system-health');
+const activityEvidence = resolve('docs/evidence/system-activity');
 
 test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
@@ -18,6 +19,7 @@ test.beforeAll(async () => {
   await mkdir(calendarEvidence, { recursive: true });
   await mkdir(homeAssistantEvidence, { recursive: true });
   await mkdir(systemEvidence, { recursive: true });
+  await mkdir(activityEvidence, { recursive: true });
 });
 
 test.beforeEach(async ({ request }) => {
@@ -282,6 +284,69 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await expect(page.getByText(/Last backup 3 Aug 2026, 7:42 am · 2.5 MB/)).toBeVisible();
 });
 
+test('adult reviews family-readable activity and filters it without technical identifiers', async ({
+  page,
+  request,
+}) => {
+  await seedRecentActivity(request);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/system');
+  const activity = page.locator('[data-focus-id="system-activity"]');
+  await activity.scrollIntoViewIfNeeded();
+  await activity.focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page).toHaveURL(/\/admin\/activity$/);
+  await expect(page.getByRole('heading', { name: 'Recent activity' })).toBeVisible();
+  await expect(page.getByText('Recovery copy created')).toBeVisible();
+  await expect(page.getByText('Household details updated')).toBeVisible();
+  await expect(page.getByText('Chore marked done')).toBeVisible();
+  expect((await page.locator('.activity-row').allTextContents()).join(' ')).not.toMatch(
+    /audit_|request_|occurrence_/,
+  );
+
+  const allFilter = page.getByRole('button', { name: 'All' });
+  await expect(allFilter).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  const familyFilter = page.getByRole('button', { name: 'Family' });
+  await expect(familyFilter).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(familyFilter).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Household details updated')).toBeVisible();
+  await expect(page.getByText('Chore marked done')).toHaveCount(0);
+  await expect(page.getByText('Recovery copy created')).toHaveCount(0);
+
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/admin\/system$/);
+  await expect(activity).toBeFocused();
+});
+
+test('recent activity explains empty and unavailable states', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/activity');
+  await expect(page.getByText('No changes recorded yet')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nothing has changed yet' })).toBeVisible();
+
+  await page.route('**/activity?limit=50', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          code: 'INTEGRATION_UNAVAILABLE',
+          message: 'Recent activity is temporarily unavailable. Try again shortly.',
+          retryable: true,
+          requestId: null,
+        },
+      }),
+    });
+  });
+  await page.reload();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Recent activity is temporarily unavailable. Try again shortly.',
+  );
+});
+
 test('system backup retry keeps the same command identity after a lost response', async ({
   page,
 }) => {
@@ -349,6 +414,8 @@ test('system connections have deterministic D-pad movement and Back restoration'
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/system');
   await expect(page.locator('[data-focus-id="system-create-backup"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('[data-focus-id="system-activity"]')).toBeFocused();
   await page.keyboard.press('ArrowUp');
   await expect(page.locator('[data-focus-id="system-photo-health"]')).toBeFocused();
   await page.keyboard.press('ArrowUp');
@@ -515,6 +582,7 @@ for (const path of [
   '/admin/connections/calendar',
   '/admin/connections/home-assistant',
   '/admin/system',
+  '/admin/activity',
 ]) {
   test(`@a11y ${path} has no serious accessibility violations`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -576,6 +644,75 @@ test('@visual @a11y dark System health at phone portrait', async ({ page }) => {
     animations: 'disabled',
   });
 });
+
+for (const viewport of [
+  { name: 'phone-portrait', width: 390, height: 844 },
+  { name: 'phone-landscape', width: 844, height: 390 },
+] as const) {
+  test(`@visual Recent activity at ${viewport.name}`, async ({ page, request }) => {
+    await seedRecentActivity(request);
+    await page.setViewportSize(viewport);
+    await page.goto('/admin/activity');
+    await expect(page.getByRole('heading', { name: 'Recent activity' })).toBeVisible();
+    await captureEvidence(page, {
+      path: resolve(activityEvidence, `recent-activity-${viewport.name}.png`),
+      animations: 'disabled',
+    });
+    if (viewport.name === 'phone-landscape') {
+      await page.locator('.activity-row').last().scrollIntoViewIfNeeded();
+      await captureEvidence(page, {
+        path: resolve(activityEvidence, 'recent-activity-phone-landscape-rows.png'),
+        animations: 'disabled',
+      });
+    }
+  });
+}
+
+test('@visual @a11y dark Recent activity at phone portrait', async ({ page, request }) => {
+  await seedRecentActivity(request);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'hearth.appearance.v1',
+      JSON.stringify({ theme: 'dark', eveningDimming: false }),
+    );
+  });
+  await page.goto('/admin/activity');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  await captureEvidence(page, {
+    path: resolve(activityEvidence, 'recent-activity-dark-phone-portrait.png'),
+    animations: 'disabled',
+  });
+});
+
+async function seedRecentActivity(request: APIRequestContext): Promise<void> {
+  const base = 'http://127.0.0.1:4310/api/v1/households/household_hearth_demo';
+  const headers = { 'X-Hearth-Demo-Actor': 'member_maya' };
+  const household = await request.patch(`${base}/settings`, {
+    headers,
+    data: {
+      requestId: 'request_activity_household_e2e',
+      name: 'Hearth Demo Home',
+      timezone: 'Australia/Perth',
+    },
+  });
+  const chore = await request.post(`${base}/chore-occurrences/occurrence_school_bag/completions`, {
+    data: { requestId: 'request_activity_chore_e2e' },
+  });
+  const backup = await request.post(`${base}/system-backups`, {
+    headers,
+    data: { requestId: 'request_activity_backup_e2e' },
+  });
+  expect(household.ok()).toBe(true);
+  expect(chore.ok()).toBe(true);
+  expect(backup.ok()).toBe(true);
+}
 
 for (const viewport of [
   { name: 'phone-portrait', width: 390, height: 844 },

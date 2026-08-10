@@ -9,6 +9,7 @@ import { openHearthDatabase } from './database.js';
 import { createDemoSeed, DEMO_HOUSEHOLD_ID } from './demo/seed.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
+import { DEMO_TV_ACTOR } from './repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 
 const temporaryDirectories: string[] = [];
@@ -20,6 +21,68 @@ afterEach(async () => {
 });
 
 describe('SQLite admin repository', () => {
+  it('reads one safe household activity stream across repository boundaries', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-activity-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    const admin = new SqliteAdminRepository(database);
+    const hearth = new SqliteHearthRepository(database);
+
+    await hearth.complete(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_school_bag',
+      'request_activity_complete',
+      DEMO_TV_ACTOR,
+    );
+    await admin.updateHousehold(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID, {
+      requestId: 'request_activity_household',
+      name: 'Hearth Demo Home',
+      timezone: 'Australia/Perth',
+    });
+
+    const activity = await admin.getActivity(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID, 50);
+    expect(activity).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'chore.complete',
+          actorId: 'device_living_room_tv',
+          source: 'tv',
+        }),
+        expect.objectContaining({
+          action: 'household.update',
+          actorId: DEMO_ADMIN_ACTOR_ID,
+          source: 'companion',
+        }),
+      ]),
+    );
+    expect(JSON.stringify(activity)).not.toMatch(/request_activity|password|token/i);
+    admin.close();
+  });
+
+  it('keeps existing people ahead of newly added people when timestamps match', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-member-order-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    const admin = new SqliteAdminRepository(database, {
+      now: () => new Date('2026-08-02T23:42:00.000Z'),
+    });
+    await admin.createMember(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID, {
+      requestId: 'request_fixed_clock_member',
+      displayName: 'Alex',
+      role: 'child',
+      color: '#718778',
+      administrator: false,
+    });
+
+    const overview = await admin.getOverview(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID);
+    expect(overview.household.members.map((member) => member.displayName)).toEqual([
+      'Ezra',
+      'Maya',
+      'Alex',
+    ]);
+    admin.close();
+  });
+
   it('leaves a private first-use database empty when demo seeding is disabled', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-private-'));
     temporaryDirectories.push(directory);

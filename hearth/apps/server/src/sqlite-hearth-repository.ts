@@ -933,7 +933,8 @@ export class SqliteHearthRepository implements HearthRepository {
     const rows = this.database
       .prepare(
         `SELECT id, display_name, colour, avatar_key, role, capabilities_json
-         FROM members WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at, id`,
+         FROM members WHERE household_id = ? AND archived_at IS NULL
+         ORDER BY datetime(created_at), rowid`,
       )
       .all(householdId) as MemberRow[];
     return rows.map(memberFromRow);

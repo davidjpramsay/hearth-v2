@@ -93,6 +93,16 @@ describe('Hearth v2 API', () => {
     });
     expect(replay.json()).toMatchObject({ replayed: true });
 
+    const activity = await app.inject({
+      method: 'GET',
+      url: `${base}/activity?limit=10`,
+      headers,
+    });
+    expect(activity.statusCode).toBe(200);
+    expect(activity.json()).toMatchObject({
+      entries: [{ action: 'system.backup.create', actorId: 'member_maya' }],
+    });
+
     const forbidden = await app.inject({
       method: 'GET',
       url: `${base}/system-status`,
@@ -952,6 +962,21 @@ describe('Hearth v2 API', () => {
       url: '/api/v1/households/household_hearth_demo/admin',
       headers,
     });
+    const activity = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/activity?limit=1',
+      headers,
+    });
+    const childDenied = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/activity',
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    const invalidLimit = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/activity?limit=101',
+      headers,
+    });
     const today = await app.inject({
       method: 'GET',
       url: '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
@@ -971,6 +996,15 @@ describe('Hearth v2 API', () => {
         expect.objectContaining({ action: 'member.create', source: 'companion' }),
       ]),
     );
+    expect(activity.statusCode).toBe(200);
+    expect(activity.json()).toMatchObject({
+      localOnly: true,
+      generatedAt: '2026-08-02T23:42:00.000Z',
+      entries: [expect.objectContaining({ action: 'member.create', actorId: 'member_maya' })],
+    });
+    expect(childDenied.statusCode).toBe(403);
+    expect(childDenied.json().error.code).toBe('FORBIDDEN');
+    expect(invalidLimit.statusCode).toBe(400);
   });
 
   it('stores, serves and restores a member profile photo through the typed command routes', async () => {

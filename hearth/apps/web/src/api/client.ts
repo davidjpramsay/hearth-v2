@@ -1,4 +1,5 @@
 import {
+  ActivityFeedSchema,
   AdminOverviewSchema,
   ApiErrorSchema,
   CalendarConnectionCommandResultSchema,
@@ -50,6 +51,7 @@ import {
   TodayConfigurationSchema,
   WeekScheduleSchema,
   type AdminOverview,
+  type ActivityFeed,
   type ApiError,
   type CalendarConnectionCommandResult,
   type CalendarConnectionSettings,
@@ -143,6 +145,9 @@ export const queryKeys = {
   },
   get admin() {
     return [householdId(getHearthRuntime()), 'admin'] as const;
+  },
+  get activity() {
+    return [householdId(getHearthRuntime()), 'activity'] as const;
   },
   get todayConfiguration() {
     return [householdId(getHearthRuntime()), 'today-configuration'] as const;
@@ -590,6 +595,10 @@ export const hearthApi = {
     ),
   getAdmin: () =>
     request(`${householdApiBase()}/admin`, AdminOverviewSchema, {
+      headers: demoAdminHeaders,
+    }),
+  getActivity: (): Promise<ActivityFeed> =>
+    request(`${householdApiBase()}/activity?limit=50`, ActivityFeedSchema, {
       headers: demoAdminHeaders,
     }),
   getCalendarConnection: () =>

@@ -544,7 +544,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
 
   private householdId(): string | null {
     const row = this.database
-      .prepare('SELECT id FROM households ORDER BY created_at LIMIT 1')
+      .prepare('SELECT id FROM households ORDER BY datetime(created_at), rowid LIMIT 1')
       .get() as { id: string } | undefined;
     return row?.id ?? null;
   }

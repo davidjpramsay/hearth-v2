@@ -51,6 +51,8 @@ const DEFAULT_DEVICE: PairedDevice = {
 export interface AdminRepository {
   getHousehold(householdId: string): Promise<HouseholdSummary>;
   getOverview(householdId: string, actorId: string): Promise<AdminOverview>;
+  getActivity(householdId: string, actorId: string, limit: number): Promise<AuditSummary[]>;
+  recordActivity(householdId: string, audit: AuditSummary, requestId: string): void;
   updateHousehold(
     householdId: string,
     actorId: string,
@@ -124,6 +126,8 @@ export class InMemoryAdminRepository implements AdminRepository {
   private avatarReceipts = new Map<string, MemberAvatarCommandResult>();
   private sequence = 1;
 
+  constructor(private readonly now: () => Date = () => new Date()) {}
+
   async getHousehold(householdId: string): Promise<HouseholdSummary> {
     if (householdId !== this.household.id) {
       throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
@@ -142,6 +146,18 @@ export class InMemoryAdminRepository implements AdminRepository {
       recentAudit: this.audits.slice(-10).toReversed(),
       localOnly: true,
     });
+  }
+
+  async getActivity(householdId: string, actorId: string, limit: number): Promise<AuditSummary[]> {
+    this.assertAdmin(householdId, actorId);
+    return structuredClone(this.audits.slice(-limit).toReversed());
+  }
+
+  recordActivity(householdId: string, audit: AuditSummary, _requestId: string): void {
+    if (householdId !== this.household.id) {
+      throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
+    }
+    this.audits.push(structuredClone(audit));
   }
 
   async updateHousehold(
@@ -281,7 +297,7 @@ export class InMemoryAdminRepository implements AdminRepository {
       code: this.pairings.length === 0 ? 'HEARTH' : `HEAR${String(this.sequence).padStart(2, '0')}`,
       deviceName,
       status: 'pending',
-      expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      expiresAt: new Date(this.now().getTime() + 10 * 60_000).toISOString(),
       approvedDeviceId: null,
     });
     this.pairings.push(pairing);
@@ -310,7 +326,10 @@ export class InMemoryAdminRepository implements AdminRepository {
       const existing = this.devices.find((device) => device.id === pairing.approvedDeviceId);
       if (existing !== undefined) return existing;
     }
-    if (pairing.status !== 'pending' || new Date(pairing.expiresAt).getTime() <= Date.now()) {
+    if (
+      pairing.status !== 'pending' ||
+      new Date(pairing.expiresAt).getTime() <= this.now().getTime()
+    ) {
       pairing.status = 'expired';
       throw new RepositoryError(
         'CONFLICT',
@@ -321,7 +340,7 @@ export class InMemoryAdminRepository implements AdminRepository {
       ...DEFAULT_DEVICE,
       id: `device_demo_${this.sequence++}`,
       name: pairing.deviceName,
-      pairedAt: new Date().toISOString(),
+      pairedAt: this.now().toISOString(),
       lastSeenAt: null,
     });
     this.devices.push(device);
@@ -400,7 +419,7 @@ export class InMemoryAdminRepository implements AdminRepository {
     const device = this.devices[index];
     if (device === undefined)
       throw new RepositoryError('NOT_FOUND', 'That television was not found.');
-    const revoked = { ...device, status: 'revoked' as const, revokedAt: new Date().toISOString() };
+    const revoked = { ...device, status: 'revoked' as const, revokedAt: this.now().toISOString() };
     this.devices[index] = revoked;
     this.writeAudit('device.revoke', device.id, actorId);
     return revoked;
@@ -466,7 +485,7 @@ export class InMemoryAdminRepository implements AdminRepository {
       source: 'companion',
       action,
       targetId,
-      occurredAt: new Date().toISOString(),
+      occurredAt: this.now().toISOString(),
       result,
     };
     this.audits.push(audit);
@@ -475,10 +494,13 @@ export class InMemoryAdminRepository implements AdminRepository {
 }
 
 export class SqliteAdminRepository implements AdminRepository {
+  private readonly now: () => Date;
+
   constructor(
     private readonly database: InstanceType<typeof Database>,
-    options: { seedDemo?: boolean } = {},
+    options: { seedDemo?: boolean; now?: () => Date } = {},
   ) {
+    this.now = options.now ?? (() => new Date());
     if (options.seedDemo ?? true) this.seedDemo();
   }
 
@@ -499,6 +521,35 @@ export class SqliteAdminRepository implements AdminRepository {
     });
   }
 
+  async getActivity(householdId: string, actorId: string, limit: number): Promise<AuditSummary[]> {
+    this.assertAdmin(householdId, actorId);
+    return this.readAudit(householdId, limit);
+  }
+
+  recordActivity(householdId: string, audit: AuditSummary, requestId: string): void {
+    this.readHousehold(householdId);
+    this.database
+      .prepare(
+        `INSERT INTO audit_events
+          (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
+           target_type, target_id, request_id, result, safe_summary_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')`,
+      )
+      .run(
+        audit.id,
+        audit.occurredAt,
+        householdId,
+        audit.actorType,
+        audit.actorId,
+        audit.source,
+        audit.action,
+        audit.action === 'system.backup.create' ? 'system-backup' : 'household',
+        audit.targetId,
+        requestId,
+        audit.result,
+      );
+  }
+
   async updateHousehold(
     householdId: string,
     actorId: string,
@@ -507,7 +558,7 @@ export class SqliteAdminRepository implements AdminRepository {
     this.assertAdmin(householdId, actorId);
     this.database
       .prepare('UPDATE households SET name = ?, timezone = ?, updated_at = ? WHERE id = ?')
-      .run(input.name, input.timezone, new Date().toISOString(), householdId);
+      .run(input.name, input.timezone, this.now().toISOString(), householdId);
     this.writeAudit(householdId, actorId, 'household.update', householdId, input.requestId);
     return this.getOverview(householdId, actorId);
   }
@@ -520,7 +571,7 @@ export class SqliteAdminRepository implements AdminRepository {
     this.assertAdmin(householdId, actorId);
     const id = `member_setup_${this.nextSequence('members')}`;
     const member = memberFromInput(id, input);
-    const now = new Date().toISOString();
+    const now = this.now().toISOString();
     this.database
       .prepare(
         `INSERT INTO members
@@ -565,7 +616,7 @@ export class SqliteAdminRepository implements AdminRepository {
         member.color,
         member.role,
         JSON.stringify(member.capabilities),
-        new Date().toISOString(),
+        this.now().toISOString(),
         memberId,
         householdId,
       );
@@ -584,9 +635,10 @@ export class SqliteAdminRepository implements AdminRepository {
       throw new RepositoryError('CONFLICT', 'You cannot remove the administrator you are using.');
     }
     const member = this.readMember(householdId, memberId);
+    const now = this.now().toISOString();
     this.database
       .prepare('UPDATE members SET archived_at = ?, updated_at = ? WHERE id = ?')
-      .run(new Date().toISOString(), new Date().toISOString(), memberId);
+      .run(now, now, memberId);
     this.writeAudit(householdId, actorId, 'member.archive', member.id, _requestId);
     return member;
   }
@@ -621,7 +673,7 @@ export class SqliteAdminRepository implements AdminRepository {
     const member = this.readMember(householdId, memberId);
     const bytes = decodeMemberAvatar(input.dataBase64);
     const versionKey = avatarVersion(bytes);
-    const now = new Date().toISOString();
+    const now = this.now().toISOString();
 
     return this.database.transaction(() => {
       const existing = this.database
@@ -691,7 +743,7 @@ export class SqliteAdminRepository implements AdminRepository {
           'SELECT original_avatar_key FROM member_avatars WHERE household_id = ? AND member_id = ?',
         )
         .get(householdId, memberId) as Pick<MemberAvatarRow, 'original_avatar_key'> | undefined;
-      const now = new Date().toISOString();
+      const now = this.now().toISOString();
       if (asset !== undefined) {
         this.database
           .prepare(
@@ -731,7 +783,7 @@ export class SqliteAdminRepository implements AdminRepository {
       .get(requestId) as PairingRow | undefined;
     if (existing !== undefined) return pairingFromRow(existing);
     const sequence = this.nextSequence('pairing_requests');
-    const now = new Date();
+    const now = this.now();
     const pairing = PairingRequestSchema.parse({
       id: `pairing_setup_${sequence}`,
       requestId,
@@ -769,10 +821,10 @@ export class SqliteAdminRepository implements AdminRepository {
       .get(pairingId) as PairingRow | undefined;
     if (row === undefined)
       throw new RepositoryError('NOT_FOUND', 'That pairing code was not found.');
-    if (row.status === 'pending' && new Date(row.expires_at).getTime() <= Date.now()) {
+    if (row.status === 'pending' && new Date(row.expires_at).getTime() <= this.now().getTime()) {
       this.database
         .prepare("UPDATE pairing_requests SET status = 'expired', updated_at = ? WHERE id = ?")
-        .run(new Date().toISOString(), pairingId);
+        .run(this.now().toISOString(), pairingId);
       row.status = 'expired';
     }
     return pairingFromRow(row);
@@ -792,13 +844,13 @@ export class SqliteAdminRepository implements AdminRepository {
     if (row.status === 'approved' && row.approved_device_id !== null) {
       return this.readDevice(householdId, row.approved_device_id);
     }
-    if (row.status !== 'pending' || new Date(row.expires_at).getTime() <= Date.now()) {
+    if (row.status !== 'pending' || new Date(row.expires_at).getTime() <= this.now().getTime()) {
       throw new RepositoryError(
         'CONFLICT',
         'That pairing code has expired. Ask the TV for a new one.',
       );
     }
-    const now = new Date().toISOString();
+    const now = this.now().toISOString();
     const deviceId = `device_setup_${this.nextSequence('paired_devices')}`;
     const credentialReference =
       row.credential_hash === null ? `unavailable:${deviceId}` : `sha256:${row.credential_hash}`;
@@ -855,7 +907,7 @@ export class SqliteAdminRepository implements AdminRepository {
     if (deviceRow === undefined || deviceRow.revoked_at !== null) {
       throw new RepositoryError('UNAUTHENTICATED', 'This television is no longer paired.');
     }
-    const now = new Date().toISOString();
+    const now = this.now().toISOString();
     this.database
       .prepare(
         `UPDATE pairing_requests
@@ -893,7 +945,7 @@ export class SqliteAdminRepository implements AdminRepository {
     }
     this.database
       .prepare('UPDATE paired_devices SET last_seen_at = ? WHERE id = ?')
-      .run(new Date().toISOString(), row.id);
+      .run(this.now().toISOString(), row.id);
     return TvDeviceSessionSchema.parse({
       deviceId: row.id,
       householdId: row.household_id,
@@ -913,7 +965,7 @@ export class SqliteAdminRepository implements AdminRepository {
     this.readDevice(householdId, deviceId);
     this.database
       .prepare('UPDATE paired_devices SET revoked_at = ? WHERE id = ? AND household_id = ?')
-      .run(new Date().toISOString(), deviceId, householdId);
+      .run(this.now().toISOString(), deviceId, householdId);
     this.writeAudit(householdId, actorId, 'device.revoke', deviceId, _requestId, 'reversed');
     return this.readDevice(householdId, deviceId);
   }
@@ -1043,7 +1095,7 @@ export class SqliteAdminRepository implements AdminRepository {
   private readMembers(householdId: string): Member[] {
     const rows = this.database
       .prepare(
-        'SELECT * FROM members WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at, id',
+        'SELECT * FROM members WHERE household_id = ? AND archived_at IS NULL ORDER BY datetime(created_at), rowid',
       )
       .all(householdId) as MemberRow[];
     return rows.map(memberFromRow);
@@ -1075,18 +1127,21 @@ export class SqliteAdminRepository implements AdminRepository {
 
   private readPendingPairings(): PairingRequest[] {
     const rows = this.database
-      .prepare("SELECT * FROM pairing_requests WHERE status = 'pending' ORDER BY created_at DESC")
+      .prepare(
+        "SELECT * FROM pairing_requests WHERE status = 'pending' ORDER BY datetime(created_at) DESC, rowid DESC",
+      )
       .all() as PairingRow[];
     return rows.map(pairingFromRow);
   }
 
-  private readAudit(householdId: string): AuditSummary[] {
+  private readAudit(householdId: string, limit = 10): AuditSummary[] {
     const rows = this.database
       .prepare(
         `SELECT id, actor_type, actor_id, source_channel, action_type, target_id, occurred_at, result
-         FROM audit_events WHERE household_id = ? ORDER BY occurred_at DESC, id DESC LIMIT 10`,
+         FROM audit_events WHERE household_id = ?
+         ORDER BY datetime(occurred_at) DESC, rowid DESC LIMIT ?`,
       )
-      .all(householdId) as AuditRow[];
+      .all(householdId, limit) as AuditRow[];
     return rows.map((row) => ({
       id: row.id,
       actorType: row.actor_type,
@@ -1107,7 +1162,7 @@ export class SqliteAdminRepository implements AdminRepository {
     requestId: string,
     result: AuditSummary['result'] = 'succeeded',
   ): AuditSummary {
-    const occurredAt = new Date().toISOString();
+    const occurredAt = this.now().toISOString();
     const audit = {
       id: `audit_setup_${this.nextSequence('audit_events')}`,
       actorType: 'member' as const,
@@ -1171,7 +1226,7 @@ export class SqliteAdminRepository implements AdminRepository {
           (household_id, request_id, command_type, response_json, created_at)
          VALUES (?, ?, ?, ?, ?)`,
       )
-      .run(householdId, requestId, commandType, JSON.stringify(result), new Date().toISOString());
+      .run(householdId, requestId, commandType, JSON.stringify(result), this.now().toISOString());
   }
 
   private nextSequence(

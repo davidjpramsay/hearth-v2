@@ -80,14 +80,18 @@ const homeAssistantRuntime = await resolveHomeAssistantProvider({
   configPath: homeAssistantConfigPath,
 });
 const database = await openHearthDatabase(databasePath);
-const adminRepository = new SqliteAdminRepository(database, { seedDemo: demoMode });
+const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
+const adminRepository = new SqliteAdminRepository(database, {
+  seedDemo: demoMode,
+  now: () => clock.now(),
+});
 const privateHouseholdId = () =>
   (
-    database.prepare('SELECT id FROM households ORDER BY created_at LIMIT 1').get() as
-      { id: string } | undefined
+    database
+      .prepare('SELECT id FROM households ORDER BY datetime(created_at), rowid LIMIT 1')
+      .get() as { id: string } | undefined
   )?.id ?? null;
 const runtimeHouseholdId = demoMode ? DEMO_HOUSEHOLD_ID : privateHouseholdId;
-const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
 const systemOperationsConfiguration = resolveSystemOperationsConfiguration(process.env);
 const managedCalendarProvider = new ManagedCalendarProvider();
 if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);

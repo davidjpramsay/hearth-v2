@@ -360,6 +360,13 @@ Required fields:
 
 Sensitive descriptions, provider tokens and full external payloads do not belong in the audit event.
 
+The adult-only recent-activity read projection returns at most 100 existing safe audit summaries,
+newest first; the current companion asks for 50. It never reads `request_id`,
+`safe_summary_json`, provider credentials, raw calendar payloads or backup host paths into the
+browser contract. Actor and target IDs remain opaque contract fields for typed correlation, while
+the interface resolves known actors to family/device labels and never renders those identifiers.
+This is a projection of the one audit table, not a second activity log.
+
 ## General persistence rules
 
 - Opaque IDs at API boundaries.

@@ -62,6 +62,15 @@ export function useAdminQuery(enabled = true) {
   return useQuery({ queryKey: queryKeys.admin, queryFn: hearthApi.getAdmin, enabled });
 }
 
+export function useActivityQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.activity,
+    queryFn: hearthApi.getActivity,
+    enabled,
+    retry: false,
+  });
+}
+
 export function useCalendarConnectionQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.calendarConnection,

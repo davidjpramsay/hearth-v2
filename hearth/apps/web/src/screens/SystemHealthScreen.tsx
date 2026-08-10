@@ -138,7 +138,7 @@ export function SystemHealthScreen() {
             focusId="system-photo-health"
             icon="image"
             label={photoLabel(photos)}
-            nextFocusId="system-create-backup"
+            nextFocusId="system-activity"
             priorFocusId="system-home-assistant-health"
             title="Family photos"
             tone={photoTone(photos)}
@@ -146,6 +146,25 @@ export function SystemHealthScreen() {
           />
         </div>
       </section>
+
+      <Link
+        className="system-activity-entry focusable"
+        data-focus-down={canCreateBackup ? 'system-create-backup' : 'system-activity'}
+        data-focus-id="system-activity"
+        data-focus-left="system-activity"
+        data-focus-right="system-activity"
+        data-focus-up="system-photo-health"
+        to="/admin/activity"
+      >
+        <span className="system-activity-entry__icon">
+          <Icon name="list" />
+        </span>
+        <span className="system-activity-entry__copy">
+          <strong>Recent activity</strong>
+          <small>See who changed household settings, planning and connections.</small>
+        </span>
+        <Icon name="chevron-right" />
+      </Link>
 
       <section className="system-backup-actions" aria-labelledby="system-backup-actions-title">
         <div>
@@ -163,7 +182,7 @@ export function SystemHealthScreen() {
             data-focus-id="system-create-backup"
             data-focus-left="system-create-backup"
             data-focus-right="system-create-backup"
-            data-focus-up="system-photo-health"
+            data-focus-up="system-activity"
             disabled={createBackup.isPending}
             onClick={() => createBackup.mutate()}
             type="button"

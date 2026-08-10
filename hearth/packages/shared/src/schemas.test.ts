@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ActivityFeedSchema,
   ApiErrorSchema,
   CalendarEventSchema,
   CalendarConnectionTestRequestSchema,
@@ -47,6 +48,28 @@ import {
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
+  it('keeps recent household activity browser-safe and bounded', () => {
+    const feed = ActivityFeedSchema.parse({
+      entries: [
+        {
+          id: 'audit_household_update_001',
+          actorType: 'member',
+          actorId: 'member_maya',
+          source: 'companion',
+          action: 'household.update',
+          targetId: 'household_demo',
+          occurredAt: '2026-08-03T07:42:00+08:00',
+          result: 'succeeded',
+        },
+      ],
+      generatedAt: '2026-08-03T07:42:00+08:00',
+      localOnly: true,
+    });
+
+    expect(feed.entries[0]).toMatchObject({ action: 'household.update', source: 'companion' });
+    expect(JSON.stringify(feed)).not.toMatch(/password|token|safe_summary|requestId/i);
+  });
+
   it('keeps private first-use runtime context free of fictional household data', () => {
     expect(
       RuntimeContextSchema.parse({

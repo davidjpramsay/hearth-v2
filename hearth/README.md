@@ -58,7 +58,8 @@ phone-first; Lists and Meals remain readable and actionable on television.
 fake-adapter Home Assistant actions. `http://127.0.0.1:4320/admin/connections/home-assistant`
 opens the fictional connection and allowlist-mapping flow without contacting a live system.
 `http://127.0.0.1:4320/admin/system` previews database, backup and version health; demo backup
-actions are explicitly simulated.
+actions are explicitly simulated. `http://127.0.0.1:4320/admin/activity` shows the adult-only,
+family-readable recent activity feed stored with the local household database.
 `http://127.0.0.1:4320/photos` opens the demo gallery and ambient mode. The
 phone More screen also links to Photos.
 `http://127.0.0.1:4320/admin/appearance` opens the per-display theme and evening

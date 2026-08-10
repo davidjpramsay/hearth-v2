@@ -11,6 +11,7 @@ import {
 
 import {
   AddListItemRequestSchema,
+  ActivityFeedSchema,
   AdminOverviewSchema,
   ApiErrorSchema,
   AssistAddListItemRequestSchema,
@@ -188,6 +189,9 @@ const PocketMoneyQuerySchema = z.object({
   weekStart: LocalDateSchema,
   asOf: LocalDateSchema,
 });
+const ActivityQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
 
 export const LOGGER_REDACT_PATHS = [
   'req.headers.authorization',
@@ -239,7 +243,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         });
   const demoMode = runtime.mode !== 'private';
   const repository = options.repository ?? new InMemoryHearthRepository();
-  const adminRepository = options.adminRepository ?? new InMemoryAdminRepository();
+  const adminRepository =
+    options.adminRepository ?? new InMemoryAdminRepository(() => runtime.clock.now());
   const realtime = options.realtimeHub ?? new RealtimeHub();
   const planningRepository = options.planningRepository ?? new InMemoryPlanningRepository();
   const homeRepository =
@@ -460,6 +465,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       AdminOverviewSchema.parse(
         await adminRepository.getOverview(params.householdId, actorId(request.headers, options)),
       ),
+    );
+  });
+
+  server.get('/api/v1/households/:householdId/activity', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const query = parse(ActivityQuerySchema, request.query, reply);
+    if (params === null || query === null) return reply;
+    return run(reply, async () =>
+      ActivityFeedSchema.parse({
+        entries: await adminRepository.getActivity(
+          params.householdId,
+          actorId(request.headers, options),
+          query.limit,
+        ),
+        generatedAt: runtime.clock.now().toISOString(),
+        localOnly: true,
+      }),
     );
   });
 

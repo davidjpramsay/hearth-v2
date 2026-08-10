@@ -1155,6 +1155,12 @@ export const AdminOverviewSchema = z.object({
   localOnly: z.literal(true),
 });
 
+export const ActivityFeedSchema = z.object({
+  entries: z.array(AuditSummarySchema).max(100),
+  generatedAt: TimestampSchema,
+  localOnly: z.literal(true),
+});
+
 export const CalendarConnectionCalendarSchema = z.object({
   displayName: z.string().trim().min(1).max(80),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
@@ -1659,6 +1665,7 @@ export type AdminActor = z.infer<typeof AdminActorSchema>;
 export type PairedDevice = z.infer<typeof PairedDeviceSchema>;
 export type PairingRequest = z.infer<typeof PairingRequestSchema>;
 export type AdminOverview = z.infer<typeof AdminOverviewSchema>;
+export type ActivityFeed = z.infer<typeof ActivityFeedSchema>;
 export type CalendarConnectionCalendar = z.infer<typeof CalendarConnectionCalendarSchema>;
 export type CalendarConnectionSettings = z.infer<typeof CalendarConnectionSettingsSchema>;
 export type CalendarConnectionTestRequest = z.infer<typeof CalendarConnectionTestRequestSchema>;
