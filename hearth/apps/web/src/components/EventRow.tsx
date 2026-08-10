@@ -4,13 +4,22 @@ import { Avatar } from './Avatar';
 import { useHearthRuntime } from '../runtime/context';
 import { formatEventTime } from '../utils/date';
 
-export function EventRow({ event, focus }: { event: CalendarEvent; focus?: FocusProps }) {
+export function EventRow({
+  event,
+  focus,
+  onSelect,
+}: {
+  event: CalendarEvent;
+  focus?: FocusProps;
+  onSelect: (event: CalendarEvent) => void;
+}) {
   const { timezone } = useHearthRuntime();
   const timeLabel = formatEventTime(event, timezone);
   return (
     <button
       aria-label={`${timeLabel}, ${event.title}, ${event.owner?.displayName ?? event.sourceLabel}`}
       className="event-row focusable"
+      onClick={() => onSelect(event)}
       style={{ '--event-color': event.color } as React.CSSProperties}
       type="button"
       {...focus}

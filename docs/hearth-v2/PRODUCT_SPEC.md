@@ -193,6 +193,10 @@ The default Today screen should include, in order of prominence:
 7. One optional, orientation-safe preview from the approved family photo source. It should be large enough to appreciate from the sofa while remaining secondary to plans and chores; Today does not become a slideshow or replace ambient mode.
 
 It must not become a grid of tiny widgets. Information can be prioritised and paged rather than simultaneously exposed.
+When a television column contains more plans or chores than its calm visible limit, Today shows an
+honest `+N more` action into the full Calendar agenda or Chores module instead of silently dropping
+items. Visible event rows open their real details; Dinner, List summary, Notice and Family photo
+lead to their corresponding useful destination or full notice text.
 
 ## Initial release scope
 

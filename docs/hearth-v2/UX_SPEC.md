@@ -71,6 +71,11 @@ use the freed space; a photo-only configuration is centred rather than leaving
 an unexplained empty column.
 
 The first focus should usually be the most relevant actionable item, not the navigation chrome.
+Today keeps at most three event rows and three chore rows visible on television. A deterministic,
+focusable `+N more` action reports the complete hidden count and opens the Calendar agenda or Chores
+screen. Event rows open the same detail dialog as the calendar views. Dinner, List summary and the
+photo preview link to Meals, Lists and Photos; an active Notice opens its full text in a Back-safe
+dialog. Back restores the exact originating row, overflow action or summary band.
 
 ### Calendar
 

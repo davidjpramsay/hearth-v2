@@ -163,12 +163,23 @@ Chromium fallback produced the retained evidence.
   editor.
 - The TV summary rebalances cleanly for one, two or three bands, with or without
   a photo; phone administration remains accessible and usable at 390×844.
+- Today displays no more than three event and three chore rows on television and
+  exposes the exact hidden count through focusable links to Calendar Agenda and
+  Chores; no returned item is silently concealed.
+- A visible event opens family-readable details, Dinner/List/Photo open their
+  real modules, an active Notice opens its full text, and Back restores the exact
+  originating control using only remote-equivalent input.
 
 Status as of 2026-08-09: fake/in-memory and durable SQLite command paths,
 idempotency, permission/validation rejection, reset isolation, restart state,
 realtime invalidation, accessibility and retained 390×844/1920×1080 renders are
 implemented. Real household wording and expiry preferences remain pilot tuning,
 not a deployment blocker.
+
+Extension evidence as of 2026-08-10: overflow counts, event and notice details,
+summary destinations, deterministic focus/Back restoration, TV and phone
+responsive renders, automated accessibility checks and console-clean remote
+flows are covered by `tests/e2e/today-polish.spec.ts`.
 
 ### Home Assistant and voice
 

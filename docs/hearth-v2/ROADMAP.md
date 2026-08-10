@@ -159,6 +159,14 @@ a layout editor. Demo reset isolation, SQLite restart, phone accessibility and
 customised 1080p rendering are automated; live household copy remains a pilot
 tuning decision.
 
+Implementation extension (2026-08-10): Today now caps its calm television
+columns at three event and three chore rows while exposing exact, focusable
+overflow counts into Calendar Agenda and Chores. Event rows open calendar
+details; Dinner, List summary and Family photo link to their real modules; and
+Notice opens the full announcement in a Back-safe dialog. Automated remote-only
+TV and phone flows prove focus restoration, responsive composition, accessibility
+and clean console behaviour.
+
 ## Phase 4 — Lists, meals and pocket money
 
 Status: complete and locally verified with deterministic demo household data.
