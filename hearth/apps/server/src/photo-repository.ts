@@ -4,10 +4,13 @@ import type Database from 'better-sqlite3';
 
 import {
   AuditSummarySchema,
+  PhotoCurationCommandResultSchema,
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
   type DemoScenario,
+  type PhotoCurationAction,
+  type PhotoCurationCommandResult,
   type PhotoGallery,
   type PhotoSourceIndexStatus,
   type PhotoSourceRefreshResult,
@@ -32,6 +35,13 @@ export interface PhotoRepository {
     requestId: string,
     actor: CommandActor,
   ): Promise<PhotoSourceRefreshResult>;
+  updateCuration(
+    householdId: string,
+    assetId: string,
+    action: PhotoCurationAction,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<PhotoCurationCommandResult>;
   getDerivative(
     householdId: string,
     assetId: string,
@@ -49,12 +59,21 @@ interface PhotoServiceOptions {
 }
 
 const REFRESH_COMMAND_TYPE = 'photo-source:refresh';
+const CURATION_COMMAND_TYPE = 'photo-asset:curation';
+const CURATION_AUDIT_ACTION = {
+  favourite: 'photo.favourite',
+  unfavourite: 'photo.unfavourite',
+  hide: 'photo.hide',
+  unhide: 'photo.unhide',
+} as const;
 
 export class PhotoService implements PhotoRepository {
   private scenario: DemoScenario = 'healthy';
   private failNext = false;
   private readonly receipts = new Map<string, PhotoSourceRefreshResult>();
   private readonly refreshes = new Map<string, Promise<PhotoSourceRefreshResult>>();
+  private readonly curationReceipts = new Map<string, PhotoCurationCommandResult>();
+  private readonly curations = new Map<string, Promise<PhotoCurationCommandResult>>();
   private readonly adminRepository: AdminRepository | undefined;
   private readonly database: InstanceType<typeof Database> | undefined;
   private readonly clock: HearthClock;
@@ -86,7 +105,7 @@ export class PhotoService implements PhotoRepository {
       householdId,
       freshness: stale ? 'stale' : 'current',
       statusMessage: unavailable
-        ? 'Photo source is unavailable · Showing saved favourites.'
+        ? 'Photo source is unavailable · Showing saved family photos.'
         : stale
           ? 'Photos were last checked yesterday · Trying again quietly.'
           : null,
@@ -121,6 +140,78 @@ export class PhotoService implements PhotoRepository {
     });
     this.refreshes.set(receiptKey, refresh);
     return refresh;
+  }
+
+  async updateCuration(
+    householdId: string,
+    assetId: string,
+    action: PhotoCurationAction,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<PhotoCurationCommandResult> {
+    if (actor.type !== 'member' || actor.source !== 'companion') {
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Only an adult using the companion can choose family photos.',
+      );
+    }
+    await this.adminRepository?.getOverview(householdId, actor.id);
+    const receiptKey = `${householdId}:${CURATION_COMMAND_TYPE}:${requestId}`;
+    const active = this.curations.get(receiptKey);
+    if (active !== undefined) {
+      const result = await active;
+      return { ...structuredClone(result), replayed: true };
+    }
+    const curation = this.runCuration(
+      householdId,
+      assetId,
+      action,
+      requestId,
+      actor,
+      receiptKey,
+    ).finally(() => {
+      if (this.curations.get(receiptKey) === curation) this.curations.delete(receiptKey);
+    });
+    this.curations.set(receiptKey, curation);
+    return curation;
+  }
+
+  private async runCuration(
+    householdId: string,
+    assetId: string,
+    action: PhotoCurationAction,
+    requestId: string,
+    actor: CommandActor,
+    receiptKey: string,
+  ): Promise<PhotoCurationCommandResult> {
+    const receipt =
+      this.readCurationReceipt(householdId, requestId) ?? this.curationReceipts.get(receiptKey);
+    if (receipt !== undefined) return { ...structuredClone(receipt), replayed: true };
+
+    const snapshot = await this.provider.curatePhoto(householdId, assetId, action);
+    const photo = snapshot?.curation.find((item) => item.id === assetId);
+    if (snapshot === null || photo === undefined) {
+      throw new RepositoryError('NOT_FOUND', 'That family photo could not be found.');
+    }
+    const audit = AuditSummarySchema.parse({
+      id: `audit_${randomUUID()}`,
+      actorType: actor.type,
+      actorId: actor.id,
+      source: actor.source,
+      action: CURATION_AUDIT_ACTION[action],
+      targetId: assetId,
+      occurredAt: this.clock.now().toISOString(),
+      result: 'succeeded',
+    });
+    const result = PhotoCurationCommandResultSchema.parse({
+      photo,
+      status: statusFromSnapshot(householdId, snapshot),
+      audit,
+      replayed: false,
+    });
+    if (this.database === undefined) this.curationReceipts.set(receiptKey, result);
+    else this.writeCurationReceipt(householdId, requestId, result);
+    return structuredClone(result);
   }
 
   private async runRefresh(
@@ -166,6 +257,9 @@ export class PhotoService implements PhotoRepository {
     this.failNext = false;
     this.receipts.clear();
     this.refreshes.clear();
+    this.curationReceipts.clear();
+    this.curations.clear();
+    this.provider.reset?.();
   }
 
   setScenario(scenario: DemoScenario): void {
@@ -229,6 +323,60 @@ export class PhotoService implements PhotoRepository {
       );
     })();
   }
+
+  private readCurationReceipt(
+    householdId: string,
+    requestId: string,
+  ): PhotoCurationCommandResult | undefined {
+    if (this.database === undefined) return undefined;
+    const row = this.database
+      .prepare(
+        `SELECT response_json FROM command_receipts
+         WHERE household_id = ? AND request_id = ? AND command_type = ?`,
+      )
+      .get(householdId, requestId, CURATION_COMMAND_TYPE) as { response_json: string } | undefined;
+    return row === undefined
+      ? undefined
+      : PhotoCurationCommandResultSchema.parse(JSON.parse(row.response_json));
+  }
+
+  private writeCurationReceipt(
+    householdId: string,
+    requestId: string,
+    result: PhotoCurationCommandResult,
+  ): void {
+    this.database!.transaction(() => {
+      this.database!.prepare(
+        `INSERT INTO command_receipts
+          (household_id, request_id, command_type, response_json, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run(
+        householdId,
+        requestId,
+        CURATION_COMMAND_TYPE,
+        JSON.stringify(result),
+        this.clock.now().toISOString(),
+      );
+      this.database!.prepare(
+        `INSERT INTO audit_events
+          (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
+           target_type, target_id, request_id, result, safe_summary_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'photo-asset', ?, ?, ?, ?)`,
+      ).run(
+        result.audit.id,
+        result.audit.occurredAt,
+        householdId,
+        result.audit.actorType,
+        result.audit.actorId,
+        result.audit.source,
+        result.audit.action,
+        result.audit.targetId,
+        requestId,
+        result.audit.result,
+        JSON.stringify({ favourite: result.photo.favourite, hidden: result.photo.hidden }),
+      );
+    })();
+  }
 }
 
 function statusFromSnapshot(
@@ -239,6 +387,7 @@ function statusFromSnapshot(
     householdId,
     collection: collectionFromSnapshot(snapshot, snapshot.photos.length, false),
     ...snapshot.index,
+    photos: snapshot.curation,
   });
 }
 

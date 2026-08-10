@@ -34,6 +34,7 @@ import {
   PasskeyCeremonyOptionsSchema,
   PasskeySessionSchema,
   PasskeySignOutResultSchema,
+  PhotoCurationCommandResultSchema,
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
@@ -89,6 +90,8 @@ import {
   type PasskeyAuthStatus,
   type PasskeyCeremonyOptions,
   type PasskeySession,
+  type PhotoCurationAction,
+  type PhotoCurationCommandResult,
   type PhotoGallery,
   type PhotoSourceIndexStatus,
   type PhotoSourceRefreshResult,
@@ -285,6 +288,20 @@ export const hearthApi = {
       headers: demoAdminHeaders,
       body: JSON.stringify({ requestId }),
     }),
+  updatePhotoCuration: (
+    assetId: string,
+    action: PhotoCurationAction,
+    requestId: string,
+  ): Promise<PhotoCurationCommandResult> =>
+    request(
+      `${householdApiBase()}/photo-assets/${assetId}/curation-actions`,
+      PhotoCurationCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId, action }),
+      },
+    ),
   executeHomeAction: (actionId: HomeActionId, requestId: string, confirmed: boolean) =>
     request(`${householdApiBase()}/home/actions/${actionId}`, HomeActionResultSchema, {
       method: 'POST',

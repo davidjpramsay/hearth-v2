@@ -246,7 +246,7 @@ test('Photos has deliberate empty, cached-unavailable and failure/retry states',
 
   await page.goto('/photos?scenario=unavailable');
   await expect(
-    page.getByRole('status').filter({ hasText: 'Showing saved favourites' }),
+    page.getByRole('status').filter({ hasText: 'Showing saved family photos' }),
   ).toBeVisible();
   await expect(page.locator('.photos-grid img')).toHaveCount(5);
 
@@ -310,6 +310,9 @@ test('@visual phone administration reports and refreshes the safe photo index', 
   await expect(page.getByRole('status')).toContainText('Photo folder checked. 5 photos are ready.');
   await expect(page.getByText('Apple Shared Album link')).toBeVisible();
   await expect(page.getByText(/not a supported private Hearth feed/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose family photos' })).toBeVisible();
+  await expect(page.getByText('5 showing')).toBeVisible();
+  await expect(page.getByText('0 hidden')).toBeVisible();
   await expect(page.locator('body')).not.toContainText('/volume1');
   const results = await new AxeBuilder({ page }).analyze();
   expect(
@@ -322,8 +325,88 @@ test('@visual phone administration reports and refreshes the safe photo index', 
     path: resolve(evidence, 'photos-admin-phone.png'),
     animations: 'disabled',
   });
-  await page.getByRole('link', { name: 'View family photos' }).click();
+
+  const curationHeading = page.getByRole('heading', { name: 'Choose family photos' });
+  const firstFavourite = page.locator(
+    '[data-focus-id="photo-curation-favourite-photo_coastal_picnic"]',
+  );
+  await curationHeading.scrollIntoViewIfNeeded();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'photos-curation-phone.png'),
+    animations: 'disabled',
+  });
+  await firstFavourite.scrollIntoViewIfNeeded();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'photos-curation-controls-phone.png'),
+    animations: 'disabled',
+  });
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Scan now' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(firstFavourite).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(
+    page.locator('[data-focus-id="photo-curation-hide-photo_coastal_picnic"]'),
+  ).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Photo hidden from Today, Photos and ambient mode.' }),
+  ).toBeVisible();
+  await expect(page.getByText('4 showing')).toBeVisible();
+  await expect(page.getByText('1 hidden')).toBeVisible();
+  const firstRestore = page.locator(
+    '[data-focus-id="photo-curation-restore-photo_coastal_picnic"]',
+  );
+  await expect(firstRestore).toBeFocused();
+  await firstRestore.scrollIntoViewIfNeeded();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'photos-curation-hidden-phone.png'),
+    animations: 'disabled',
+  });
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Photo restored to the family rotation.' }),
+  ).toBeVisible();
+  await expect(firstFavourite).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(firstFavourite).toHaveAttribute('aria-pressed', 'false');
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Photo will still rotate, after family favourites.' }),
+  ).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(firstFavourite).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(firstRestore).toBeFocused();
+  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('link', { name: 'View family photos' })).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
+  await expect(page.locator('.photo-collage__tile')).toHaveCount(4);
+  await expect(page.locator('[data-photo-id="photo_coastal_picnic"]')).toHaveCount(0);
+});
+
+test('@visual photo curation remains calm in dark phone landscape', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto('/admin/photos');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const heading = page.getByRole('heading', { name: 'Choose family photos' });
+  await heading.scrollIntoViewIfNeeded();
+  await expect(page.locator('.photo-curation-card')).toHaveCount(5);
+  const overflow = await page.locator('.photo-curation__grid').evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+  await captureEvidence(page, {
+    path: resolve(evidence, 'photos-curation-dark-phone-landscape.png'),
+    animations: 'disabled',
+  });
 });
 
 for (const viewport of [
@@ -360,7 +443,7 @@ test('@visual Photos empty, unavailable, failure, portrait and ambient states', 
 
   await page.goto('/photos?scenario=unavailable');
   await expect(
-    page.getByRole('status').filter({ hasText: 'Showing saved favourites' }),
+    page.getByRole('status').filter({ hasText: 'Showing saved family photos' }),
   ).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'photos-state-unavailable.png'),

@@ -443,6 +443,76 @@ describe('Hearth v2 API', () => {
     expect(missingDerivative.json().error.code).toBe('NOT_FOUND');
   });
 
+  it('favourites, hides and restores photos through adult-only replay-safe commands', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const curationUrl = `${base}/photo-assets/photo_family_breakfast/curation-actions`;
+    const hidden = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_hide_http', action: 'hide' },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_hide_http', action: 'hide' },
+    });
+    const gallery = await app.inject({ method: 'GET', url: `${base}/photos` });
+    const today = await app.inject({
+      method: 'GET',
+      url: `${base}/today?date=2026-08-03`,
+    });
+    const child = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: { requestId: 'request_photo_hide_child', action: 'hide' },
+    });
+    const invalid = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_invalid', action: 'delete-original' },
+    });
+
+    expect(hidden.json()).toMatchObject({
+      replayed: false,
+      photo: { id: 'photo_family_breakfast', hidden: true },
+      status: { visiblePhotoCount: 4, hiddenPhotoCount: 1 },
+      audit: { action: 'photo.hide', actorId: 'member_maya' },
+    });
+    expect(replay.json()).toMatchObject({
+      replayed: true,
+      audit: { id: hidden.json().audit.id },
+    });
+    expect(gallery.json().photos).toHaveLength(4);
+    expect(
+      gallery.json().photos.some((photo: { id: string }) => photo.id === 'photo_family_breakfast'),
+    ).toBe(false);
+    expect(today.json().photo).toMatchObject({
+      url: '/demo/photos/coastal-picnic.webp',
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+
+    const restored = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_restore_http', action: 'unhide' },
+    });
+    expect(restored.json()).toMatchObject({
+      photo: { hidden: false },
+      status: { visiblePhotoCount: 5, hiddenPhotoCount: 0 },
+      audit: { action: 'photo.unhide' },
+    });
+  });
+
   it('serves only immutable same-origin photo derivatives with safe response headers', async () => {
     const provider = new DerivativePhotoSourceProvider();
     const app = buildServer({ logger: false, photoRepository: new PhotoService(provider) });

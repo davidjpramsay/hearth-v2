@@ -12,6 +12,8 @@ export type IconName =
   | 'cloud-rain'
   | 'cloud-sun'
   | 'cloud-off'
+  | 'eye'
+  | 'eye-off'
   | 'home'
   | 'image'
   | 'leaf'
@@ -71,6 +73,19 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="m2 2 20 20" />
       <path d="M5.8 5.8A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 3.8-6.9M8.7 3.6A7 7 0 0 1 19 9.3" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  'eye-off': (
+    <>
+      <path d="m3 3 18 18" />
+      <path d="M10.6 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a16 16 0 0 1-2.1 3.2M6.2 6.2C3.5 8 2 12 2 12s3.5 7 10 7a10.4 10.4 0 0 0 4.1-.8" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
     </>
   ),
   home: (

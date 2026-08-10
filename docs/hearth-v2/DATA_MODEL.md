@@ -263,8 +263,10 @@ nullable featured opaque ID and orientation-aware assets containing only safe
 same-origin display/thumbnail URLs. Phase 7 selects the Today preview through
 that same injected adapter. Demo mode uses fictional bundled derivatives;
 private mode returns an unconfigured empty collection until one approved
-Synology source is selected. `PhotoSourceIndexStatus` adds only aggregate ready, hidden,
-unsupported and corrupt counts plus scan state. Neither response exposes its Synology path.
+Synology source is selected. Adult-only `PhotoSourceIndexStatus` adds aggregate ready, hidden,
+unsupported and corrupt counts, scan state and path-safe curation rows for ready assets. Those rows
+contain only opaque IDs, same-origin derivative URLs, presentation metadata and favourite/hidden
+flags. Neither response exposes its Synology path.
 Migration `0015_synology_photo_index.sql` adds the source fingerprint and scan-status index used for
 incremental refresh; the first adapter uses filesystem modification time as `capturedAt` after
 orientation correction rather than claiming EXIF capture-date fidelity.

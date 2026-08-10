@@ -79,6 +79,7 @@ import {
   PasskeyCeremonyVerificationRequestSchema,
   PasskeySessionSchema,
   PasskeySignOutResultSchema,
+  PhotoCurationCommandResultSchema,
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
@@ -117,6 +118,7 @@ import {
   UpdateMemberRequestSchema,
   UpdateMemberAvatarRequestSchema,
   UpdateMealPlanWeekRequestSchema,
+  UpdatePhotoCurationRequestSchema,
   UpdatePocketMoneySettingsRequestSchema,
   UpdateSavedMealRequestSchema,
   UpdateTodaySectionsRequestSchema,
@@ -177,6 +179,7 @@ const SavedMealParamsSchema = HouseholdParamsSchema.extend({ mealId: OpaqueIdSch
 const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: OpaqueIdSchema });
 const NoticeParamsSchema = HouseholdParamsSchema.extend({ noticeId: OpaqueIdSchema });
 const PocketMoneyPaymentParamsSchema = HouseholdParamsSchema.extend({ paymentId: OpaqueIdSchema });
+const PhotoCurationParamsSchema = HouseholdParamsSchema.extend({ assetId: OpaqueIdSchema });
 const PhotoAssetParamsSchema = HouseholdParamsSchema.extend({
   assetId: OpaqueIdSchema,
   variant: z.enum(['display', 'thumbnail']),
@@ -1039,6 +1042,30 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return result;
     });
   });
+
+  server.post(
+    '/api/v1/households/:householdId/photo-assets/:assetId/curation-actions',
+    async (request, reply) => {
+      const params = parse(PhotoCurationParamsSchema, request.params, reply);
+      const body = parse(UpdatePhotoCurationRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const actor = commandActor(request.headers, options, adminRepository);
+        await adminRepository.getOverview(params.householdId, actor.id);
+        const result = PhotoCurationCommandResultSchema.parse(
+          await photoRepository.updateCuration(
+            params.householdId,
+            params.assetId,
+            body.action,
+            body.requestId,
+            actor,
+          ),
+        );
+        realtime.publish(params.householdId, 'photos.changed', params.assetId);
+        return result;
+      });
+    },
+  );
 
   server.get(
     '/api/v1/households/:householdId/photo-assets/:assetId/:variant',

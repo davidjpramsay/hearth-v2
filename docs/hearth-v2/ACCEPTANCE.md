@@ -246,6 +246,12 @@ live-system commissioning tasks requiring owner approval.
 - Remote/voice input exits ambient mode immediately.
 - The same static dashboard is not left illuminated overnight.
 - Missing/corrupt photos fail gracefully.
+- An authenticated adult can favourite, unfavourite, hide and restore an indexed photo using touch
+  or D-pad only. Commands are validated, idempotent and audited; a hidden photo disappears from
+  Today, the gallery and ambient mode without deleting its index or original.
+- Favourite and hidden state survives incremental Synology rescans. Hidden photos remain available
+  in adult administration with a safe derivative preview, while private filesystem paths never
+  reach any response or log.
 
 Status as of 2026-08-10: the local browser/server slice passes a unique-image,
 orientation-selected full-screen collage with bounded tile geometry, visible 30-second occupant
@@ -255,7 +261,9 @@ immediate keyboard/Back-equivalent ambient exit, real offline cached content,
 empty/unavailable/failure-retry states and a corrupt-derivative fallback at TV
 and phone viewports. The private folder adapter additionally passes local mixed-orientation,
 unsupported/corrupt/symlink, incremental-change, opaque-route and cached-unavailable tests, with an
-adult-only audited manual scan contract. Live Synology folder selection/mount/scan, voice exit, physical-TCL rendering
+adult-only audited manual scan contract. Adult favourite, unfavourite, hide and restore commands
+additionally pass role rejection, validation, duplicate-request replay, audit projection, rescan
+persistence, hidden-photo projection and D-pad/focus-restoration checks. Live Synology folder selection/mount/scan, voice exit, physical-TCL rendering
 and Home Assistant presence/quiet-hours coordination are not run, so this
 acceptance section and Phase 7 remain incomplete.
 

@@ -5,7 +5,12 @@ import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type Database from 'better-sqlite3';
 import sharp from 'sharp';
 
-import type { PhotoAsset, PhotoSourceSummary } from '@hearth/shared';
+import type {
+  PhotoAsset,
+  PhotoCurationAction,
+  PhotoCurationAsset,
+  PhotoSourceSummary,
+} from '@hearth/shared';
 
 import { SystemClock, type HearthClock } from '../runtime-context.js';
 import type {
@@ -96,6 +101,7 @@ interface PhotoAssetRow {
   orientation: 'landscape' | 'portrait' | 'square';
   captured_at: string | null;
   favourite: number;
+  hidden: number;
 }
 
 export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
@@ -138,6 +144,29 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
     return scan;
   }
 
+  async curatePhoto(
+    householdId: string,
+    assetId: string,
+    action: PhotoCurationAction,
+  ): Promise<PhotoSourceSnapshot | null> {
+    const row = this.database
+      .prepare(
+        `SELECT a.id
+         FROM photo_assets a
+         JOIN photo_sources s ON s.id = a.source_id
+         WHERE s.household_id = ? AND a.id = ? AND a.asset_status = 'ready'`,
+      )
+      .get(householdId, assetId);
+    if (row === undefined) return null;
+    const value = action === 'favourite' || action === 'hide' ? 1 : 0;
+    const statement =
+      action === 'favourite' || action === 'unfavourite'
+        ? 'UPDATE photo_assets SET favourite = ? WHERE id = ?'
+        : 'UPDATE photo_assets SET hidden = ? WHERE id = ?';
+    this.database.prepare(statement).run(value, assetId);
+    return this.snapshot(householdId);
+  }
+
   async getDerivative(
     householdId: string,
     assetId: string,
@@ -148,7 +177,7 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
         `SELECT a.derivative_key, a.thumbnail_key
          FROM photo_assets a
          JOIN photo_sources s ON s.id = a.source_id
-         WHERE s.household_id = ? AND a.id = ? AND a.asset_status = 'ready' AND a.hidden = 0`,
+         WHERE s.household_id = ? AND a.id = ? AND a.asset_status = 'ready'`,
       )
       .get(householdId, assetId) as { derivative_key: string; thumbnail_key: string } | undefined;
     if (row === undefined) return null;
@@ -367,13 +396,13 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
     const rows = this.database
       .prepare(
         `SELECT id, derivative_key, thumbnail_key, alternative_text, width, height, orientation,
-                captured_at, favourite
+                captured_at, favourite, hidden
          FROM photo_assets
-         WHERE source_id = ? AND asset_status = 'ready' AND hidden = 0
-         ORDER BY favourite DESC, captured_at DESC, id`,
+         WHERE source_id = ? AND asset_status = 'ready'
+         ORDER BY hidden, favourite DESC, captured_at DESC, id`,
       )
       .all(sourceId) as PhotoAssetRow[];
-    const photos = rows.map((row): PhotoAsset => {
+    const curation = rows.map((row): PhotoCurationAsset => {
       const base = `/api/v1/households/${householdId}/photo-assets/${row.id}`;
       return {
         id: row.id,
@@ -385,8 +414,10 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
         orientation: row.orientation,
         capturedAt: row.captured_at,
         favourite: row.favourite === 1,
+        hidden: row.hidden === 1,
       };
     });
+    const photos = curation.filter((photo) => !photo.hidden).map(withoutHidden);
     const index = this.indexSnapshot(sourceId, photos.length);
     return {
       collectionId: `photo_collection_${digest(householdId).slice(0, 32)}`,
@@ -395,6 +426,7 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
       source: sourceSummary(source, index.visiblePhotoCount),
       featuredPhotoId: photos[0]?.id ?? null,
       photos,
+      curation,
       index: { ...index, scanInProgress: this.scanHouseholdId === householdId },
     };
   }
@@ -490,6 +522,11 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
     }, this.configuration.scanIntervalMs);
     this.scanTimer.unref();
   }
+}
+
+function withoutHidden(photo: PhotoCurationAsset): PhotoAsset {
+  const { hidden: _hidden, ...visible } = photo;
+  return visible;
 }
 
 export function resolveSynologyPhotoSourceConfiguration(

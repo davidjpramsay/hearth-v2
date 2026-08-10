@@ -504,6 +504,12 @@ Record durable choices here. New decisions should include date, status, context,
   hiding/favourite administration and any iPhone PhotoKit import remain later, separately bounded
   work.
 
+Implementation extension (2026-08-10): the existing favourite/hidden columns are now exposed only
+through authenticated companion curation commands. Each favourite, unfavourite, hide or unhide is
+validated, idempotent and audited. Scans preserve those flags; hidden assets are excluded from
+Today/gallery/ambient projections but remain recoverable in adult administration through opaque
+same-origin derivatives. No original, source path or delete operation crosses the boundary.
+
 ## D-037 — Meal administration is dinner-first and whole-week transactional
 
 - Date: 2026-08-09

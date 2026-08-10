@@ -101,6 +101,41 @@ describe('SynologyFolderPhotoSourceProvider', () => {
     await fixture.close();
   });
 
+  it('persists favourite and hidden choices across incremental rescans', async () => {
+    const fixture = await photoFixture();
+    await writeFile(
+      join(fixture.source, 'family.jpg'),
+      await sharp({ create: { width: 900, height: 600, channels: 3, background: '#748c7a' } })
+        .jpeg()
+        .toBuffer(),
+    );
+    const indexed = await fixture.provider.refreshApprovedPhotos('household_photo_test');
+    const photo = indexed.photos[0]!;
+
+    const unfavourited = await fixture.provider.curatePhoto(
+      'household_photo_test',
+      photo.id,
+      'unfavourite',
+    );
+    expect(unfavourited?.curation[0]).toMatchObject({ favourite: false, hidden: false });
+    const hidden = await fixture.provider.curatePhoto('household_photo_test', photo.id, 'hide');
+    expect(hidden).toMatchObject({
+      photos: [],
+      index: { visiblePhotoCount: 0, hiddenPhotoCount: 1 },
+    });
+    expect(hidden?.curation[0]).toMatchObject({ favourite: false, hidden: true });
+    expect(
+      await fixture.provider.getDerivative('household_photo_test', photo.id, 'thumbnail'),
+    ).not.toBeNull();
+
+    const rescanned = await fixture.provider.refreshApprovedPhotos('household_photo_test');
+    expect(rescanned.photos).toHaveLength(0);
+    expect(rescanned.curation[0]).toMatchObject({ favourite: false, hidden: true });
+    const restored = await fixture.provider.curatePhoto('household_photo_test', photo.id, 'unhide');
+    expect(restored?.photos[0]).toMatchObject({ id: photo.id, favourite: false });
+    await fixture.close();
+  });
+
   it('requires absolute, separate source and derivative locations', () => {
     expect(resolveSynologyPhotoSourceConfiguration({})).toBeNull();
     expect(() =>

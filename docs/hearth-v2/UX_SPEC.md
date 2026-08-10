@@ -166,6 +166,9 @@ the phone More hub.
 - Optional minimal overlay: time, next event and discreet notification badge.
 - Immediate remote exit.
 - Photo source/error state should never reveal filesystem paths or technical details to the household.
+- Phone-first Photo source administration shows orientation-safe thumbnails, capture date when
+  available and clear Favourite, Hide and Restore actions. Every action is D-pad reachable, reports
+  its result inline and preserves focus when a card moves between visible and hidden ordering.
 
 ### Home
 

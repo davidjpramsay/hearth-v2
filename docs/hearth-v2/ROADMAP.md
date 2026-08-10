@@ -331,20 +331,21 @@ new Hearth application phase.
 
 ## Phase 7 — Photos, ambient mode and production operations
 
-Status as of 2026-08-09: in progress. The browser/server Photos slice is
+Status as of 2026-08-10: in progress. The browser/server Photos slice is
 implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
 responsive full-screen collage templates with no skinny leftover strips, calm
-45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
+30-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
 slideshow, immediate remote exit, cached-source states and corrupt-image fallback. The private
 server now includes the concrete read-only Synology-folder indexer, incremental fingerprinting,
 orientation-correct display/thumbnail WebPs, opaque immutable asset routes, adult-only audited
-manual scans and aggregate Admin status. A production-oriented two-container Synology
+manual scans, aggregate Admin status and persistent favourite/hide/restore curation. Hidden assets
+remain indexed but are excluded from Today, gallery and ambient projections. A production-oriented two-container Synology
 scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
 with same-origin proxying, non-root/read-only processes, readiness gating,
-forward migrations and clean shutdown verified locally. A three-job GitHub Actions gate now mirrors
-the complete web/server/browser suite, Android TV shell and production container image builds; its
-first hosted run must pass before it counts as release evidence. Live Synology
+forward migrations and clean shutdown verified locally. A three-job GitHub Actions gate mirrors
+the complete web/server/browser suite, Android TV shell and production container image builds and
+has passed on the release-checkpoint branch. Live Synology
 commissioning, hostname/TLS and real-device passkey enrolment/recovery, approved live photo-folder
 selection/mount and scan evidence,
 Home Assistant presence/quiet-hours coordination,

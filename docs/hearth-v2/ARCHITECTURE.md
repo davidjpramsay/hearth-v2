@@ -163,6 +163,8 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
 - adult-only `GET /api/v1/households/:id/photo-source` and idempotent
   `POST /api/v1/households/:id/photo-source/refreshes` for safe index status and manual rescans
+- adult-only, idempotent `POST /api/v1/households/:id/photo-assets/:assetId/curation-actions` for
+  favourite, unfavourite, hide and unhide commands with command receipts and audit events
 - `GET /api/v1/households/:id/photo-assets/:assetId/:variant` for immutable, opaque WebP display
   and thumbnail derivatives; source paths and originals never cross this boundary
 - `GET /api/v1/auth/status`, first-use registration options/verification, discoverable-passkey

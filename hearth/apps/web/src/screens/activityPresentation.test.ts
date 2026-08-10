@@ -76,6 +76,11 @@ describe('activity presentation', () => {
       title: 'Home Assistant connected',
       filter: 'connections',
     });
+    expect(presentationForActivity('photo.hide')).toMatchObject({
+      title: 'Family photo hidden',
+      filter: 'family',
+      icon: 'image',
+    });
   });
 
   it('resolves household actors without exposing opaque identifiers', () => {

@@ -114,6 +114,9 @@ Can understand the current household state and use clearly exposed room controls
 ### 6. Photos and ambient display
 
 - Rotate approved family photos from a designated Synology source.
+- Let an authenticated adult favourite, unfavourite, hide and restore indexed photos from companion
+  administration. Favourites appear first; hidden photos remain indexed but never appear on Today,
+  in the gallery or in ambient mode.
 - Preserve aspect ratio and use tasteful cropping/background treatment.
 - Present the browsable Photos screen as a full-screen orientation-aware collage with no duplicate
   image and no narrow leftover strips. Choose the composition from the visible photo orientations:

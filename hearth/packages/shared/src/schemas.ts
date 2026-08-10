@@ -205,6 +205,12 @@ export const PhotoAssetSchema = z.object({
   favourite: z.boolean(),
 });
 
+export const PhotoCurationActionSchema = z.enum(['favourite', 'unfavourite', 'hide', 'unhide']);
+
+export const PhotoCurationAssetSchema = PhotoAssetSchema.extend({
+  hidden: z.boolean(),
+});
+
 export const PhotoSourceSummarySchema = z.object({
   kind: z.enum(['demo', 'synology-folder']),
   label: z.string().min(1).max(100),
@@ -238,6 +244,7 @@ export const PhotoSourceIndexStatusSchema = z.object({
   hiddenPhotoCount: z.number().int().nonnegative(),
   unsupportedFileCount: z.number().int().nonnegative(),
   corruptFileCount: z.number().int().nonnegative(),
+  photos: z.array(PhotoCurationAssetSchema),
 });
 
 export const TodaySectionVisibilitySchema = z.object({
@@ -974,6 +981,10 @@ export const AuditSummarySchema = z.object({
     'home-assistant.connection.remove',
     'system.backup.create',
     'photo.source.refresh',
+    'photo.favourite',
+    'photo.unfavourite',
+    'photo.hide',
+    'photo.unhide',
     'auth.passkey.register',
     'home.action.execute',
     'notice.create',
@@ -1017,7 +1028,18 @@ export const UpdateTodaySectionsRequestSchema = CommandRequestSchema.extend(
 
 export const RefreshPhotoSourceRequestSchema = CommandRequestSchema;
 
+export const UpdatePhotoCurationRequestSchema = CommandRequestSchema.extend({
+  action: PhotoCurationActionSchema,
+});
+
 export const PhotoSourceRefreshResultSchema = z.object({
+  status: PhotoSourceIndexStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+export const PhotoCurationCommandResultSchema = z.object({
+  photo: PhotoCurationAssetSchema,
   status: PhotoSourceIndexStatusSchema,
   audit: AuditSummarySchema,
   replayed: z.boolean(),
@@ -1566,12 +1588,16 @@ export type TodayConfigurationCommandResult = z.infer<typeof TodayConfigurationC
 export type TodayPhotoSummary = z.infer<typeof TodayPhotoSummarySchema>;
 export type PhotoOrientation = z.infer<typeof PhotoOrientationSchema>;
 export type PhotoAsset = z.infer<typeof PhotoAssetSchema>;
+export type PhotoCurationAction = z.infer<typeof PhotoCurationActionSchema>;
+export type PhotoCurationAsset = z.infer<typeof PhotoCurationAssetSchema>;
 export type PhotoSourceSummary = z.infer<typeof PhotoSourceSummarySchema>;
 export type PhotoCollection = z.infer<typeof PhotoCollectionSchema>;
 export type PhotoGallery = z.infer<typeof PhotoGallerySchema>;
 export type PhotoSourceIndexStatus = z.infer<typeof PhotoSourceIndexStatusSchema>;
 export type RefreshPhotoSourceRequest = z.infer<typeof RefreshPhotoSourceRequestSchema>;
 export type PhotoSourceRefreshResult = z.infer<typeof PhotoSourceRefreshResultSchema>;
+export type UpdatePhotoCurationRequest = z.infer<typeof UpdatePhotoCurationRequestSchema>;
+export type PhotoCurationCommandResult = z.infer<typeof PhotoCurationCommandResultSchema>;
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 export type WeekDay = z.infer<typeof WeekDaySchema>;
 export type WeekSchedule = z.infer<typeof WeekScheduleSchema>;

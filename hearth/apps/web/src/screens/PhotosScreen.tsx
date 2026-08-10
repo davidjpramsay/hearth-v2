@@ -48,6 +48,10 @@ export function PhotosScreen({
   const householdTime = useHouseholdClock();
 
   const gallery = query.data;
+  const favouriteCount = gallery?.photos.reduce(
+    (count, photo) => count + Number(photo.favourite),
+    0,
+  );
   const selected =
     gallery?.photos.find((photo) => photo.id === selectedId) ??
     gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ??
@@ -173,7 +177,11 @@ export function PhotosScreen({
       <ScreenHeader
         eyebrow="Family photos"
         title="Photos"
-        meta={`${gallery.collection.photoCount} favourites · ${gallery.collection.source.label}`}
+        meta={galleryMeta(
+          gallery.collection.photoCount,
+          favouriteCount ?? 0,
+          gallery.collection.source.label,
+        )}
         actions={
           <div className="photos-header-actions">
             {!prefersReducedMotion && gallery.photos.length > 1 ? (
@@ -254,7 +262,7 @@ export function PhotosScreen({
       </div>
       <div className="photos-layout">
         <div
-          aria-label="Family favourites. The featured photo and collage arrangement change about once every 30 seconds."
+          aria-label="Family photos. The featured photo and collage arrangement change about once every 30 seconds."
           className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--count-${visibleCollageItems.length}`}
         >
           {visibleCollageItems.map((item) => (
@@ -297,6 +305,12 @@ export function PhotosScreen({
       ) : null}
     </div>
   );
+}
+
+function galleryMeta(photoCount: number, favouriteCount: number, sourceLabel: string): string {
+  const favourites = `${favouriteCount} ${favouriteCount === 1 ? 'favourite' : 'favourites'}`;
+  if (favouriteCount === photoCount) return `${favourites} · ${sourceLabel}`;
+  return `${favourites} · ${photoCount} in rotation · ${sourceLabel}`;
 }
 
 function PhotoThumbnail({

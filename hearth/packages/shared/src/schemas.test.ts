@@ -26,8 +26,10 @@ import {
   MonthScheduleSchema,
   UpdateMemberAvatarRequestSchema,
   PhotoGallerySchema,
+  PhotoCurationCommandResultSchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
+  UpdatePhotoCurationRequestSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentSchema,
   RecordPocketMoneyPaymentRequestSchema,
@@ -501,6 +503,22 @@ describe('shared wire schemas', () => {
       hiddenPhotoCount: 0,
       unsupportedFileCount: 1,
       corruptFileCount: 1,
+      photos: [
+        {
+          id: 'photo_family_breakfast',
+          thumbnailUrl:
+            '/api/v1/households/household_demo/photo-assets/photo_family_breakfast/thumbnail',
+          displayUrl:
+            '/api/v1/households/household_demo/photo-assets/photo_family_breakfast/display',
+          alt: 'A family breakfast.',
+          width: 1200,
+          height: 800,
+          orientation: 'landscape',
+          capturedAt: '2026-08-02T23:30:00.000Z',
+          favourite: true,
+          hidden: false,
+        },
+      ],
     });
     const result = PhotoSourceRefreshResultSchema.parse({
       status,
@@ -518,6 +536,33 @@ describe('shared wire schemas', () => {
     });
     expect(result.status.visiblePhotoCount).toBe(12);
     expect(JSON.stringify(result)).not.toMatch(/volume1|sourceDirectory|derivativeDirectory/);
+
+    const request = UpdatePhotoCurationRequestSchema.parse({
+      requestId: 'request_photo_hide',
+      action: 'hide',
+    });
+    const curated = PhotoCurationCommandResultSchema.parse({
+      photo: { ...status.photos[0], hidden: true },
+      status: {
+        ...status,
+        visiblePhotoCount: 11,
+        hiddenPhotoCount: 1,
+        photos: [{ ...status.photos[0], hidden: true }],
+      },
+      replayed: false,
+      audit: {
+        id: 'audit_photo_hide',
+        actorType: 'member',
+        actorId: 'member_adult',
+        source: 'companion',
+        action: 'photo.hide',
+        targetId: 'photo_family_breakfast',
+        occurredAt: '2026-08-09T10:05:00.000Z',
+        result: 'succeeded',
+      },
+    });
+    expect(request.action).toBe('hide');
+    expect(curated.photo.hidden).toBe(true);
   });
 
   it('keeps native television media outside Hearth integration contracts', () => {
