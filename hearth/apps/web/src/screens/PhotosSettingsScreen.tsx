@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PhotoCurationAction, PhotoCurationAsset } from '@hearth/shared';
+import { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
 import { createRequestId, getHearthRuntime, hearthApi, queryKeys } from '../api/client';
@@ -12,6 +13,7 @@ import { usePhotoSourceQuery } from '../hooks/useHearthQueries';
 export function PhotosSettingsScreen() {
   const source = usePhotoSourceQuery();
   const queryClient = useQueryClient();
+  const pendingCurationFocus = useRef<string | null>(null);
   const refresh = useMutation({
     mutationFn: () => hearthApi.refreshPhotoSource(createRequestId('photo_scan')),
     onSuccess: async (result) => {
@@ -26,15 +28,25 @@ export function PhotosSettingsScreen() {
     mutationFn: ({ assetId, action }: { assetId: string; action: PhotoCurationAction }) =>
       hearthApi.updatePhotoCuration(assetId, action, createRequestId(`photo_${action}`)),
     onSuccess: async (result) => {
+      pendingCurationFocus.current = primaryCurationFocusId(result.photo);
       queryClient.setQueryData(queryKeys.photoSource, result.status);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
       ]);
-      requestAnimationFrame(() => focusById(primaryCurationFocusId(result.photo)));
     },
   });
+
+  useLayoutEffect(() => {
+    if (
+      curation.isSuccess &&
+      pendingCurationFocus.current !== null &&
+      focusById(pendingCurationFocus.current)
+    ) {
+      pendingCurationFocus.current = null;
+    }
+  }, [curation.isSuccess, source.data]);
   if (source.isPending) return <AdminLoading />;
   if (source.isError) return <AdminError message={source.error.message} />;
 

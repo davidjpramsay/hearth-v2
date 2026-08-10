@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
 import type { SystemBackupStatus } from '@hearth/shared';
@@ -33,10 +33,11 @@ export function SystemHealthScreen() {
       pendingRequestId.current = null;
       queryClient.setQueryData(queryKeys.systemStatus, result.status);
     },
-    onError: () => {
-      requestAnimationFrame(() => focusById('system-backup-retry'));
-    },
   });
+
+  useLayoutEffect(() => {
+    if (createBackup.isError) focusById('system-backup-retry');
+  }, [createBackup.isError]);
 
   if (query.isPending) return <AdminLoading />;
   if (query.isError) return <AdminError message={query.error.message} />;
