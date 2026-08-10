@@ -163,6 +163,11 @@ Chromium fallback produced the retained evidence.
   editor.
 - The TV summary rebalances cleanly for one, two or three bands, with or without
   a photo; phone administration remains accessible and usable at 390×844.
+- Today & notices offers distinct TV and Phone previews using current household
+  content. Switching optional sections updates the preview without navigating
+  away, and two rapid changes cannot overwrite one another.
+- A failed secondary preview read is family-readable and does not prevent an
+  adult from changing or saving section visibility.
 - Today displays no more than three event and three chore rows on television and
   exposes the exact hidden count through focusable links to Calendar Agenda and
   Chores; no returned item is silently concealed.
@@ -180,6 +185,12 @@ Extension evidence as of 2026-08-10: overflow counts, event and notice details,
 summary destinations, deterministic focus/Back restoration, TV and phone
 responsive renders, automated accessibility checks and console-clean remote
 flows are covered by `tests/e2e/today-polish.spec.ts`.
+
+The same date's companion extension adds data-backed TV/Phone composition
+previews and serialised optimistic visibility changes. Unit coverage exercises
+both preview compositions, no-optional-section and unavailable states;
+`tests/e2e/today-settings.spec.ts` covers the rapid-toggle race, responsive
+renders and automated accessibility checks.
 
 ### Home Assistant and voice
 

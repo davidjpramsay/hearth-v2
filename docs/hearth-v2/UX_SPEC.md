@@ -70,6 +70,12 @@ and due chores remain the stable core. The remaining summary bands expand to
 use the freed space; a photo-only configuration is centred rather than leaving
 an unexplained empty column.
 
+The settings surface includes live TV and Phone previews built from the current household summary.
+They show the real composition produced by the four switches, not a draggable editor or a static
+illustration. Rapid changes are applied optimistically and serialised so one switch cannot restore
+another switch's older value. If overview data cannot load, the preview says so while leaving the
+visibility controls usable.
+
 The first focus should usually be the most relevant actionable item, not the navigation chrome.
 Today keeps at most three event rows and three chore rows visible on television. A deterministic,
 focusable `+N more` action reports the complete hidden count and opens the Calendar agenda or Chores

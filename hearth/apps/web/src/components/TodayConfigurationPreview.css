@@ -1,0 +1,506 @@
+.today-preview-block {
+  margin-top: 20px;
+  padding-top: 19px;
+  border-top: 1px solid var(--hairline);
+}
+
+.today-preview-block__heading {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.today-preview-block__heading h3,
+.today-preview-block__heading p {
+  margin: 0;
+}
+
+.today-preview-block__heading h3 {
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.today-preview-block__heading p {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.today-preview-modes {
+  flex: 0 0 auto;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface-muted);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(58px, 1fr));
+  gap: 3px;
+}
+
+.today-preview-modes button {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.today-preview-modes button[aria-pressed='true'] {
+  color: var(--eucalyptus);
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgb(40 48 43 / 9%);
+}
+
+.today-configuration-preview {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--eucalyptus) 35%, var(--hairline));
+  color: var(--ink);
+  background: var(--canvas);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+.today-configuration-preview--television {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+}
+
+.today-configuration-preview--phone {
+  width: min(238px, 100%);
+  aspect-ratio: 390 / 844;
+  margin-inline: auto;
+  border-radius: 22px;
+}
+
+.today-configuration-preview__canvas {
+  height: 100%;
+  padding: clamp(9px, 2.3vw, 19px);
+  display: flex;
+  flex-direction: column;
+}
+
+.today-configuration-preview__state {
+  height: 100%;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.today-configuration-preview__state svg {
+  width: clamp(22px, 4vw, 38px);
+  height: clamp(22px, 4vw, 38px);
+  margin-bottom: 7px;
+  color: var(--eucalyptus);
+}
+
+.today-configuration-preview__state strong,
+.today-configuration-preview__state span {
+  display: block;
+}
+
+.today-configuration-preview__state strong {
+  color: var(--ink);
+  font-size: clamp(12px, 2vw, 19px);
+}
+
+.today-configuration-preview__state span {
+  margin-top: 2px;
+  font-size: clamp(9px, 1.4vw, 13px);
+}
+
+.today-configuration-preview__header {
+  min-height: 29px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: clamp(7px, 1.6vw, 16px);
+}
+
+.today-configuration-preview__brand,
+.today-configuration-preview__date,
+.today-configuration-preview__weather {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.today-configuration-preview__brand {
+  gap: 5px;
+  color: var(--ink);
+  font-size: clamp(9px, 1.55vw, 15px);
+  font-weight: 760;
+}
+
+.today-configuration-preview__brand svg {
+  width: clamp(12px, 1.8vw, 18px);
+  height: clamp(12px, 1.8vw, 18px);
+  color: var(--eucalyptus);
+}
+
+.today-configuration-preview__date {
+  gap: 6px;
+}
+
+.today-configuration-preview__date strong {
+  font-size: clamp(12px, 2.15vw, 21px);
+}
+
+.today-configuration-preview__date span,
+.today-configuration-preview__weather span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: clamp(7px, 1.25vw, 12px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-configuration-preview__weather {
+  gap: 4px;
+}
+
+.today-configuration-preview__weather svg {
+  width: clamp(11px, 1.8vw, 18px);
+  height: clamp(11px, 1.8vw, 18px);
+  color: var(--ochre);
+}
+
+.today-configuration-preview__weather strong {
+  font-size: clamp(9px, 1.55vw, 15px);
+}
+
+.today-configuration-preview__core {
+  min-height: 0;
+  margin-top: clamp(4px, 1vw, 10px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(6px, 1.5vw, 14px);
+}
+
+.today-configuration-preview__section {
+  min-width: 0;
+}
+
+.today-configuration-preview__section h4 {
+  margin: 0 0 clamp(3px, 0.7vw, 7px);
+  overflow: hidden;
+  color: var(--ink);
+  font-size: clamp(8px, 1.45vw, 14px);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-configuration-preview__rows {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3px, 0.6vw, 6px);
+}
+
+.today-configuration-preview__event,
+.today-configuration-preview__chore,
+.today-configuration-preview__empty {
+  min-width: 0;
+  min-height: clamp(24px, 4.3vw, 42px);
+  padding: clamp(3px, 0.65vw, 7px);
+  border: 1px solid var(--hairline);
+  border-radius: clamp(5px, 1vw, 10px);
+  background: var(--surface);
+  box-shadow: 0 3px 9px rgb(50 53 49 / 5%);
+}
+
+.today-configuration-preview__event {
+  display: grid;
+  grid-template-columns: auto 3px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(3px, 0.7vw, 7px);
+}
+
+.today-configuration-preview__event time {
+  font-size: clamp(7px, 1.25vw, 12px);
+  font-weight: 720;
+}
+
+.today-configuration-preview__event > i {
+  width: 3px;
+  height: 78%;
+  border-radius: 999px;
+}
+
+.today-configuration-preview__event > strong,
+.today-configuration-preview__chore > strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: clamp(7px, 1.3vw, 13px);
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-configuration-preview__chore {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(4px, 0.8vw, 8px);
+}
+
+.today-configuration-preview__person,
+.today-configuration-preview__check {
+  width: clamp(14px, 2.6vw, 25px);
+  height: clamp(14px, 2.6vw, 25px);
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.today-configuration-preview__person {
+  border: 1px solid var(--hairline);
+  object-fit: cover;
+  background: var(--surface-muted);
+  display: grid;
+  place-items: center;
+  color: var(--eucalyptus);
+  font-size: clamp(6px, 1.1vw, 10px);
+  font-style: normal;
+  font-weight: 760;
+}
+
+.today-configuration-preview__check {
+  border: 1.5px solid var(--eucalyptus);
+}
+
+.today-configuration-preview__empty {
+  color: var(--muted);
+  display: grid;
+  place-items: center start;
+  font-size: clamp(7px, 1.25vw, 12px);
+}
+
+.today-configuration-preview__summary {
+  min-height: 0;
+  margin-top: clamp(5px, 1vw, 10px);
+  padding-top: clamp(5px, 1vw, 10px);
+  border-top: 1px solid var(--hairline);
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: clamp(5px, 1vw, 10px);
+}
+
+.today-configuration-preview__summary--without-photo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.today-configuration-preview__bands {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--preview-band-count, 1), minmax(0, 1fr));
+  gap: clamp(3px, 0.65vw, 7px);
+}
+
+.today-configuration-preview__bands--count-2 {
+  --preview-band-count: 2;
+}
+
+.today-configuration-preview__bands--count-3 {
+  --preview-band-count: 3;
+}
+
+.today-configuration-preview__band {
+  min-width: 0;
+  min-height: clamp(29px, 5.8vw, 57px);
+  padding: clamp(4px, 0.8vw, 8px);
+  border: 1px solid var(--hairline);
+  border-radius: clamp(5px, 1vw, 10px);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, 0.6vw, 6px);
+}
+
+.today-configuration-preview__band > svg {
+  width: clamp(10px, 1.9vw, 19px);
+  height: clamp(10px, 1.9vw, 19px);
+  flex: 0 0 auto;
+  color: var(--eucalyptus);
+}
+
+.today-configuration-preview__band span,
+.today-configuration-preview__band strong,
+.today-configuration-preview__band small {
+  min-width: 0;
+  display: block;
+}
+
+.today-configuration-preview__band strong {
+  color: var(--muted);
+  font-size: clamp(5px, 0.92vw, 9px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.today-configuration-preview__band small {
+  margin-top: 1px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: clamp(6px, 1.12vw, 11px);
+  font-weight: 680;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-configuration-preview__photo {
+  width: 100%;
+  min-height: 0;
+  border-radius: clamp(6px, 1.1vw, 11px);
+  object-fit: cover;
+}
+
+.today-configuration-preview--television .today-configuration-preview__photo {
+  height: 100%;
+}
+
+.today-configuration-preview__photo--empty {
+  color: var(--muted);
+  background: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: clamp(6px, 1.1vw, 11px);
+}
+
+.today-configuration-preview__photo--empty svg {
+  width: clamp(10px, 1.8vw, 18px);
+  height: clamp(10px, 1.8vw, 18px);
+}
+
+.today-configuration-preview--phone .today-configuration-preview__canvas {
+  padding: 12px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__header {
+  min-height: 42px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'brand weather'
+    'date date';
+  gap: 2px 7px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__brand {
+  grid-area: brand;
+  font-size: 12px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__date {
+  grid-area: date;
+  justify-content: space-between;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__date strong {
+  font-size: 17px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__date span,
+.today-configuration-preview--phone .today-configuration-preview__weather span {
+  font-size: 9px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__weather {
+  grid-area: weather;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__core {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__section h4 {
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__rows {
+  gap: 4px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__event,
+.today-configuration-preview--phone .today-configuration-preview__chore,
+.today-configuration-preview--phone .today-configuration-preview__empty {
+  min-height: 33px;
+  padding: 5px 6px;
+  border-radius: 8px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__event time,
+.today-configuration-preview--phone .today-configuration-preview__event > strong,
+.today-configuration-preview--phone .today-configuration-preview__chore > strong,
+.today-configuration-preview--phone .today-configuration-preview__empty {
+  font-size: 10px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__person,
+.today-configuration-preview--phone .today-configuration-preview__check {
+  width: 21px;
+  height: 21px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__summary {
+  margin-top: 9px;
+  padding-top: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__bands {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__band {
+  min-height: 34px;
+  padding: 5px 7px;
+  border-radius: 8px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__band > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__band strong {
+  font-size: 7px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__band small {
+  font-size: 10px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__photo {
+  min-height: 78px;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 420px) {
+  .today-preview-block__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .today-preview-modes {
+    width: 100%;
+  }
+}

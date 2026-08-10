@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import type { HouseholdNotice, TodaySectionVisibility } from '@hearth/shared';
+import type { HouseholdNotice, TodayConfiguration, TodaySectionVisibility } from '@hearth/shared';
 
 import { createRequestId, getHearthRuntime, hearthApi, queryKeys } from '../api/client';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useTodayConfigurationQuery } from '../hooks/useHearthQueries';
+import { TodayConfigurationPreview } from '../components/TodayConfigurationPreview';
+import { createTodayPreviewData } from '../components/todayPreviewData';
+import { useTodayConfigurationQuery, useTodayQuery } from '../hooks/useHearthQueries';
 
 const sectionOptions: Array<{
   key: keyof TodaySectionVisibility;
@@ -25,6 +27,7 @@ const sectionOptions: Array<{
 
 export function TodaySettingsScreen() {
   const query = useTodayConfigurationQuery();
+  const todayQuery = useTodayQuery();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const [priority, setPriority] = useState<'standard' | 'important'>('standard');
@@ -33,8 +36,25 @@ export function TodaySettingsScreen() {
   const configuration = query.data;
 
   const saveSections = useMutation({
+    scope: { id: 'today-section-visibility' },
     mutationFn: (sections: TodaySectionVisibility) =>
       hearthApi.updateTodaySections(sections, createRequestId('today_sections')),
+    onMutate: async (sections) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.todayConfiguration });
+      const previous = queryClient.getQueryData<TodayConfiguration>(queryKeys.todayConfiguration);
+      if (previous !== undefined) {
+        queryClient.setQueryData<TodayConfiguration>(queryKeys.todayConfiguration, {
+          ...previous,
+          sections,
+        });
+      }
+      return { previous };
+    },
+    onError: (_error, _sections, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(queryKeys.todayConfiguration, context.previous);
+      }
+    },
     onSuccess: async (result) => {
       queryClient.setQueryData(queryKeys.todayConfiguration, result.configuration);
       await queryClient.invalidateQueries({ queryKey: queryKeys.today });
@@ -77,6 +97,20 @@ export function TodaySettingsScreen() {
     () => configuration?.notices.toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt)) ?? [],
     [configuration?.notices],
   );
+  const activeNotice =
+    configuration?.notices.find((notice) => notice.id === configuration.activeNoticeId)?.message ??
+    null;
+  const previewData = createTodayPreviewData(todayQuery.data, activeNotice);
+
+  function toggleSection(key: keyof TodaySectionVisibility) {
+    const latest =
+      queryClient.getQueryData<TodayConfiguration>(queryKeys.todayConfiguration) ?? configuration;
+    if (latest === undefined) return;
+    saveSections.mutate({
+      ...latest.sections,
+      [key]: !latest.sections[key],
+    });
+  }
 
   if (query.isPending) return <AdminLoading />;
   if (query.isError || configuration === undefined)
@@ -106,12 +140,7 @@ export function TodaySettingsScreen() {
                 data-focus-entry={option.key === 'dinner' ? 'true' : undefined}
                 data-focus-id={`today-setting-${option.key}`}
                 key={option.key}
-                onClick={() =>
-                  saveSections.mutate({
-                    ...configuration.sections,
-                    [option.key]: !enabled,
-                  })
-                }
+                onClick={() => toggleSection(option.key)}
                 role="switch"
                 type="button"
               >
@@ -126,6 +155,17 @@ export function TodaySettingsScreen() {
             );
           })}
         </div>
+        <TodayConfigurationPreview
+          data={previewData}
+          sections={configuration.sections}
+          status={
+            todayQuery.data !== undefined
+              ? 'ready'
+              : todayQuery.isPending
+                ? 'loading'
+                : 'unavailable'
+          }
+        />
       </section>
 
       <section className="today-admin-section">

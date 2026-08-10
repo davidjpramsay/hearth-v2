@@ -22,6 +22,10 @@ test('adult publishes an important notice and chooses the Today overview section
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/today');
   await expect(page.getByRole('heading', { name: 'Today & notices' })).toBeVisible();
+  await expect(page.getByRole('img', { name: /TV Today preview/ })).toBeVisible();
+  await expect(page.getByText('School drop-off')).toBeVisible();
+  await page.getByRole('button', { name: 'Phone' }).click();
+  await expect(page.getByRole('img', { name: /phone Today preview/ })).toBeVisible();
   const dinner = page.getByRole('switch', { name: /Dinner/ });
   const photo = page.getByRole('switch', { name: /Family photo/ });
   await expect(dinner).toHaveAttribute('aria-checked', 'true');
@@ -29,6 +33,8 @@ test('adult publishes an important notice and chooses the Today overview section
   await photo.click();
   await expect(dinner).toHaveAttribute('aria-checked', 'false');
   await expect(photo).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('.today-configuration-preview__band--dinner')).toHaveCount(0);
+  await expect(page.locator('.today-configuration-preview__photo')).toHaveCount(0);
 
   await page.getByLabel('Message').fill('Bring library books tomorrow');
   await page.getByLabel('Priority').selectOption('important');
@@ -72,6 +78,29 @@ test('@visual and @a11y Today notice administration and customised television ov
     animations: 'disabled',
   });
 
+  const tvPreview = page.getByRole('img', { name: /TV Today preview/ });
+  await expect(tvPreview).toBeVisible();
+  await tvPreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-preview-tv-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Phone' }).click();
+  const phonePreview = page.getByRole('img', { name: /phone Today preview/ });
+  await expect(phonePreview).toBeVisible();
+  await phonePreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  await expect(page.getByText('School drop-off')).toBeVisible();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-preview-phone-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  const previewResults = await new AxeBuilder({ page }).analyze();
+  expect(
+    previewResults.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+
   await page.getByRole('switch', { name: /Dinner/ }).click();
   await page.getByRole('switch', { name: /Family photo/ }).click();
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -80,6 +109,32 @@ test('@visual and @a11y Today notice administration and customised television ov
   await expect(page.getByText('Bins go out tonight')).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'today-customised-tv-1080.png'),
+    animations: 'disabled',
+  });
+});
+
+test('@visual @a11y dark Today previews remain readable on phone', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'hearth.appearance.v1',
+      JSON.stringify({ theme: 'dark', eveningDimming: false }),
+    );
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/today');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Phone' }).click();
+  const preview = page.getByRole('img', { name: /phone Today preview/ });
+  await expect(preview).toBeVisible();
+  await preview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-preview-dark-phone-portrait.png'),
     animations: 'disabled',
   });
 });

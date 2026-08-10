@@ -167,6 +167,13 @@ Notice opens the full announcement in a Back-safe dialog. Automated remote-only
 TV and phone flows prove focus restoration, responsive composition, accessibility
 and clean console behaviour.
 
+Implementation extension (2026-08-10): **Today & notices** now previews the
+resulting TV and Phone compositions using current household content before an
+adult leaves settings. Visibility switches update the preview optimistically
+and execute serially, closing a rapid-toggle race that could previously restore
+an older switch value. Loading/unavailable preview data stays honest without
+blocking the independently persisted settings.
+
 ## Phase 4 — Lists, meals and pocket money
 
 Status: complete and locally verified with deterministic demo household data.

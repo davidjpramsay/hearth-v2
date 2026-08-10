@@ -8823,8 +8823,12 @@
 :root[data-theme='dark'] .pocket-money-history,
 :root[data-theme='dark'] .meal-week-settings,
 :root[data-theme='dark'] .saved-meal-library,
-:root[data-theme='dark'] .saved-meal-card {
+:root[data-theme='dark'] .saved-meal-card,
+:root[data-theme='dark'] .today-admin-section {
   background: var(--surface-glass);
+}
+:root[data-theme='dark'] .today-admin-section {
+  border-color: var(--hairline);
 }
 :root[data-theme='dark'] .routine-order-controls button {
   border-color: var(--line-strong);
