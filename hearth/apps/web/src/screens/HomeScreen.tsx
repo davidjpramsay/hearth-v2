@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import './HomeScreen.css';
+
 import type { DemoScenario, HomeAction, HomeActionId } from '@hearth/shared';
 
 import { createRequestId } from '../api/core';
