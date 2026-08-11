@@ -1,0 +1,234 @@
+/* Chores board composition. Shared chore-row primitives remain in app.css for Today. */
+.progress-track {
+  height: 8px;
+  margin: -8px 0 27px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #dfddd6;
+}
+
+.progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--eucalyptus);
+  transition: width 180ms ease;
+}
+
+.chore-groups {
+  display: grid;
+  grid-template-columns: repeat(var(--chore-column-count), minmax(0, 1fr));
+  gap: clamp(16px, 1.75vw, 34px);
+}
+
+.chore-group {
+  min-width: 0;
+}
+
+.chore-group > header {
+  min-height: 82px;
+  padding: 4px 5px 14px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.chore-group > header.chore-group__header--child {
+  min-height: 136px;
+  padding-inline: 0;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.chore-group__header--child .chore-person {
+  padding-inline: 5px;
+}
+
+.chore-person {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.chore-pocket-summary {
+  min-height: 48px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--eucalyptus) 32%, var(--hairline));
+  border-radius: 13px;
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+}
+
+.chore-pocket-summary > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chore-pocket-summary strong {
+  font-size: 20px;
+}
+
+.chore-pocket-summary span {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 680;
+}
+
+.chore-pocket-summary--muted {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-size: 18px;
+}
+
+.chore-pocket-progress {
+  height: 6px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--eucalyptus) 18%, var(--surface));
+}
+
+.chore-pocket-progress > span {
+  height: 100%;
+  border-radius: inherit;
+  display: block;
+  background: var(--eucalyptus);
+  transition: width 180ms ease;
+}
+
+.chore-group h2 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.chore-group p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 22px;
+}
+
+.chore-group .chore-row {
+  min-height: 104px;
+  padding-inline: 18px;
+}
+
+.chore-group .chore-row__copy strong {
+  font-size: 26px;
+}
+
+.chore-groups[data-column-count='4'] .chore-row__action > span:last-child {
+  display: none;
+}
+
+.chore-groups[data-density='compact'] .chore-group > header {
+  min-height: 70px;
+  padding-bottom: 10px;
+}
+
+.chore-groups[data-density='compact'] .chore-group .chore-row {
+  min-height: 76px;
+  padding-block: 8px;
+}
+
+.chore-groups[data-density='compact'] .chore-list {
+  gap: 8px;
+}
+
+.chore-groups[data-density='compact'] .chore-row__copy strong {
+  font-size: 23px;
+}
+
+.chore-groups[data-density='compact'] .chore-row__copy > span {
+  font-size: 19px;
+}
+
+:root[data-theme='dark'] .progress-track {
+  background: #343d39;
+}
+
+@media (max-width: 1500px) and (min-width: 901px) {
+  .chore-groups[data-column-count='3'] .chore-row__action,
+  .chore-groups[data-column-count='4'] .chore-row__action {
+    min-width: auto;
+  }
+
+  .chore-groups[data-column-count='3'] .chore-row__action > span:last-child,
+  .chore-groups[data-column-count='4'] .chore-row__action > span:last-child {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .chore-groups[data-column-count='3'] .chore-row__action > span:last-child,
+  .chore-groups[data-column-count='4'] .chore-row__action > span:last-child {
+    display: none;
+  }
+
+  .progress-track {
+    margin-top: -2px;
+    margin-bottom: 19px;
+  }
+
+  .chore-groups {
+    display: block;
+  }
+
+  .chore-group + .chore-group {
+    margin-top: 25px;
+  }
+
+  .chore-group > header {
+    min-height: 62px;
+    padding-bottom: 10px;
+  }
+
+  .chore-group > header.chore-group__header--child {
+    min-height: 126px;
+  }
+
+  .chore-pocket-summary strong {
+    font-size: 17px;
+  }
+
+  .chore-pocket-summary span {
+    font-size: 15px;
+  }
+
+  .chore-group h2 {
+    font-size: 24px;
+  }
+
+  .chore-group p {
+    font-size: 15px;
+  }
+
+  .chore-group .chore-row {
+    min-height: 78px;
+  }
+
+  .chore-groups[data-column-count] .chore-row__action > span:last-child {
+    display: inline;
+  }
+
+  .chore-groups[data-density='compact'] .chore-group .chore-row {
+    min-height: 72px;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .chore-groups {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 17px;
+  }
+
+  .chore-group + .chore-group {
+    margin-top: 0;
+  }
+}

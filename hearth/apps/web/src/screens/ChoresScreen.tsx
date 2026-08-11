@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 
+import './ChoresScreen.css';
+
 import type {
   ChoreGroup,
   ChoreOccurrence,
