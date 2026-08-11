@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { FocusMemory, focusById, nextFocusId } from './focusGraph';
+import { FocusMemory, focusById, focusIsWithin, nextFocusId } from './focusGraph';
 
 describe('focus graph', () => {
   it('moves only to the explicit directional neighbour', () => {
@@ -44,5 +44,21 @@ describe('focus graph', () => {
     memory.remember('/chores', 'chore-school-bag');
     expect(memory.recall('/week', 'week-first')).toBe('week-event-dentist');
     expect(memory.recall('/today', 'today-first')).toBe('today-first');
+  });
+
+  it('recognises an explicit form-field focus inside the current screen', () => {
+    document.body.innerHTML = `
+      <main id="main-content"><input aria-label="Chosen field" /></main>
+      <button data-focus-id="nav-admin">Admin</button>
+    `;
+    const content = document.querySelector('#main-content');
+    const input = document.querySelector('input');
+    expect(input).not.toBeNull();
+
+    input!.focus();
+    expect(focusIsWithin(content)).toBe(true);
+
+    document.querySelector<HTMLElement>('[data-focus-id="nav-admin"]')!.focus();
+    expect(focusIsWithin(content)).toBe(false);
   });
 });

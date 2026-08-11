@@ -1,7 +1,13 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { FocusMemory, focusById, nextFocusId, type FocusDirection } from './focusGraph';
+import {
+  FocusMemory,
+  focusById,
+  focusIsWithin,
+  nextFocusId,
+  type FocusDirection,
+} from './focusGraph';
 import { isNativeBackMessage, requestNativeExit } from '../native/nativeBridge';
 
 const arrowDirection: Partial<Record<string, FocusDirection>> = {
@@ -51,13 +57,19 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     // before paint so a fast follow-up D-pad key cannot act on the old rail item.
     if (routeChanged) focusById(target);
     const animationFrame = requestAnimationFrame(() => {
+      const content = document.querySelector('#main-content');
       const activeFocusId =
         document.activeElement instanceof HTMLElement
           ? document.activeElement.dataset.focusId
           : undefined;
-      // A remote key can arrive before this first animation frame on a fast TV.
-      // Never steal that explicit focus move during initial screen entry.
-      if (remoteMoved.current || (!routeChanged && activeFocusId !== undefined)) return;
+      // A remote key, tap or form-field focus can arrive before this first frame.
+      // Never steal that explicit interaction during initial screen entry.
+      if (
+        remoteMoved.current ||
+        focusIsWithin(content) ||
+        (!routeChanged && activeFocusId !== undefined)
+      )
+        return;
       if (
         !focusById(target, { scroll: scrollOnEntry }) &&
         target !== defaultFocusId &&
@@ -67,7 +79,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       }
     });
     const observer = new MutationObserver(() => {
-      if (remoteMoved.current) {
+      if (remoteMoved.current || focusIsWithin(content)) {
         observer.disconnect();
         return;
       }

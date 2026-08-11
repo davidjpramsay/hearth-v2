@@ -30,6 +30,12 @@ export function focusById(id: string | null, options: { scroll?: boolean } = {})
   return true;
 }
 
+export function focusIsWithin(container: Element | null): boolean {
+  return container !== null && document.activeElement instanceof HTMLElement
+    ? container.contains(document.activeElement)
+    : false;
+}
+
 export class FocusMemory {
   private readonly routes = new Map<string, string>();
 

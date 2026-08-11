@@ -141,6 +141,7 @@ export function PhotosScreen({
   function selectPhoto(photoId: string) {
     setSelectedId(photoId);
     setManualSelectionRevision((current) => current + 1);
+    requestAnimationFrame(() => focusById(`photos-thumb-${photoId}`));
   }
 
   function toggleRotation() {
@@ -269,7 +270,7 @@ export function PhotosScreen({
             <PhotoThumbnail
               item={item}
               items={visibleCollageItems}
-              key={item.photo.id}
+              key={item.slot}
               onSelect={() => selectPhoto(item.photo.id)}
               selected={item.photo.id === selected?.id}
             />

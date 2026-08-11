@@ -165,12 +165,14 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     'data-photo-id',
     'photo_family_breakfast',
   );
+  await expect(page.locator('.photos-hero')).toBeFocused();
   await expect(page.locator('.photos-collage--landscape')).toBeVisible();
   await expect(page.locator('.photos-hero')).not.toHaveAttribute(
     'data-photo-id',
     'photo_family_breakfast',
     { timeout: 2_000 },
   );
+  await expect(page.locator('.photos-hero')).toBeFocused();
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',
     'photo_park_football',
@@ -234,6 +236,45 @@ test('reduced motion keeps the Photos collage still', async ({ page }) => {
     'data-photo-id',
     'photo_family_breakfast',
   );
+});
+
+test('automatic rotation pauses while Hearth is hidden and resumes when it returns', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
+      nativeSetTimeout(
+        handler,
+        timeout === 30_000 ? 300 : timeout,
+        ...args,
+      )) as typeof window.setTimeout;
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/photos');
+  const feature = page.locator('.photos-hero');
+  await expect(feature).toHaveAttribute('data-photo-id', 'photo_family_breakfast');
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(500);
+  await expect(feature).toHaveAttribute('data-photo-id', 'photo_family_breakfast');
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(feature).not.toHaveAttribute('data-photo-id', 'photo_family_breakfast', {
+    timeout: 1_000,
+  });
 });
 
 test('Photos has deliberate empty, cached-unavailable and failure/retry states', async ({
