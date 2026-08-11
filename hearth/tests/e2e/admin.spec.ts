@@ -29,7 +29,7 @@ test.beforeEach(async ({ request }) => {
 test('phone More opens setup and household/member changes survive reload', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/today');
-  await page.getByRole('link', { name: 'More' }).click();
+  await page.getByRole('link', { name: 'More', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'More' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Lists/ })).toBeVisible();
   await page.getByRole('link', { name: /Household & people/ }).click();

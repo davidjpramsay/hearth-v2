@@ -84,7 +84,7 @@ test('phone Calendar exposes sources and More exposes family tools before settin
     /phone-tab--active/,
   );
   await expect(page.getByRole('link', { name: 'Sources' })).toBeVisible();
-  await page.getByRole('link', { name: 'More' }).click();
+  await page.getByRole('link', { name: 'More', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'More' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Lists/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /Connections/ })).toBeVisible();
