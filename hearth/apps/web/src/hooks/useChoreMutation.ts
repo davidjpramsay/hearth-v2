@@ -3,7 +3,9 @@ import { useState } from 'react';
 
 import type { ChoreCommandResult, ChoreList, ChoreOccurrence, TodaySummary } from '@hearth/shared';
 
-import { createRequestId, HearthApiError, hearthApi, queryKeys } from '../api/client';
+import { choresApi as hearthApi } from '../api/chores';
+import { createRequestId, HearthApiError } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 
 interface ChoreMutationVariables {
   action: 'complete' | 'undo';

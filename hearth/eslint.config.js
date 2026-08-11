@@ -55,6 +55,18 @@ export default tseslint.config(
     rules: {
       ...jsxA11y.flatConfigs.recommended.rules,
       ...reactHooks.configs.flat.recommended.rules,
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/api/client', '**/hooks/useHearthQueries', '**/hooks/usePlanningQueries'],
+              message:
+                'Import the feature-specific API or query module so lazy routes stay isolated.',
+            },
+          ],
+        },
+      ],
       'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
     },
   },

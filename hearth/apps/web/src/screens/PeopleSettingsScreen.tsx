@@ -2,13 +2,17 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, RotateCcw } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
-import { createRequestId, hearthApi, queryKeys, type HearthMember } from '../api/client';
+import type { Member as HearthMember } from '@hearth/shared';
+
+import { adminApi as hearthApi } from '../api/admin';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { MemberAvatarDialog } from '../components/MemberAvatarDialog';
 import { MemberColourPicker } from '../components/MemberColourPicker';
 import { DEFAULT_MEMBER_COLOUR } from '../components/memberColours';
-import { useAdminQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
 
 interface MemberFields {
   displayName: string;

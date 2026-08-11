@@ -4,16 +4,18 @@ import { Link } from 'react-router-dom';
 
 import type { SystemBackupStatus } from '@hearth/shared';
 
-import { HearthApiError, hearthApi, queryKeys } from '../api/client';
+import { adminApi as hearthApi } from '../api/admin';
+import { HearthApiError } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon, type IconName } from '../components/Icon';
 import { focusById } from '../focus/focusGraph';
+import { useSystemStatusQuery } from '../hooks/useAdminQueries';
 import {
   useCalendarConnectionQuery,
   useHomeAssistantConnectionQuery,
-  usePhotoSourceQuery,
-  useSystemStatusQuery,
-} from '../hooks/useHearthQueries';
+} from '../hooks/useConnectionQueries';
+import { usePhotoSourceQuery } from '../hooks/usePhotoQueries';
 import { useHearthRuntime } from '../runtime/context';
 
 export function SystemHealthScreen() {

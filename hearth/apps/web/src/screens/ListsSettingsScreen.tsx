@@ -4,10 +4,12 @@ import { useState, type FormEvent } from 'react';
 
 import type { HouseholdList, HouseholdListType, ListItem } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { createRequestId } from '../api/core';
+import { listsApi as hearthApi } from '../api/lists';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useListSettingsQuery } from '../hooks/useHearthQueries';
+import { useListSettingsQuery } from '../hooks/useListQueries';
 
 const listColours = [
   '#3f7251',

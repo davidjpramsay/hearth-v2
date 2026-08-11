@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { getHearthRuntime } from '../api/client';
+import { getHearthRuntime } from '../api/core';
 
 export function useHouseholdClock(): string {
   const runtime = getHearthRuntime();

@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom';
 
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
+import { useAdminQuery } from '../hooks/useAdminQueries';
 import {
-  useAdminQuery,
   useCalendarConnectionQuery,
   useHomeAssistantConnectionQuery,
-} from '../hooks/useHearthQueries';
+} from '../hooks/useConnectionQueries';
 
 export function ConnectionsSettingsScreen() {
   const admin = useAdminQuery();

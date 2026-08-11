@@ -3,12 +3,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { HouseholdNotice, TodayConfiguration, TodaySectionVisibility } from '@hearth/shared';
 
-import { createRequestId, getHearthRuntime, hearthApi, queryKeys } from '../api/client';
+import { createRequestId, getHearthRuntime } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
+import { todayApi as hearthApi } from '../api/today';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { TodayConfigurationPreview } from '../components/TodayConfigurationPreview';
 import { createTodayPreviewData } from '../components/todayPreviewData';
-import { useTodayConfigurationQuery, useTodayQuery } from '../hooks/useHearthQueries';
+import { useTodayConfigurationQuery, useTodayQuery } from '../hooks/useTodayQueries';
 
 const sectionOptions: Array<{
   key: keyof TodaySectionVisibility;

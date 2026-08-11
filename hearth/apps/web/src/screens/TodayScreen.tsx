@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import type { CalendarEvent, DemoScenario } from '@hearth/shared';
 
-import { hearthApi } from '../api/client';
+import { demoApi as hearthApi } from '../api/demo';
 import { ChoreRow } from '../components/ChoreRow';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { EventRow } from '../components/EventRow';
@@ -15,7 +15,7 @@ import { EmptyState, FailureState, LoadingState, StatusBanner } from '../compone
 import { SummaryBand } from '../components/SummaryBand';
 import { TodayPhoto } from '../components/TodayPhoto';
 import { useChoreMutation } from '../hooks/useChoreMutation';
-import { useTodayQuery } from '../hooks/useHearthQueries';
+import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
 

@@ -5,11 +5,13 @@ import { useSearchParams } from 'react-router-dom';
 import { addLocalDays, localDateOffset } from '@hearth/core';
 import type { Payday, PocketMoneyChildSummary, PocketMoneyPayment } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { createRequestId } from '../api/core';
+import { pocketMoneyApi as hearthApi } from '../api/pocketMoney';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
-import { usePocketMoneyQuery } from '../hooks/useHearthQueries';
+import { usePocketMoneyQuery } from '../hooks/usePocketMoneyQuery';
 import { useHearthRuntime } from '../runtime/context';
 
 const PAYDAYS: Array<{ value: Payday; label: string }> = [

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
-import { hearthApi } from '../api/client';
+import { runtimeApi as hearthApi } from '../api/runtime';
 import { useHearthRuntime } from '../runtime/context';
 import { authenticateWithPasskey, passkeysAvailable } from './passkeys';
 import { authStatusQueryKey } from './queryKeys';

@@ -4,7 +4,7 @@ import type { AuditSummary } from '@hearth/shared';
 
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useActivityQuery, useAdminQuery } from '../hooks/useHearthQueries';
+import { useActivityQuery, useAdminQuery } from '../hooks/useAdminQueries';
 import { useHearthRuntime } from '../runtime/context';
 import {
   activityFilters,

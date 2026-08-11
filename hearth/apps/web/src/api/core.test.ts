@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { configureHearthClient, createRequestId, hearthApi, queryKeys } from './client';
+import { configureHearthClient, createRequestId } from './core';
+import { queryKeys } from './queryKeys';
+import { getRealtimeUrl } from './realtime';
 
 const runtime = {
   mode: 'test' as const,
@@ -37,13 +39,13 @@ describe('createRequestId', () => {
   });
 });
 
-describe('runtime-configured client', () => {
+describe('runtime-configured API core', () => {
   it('derives household paths and date-sensitive query keys from runtime context', () => {
     configureHearthClient(runtime);
     expect(queryKeys.today).toEqual(['household_runtime_test', 'today', '2027-01-01']);
     expect(queryKeys.week()).toEqual(['household_runtime_test', 'week', '2026-12-28']);
     expect(queryKeys.week('2027-01-04')).toEqual(['household_runtime_test', 'week', '2027-01-04']);
     expect(queryKeys.month()).toEqual(['household_runtime_test', 'month', '2027-01']);
-    expect(hearthApi.realtimeUrl).toBe('/api/v1/households/household_runtime_test/events');
+    expect(getRealtimeUrl()).toBe('/api/v1/households/household_runtime_test/events');
   });
 });

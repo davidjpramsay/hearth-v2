@@ -3,7 +3,9 @@ import { useState } from 'react';
 
 import type { HouseholdLists, ListItem, ListItemCommandResult } from '@hearth/shared';
 
-import { createRequestId, HearthApiError, hearthApi, queryKeys } from '../api/client';
+import { createRequestId, HearthApiError } from '../api/core';
+import { listsApi as hearthApi } from '../api/lists';
+import { queryKeys } from '../api/queryKeys';
 
 interface ListMutationVariables {
   item: ListItem;

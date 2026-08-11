@@ -4,10 +4,12 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 
 import type { MealPlan, MealPlanEntryInput, SavedMeal } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { createRequestId } from '../api/core';
+import { mealsApi as hearthApi } from '../api/meals';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useMealPlanQuery, useSavedMealLibraryQuery } from '../hooks/useHearthQueries';
+import { useMealPlanQuery, useSavedMealLibraryQuery } from '../hooks/useMealQueries';
 import { useHearthRuntime } from '../runtime/context';
 
 interface SavedMealFields {

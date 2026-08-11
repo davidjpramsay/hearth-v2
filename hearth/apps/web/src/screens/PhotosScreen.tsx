@@ -4,13 +4,13 @@ import { useNavigate } from 'react-router-dom';
 
 import type { DemoScenario } from '@hearth/shared';
 
-import { hearthApi } from '../api/client';
+import { demoApi as hearthApi } from '../api/demo';
 import { Icon } from '../components/Icon';
 import { PhotoAssetImage } from '../components/PhotoAssetImage';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
-import { usePhotosQuery } from '../hooks/useHearthQueries';
+import { usePhotosQuery } from '../hooks/usePhotoQueries';
 import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {

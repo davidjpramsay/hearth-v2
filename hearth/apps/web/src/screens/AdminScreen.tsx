@@ -2,11 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IconName } from '../components/Icon';
 import { Link } from 'react-router-dom';
 
-import { hearthApi } from '../api/client';
+import { runtimeApi as hearthApi } from '../api/runtime';
 import { authStatusQueryKey } from '../auth/queryKeys';
 import { AdminError, AdminLoading } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useAdminQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useHearthRuntime } from '../runtime/context';
 
 interface Setting {

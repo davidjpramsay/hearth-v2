@@ -7,10 +7,12 @@ import type {
   SaveHomeAssistantConnectionRequest,
 } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { connectionsApi as hearthApi } from '../api/connections';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useHomeAssistantConnectionQuery } from '../hooks/useHearthQueries';
+import { useHomeAssistantConnectionQuery } from '../hooks/useConnectionQueries';
 import { useHearthRuntime } from '../runtime/context';
 
 type MappingSelection = SaveHomeAssistantConnectionRequest['mappings'];

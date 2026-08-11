@@ -1,0 +1,36 @@
+import {
+  PasskeyAuthStatusSchema,
+  PasskeyCeremonyOptionsSchema,
+  PasskeySessionSchema,
+  PasskeySignOutResultSchema,
+  RuntimeContextSchema,
+  type FirstUsePasskeyOptionsRequest,
+} from '@hearth/shared';
+
+import { API_BASE, request } from './core';
+
+export const runtimeApi = {
+  getRuntime: () => request(`${API_BASE}/runtime`, RuntimeContextSchema),
+  getAuthStatus: () => request(`${API_BASE}/auth/status`, PasskeyAuthStatusSchema),
+  getFirstUseRegistrationOptions: (input: FirstUsePasskeyOptionsRequest) =>
+    request(`${API_BASE}/auth/first-use/registration-options`, PasskeyCeremonyOptionsSchema, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  verifyFirstUseRegistration: (ceremonyId: string, response: Record<string, unknown>) =>
+    request(`${API_BASE}/auth/first-use/registration-verifications`, PasskeySessionSchema, {
+      method: 'POST',
+      body: JSON.stringify({ ceremonyId, response }),
+    }),
+  getAuthenticationOptions: () =>
+    request(`${API_BASE}/auth/authentication-options`, PasskeyCeremonyOptionsSchema, {
+      method: 'POST',
+    }),
+  verifyAuthentication: (ceremonyId: string, response: Record<string, unknown>) =>
+    request(`${API_BASE}/auth/authentication-verifications`, PasskeySessionSchema, {
+      method: 'POST',
+      body: JSON.stringify({ ceremonyId, response }),
+    }),
+  signOut: () =>
+    request(`${API_BASE}/auth/sign-outs`, PasskeySignOutResultSchema, { method: 'POST' }),
+};

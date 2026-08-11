@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 
 import { DemoScenarioSchema, type DemoScenario } from '@hearth/shared';
 
-import { hearthApi, queryKeys } from '../api/client';
+import { demoApi as hearthApi } from '../api/demo';
+import { queryKeys } from '../api/queryKeys';
 import { useHearthRuntime } from '../runtime/context';
 
 export function useScenario(): {

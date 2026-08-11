@@ -7,7 +7,7 @@ import {
 
 import type { FirstUsePasskeyOptionsRequest, PasskeySession } from '@hearth/shared';
 
-import { hearthApi } from '../api/client';
+import { runtimeApi as hearthApi } from '../api/runtime';
 
 export async function createFirstUsePasskey(
   input: FirstUsePasskeyOptionsRequest,

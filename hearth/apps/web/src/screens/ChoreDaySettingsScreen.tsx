@@ -1,23 +1,16 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import type { ChoreOccurrence, Member } from '@hearth/shared';
+import type { ChoreOccurrence, ChoreOccurrenceChangeResult, Member } from '@hearth/shared';
 
-import {
-  createRequestId,
-  HearthApiError,
-  hearthApi,
-  queryKeys,
-  type HearthChoreOccurrenceChangeResult,
-} from '../api/client';
+import { choresApi as hearthApi } from '../api/chores';
+import { createRequestId, HearthApiError } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
-import {
-  useAdminQuery,
-  useChoreOccurrenceDetailQuery,
-  useChoresQuery,
-} from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
+import { useChoreOccurrenceDetailQuery, useChoresQuery } from '../hooks/useChoreQueries';
 import { formatChoreTiming } from '../utils/choreTiming';
 
 type ManagementAction = 'skip' | 'excuse' | 'reassign';
@@ -35,7 +28,7 @@ export function ChoreDaySettingsScreen() {
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
   const [confirmation, setConfirmation] = useState<string | null>(null);
-  const mutation = useMutation<HearthChoreOccurrenceChangeResult, Error, ManagementVariables>({
+  const mutation = useMutation<ChoreOccurrenceChangeResult, Error, ManagementVariables>({
     mutationFn: ({ action, occurrence, reason, assigneeId, requestId }) => {
       if (action === 'skip') return hearthApi.skipChore(occurrence.id, requestId, reason);
       if (action === 'excuse') return hearthApi.excuseChore(occurrence.id, requestId, reason);
@@ -132,7 +125,7 @@ function ChoreOccurrenceManager({
 }: {
   occurrence: ChoreOccurrence;
   members: Member[];
-  mutation: UseMutationResult<HearthChoreOccurrenceChangeResult, Error, ManagementVariables>;
+  mutation: UseMutationResult<ChoreOccurrenceChangeResult, Error, ManagementVariables>;
   primary: boolean;
 }) {
   const [open, setOpen] = useState(false);

@@ -11,7 +11,7 @@ import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
-import { useWeekQuery } from '../hooks/useHearthQueries';
+import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
 import { eventsForDay, forecastIcon } from '../utils/calendar';

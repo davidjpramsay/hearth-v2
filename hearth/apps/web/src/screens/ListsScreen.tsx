@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom';
 
 import type { DemoScenario, ListItem } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { createRequestId } from '../api/core';
+import { listsApi as hearthApi } from '../api/lists';
+import { queryKeys } from '../api/queryKeys';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useListMutation } from '../hooks/useListMutation';
-import { useListsQuery } from '../hooks/useHearthQueries';
+import { useListsQuery } from '../hooks/useListQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export function ListsScreen({

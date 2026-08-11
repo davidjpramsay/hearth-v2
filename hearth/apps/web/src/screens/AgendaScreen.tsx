@@ -10,7 +10,7 @@ import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
-import { useWeekQuery } from '../hooks/useHearthQueries';
+import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
 

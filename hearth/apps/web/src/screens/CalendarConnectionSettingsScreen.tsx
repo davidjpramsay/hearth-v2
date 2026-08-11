@@ -3,10 +3,13 @@ import { useState, type FormEvent } from 'react';
 
 import type { CalendarConnectionTestResult } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { connectionsApi as hearthApi } from '../api/connections';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useAdminQuery, useCalendarConnectionQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
+import { useCalendarConnectionQuery } from '../hooks/useConnectionQueries';
 
 type OwnerByCalendar = Record<string, string>;
 

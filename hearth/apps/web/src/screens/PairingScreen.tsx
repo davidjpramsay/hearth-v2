@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { createRequestId, hearthApi } from '../api/client';
+import { createRequestId } from '../api/core';
+import { pairingApi as hearthApi } from '../api/pairing';
 import { Icon } from '../components/Icon';
 
 export function PairingScreen() {

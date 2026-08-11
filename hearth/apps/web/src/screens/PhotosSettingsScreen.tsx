@@ -3,12 +3,14 @@ import type { PhotoCurationAction, PhotoCurationAsset } from '@hearth/shared';
 import { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
-import { createRequestId, getHearthRuntime, hearthApi, queryKeys } from '../api/client';
+import { createRequestId, getHearthRuntime } from '../api/core';
+import { photosApi as hearthApi } from '../api/photos';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { PhotoAssetImage } from '../components/PhotoAssetImage';
 import { focusById } from '../focus/focusGraph';
-import { usePhotoSourceQuery } from '../hooks/useHearthQueries';
+import { usePhotoSourceQuery } from '../hooks/usePhotoQueries';
 
 export function PhotosSettingsScreen() {
   const source = usePhotoSourceQuery();

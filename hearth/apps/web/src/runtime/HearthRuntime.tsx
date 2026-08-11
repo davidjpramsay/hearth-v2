@@ -1,10 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 
-import { configureHearthClient, hearthApi } from '../api/client';
-import { FirstUseSetup } from '../auth/FirstUseSetup';
+import { configureHearthClient } from '../api/core';
+import { runtimeApi as hearthApi } from '../api/runtime';
 import { authStatusQueryKey } from '../auth/queryKeys';
 import { RuntimeContextValue } from './context';
+
+const FirstUseSetup = lazy(async () => ({
+  default: (await import('../auth/FirstUseSetup')).FirstUseSetup,
+}));
 
 export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -70,16 +74,18 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
         );
       }
       return (
-        <FirstUseSetup
-          runtime={runtime.data}
-          auth={auth.data}
-          onComplete={async () => {
-            await Promise.all([
-              queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] }),
-              queryClient.invalidateQueries({ queryKey: authStatusQueryKey }),
-            ]);
-          }}
-        />
+        <Suspense fallback={<SecureSetupLoading />}>
+          <FirstUseSetup
+            runtime={runtime.data}
+            auth={auth.data}
+            onComplete={async () => {
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] }),
+                queryClient.invalidateQueries({ queryKey: authStatusQueryKey }),
+              ]);
+            }}
+          />
+        </Suspense>
       );
     }
     return (
@@ -97,5 +103,15 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
   configureHearthClient(runtime.data);
   return (
     <RuntimeContextValue.Provider value={runtime.data}>{children}</RuntimeContextValue.Provider>
+  );
+}
+
+function SecureSetupLoading() {
+  return (
+    <main className="runtime-gate" aria-busy="true" aria-live="polite">
+      <img alt="" src="/brand/hearth-mark.png" />
+      <h1>Preparing secure setup</h1>
+      <p>Loading this Hearth’s private setup tools…</p>
+    </main>
   );
 }

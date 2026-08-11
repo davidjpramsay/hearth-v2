@@ -1,19 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 
-import type { ChoreTemplate } from '@hearth/shared';
+import type { ChoreTemplate, Member as HearthMember } from '@hearth/shared';
 
-import {
-  createRequestId,
-  hearthApi,
-  queryKeys,
-  type ChoreTemplateInput,
-  type HearthMember,
-} from '../api/client';
+import { choresApi as hearthApi, type ChoreTemplateInput } from '../api/chores';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
-import { useAdminQuery, useChoreTemplatesQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
+import { useChoreTemplatesQuery } from '../hooks/useChoreQueries';
 import { useHearthRuntime } from '../runtime/context';
 import { formatChoreTiming } from '../utils/choreTiming';
 

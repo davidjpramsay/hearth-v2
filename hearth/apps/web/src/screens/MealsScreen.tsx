@@ -6,7 +6,7 @@ import type { DemoScenario } from '@hearth/shared';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState } from '../components/Status';
-import { useMealPlanQuery } from '../hooks/useHearthQueries';
+import { useMealPlanQuery } from '../hooks/useMealQueries';
 import { useHearthRuntime } from '../runtime/context';
 
 export function MealsScreen({

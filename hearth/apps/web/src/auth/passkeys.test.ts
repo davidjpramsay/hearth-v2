@@ -17,8 +17,8 @@ const {
 }));
 
 vi.mock('@simplewebauthn/browser', () => ({ startRegistration, startAuthentication }));
-vi.mock('../api/client', () => ({
-  hearthApi: {
+vi.mock('../api/runtime', () => ({
+  runtimeApi: {
     getFirstUseRegistrationOptions,
     verifyFirstUseRegistration,
     getAuthenticationOptions,

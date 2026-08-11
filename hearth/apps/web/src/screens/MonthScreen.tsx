@@ -7,7 +7,7 @@ import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
-import { useMonthQuery } from '../hooks/useHearthQueries';
+import { useMonthQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
 import { formatEventTime } from '../utils/date';

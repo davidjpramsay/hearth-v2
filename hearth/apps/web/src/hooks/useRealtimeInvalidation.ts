@@ -3,14 +3,15 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { RealtimeEventSchema } from '@hearth/shared';
 
-import { hearthApi, queryKeys } from '../api/client';
+import { queryKeys } from '../api/queryKeys';
+import { getRealtimeUrl } from '../api/realtime';
 
 export function useRealtimeInvalidation(): void {
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (typeof EventSource === 'undefined') return undefined;
-    const source = new EventSource(hearthApi.realtimeUrl);
+    const source = new EventSource(getRealtimeUrl());
     const receive = (message: MessageEvent<string>) => {
       let payload: unknown;
       try {

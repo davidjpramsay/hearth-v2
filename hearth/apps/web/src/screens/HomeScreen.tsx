@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 
 import type { DemoScenario, HomeAction, HomeActionId } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { createRequestId } from '../api/core';
+import { homeApi as hearthApi } from '../api/home';
+import { queryKeys } from '../api/queryKeys';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
-import { useHomeQuery } from '../hooks/useHearthQueries';
+import { useHomeQuery } from '../hooks/useHomeQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export function HomeScreen({

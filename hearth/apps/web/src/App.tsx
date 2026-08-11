@@ -2,13 +2,16 @@ import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 import { useAppearance } from './appearance/appearance';
-import { AdminAuthBoundary } from './auth/AdminAuthBoundary';
 import { AppShell } from './components/AppShell';
 import { LoadingState } from './components/Status';
 import { useRemoteNavigation } from './focus/useRemoteNavigation';
 import { useScenario } from './hooks/useScenario';
 import { useRealtimeInvalidation } from './hooks/useRealtimeInvalidation';
 import { TodayScreen } from './screens/TodayScreen';
+
+const AdminAuthBoundary = lazy(async () => ({
+  default: (await import('./auth/AdminAuthBoundary')).AdminAuthBoundary,
+}));
 
 const WeekScreen = lazy(async () => ({
   default: (await import('./screens/WeekScreen')).WeekScreen,

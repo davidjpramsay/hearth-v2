@@ -12,7 +12,8 @@ import { ChoreRow } from '../components/ChoreRow';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState } from '../components/Status';
 import { useChoreMutation } from '../hooks/useChoreMutation';
-import { useChoresQuery, usePocketMoneyQuery } from '../hooks/useHearthQueries';
+import { useChoresQuery } from '../hooks/useChoreQueries';
+import { usePocketMoneyQuery } from '../hooks/usePocketMoneyQuery';
 
 export function ChoresScreen({
   scenario: _scenario,
