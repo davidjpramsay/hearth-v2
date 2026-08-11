@@ -2,6 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import './PhotosScreen.css';
+
 import type { DemoScenario } from '@hearth/shared';
 
 import { demoApi as hearthApi } from '../api/demo';

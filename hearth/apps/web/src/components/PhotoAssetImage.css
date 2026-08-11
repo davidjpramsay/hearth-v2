@@ -1,0 +1,21 @@
+.photo-image-fallback {
+  min-height: 160px;
+  border: 1px dashed #c8c4bb;
+  border-radius: inherit;
+  color: var(--muted);
+  background: var(--surface-muted);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  font-size: 20px;
+}
+
+.photo-image-fallback svg {
+  width: 42px;
+  height: 42px;
+}
+
+:root[data-theme='dark'] .photo-image-fallback {
+  border-color: var(--hairline);
+}

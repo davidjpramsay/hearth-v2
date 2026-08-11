@@ -3,6 +3,8 @@ import type { PhotoCurationAction, PhotoCurationAsset } from '@hearth/shared';
 import { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
+import './PhotosSettingsScreen.css';
+
 import { createRequestId, getHearthRuntime } from '../api/core';
 import { photosApi as hearthApi } from '../api/photos';
 import { queryKeys } from '../api/queryKeys';

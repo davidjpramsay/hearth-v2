@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import './PhotoAssetImage.css';
+
 import { Icon } from './Icon';
 
 export function PhotoAssetImage({
