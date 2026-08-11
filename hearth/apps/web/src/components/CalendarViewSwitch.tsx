@@ -1,5 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 
+import './CalendarSurface.css';
+
 import { Icon } from './Icon';
 
 export function CalendarViewSwitch() {
