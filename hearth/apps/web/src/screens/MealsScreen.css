@@ -1,0 +1,277 @@
+/* Family-facing dinner plan. Multi-night editing remains in MealsSettingsScreen. */
+.tonight-band {
+  min-height: 165px;
+  padding: 26px 32px;
+  border: 1px solid #b7c9b7;
+  border-radius: 23px;
+  display: flex;
+  align-items: center;
+  gap: 27px;
+  color: #344b38;
+  background: linear-gradient(120deg, #e5eee2, #f3eee3);
+}
+
+.tonight-band > svg {
+  width: 64px;
+  height: 64px;
+}
+
+.tonight-band p,
+.tonight-band h2,
+.tonight-band span {
+  display: block;
+  margin: 0;
+}
+
+.tonight-band p {
+  color: #52705a;
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tonight-band h2 {
+  margin-top: 2px;
+  font-size: 42px;
+  letter-spacing: -0.02em;
+}
+
+.tonight-band span {
+  margin-top: 4px;
+  color: #5e6860;
+  font-size: 22px;
+}
+
+.meal-week {
+  margin-top: 23px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.meal-day {
+  min-height: 142px;
+  padding: 17px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 11px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.meal-day > span {
+  color: var(--muted);
+  font-size: 21px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.meal-day strong {
+  font-size: 23px;
+  line-height: 1.12;
+}
+
+.meal-day--selected {
+  border-color: #d6a778;
+  background: #fff1e5;
+}
+
+.meal-actions {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.meal-action {
+  min-height: 105px;
+  padding: 17px 22px;
+  border: 1px solid var(--hairline);
+  border-radius: 19px;
+  display: grid;
+  grid-template-columns: 43px 1fr 28px;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.meal-action > svg:first-child {
+  width: 36px;
+  height: 36px;
+  color: var(--terracotta);
+}
+
+.meal-action span,
+.meal-action strong,
+.meal-action small {
+  display: block;
+}
+
+.meal-action strong {
+  font-size: 25px;
+}
+
+.meal-action small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.meal-week-controls {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.meal-week-controls button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #b6c3b2;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: white;
+  font-weight: 700;
+}
+
+.meals-manage-link {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .meals-screen .screen-header__actions {
+    margin-left: auto;
+  }
+
+  .meals-manage-link {
+    min-height: 44px;
+    padding: 0 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    color: var(--plum);
+    background: var(--surface-raised);
+    font-size: 14px;
+    font-weight: 720;
+    text-decoration: none;
+  }
+
+  .tonight-band {
+    min-height: 115px;
+    padding: 17px 18px;
+    border-radius: 17px;
+    gap: 16px;
+  }
+
+  .tonight-band > svg {
+    width: 42px;
+    height: 42px;
+  }
+
+  .tonight-band p {
+    font-size: 14px;
+  }
+
+  .tonight-band h2 {
+    font-size: 27px;
+  }
+
+  .tonight-band span {
+    font-size: 15px;
+  }
+
+  .meal-week {
+    margin: 15px -18px 0;
+    padding: 0 18px 5px;
+    overflow-x: auto;
+    display: flex;
+    gap: 9px;
+  }
+
+  .meal-day {
+    min-width: 118px;
+    min-height: 100px;
+    padding: 12px 10px;
+  }
+
+  .meal-day > span {
+    font-size: 14px;
+  }
+
+  .meal-day strong {
+    font-size: 16px;
+  }
+
+  .meal-actions,
+  .meal-week-controls {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .meals-screen .tonight-band {
+    min-height: 92px;
+    padding: 10px 16px;
+    gap: 12px;
+  }
+
+  .meals-screen .tonight-band > svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .meals-screen .tonight-band p {
+    font-size: 12px;
+  }
+
+  .meals-screen .tonight-band h2 {
+    font-size: 23px;
+  }
+
+  .meals-screen .tonight-band span {
+    font-size: 14px;
+  }
+
+  .meals-screen .meal-week {
+    margin-top: 10px;
+  }
+
+  .meals-screen .meal-day {
+    min-height: 88px;
+    padding: 10px;
+  }
+}
+
+:root[data-theme='dark'] .meal-week-controls button {
+  border-color: var(--hairline);
+  color: var(--ink);
+  background: var(--input-surface);
+}
+
+:root[data-theme='dark'] .tonight-band {
+  border-color: #48594b;
+  color: var(--ink);
+  background: linear-gradient(120deg, #26382d, #373126);
+}
+
+:root[data-theme='dark'] .tonight-band p,
+:root[data-theme='dark'] .tonight-band span {
+  color: #bad0c0;
+}
+
+:root[data-theme='dark'] .meal-day--selected {
+  border-color: var(--ochre);
+  background: var(--ochre-soft);
+}

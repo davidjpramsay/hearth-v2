@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import './MealsScreen.css';
+
 import type { DemoScenario } from '@hearth/shared';
 
 import { Icon } from '../components/Icon';
