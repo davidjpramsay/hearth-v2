@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildServer, LOGGER_REDACT_PATHS } from './app.js';
+import type { CompanionAuthRepository } from './companion-auth.js';
 import { HomeService } from './home-repository.js';
 import { FakeHomeAssistantProvider } from './integrations/home-assistant-provider.js';
 import {
@@ -9,6 +10,7 @@ import {
   type PhotoDerivativeVariant,
 } from './integrations/photo-source.js';
 import { PhotoService } from './photo-repository.js';
+import { RepositoryError } from './repository.js';
 import { FixedClock } from './runtime-context.js';
 
 const servers: ReturnType<typeof buildServer>[] = [];
@@ -19,6 +21,65 @@ afterEach(async () => {
 
 function server() {
   const instance = buildServer({ logger: false });
+  servers.push(instance);
+  return instance;
+}
+
+function privateCompanionAuth(): CompanionAuthRepository {
+  const session = (token: string) => {
+    if (token !== 'private-session') {
+      throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+    }
+    return {
+      authenticated: true as const,
+      householdId: 'household_hearth_demo',
+      memberId: 'member_maya',
+      displayName: 'Maya',
+      expiresAt: '2027-01-31T00:00:00.000Z',
+    };
+  };
+  return {
+    status: (token) => ({
+      mode: 'private',
+      configured: true,
+      secureOrigin: true,
+      requiresSetup: false,
+      authenticated: token === 'private-session',
+      actor:
+        token === 'private-session'
+          ? { id: 'member_maya', displayName: 'Maya', role: 'adult' }
+          : null,
+    }),
+    firstUseRegistrationOptions: async () => {
+      throw new RepositoryError('CONFLICT', 'Setup is already complete.');
+    },
+    verifyFirstUseRegistration: async () => {
+      throw new RepositoryError('CONFLICT', 'Setup is already complete.');
+    },
+    authenticationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    verifyAuthentication: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    session,
+    authenticate: (token) => ({ id: session(token).memberId, type: 'member', source: 'companion' }),
+    signOut: () => undefined,
+    sessionCookie: (token) => `hearth_session=${token}; HttpOnly; SameSite=Strict`,
+    clearSessionCookie: () => 'hearth_session=; Max-Age=0; HttpOnly; SameSite=Strict',
+  };
+}
+
+function privateHouseholdServer() {
+  const instance = buildServer({
+    logger: false,
+    companionAuth: privateCompanionAuth(),
+    runtime: {
+      mode: 'private',
+      householdId: 'household_hearth_demo',
+      clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+    },
+  });
   servers.push(instance);
   return instance;
 }
@@ -171,6 +232,111 @@ describe('Hearth v2 API', () => {
       payload: { scenario: 'healthy' },
     });
     expect(demoControl.statusCode).toBe(404);
+  });
+
+  it('keeps private household reads behind companion or paired-TV credentials', async () => {
+    const app = privateHouseholdServer();
+    const base = '/api/v1/households/household_hearth_demo';
+
+    const anonymousRuntime = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(anonymousRuntime.statusCode).toBe(200);
+    expect(anonymousRuntime.json()).toMatchObject({
+      mode: 'private',
+      household: null,
+      requiresSetup: false,
+    });
+    expect(JSON.stringify(anonymousRuntime.json())).not.toContain('Hearth Demo Home');
+
+    const privateReadUrls = [
+      `${base}/today?date=2026-08-03`,
+      `${base}/week?start=2026-08-03`,
+      `${base}/month?month=2026-08`,
+      `${base}/photos`,
+      `${base}/members/member_maya/avatar`,
+      `${base}/chore-occurrences?date=2026-08-03`,
+      `${base}/home`,
+      `${base}/lists`,
+      `${base}/meal-plan?weekStart=2026-08-03`,
+      `${base}/pocket-money?weekStart=2026-08-03&asOf=2026-08-03`,
+      `${base}/events`,
+    ];
+    for (const url of privateReadUrls) {
+      const response = await app.inject({ method: 'GET', url });
+      expect(response.statusCode, url).toBe(401);
+      expect(response.json().error.code, url).toBe('UNAUTHENTICATED');
+    }
+
+    const companionCookie = { cookie: 'hearth_session=private-session' };
+    const signedInRuntime = await app.inject({
+      method: 'GET',
+      url: '/api/v1/runtime',
+      headers: companionCookie,
+    });
+    expect(signedInRuntime.statusCode).toBe(200);
+    expect(signedInRuntime.json()).toMatchObject({
+      household: { id: 'household_hearth_demo', name: 'Hearth Demo Home' },
+    });
+    const signedInToday = await app.inject({
+      method: 'GET',
+      url: `${base}/today?date=2026-08-03`,
+      headers: companionCookie,
+    });
+    expect(signedInToday.statusCode).toBe(200);
+
+    const wrongHousehold = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_other/today?date=2026-08-03',
+      headers: companionCookie,
+    });
+    expect(wrongHousehold.statusCode).toBe(403);
+    expect(wrongHousehold.json().error.code).toBe('FORBIDDEN');
+
+    const pairingSecret = 'private-tv-pairing-secret-0123456789abcdef0';
+    const pairing = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tv-pairing-sessions',
+      payload: {
+        requestId: 'request_private_tv_pairing',
+        deviceName: 'Living room TV',
+        pairingSecret,
+        applicationVersion: '0.1.0',
+      },
+    });
+    expect(pairing.statusCode).toBe(200);
+    const pairingBody = pairing.json();
+    const approval = await app.inject({
+      method: 'POST',
+      url: `${base}/pairing-approvals`,
+      headers: companionCookie,
+      payload: {
+        requestId: 'request_private_tv_approval',
+        code: pairingBody.pairing.code,
+      },
+    });
+    expect(approval.statusCode).toBe(200);
+    const exchange = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tv-pairing-sessions/${pairingBody.pairing.id}/credential-exchanges`,
+      payload: {
+        requestId: 'request_private_tv_exchange',
+        pairingSecret,
+      },
+    });
+    expect(exchange.statusCode).toBe(200);
+
+    const televisionRuntime = await app.inject({
+      method: 'GET',
+      url: '/api/v1/runtime',
+      headers: { cookie: `hearth_device=${pairingSecret}` },
+    });
+    expect(televisionRuntime.statusCode).toBe(200);
+    expect(televisionRuntime.json().household.id).toBe('household_hearth_demo');
+    const televisionToday = await app.inject({
+      method: 'GET',
+      url: `${base}/today?date=2026-08-03`,
+      headers: { cookie: `hearth_device=${pairingSecret}` },
+    });
+    expect(televisionToday.statusCode).toBe(200);
   });
 
   it('returns schema-valid Today, Week, Month and Chores projections', async () => {
@@ -381,11 +547,11 @@ describe('Hearth v2 API', () => {
   });
 
   it('keeps private Photos unconfigured until an approved source is selected', async () => {
-    const app = buildServer({ logger: false, demoMode: false });
-    servers.push(app);
+    const app = privateHouseholdServer();
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/households/household_hearth_demo/photos',
+      headers: { cookie: 'hearth_session=private-session' },
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
@@ -2086,11 +2252,11 @@ describe('Hearth v2 API', () => {
   });
 
   it('fails closed for private Home/Assist commands without a configured service identity', async () => {
-    const app = buildServer({ logger: false, demoMode: false });
-    servers.push(app);
+    const app = privateHouseholdServer();
     const status = await app.inject({
       method: 'GET',
       url: '/api/v1/households/household_hearth_demo/home',
+      headers: { cookie: 'hearth_session=private-session' },
     });
     const action = await app.inject({
       method: 'POST',

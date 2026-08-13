@@ -31,6 +31,10 @@ const CEREMONY_LIFETIME_MS = 5 * 60 * 1000;
 const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 const INVALID_SETUP_WINDOW_MS = 15 * 60 * 1000;
 const MAX_INVALID_SETUP_ATTEMPTS = 5;
+const AUTHENTICATION_ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
+const MAX_AUTHENTICATION_OPTIONS_PER_ADDRESS = 20;
+const MAX_PENDING_AUTHENTICATION_CEREMONIES = 128;
+const MAX_TRACKED_AUTHENTICATION_ADDRESSES = 512;
 const ADULT_CAPABILITIES = [
   'household.admin',
   'household.view',
@@ -191,7 +195,7 @@ export interface CompanionAuthRepository {
     ceremonyId: string,
     response: unknown,
   ): Promise<{ session: PasskeySession; token: string }>;
-  authenticationOptions(): Promise<PasskeyCeremonyOptions>;
+  authenticationOptions(remoteAddress: string): Promise<PasskeyCeremonyOptions>;
   verifyAuthentication(
     ceremonyId: string,
     response: unknown,
@@ -207,6 +211,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
   private readonly registrationCeremonies = new Map<string, RegistrationCeremony>();
   private readonly authenticationCeremonies = new Map<string, AuthenticationCeremony>();
   private readonly invalidSetupAttempts = new Map<string, InvalidSetupAttempts>();
+  private readonly authenticationAttempts = new Map<string, InvalidSetupAttempts>();
   private readonly now: () => Date;
   private readonly engine: PasskeyEngine;
 
@@ -366,9 +371,17 @@ export class CompanionAuthService implements CompanionAuthRepository {
     return session;
   }
 
-  async authenticationOptions(): Promise<PasskeyCeremonyOptions> {
+  async authenticationOptions(remoteAddress: string): Promise<PasskeyCeremonyOptions> {
     if (this.householdId() === null) {
       throw new RepositoryError('CONFLICT', 'Finish first-use setup before signing in.');
+    }
+    this.pruneExpiredAuthenticationState();
+    this.recordAuthenticationAttempt(remoteAddress);
+    if (this.authenticationCeremonies.size >= MAX_PENDING_AUTHENTICATION_CEREMONIES) {
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Too many sign-in attempts are already open. Wait a few minutes and try again.',
+      );
     }
     const options = await this.engine.authenticationOptions({ rpId: this.configuration.rpId });
     const ceremonyId = opaqueId('ceremony_authentication');
@@ -597,6 +610,40 @@ export class CompanionAuthService implements CompanionAuthRepository {
       return;
     }
     current.count += 1;
+  }
+
+  private recordAuthenticationAttempt(remoteAddress: string): void {
+    const now = this.now().getTime();
+    const current = this.authenticationAttempts.get(remoteAddress);
+    if (current !== undefined) {
+      if (current.count >= MAX_AUTHENTICATION_OPTIONS_PER_ADDRESS) {
+        throw new RepositoryError(
+          'FORBIDDEN',
+          'Too many sign-in attempts. Wait a few minutes and try again.',
+        );
+      }
+      current.count += 1;
+      return;
+    }
+    if (this.authenticationAttempts.size >= MAX_TRACKED_AUTHENTICATION_ADDRESSES) {
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Too many sign-in attempts. Wait a few minutes and try again.',
+      );
+    }
+    this.authenticationAttempts.set(remoteAddress, { count: 1, windowStartedAt: now });
+  }
+
+  private pruneExpiredAuthenticationState(): void {
+    const now = this.now().getTime();
+    for (const [ceremonyId, ceremony] of this.authenticationCeremonies) {
+      if (ceremony.expiresAt <= now) this.authenticationCeremonies.delete(ceremonyId);
+    }
+    for (const [remoteAddress, attempt] of this.authenticationAttempts) {
+      if (now - attempt.windowStartedAt >= AUTHENTICATION_ATTEMPT_WINDOW_MS) {
+        this.authenticationAttempts.delete(remoteAddress);
+      }
+    }
   }
 
   private takeRegistrationCeremony(ceremonyId: string): RegistrationCeremony {

@@ -314,6 +314,13 @@ theme reporting remain untested until the physical-TV pilot.
   code and a user-verified passkey; Admin then requires a valid revocable `HttpOnly` companion
   session. The database stores public-key material and session hashes, never the setup code or raw
   session token.
+- After private first use, an unauthenticated browser cannot discover the household identifier or
+  name through runtime bootstrap and receives `UNAUTHENTICATED` from household JSON, photo and
+  event-stream routes. A same-household companion with `household.view` and a paired television
+  with `household.read` can load the same routes; cross-household credentials fail closed.
+- Television pairing still creates unique schema-valid six-character codes after more than 99
+  retained requests. Passkey authentication options enforce per-client and global pending limits,
+  and expired attempts are pruned so unauthenticated requests cannot grow memory without bound.
 - Mutation audit records include actor, channel, target, time and result.
 - A household administrator can review the latest family, planning, connection and system changes
   in a family-readable Recent activity screen. A child receives `FORBIDDEN`; the screen does not

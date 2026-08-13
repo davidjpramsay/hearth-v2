@@ -294,7 +294,7 @@ export class InMemoryAdminRepository implements AdminRepository {
     const pairing = PairingRequestSchema.parse({
       id: `pairing_demo_${this.sequence++}`,
       requestId,
-      code: this.pairings.length === 0 ? 'HEARTH' : `HEAR${String(this.sequence).padStart(2, '0')}`,
+      code: pairingCodeForSequence(this.pairings.length + 1),
       deviceName,
       status: 'pending',
       expiresAt: new Date(this.now().getTime() + 10 * 60_000).toISOString(),
@@ -787,7 +787,7 @@ export class SqliteAdminRepository implements AdminRepository {
     const pairing = PairingRequestSchema.parse({
       id: `pairing_setup_${sequence}`,
       requestId,
-      code: sequence === 1 ? 'HEARTH' : `HEAR${String(sequence).padStart(2, '0')}`,
+      code: pairingCodeForSequence(sequence),
       deviceName,
       status: 'pending',
       expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(),
@@ -1366,6 +1366,17 @@ function pairingFromRow(row: PairingRow): PairingRequest {
     expiresAt: row.expires_at,
     approvedDeviceId: row.approved_device_id,
   });
+}
+
+function pairingCodeForSequence(sequence: number): string {
+  if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= 36 ** 5) {
+    throw new RepositoryError(
+      'INTEGRATION_UNAVAILABLE',
+      'Hearth cannot create another television pairing right now.',
+    );
+  }
+  if (sequence === 1) return 'HEARTH';
+  return `P${sequence.toString(36).toUpperCase().padStart(5, '0')}`;
 }
 
 export function credentialHash(credential: string): string {

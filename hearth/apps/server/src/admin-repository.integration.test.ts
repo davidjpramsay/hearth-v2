@@ -229,6 +229,27 @@ describe('SQLite admin repository', () => {
     repository.close();
   });
 
+  it('keeps pairing codes valid and unique beyond the first 99 requests', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-pairing-codes-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    const repository = new SqliteAdminRepository(database);
+
+    const codes: string[] = [];
+    for (let index = 1; index <= 105; index += 1) {
+      const pairing = await repository.createPairing(
+        `Television ${index}`,
+        `request_pairing_capacity_${index}`,
+      );
+      codes.push(pairing.code);
+    }
+
+    expect(codes).toHaveLength(105);
+    expect(new Set(codes).size).toBe(105);
+    expect(codes.every((code) => /^[A-Z0-9]{6}$/.test(code))).toBe(true);
+    repository.close();
+  });
+
   it('persists, replays and restores bounded local member profile photos', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-admin-'));
     temporaryDirectories.push(directory);

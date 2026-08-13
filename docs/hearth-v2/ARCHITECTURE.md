@@ -271,6 +271,10 @@ no household returns `requiresSetup: true` and a null household, so the browser
 renders first use without issuing household queries. After the one-time local setup code and
 WebAuthn registration are verified, household/member/default-list creation and credential storage
 commit in one transaction; the runtime resolver observes the new household without a restart.
+Once a private household exists, an unauthenticated runtime response remains bootstrap-safe but
+redacts the household identifier and name (`household: null`, `requiresSetup: false`). The browser
+then offers passkey sign-in. A valid companion session or paired-TV credential reveals the runtime
+household and allows normal route construction.
 
 Repository construction follows the same mode boundary. Demo/test may seed the
 fictional household. Private construction runs migrations but does not insert
@@ -314,6 +318,9 @@ Use one-time pairing:
 4. Android Keystore-backed AES-GCM storage retains the secret. Native code sets
    the scoped `HttpOnly` WebView cookie; browser JavaScript never receives it.
 
+Pairing codes remain exactly six uppercase alphanumeric characters across the bounded sequence;
+retained expired rows cannot make later pairing creation produce an invalid over-length code.
+
 Debug emulator HTTP is an intentionally non-secure browser context. Browser
 commands therefore generate idempotency IDs with `crypto.randomUUID()` when
 available and a `crypto.getRandomValues()` fallback otherwise; both paths retain
@@ -328,6 +335,9 @@ limits invalid attempts, requires user verification and a discoverable passkey, 
 revokes the database session. Registration and authentication challenges are single-use and expire
 after five minutes. WebAuthn credentials retain their public key, signature counter, transports,
 device type and backup state; successful authentication advances the counter.
+Authentication-option issuance is rate-limited per resolved client address, pending ceremonies are
+globally capped, and expired ceremonies/address windows are physically removed before new options
+are created. This keeps the unauthenticated passkey entry point memory-bounded.
 
 A second-adult/recovery flow remains required before the household pilot. It may issue a renewable
 recovery code only after adult confirmation on an already trusted surface; it must never place a
@@ -347,6 +357,12 @@ During the isolated demo, a server-resolved Maya administrator session exercises
 ### Permissions
 
 Model roles/capabilities rather than scattered UI checks. The server is authoritative. Hiding a button is not authorisation.
+
+Every `/api/v1/households/:householdId` route in private mode passes one central read boundary
+before its route handler. Companion sessions must belong to the requested household and resolve to
+an active member with `household.view`; television credentials must belong to the household and
+carry `household.read`. This includes photo derivatives and Server-Sent Events. Route-specific
+capability checks still apply to administration and mutations after this baseline read check.
 
 ## Home Assistant security boundary
 

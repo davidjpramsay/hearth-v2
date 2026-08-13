@@ -55,6 +55,11 @@ shows an explicit setup-required state. The authenticated adult first-use action
 one-time external setup code and a user-verified passkey before transactionally creating the named
 household, first adult and default lists. Private Admin uses the resulting revocable, hash-only
 companion session; real enrolment remains blocked until the stable private HTTPS origin is approved.
+Private household reads now share one server-side access boundary: runtime bootstrap redacts the
+configured household until sign-in or pairing, companion sessions require `household.view`, paired
+televisions require `household.read`, and the same protection covers photos and event streams.
+Pairing-code generation remains fixed-width beyond 99 retained requests, while passkey option
+issuance now combines per-client throttling, a global pending cap and physical expiry pruning.
 
 Recurring chore editing remains intentionally out of the Admin UI until the denser phone-oriented administration work in Phase 4. Phase 2 establishes and tests its server/domain persistence contract without putting dense editing on the television.
 

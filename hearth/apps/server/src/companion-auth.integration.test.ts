@@ -83,7 +83,7 @@ describe('companion passkey authentication', () => {
     await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {
       id: 'credential_private_adult',
     });
-    const options = await harness.auth.authenticationOptions();
+    const options = await harness.auth.authenticationOptions('127.0.0.1');
     expect(options.options).not.toHaveProperty('allowCredentials');
     const signedIn = await harness.auth.verifyAuthentication(options.ceremonyId, {
       id: 'credential_private_adult',
@@ -115,6 +115,31 @@ describe('companion passkey authentication', () => {
     expect(
       JSON.stringify(harness.database.prepare('SELECT * FROM households').all()),
     ).not.toContain('correct horse');
+    harness.database.close();
+  });
+
+  it('bounds unauthenticated sign-in ceremonies and prunes expired attempts', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {
+      id: 'credential_private_adult',
+    });
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await harness.auth.authenticationOptions('192.0.2.10');
+    }
+    await expect(harness.auth.authenticationOptions('192.0.2.10')).rejects.toThrow(
+      /Too many sign-in attempts/,
+    );
+
+    harness.advance(5 * 60 * 1000 + 1);
+    await expect(harness.auth.authenticationOptions('192.0.2.10')).resolves.toBeDefined();
+    for (let index = 1; index < 128; index += 1) {
+      await harness.auth.authenticationOptions(`198.51.100.${index}`);
+    }
+    await expect(harness.auth.authenticationOptions('203.0.113.1')).rejects.toThrow(
+      /Too many sign-in attempts/,
+    );
     harness.database.close();
   });
 
@@ -181,6 +206,7 @@ async function authHarness() {
   temporaryDirectories.push(directory);
   const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
   let consumed = false;
+  let now = Date.parse('2026-08-03T07:42:00+08:00');
   const engine: PasskeyEngine = {
     registrationOptions: async () =>
       creationOptions('registration_challenge') as Awaited<
@@ -211,9 +237,17 @@ async function authHarness() {
     consumeFirstUseCode: async () => {
       consumed = true;
     },
+    now: () => new Date(now),
     engine,
   });
-  return { auth, database, consumed: () => consumed };
+  return {
+    auth,
+    database,
+    consumed: () => consumed,
+    advance: (milliseconds: number) => {
+      now += milliseconds;
+    },
+  };
 }
 
 function setupInput() {

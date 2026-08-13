@@ -9,6 +9,9 @@ import { RuntimeContextValue } from './context';
 const FirstUseSetup = lazy(async () => ({
   default: (await import('../auth/FirstUseSetup')).FirstUseSetup,
 }));
+const PrivateHouseholdAccess = lazy(async () => ({
+  default: (await import('../auth/PrivateHouseholdAccess')).PrivateHouseholdAccess,
+}));
 
 export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -23,7 +26,7 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
   const auth = useQuery({
     queryKey: authStatusQueryKey,
     queryFn: hearthApi.getAuthStatus,
-    enabled: runtime.data?.mode === 'private' && runtime.data.requiresSetup,
+    enabled: runtime.data?.mode === 'private' && runtime.data.household === null,
     staleTime: 15_000,
   });
 
@@ -73,18 +76,19 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
           </main>
         );
       }
+      const refreshAccess = async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] }),
+          queryClient.invalidateQueries({ queryKey: authStatusQueryKey }),
+        ]);
+      };
       return (
         <Suspense fallback={<SecureSetupLoading />}>
-          <FirstUseSetup
-            runtime={runtime.data}
-            auth={auth.data}
-            onComplete={async () => {
-              await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] }),
-                queryClient.invalidateQueries({ queryKey: authStatusQueryKey }),
-              ]);
-            }}
-          />
+          {runtime.data.requiresSetup ? (
+            <FirstUseSetup runtime={runtime.data} auth={auth.data} onComplete={refreshAccess} />
+          ) : (
+            <PrivateHouseholdAccess auth={auth.data} onComplete={refreshAccess} />
+          )}
         </Suspense>
       );
     }

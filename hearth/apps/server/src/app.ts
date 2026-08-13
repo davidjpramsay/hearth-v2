@@ -363,9 +363,44 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   };
 
-  server.get('/api/v1/runtime', async () =>
-    RuntimeContextSchema.parse(await resolveRuntimeContext(runtime, adminRepository)),
-  );
+  server.addHook('preHandler', async (request, reply) => {
+    const routeUrl = request.routeOptions.url;
+    if (
+      runtime.mode !== 'private' ||
+      routeUrl === undefined ||
+      !routeUrl.startsWith('/api/v1/households/:householdId')
+    ) {
+      return;
+    }
+    const params = HouseholdParamsSchema.safeParse(request.params);
+    if (!params.success) return;
+    return run(reply, async () => {
+      await authorizePrivateHouseholdRead(
+        request.headers,
+        params.data.householdId,
+        options,
+        adminRepository,
+      );
+    });
+  });
+
+  server.get('/api/v1/runtime', async (request, reply) => {
+    const context = RuntimeContextSchema.parse(
+      await resolveRuntimeContext(runtime, adminRepository),
+    );
+    if (runtime.mode !== 'private' || context.household === null) return context;
+
+    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+    const authorized = await hasPrivateHouseholdReadAccess(
+      request.headers,
+      context.household.id,
+      options,
+      adminRepository,
+    );
+    return RuntimeContextSchema.parse(
+      authorized ? context : { ...context, household: null, requiresSetup: false },
+    );
+  });
 
   server.get('/api/v1/auth/status', async (request, reply) => {
     reply.header('Cache-Control', 'no-store');
@@ -405,9 +440,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
-  server.post('/api/v1/auth/authentication-options', async (_request, reply) =>
+  server.post('/api/v1/auth/authentication-options', async (request, reply) =>
     run(reply, async () =>
-      PasskeyCeremonyOptionsSchema.parse(await companionAuth(options).authenticationOptions()),
+      PasskeyCeremonyOptionsSchema.parse(
+        await companionAuth(options).authenticationOptions(request.ip),
+      ),
     ),
   );
 
@@ -2066,6 +2103,62 @@ async function run(reply: FastifyReply, operation: () => Promise<unknown>): Prom
           },
         }),
       );
+    }
+    throw error;
+  }
+}
+
+async function authorizePrivateHouseholdRead(
+  headers: Record<string, string | string[] | undefined>,
+  householdId: string,
+  options: BuildServerOptions,
+  adminRepository: AdminRepository,
+): Promise<void> {
+  const deviceCredential = optionalDeviceCredential(headers);
+  if (deviceCredential !== null) {
+    const session = adminRepository.getTvDeviceSession(deviceCredential);
+    if (session.householdId !== householdId) {
+      throw new RepositoryError('FORBIDDEN', 'This television belongs to a different Hearth home.');
+    }
+    if (!session.scopes.includes('household.read')) {
+      throw new RepositoryError('FORBIDDEN', 'This television cannot view household information.');
+    }
+    return;
+  }
+
+  const companionCredential = optionalCompanionCredential(headers);
+  if (companionCredential === null || options.companionAuth === undefined) {
+    throw new RepositoryError('UNAUTHENTICATED', 'Sign in or pair this television to continue.');
+  }
+  const session = options.companionAuth.session(companionCredential);
+  if (session.householdId !== householdId) {
+    throw new RepositoryError('FORBIDDEN', 'That sign-in belongs to a different Hearth home.');
+  }
+  const household = await adminRepository.getHousehold(householdId);
+  const member = household.members.find((candidate) => candidate.id === session.memberId);
+  if (member === undefined) {
+    throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+  }
+  if (!member.capabilities.includes('household.view')) {
+    throw new RepositoryError('FORBIDDEN', 'This household member cannot view Hearth.');
+  }
+}
+
+async function hasPrivateHouseholdReadAccess(
+  headers: Record<string, string | string[] | undefined>,
+  householdId: string,
+  options: BuildServerOptions,
+  adminRepository: AdminRepository,
+): Promise<boolean> {
+  try {
+    await authorizePrivateHouseholdRead(headers, householdId, options, adminRepository);
+    return true;
+  } catch (error) {
+    if (
+      error instanceof RepositoryError &&
+      (error.code === 'UNAUTHENTICATED' || error.code === 'FORBIDDEN' || error.code === 'NOT_FOUND')
+    ) {
+      return false;
     }
     throw error;
   }

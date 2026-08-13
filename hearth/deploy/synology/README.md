@@ -8,8 +8,9 @@ This directory builds Hearth as two small, same-origin containers:
 The web container binds only to Synology loopback. DSM Reverse Proxy must provide the stable private
 HTTPS origin required by adult passkeys and the television release app. The repository deliberately
 does not choose or create the household hostname, certificate, router rule or live Synology folders.
-nginx is the single trusted HTTP proxy hop; Fastify uses that boundary for client-address rate
-limiting rather than accepting arbitrary forwarding chains.
+DSM Reverse Proxy and the bundled nginx container are the two trusted HTTP proxy hops. Fastify
+trusts exactly those two hops so client-address rate limiting resolves the household device rather
+than collapsing every request to DSM/nginx or accepting a longer arbitrary forwarding chain.
 
 ## Local validation
 
