@@ -58,6 +58,43 @@ test('evening dimming is separate, persistent and family-readable', async ({ pag
   );
 });
 
+test('shared raised surfaces stay distinct in light and dark themes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const theme of ['Light', 'Dark'] as const) {
+    await page.goto('/admin/appearance');
+    await page.getByRole('radio', { name: new RegExp(`^${theme}`) }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme.toLowerCase());
+
+    for (const action of [
+      { path: '/lists', selector: '.lists-manage-link' },
+      { path: '/meals', selector: '.meals-manage-link' },
+    ]) {
+      await page.goto(action.path);
+      const control = page.locator(action.selector);
+      await expect(control).toBeVisible();
+      const styles = await control.evaluate((element) => {
+        const computed = getComputedStyle(element);
+        return {
+          backgroundColor: computed.backgroundColor,
+          borderStyle: computed.borderTopStyle,
+          borderWidth: computed.borderTopWidth,
+        };
+      });
+      expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+      expect(styles.borderStyle).toBe('solid');
+      expect(styles.borderWidth).toBe('1px');
+    }
+  }
+
+  await page.goto('/admin/activity');
+  const selectedFilter = page.getByRole('button', { name: 'All' });
+  await expect(selectedFilter).toHaveAttribute('aria-pressed', 'true');
+  expect(
+    await selectedFilter.evaluate((element) => getComputedStyle(element).backgroundColor),
+  ).not.toBe('rgba(0, 0, 0, 0)');
+});
+
 test('remote navigation reaches Appearance, changes dimming and restores focus on Back', async ({
   page,
 }) => {
