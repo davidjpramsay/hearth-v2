@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, RotateCcw } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
+import './PeopleSettingsScreen.css';
+
 import type { Member as HearthMember } from '@hearth/shared';
 
 import { adminApi as hearthApi } from '../api/admin';
