@@ -193,10 +193,8 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await page.keyboard.press('ArrowLeft');
   const leftTarget = page.locator(`[data-focus-id="${leftTargetFocusId}"]`);
   await expect(leftTarget).toBeFocused();
-  const rightTargetFocusId = await leftTarget.getAttribute('data-focus-right');
-  expect(rightTargetFocusId).not.toBeNull();
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator(`[data-focus-id="${rightTargetFocusId}"]`)).toBeFocused();
+  await expect(page.locator('.photos-hero')).toBeFocused();
   await page.getByRole('button', { name: 'Resume automatic photo rotation' }).click();
   await expect(page.getByText('Automatic · every 30 seconds')).toBeVisible();
   await page.locator('.photos-hero').focus();
