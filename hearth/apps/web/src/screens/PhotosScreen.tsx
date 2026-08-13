@@ -17,10 +17,13 @@ import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   arrangePhotoCollage,
+  PHOTO_COLLAGE_SIZE,
   nextPhotoId,
   PHOTO_COLLAGE_ROTATION_MS,
+  photoCollageFeatureSide,
   photoCollageMode,
   type PhotoCollageItem,
+  type PhotoCollageFeatureSide,
   type PhotoCollageSlot,
 } from './photoCollage';
 
@@ -62,6 +65,11 @@ export function PhotosScreen({
   const collageItems = arrangePhotoCollage(gallery?.photos ?? [], selected?.id ?? null);
   const collageMode =
     collageItems[0] === undefined ? 'landscape' : photoCollageMode(collageItems[0].photo);
+  const collageFeatureSide = photoCollageFeatureSide(
+    gallery?.photos ?? [],
+    collageItems[0]?.photo.id ?? null,
+    gallery?.featuredPhotoId ?? gallery?.photos[0]?.id ?? null,
+  );
   const visibleCollageItems = compactLandscape ? collageItems.slice(0, 3) : collageItems;
 
   useEffect(() => {
@@ -266,7 +274,7 @@ export function PhotosScreen({
       <div className="photos-layout">
         <div
           aria-label="Family photos. The featured photo and collage arrangement change about once every 30 seconds."
-          className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--count-${visibleCollageItems.length}`}
+          className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--feature-${collageFeatureSide} photos-collage--count-${visibleCollageItems.length}`}
         >
           {visibleCollageItems.map((item) => (
             <PhotoThumbnail
@@ -275,6 +283,7 @@ export function PhotosScreen({
               key={item.slot}
               onSelect={() => selectPhoto(item.photo.id)}
               selected={item.photo.id === selected?.id}
+              featureSide={collageFeatureSide}
             />
           ))}
         </div>
@@ -321,14 +330,16 @@ function PhotoThumbnail({
   items,
   onSelect,
   selected,
+  featureSide,
 }: {
   item: PhotoCollageItem;
   items: PhotoCollageItem[];
   onSelect: () => void;
   selected: boolean;
+  featureSide: PhotoCollageFeatureSide;
 }) {
   const { photo, slot } = item;
-  const links = collageFocusLinks(slot, items);
+  const links = collageFocusLinks(slot, items, featureSide);
   const featured = slot === 'feature';
   return (
     <button
@@ -362,6 +373,7 @@ function PhotoThumbnail({
 function collageFocusLinks(
   slot: PhotoCollageSlot,
   items: PhotoCollageItem[],
+  featureSide: PhotoCollageFeatureSide,
 ): { up: string; down: string; left: string; right: string } {
   const bySlot = new Map(items.map((item) => [item.slot, `photos-thumb-${item.photo.id}`]));
   const feature = bySlot.get('feature') ?? 'photos-start-ambient';
@@ -370,7 +382,7 @@ function collageFocusLinks(
   const support3 = bySlot.get('support-3') ?? support2;
   const support4 = bySlot.get('support-4') ?? support3;
 
-  const links = {
+  const featureAtStart = {
     feature: { up: 'photos-start-ambient', down: feature, left: 'nav-photos', right: support1 },
     'support-1': {
       up: 'photos-start-ambient',
@@ -387,5 +399,25 @@ function collageFocusLinks(
     'support-3': { up: support1, down: support3, left: feature, right: support4 },
     'support-4': { up: support2, down: support4, left: support3, right: support4 },
   } satisfies Record<PhotoCollageSlot, { up: string; down: string; left: string; right: string }>;
-  return links[slot];
+
+  if (featureSide === 'start' || items.length < PHOTO_COLLAGE_SIZE) return featureAtStart[slot];
+
+  const featureAtEnd = {
+    feature: { up: 'photos-start-ambient', down: feature, left: support1, right: feature },
+    'support-1': {
+      up: 'photos-start-ambient',
+      down: support3,
+      left: support2,
+      right: feature,
+    },
+    'support-2': {
+      up: 'photos-start-ambient',
+      down: support4,
+      left: 'nav-photos',
+      right: support1,
+    },
+    'support-3': { up: support1, down: support3, left: support4, right: feature },
+    'support-4': { up: support2, down: support4, left: 'nav-photos', right: support3 },
+  } satisfies Record<PhotoCollageSlot, { up: string; down: string; left: string; right: string }>;
+  return featureAtEnd[slot];
 }

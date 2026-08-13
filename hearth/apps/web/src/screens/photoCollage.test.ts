@@ -1,7 +1,12 @@
 import type { PhotoAsset } from '@hearth/shared';
 import { describe, expect, it } from 'vitest';
 
-import { arrangePhotoCollage, nextPhotoId, photoCollageMode } from './photoCollage';
+import {
+  arrangePhotoCollage,
+  nextPhotoId,
+  photoCollageFeatureSide,
+  photoCollageMode,
+} from './photoCollage';
 
 function photo(id: string, orientation: PhotoAsset['orientation']): PhotoAsset {
   return {
@@ -68,5 +73,13 @@ describe('photo collage arrangement', () => {
     expect(nextPhotoId(photos, 'landscape-4')).toBe('landscape-1');
     expect(nextPhotoId(photos, null)).toBe('landscape-1');
     expect(nextPhotoId([], null)).toBeNull();
+  });
+
+  it('alternates the television feature side without mirroring sparse collages', () => {
+    expect(photoCollageFeatureSide(photos, 'landscape-2', 'landscape-2')).toBe('start');
+    expect(photoCollageFeatureSide(photos, 'portrait-1', 'landscape-2')).toBe('end');
+    expect(photoCollageFeatureSide(photos, 'landscape-3', 'landscape-2')).toBe('start');
+    expect(photoCollageFeatureSide(photos.slice(0, 4), 'portrait-1', 'landscape-2')).toBe('start');
+    expect(photoCollageFeatureSide(photos, 'missing', 'landscape-2')).toBe('start');
   });
 });

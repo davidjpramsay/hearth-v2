@@ -167,6 +167,7 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   );
   await expect(page.locator('.photos-hero')).toBeFocused();
   await expect(page.locator('.photos-collage--landscape')).toBeVisible();
+  await expect(page.locator('.photos-collage--feature-start')).toBeVisible();
   await expect(page.locator('.photos-hero')).not.toHaveAttribute(
     'data-photo-id',
     'photo_family_breakfast',
@@ -177,6 +178,17 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     'data-photo-id',
     'photo_park_football',
   );
+  await expect(page.locator('.photos-collage--feature-end')).toBeVisible();
+  const mirroredFeatureBox = await page.locator('.photos-hero').boundingBox();
+  expect(mirroredFeatureBox?.x).toBeGreaterThan(900);
+  await captureEvidence(page, {
+    animations: 'disabled',
+    path: resolve(evidence, 'photos-auto-mirrored-tv-1080.png'),
+  });
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.photo-collage__tile--support-1')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.photos-hero')).toBeFocused();
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',
     'photo_garden_morning',

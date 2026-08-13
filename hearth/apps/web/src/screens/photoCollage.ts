@@ -4,6 +4,7 @@ export const PHOTO_COLLAGE_ROTATION_MS = 30_000;
 export const PHOTO_COLLAGE_SIZE = 5;
 
 export type PhotoCollageMode = 'landscape' | 'portrait';
+export type PhotoCollageFeatureSide = 'start' | 'end';
 export type PhotoCollageSlot = 'feature' | 'support-1' | 'support-2' | 'support-3' | 'support-4';
 
 export interface PhotoCollageItem {
@@ -15,6 +16,19 @@ const SUPPORT_SLOTS: PhotoCollageSlot[] = ['support-1', 'support-2', 'support-3'
 
 export function photoCollageMode(photo: PhotoAsset): PhotoCollageMode {
   return photo.orientation === 'portrait' ? 'portrait' : 'landscape';
+}
+
+export function photoCollageFeatureSide(
+  photos: PhotoAsset[],
+  featuredId: string | null,
+  rotationStartId: string | null,
+): PhotoCollageFeatureSide {
+  if (photos.length < PHOTO_COLLAGE_SIZE) return 'start';
+  const featuredIndex = photos.findIndex((photo) => photo.id === featuredId);
+  const startIndex = photos.findIndex((photo) => photo.id === rotationStartId);
+  if (featuredIndex < 0 || startIndex < 0) return 'start';
+  const rotationIndex = (featuredIndex - startIndex + photos.length) % photos.length;
+  return rotationIndex % 2 === 1 ? 'end' : 'start';
 }
 
 export function nextPhotoId(photos: PhotoAsset[], currentId: string | null): string | null {
