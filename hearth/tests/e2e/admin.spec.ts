@@ -671,6 +671,10 @@ for (const viewport of [
 test('@visual @a11y dark Recent activity at phone portrait', async ({ page, request }) => {
   await seedRecentActivity(request);
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/v1/households/*/activity*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
   await page.addInitScript(() => {
     localStorage.setItem(
       'hearth.appearance.v1',
@@ -679,6 +683,16 @@ test('@visual @a11y dark Recent activity at phone portrait', async ({ page, requ
   });
   await page.goto('/admin/activity');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('.admin-feedback')).toBeVisible();
+  const loadingResults = await new AxeBuilder({ page }).analyze();
+  expect(
+    loadingResults.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  await expect(page.getByRole('heading', { name: 'Recent activity' })).toBeVisible();
+  await expect(page.locator('.activity-row').first()).toBeVisible();
+  await expect(page.locator('.admin-feedback')).toHaveCount(0);
   const results = await new AxeBuilder({ page }).analyze();
   expect(
     results.violations.filter((violation) =>
