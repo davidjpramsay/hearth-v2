@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 
+import './MoreScreen.css';
+
 import { Icon, type IconName } from '../components/Icon';
 
 interface MoreLink {

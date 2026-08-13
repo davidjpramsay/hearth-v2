@@ -894,80 +894,6 @@
   line-height: 1.35;
 }
 
-.more-screen {
-  max-width: 1420px;
-}
-.more-screen__header p,
-.more-screen__header h1,
-.more-screen__header span {
-  margin: 0;
-}
-.more-screen__header p {
-  color: var(--eucalyptus);
-  font-size: 18px;
-  font-weight: 760;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.more-screen__header h1 {
-  margin-top: 2px;
-  font-size: 58px;
-}
-.more-screen__header span {
-  color: var(--muted);
-  font-size: 22px;
-}
-.more-group {
-  margin-top: 28px;
-}
-.more-group h2 {
-  margin: 0 0 12px;
-  font-size: 24px;
-}
-.more-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.more-card {
-  min-height: 92px;
-  padding: 15px 18px;
-  border: 1px solid var(--hairline);
-  border-radius: 17px;
-  color: var(--ink);
-  background: var(--surface);
-  display: grid;
-  grid-template-columns: 50px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  text-decoration: none;
-}
-.more-card__icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  color: var(--eucalyptus);
-  background: var(--eucalyptus-soft);
-  display: grid;
-  place-items: center;
-}
-.more-card__icon svg {
-  width: 25px;
-  height: 25px;
-}
-.more-card strong,
-.more-card small {
-  display: block;
-}
-.more-card strong {
-  font-size: 22px;
-}
-.more-card small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 16px;
-}
-
 .pocket-progress {
   height: 6px;
   margin-top: 7px;
@@ -2637,41 +2563,6 @@
     width: 100%;
     min-height: 52px;
     font-size: 18px;
-  }
-  .more-screen__header p {
-    font-size: 13px;
-  }
-  .more-screen__header h1 {
-    font-size: 40px;
-  }
-  .more-screen__header span {
-    font-size: 17px;
-  }
-  .more-group {
-    margin-top: 24px;
-  }
-  .more-group h2 {
-    font-size: 20px;
-  }
-  .more-grid {
-    grid-template-columns: 1fr;
-    gap: 9px;
-  }
-  .more-card {
-    min-height: 78px;
-    padding: 11px 13px;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    gap: 11px;
-  }
-  .more-card__icon {
-    width: 44px;
-    height: 44px;
-  }
-  .more-card strong {
-    font-size: 18px;
-  }
-  .more-card small {
-    font-size: 14px;
   }
   .state-panel {
     min-height: calc(100dvh - 130px);
@@ -4893,7 +4784,6 @@
 }
 :root[data-theme='dark'] .summary-details,
 :root[data-theme='dark'] .event-detail__panel,
-:root[data-theme='dark'] .more-card,
 :root[data-theme='dark'] .admin-actor,
 :root[data-theme='dark'] .admin-setting-row,
 :root[data-theme='dark'] .admin-form,
