@@ -185,6 +185,9 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     animations: 'disabled',
     path: resolve(evidence, 'photos-auto-mirrored-tv-1080.png'),
   });
+  await page.getByRole('button', { name: 'Pause automatic photo rotation' }).click();
+  await expect(page.getByText('Automatic rotation paused')).toBeVisible();
+  await page.locator('.photos-hero').focus();
   const leftTargetFocusId = await page.locator('.photos-hero').getAttribute('data-focus-left');
   expect(leftTargetFocusId).not.toBeNull();
   await page.keyboard.press('ArrowLeft');
@@ -194,6 +197,9 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   expect(rightTargetFocusId).not.toBeNull();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator(`[data-focus-id="${rightTargetFocusId}"]`)).toBeFocused();
+  await page.getByRole('button', { name: 'Resume automatic photo rotation' }).click();
+  await expect(page.getByText('Automatic · every 30 seconds')).toBeVisible();
+  await page.locator('.photos-hero').focus();
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',
     'photo_garden_morning',
