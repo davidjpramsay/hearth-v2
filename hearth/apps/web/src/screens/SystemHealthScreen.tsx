@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
+import './SystemHealthScreen.css';
+
 import type { SystemBackupStatus } from '@hearth/shared';
 
 import { adminApi as hearthApi } from '../api/admin';
