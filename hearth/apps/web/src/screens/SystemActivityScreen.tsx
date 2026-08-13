@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 
+import './SystemActivityScreen.css';
+
 import type { AuditSummary } from '@hearth/shared';
 
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
