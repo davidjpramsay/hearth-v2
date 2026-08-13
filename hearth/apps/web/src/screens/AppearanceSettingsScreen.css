@@ -1,0 +1,177 @@
+/* Appearance — per-display theme and evening-comfort controls */
+.appearance-settings {
+  padding: 20px;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: var(--surface-glass);
+  box-shadow: var(--shadow-rest);
+}
+.appearance-settings + .appearance-settings {
+  margin-top: 18px;
+}
+.appearance-section-heading {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.appearance-section-heading h2,
+.appearance-section-heading p {
+  margin: 0;
+}
+.appearance-section-heading h2 {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.appearance-section-heading p {
+  color: var(--muted);
+  font-size: 14px;
+}
+.appearance-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.appearance-option,
+.appearance-dim-control {
+  width: 100%;
+  min-height: 82px;
+  padding: 13px 15px;
+  border: 1px solid var(--hairline);
+  border-radius: 17px;
+  color: var(--ink);
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.appearance-option--selected {
+  border-color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--eucalyptus) 18%, transparent);
+}
+.appearance-option__icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: var(--plum);
+  background: var(--plum-soft);
+  display: grid;
+  place-items: center;
+}
+.appearance-option__icon svg {
+  width: 27px;
+  height: 27px;
+}
+.appearance-option--selected .appearance-option__icon {
+  color: var(--eucalyptus);
+  background: var(--surface);
+}
+.appearance-option__copy {
+  min-width: 0;
+}
+.appearance-option__copy strong,
+.appearance-option__copy small {
+  display: block;
+}
+.appearance-option__copy strong {
+  font-size: 20px;
+}
+.appearance-option__copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.25;
+}
+.appearance-option__check {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--hairline);
+  border-radius: 50%;
+  color: var(--surface);
+  display: grid;
+  place-items: center;
+}
+.appearance-option--selected .appearance-option__check {
+  border-color: var(--eucalyptus);
+  background: var(--eucalyptus);
+}
+.appearance-option__check svg {
+  width: 19px;
+  height: 19px;
+}
+.appearance-result,
+.appearance-help {
+  margin: 13px 3px 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.appearance-dim-control {
+  grid-template-columns: 50px minmax(0, 1fr) 54px;
+}
+.appearance-option__icon--dim {
+  color: var(--ochre);
+  background: var(--ochre-soft);
+}
+.appearance-switch {
+  width: 52px;
+  height: 30px;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  transition: background-color 160ms ease;
+}
+.appearance-switch span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 22%);
+  display: block;
+  transition: transform 160ms ease;
+}
+.appearance-dim-control[aria-checked='true'] .appearance-switch {
+  border-color: var(--eucalyptus);
+  background: var(--eucalyptus);
+}
+.appearance-dim-control[aria-checked='true'] .appearance-switch span {
+  transform: translateX(21px);
+}
+
+@media (max-width: 900px) {
+  .appearance-settings {
+    padding: 16px;
+    border-radius: 18px;
+  }
+  .appearance-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .appearance-option,
+  .appearance-dim-control {
+    min-height: 78px;
+    padding: 12px;
+    grid-template-columns: 46px minmax(0, 1fr) 30px;
+    gap: 11px;
+  }
+  .appearance-dim-control {
+    grid-template-columns: 46px minmax(0, 1fr) 54px;
+  }
+  .appearance-option__icon {
+    width: 46px;
+    height: 46px;
+  }
+  .appearance-option__copy strong {
+    font-size: 18px;
+  }
+  .appearance-option__copy small {
+    font-size: 14px;
+  }
+}

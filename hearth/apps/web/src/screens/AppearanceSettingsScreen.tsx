@@ -1,3 +1,5 @@
+import './AppearanceSettingsScreen.css';
+
 import { useAppearance, type ThemePreference } from '../appearance/appearance';
 import { AdminPage } from '../components/AdminPage';
 import { Icon, type IconName } from '../components/Icon';
