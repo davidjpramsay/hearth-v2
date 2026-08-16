@@ -51,7 +51,7 @@ fi
 run_ssh \
   "test -f '$remote_runtime/docker-compose.yml' && test -f '$remote_runtime/.env' && mkdir -p '$remote_staging'"
 
-rsync -a --delete --delay-updates \
+rsync -a --delete --delay-updates --rsync-path=/usr/bin/rsync \
   -e "$rsync_ssh" \
   "$archive_dir/" "$deploy_target:$remote_staging/"
 
