@@ -12,6 +12,7 @@ const calendarEvidence = resolve('docs/evidence/calendar-connection');
 const homeAssistantEvidence = resolve('docs/evidence/home-assistant-connection');
 const systemEvidence = resolve('docs/evidence/system-health');
 const activityEvidence = resolve('docs/evidence/system-activity');
+const accessEvidence = resolve('docs/evidence/adult-access');
 
 test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
@@ -20,6 +21,7 @@ test.beforeAll(async () => {
   await mkdir(homeAssistantEvidence, { recursive: true });
   await mkdir(systemEvidence, { recursive: true });
   await mkdir(activityEvidence, { recursive: true });
+  await mkdir(accessEvidence, { recursive: true });
 });
 
 test.beforeEach(async ({ request }) => {
@@ -75,7 +77,31 @@ test('Hearth settings groups household tasks and keeps remote movement continuou
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-people"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="admin-adult"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-today"]')).toBeFocused();
+});
+
+test('Adult access explains private passkeys and recovery without exposing demo controls', async ({
+  page,
+}) => {
+  const consoleProblems: string[] = [];
+  page.on('console', (message) => {
+    if (['warning', 'error'].includes(message.type())) consoleProblems.push(message.text());
+  });
+  page.on('pageerror', (error) => consoleProblems.push(error.message));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/access');
+
+  await expect(page).toHaveURL(/\/admin\/access$/);
+  await expect(page.getByRole('heading', { name: 'Adult access' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No shared admin password' })).toBeVisible();
+  await expect(page.getByText(/real passkeys and recovery codes are available only/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add passkey' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Create recovery code' })).toBeDisabled();
+  await expect(page.getByRole('heading', { name: 'Maya' })).toBeVisible();
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  expect(consoleProblems).toEqual([]);
 });
 
 test('Connections contains only services used directly by Hearth', async ({ page }) => {
@@ -261,7 +287,7 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 19 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 20 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(
     page.getByText('Provider tokens stay in the separate protected secrets folder.'),
@@ -576,6 +602,7 @@ for (const path of [
   '/admin',
   '/admin/household',
   '/admin/people',
+  '/admin/access',
   '/admin/today',
   '/admin/televisions',
   '/admin/connections',
@@ -594,6 +621,26 @@ for (const path of [
         ['serious', 'critical'].includes(violation.impact ?? ''),
       ),
     ).toEqual([]);
+  });
+}
+
+for (const viewport of [
+  { name: 'phone-portrait', width: 390, height: 844 },
+  { name: 'phone-landscape', width: 844, height: 390 },
+] as const) {
+  test(`@visual Adult access at ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/admin/access');
+    await expect(page.getByRole('heading', { name: 'Adult access' })).toBeVisible();
+    await captureEvidence(page, {
+      path: resolve(accessEvidence, `adult-access-${viewport.name}.png`),
+      animations: 'disabled',
+    });
+    await page.getByRole('heading', { name: 'Your recovery code' }).scrollIntoViewIfNeeded();
+    await captureEvidence(page, {
+      path: resolve(accessEvidence, `adult-access-recovery-${viewport.name}.png`),
+      animations: 'disabled',
+    });
   });
 }
 

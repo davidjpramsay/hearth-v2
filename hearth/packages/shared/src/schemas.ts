@@ -108,6 +108,59 @@ export const PasskeySessionSchema = z.object({
 
 export const PasskeySignOutResultSchema = z.object({ signedOut: z.literal(true) });
 
+export const PasskeyCredentialSummarySchema = z.object({
+  id: OpaqueIdSchema,
+  memberId: OpaqueIdSchema,
+  label: z.string().min(1).max(80),
+  deviceType: z.enum(['singleDevice', 'multiDevice']),
+  backedUp: z.boolean(),
+  createdAt: TimestampSchema,
+  lastUsedAt: TimestampSchema.nullable(),
+});
+
+export const AdultAccessAccountSchema = z.object({
+  member: MemberSchema.pick({ id: true, displayName: true, avatarUrl: true }),
+  passkeys: z.array(PasskeyCredentialSummarySchema),
+  recovery: z.object({
+    configured: z.boolean(),
+    createdAt: TimestampSchema.nullable(),
+    expiresAt: TimestampSchema.nullable(),
+  }),
+});
+
+export const AdultAccessSummarySchema = z.object({
+  householdId: OpaqueIdSchema,
+  actorMemberId: OpaqueIdSchema,
+  adults: z.array(AdultAccessAccountSchema),
+});
+
+export const AdditionalPasskeyOptionsRequestSchema = z
+  .object({
+    memberId: OpaqueIdSchema,
+    passkeyLabel: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
+export const RecoveryCodeConfirmationRequestSchema = z
+  .object({
+    ceremonyId: OpaqueIdSchema,
+    response: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
+export const RecoveryCodeRevealSchema = z.object({
+  code: z.string().regex(/^([A-F0-9]{4}-){7}[A-F0-9]{4}$/),
+  createdAt: TimestampSchema,
+  expiresAt: TimestampSchema,
+});
+
+export const RecoveryPasskeyOptionsRequestSchema = z
+  .object({
+    recoveryCode: z.string().trim().min(32).max(64),
+    passkeyLabel: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
 export const IntegrationStateSchema = z.object({
   kind: z.enum(['calendar', 'home-assistant']),
   status: z.enum([
@@ -986,6 +1039,9 @@ export const AuditSummarySchema = z.object({
     'photo.hide',
     'photo.unhide',
     'auth.passkey.register',
+    'auth.passkey.revoke',
+    'auth.recovery-code.rotate',
+    'auth.account.recover',
     'home.action.execute',
     'notice.create',
     'notice.update',
@@ -995,6 +1051,19 @@ export const AuditSummarySchema = z.object({
   targetId: OpaqueIdSchema,
   occurredAt: TimestampSchema,
   result: z.enum(['succeeded', 'rejected', 'failed', 'reversed']),
+});
+
+export const PasskeyRegistrationResultSchema = z.object({
+  credential: PasskeyCredentialSummarySchema,
+  audit: AuditSummarySchema,
+});
+
+export const RevokePasskeyRequestSchema = CommandRequestSchema;
+
+export const PasskeyRevocationResultSchema = z.object({
+  access: AdultAccessSummarySchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
 });
 
 const NoticeFieldsSchema = z.object({
@@ -1572,6 +1641,16 @@ export type PasskeyCeremonyVerificationRequest = z.infer<
 >;
 export type PasskeySession = z.infer<typeof PasskeySessionSchema>;
 export type PasskeySignOutResult = z.infer<typeof PasskeySignOutResultSchema>;
+export type PasskeyCredentialSummary = z.infer<typeof PasskeyCredentialSummarySchema>;
+export type AdultAccessAccount = z.infer<typeof AdultAccessAccountSchema>;
+export type AdultAccessSummary = z.infer<typeof AdultAccessSummarySchema>;
+export type AdditionalPasskeyOptionsRequest = z.infer<typeof AdditionalPasskeyOptionsRequestSchema>;
+export type RecoveryCodeConfirmationRequest = z.infer<typeof RecoveryCodeConfirmationRequestSchema>;
+export type RecoveryCodeReveal = z.infer<typeof RecoveryCodeRevealSchema>;
+export type RecoveryPasskeyOptionsRequest = z.infer<typeof RecoveryPasskeyOptionsRequestSchema>;
+export type PasskeyRegistrationResult = z.infer<typeof PasskeyRegistrationResultSchema>;
+export type RevokePasskeyRequest = z.infer<typeof RevokePasskeyRequestSchema>;
+export type PasskeyRevocationResult = z.infer<typeof PasskeyRevocationResultSchema>;
 export type IntegrationState = z.infer<typeof IntegrationStateSchema>;
 export type CalendarSource = z.infer<typeof CalendarSourceSchema>;
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;

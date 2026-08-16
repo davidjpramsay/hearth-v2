@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AdditionalPasskeyOptionsRequestSchema,
+  AdultAccessSummarySchema,
   ActivityFeedSchema,
   ApiErrorSchema,
   CalendarEventSchema,
@@ -43,6 +45,7 @@ import {
   HouseholdListSettingsSchema,
   ReorderHouseholdListsRequestSchema,
   ReorderChoreTemplatesRequestSchema,
+  RecoveryCodeRevealSchema,
   CreateHouseholdNoticeRequestSchema,
   TodaySectionVisibilitySchema,
   ChoreTemplateSchema,
@@ -50,6 +53,53 @@ import {
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
+  it('keeps adult access typed without exposing credential material or recovery secrets', () => {
+    const access = AdultAccessSummarySchema.parse({
+      householdId: 'household_private',
+      actorMemberId: 'member_david',
+      adults: [
+        {
+          member: {
+            id: 'member_david',
+            displayName: 'David',
+            avatarUrl: '/brand/hearth-mark.png',
+          },
+          passkeys: [
+            {
+              id: 'passkey_iphone',
+              memberId: 'member_david',
+              label: 'David’s iPhone',
+              deviceType: 'multiDevice',
+              backedUp: true,
+              createdAt: '2026-08-15T00:00:00.000Z',
+              lastUsedAt: null,
+            },
+          ],
+          recovery: {
+            configured: true,
+            createdAt: '2026-08-15T00:00:00.000Z',
+            expiresAt: '2027-02-11T00:00:00.000Z',
+          },
+        },
+      ],
+    });
+    expect(JSON.stringify(access)).not.toMatch(/publicKey|credentialId|codeHash|recoveryCode/i);
+    expect(
+      AdditionalPasskeyOptionsRequestSchema.safeParse({
+        memberId: 'member_david',
+        passkeyLabel: 'iPad',
+        credential: 'must-not-cross',
+      }).success,
+    ).toBe(false);
+    expect(
+      RecoveryCodeRevealSchema.parse({
+        code: 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-0000-1111',
+        createdAt: '2026-08-15T00:00:00.000Z',
+        expiresAt: '2027-02-11T00:00:00.000Z',
+      }).code,
+    ).toContain('AAAA-BBBB');
+  });
+
   it('keeps recent household activity browser-safe and bounded', () => {
     const feed = ActivityFeedSchema.parse({
       entries: [

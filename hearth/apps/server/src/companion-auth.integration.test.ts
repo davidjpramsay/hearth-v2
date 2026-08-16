@@ -5,8 +5,10 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildServer } from './app.js';
+import { SqliteAdminRepository } from './admin-repository.js';
 import { CompanionAuthService, type PasskeyEngine } from './companion-auth.js';
 import { openHearthDatabase } from './database.js';
+import { FixedClock } from './runtime-context.js';
 
 const temporaryDirectories: string[] = [];
 const servers: ReturnType<typeof buildServer>[] = [];
@@ -199,6 +201,246 @@ describe('companion passkey authentication', () => {
     expect(signedOut.headers['set-cookie']).toContain('Max-Age=0');
     harness.database.close();
   });
+
+  it('adds a passkey for another named adult and revokes a spare idempotently', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {
+      id: 'credential_private_adult',
+    });
+    const actor = harness.auth.authenticate(first.token);
+    insertAdult(harness.database, 'member_alex', 'Alex');
+
+    harness.setRegistrationCredentialId('credential_alex_phone');
+    const options = await harness.auth.additionalRegistrationOptions(
+      first.session.householdId,
+      actor,
+      { memberId: 'member_alex', passkeyLabel: 'Alex’s iPhone' },
+    );
+    const enrolled = await harness.auth.verifyAdditionalRegistration(
+      first.session.householdId,
+      actor,
+      options.ceremonyId,
+      { id: 'credential_alex_phone' },
+    );
+    expect(enrolled.credential).toMatchObject({
+      memberId: 'member_alex',
+      label: 'Alex’s iPhone',
+      backedUp: true,
+    });
+    expect(enrolled.audit.action).toBe('auth.passkey.register');
+    expect(harness.auth.adultAccess(first.session.householdId, actor).adults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          member: expect.objectContaining({ displayName: 'Alex' }),
+          passkeys: [expect.objectContaining({ label: 'Alex’s iPhone' })],
+        }),
+      ]),
+    );
+
+    harness.setRegistrationCredentialId('credential_alex_tablet');
+    const spareOptions = await harness.auth.additionalRegistrationOptions(
+      first.session.householdId,
+      actor,
+      { memberId: 'member_alex', passkeyLabel: 'Alex’s iPad' },
+    );
+    const spare = await harness.auth.verifyAdditionalRegistration(
+      first.session.householdId,
+      actor,
+      spareOptions.ceremonyId,
+      { id: 'credential_alex_tablet' },
+    );
+    const revoked = harness.auth.revokePasskey(
+      first.session.householdId,
+      spare.credential.id,
+      actor,
+      'request_revoke_alex_tablet',
+    );
+    expect(revoked.replayed).toBe(false);
+    expect(
+      revoked.access.adults.find((adult) => adult.member.id === 'member_alex')?.passkeys,
+    ).toHaveLength(1);
+    expect(
+      harness.auth.revokePasskey(
+        first.session.householdId,
+        spare.credential.id,
+        actor,
+        'request_revoke_alex_tablet',
+      ).replayed,
+    ).toBe(true);
+    const alexOnly = enrolled.credential.id;
+    expect(() =>
+      harness.auth.revokePasskey(
+        first.session.householdId,
+        alexOnly,
+        actor,
+        'request_revoke_alex_final',
+      ),
+    ).toThrow(/final passkey/);
+    harness.database.close();
+  });
+
+  it('reveals a recovery code once and replaces all previous access after recovery', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {
+      id: 'credential_private_adult',
+    });
+    const actor = harness.auth.authenticate(first.token);
+    const confirmation = await harness.auth.recoveryConfirmationOptions(
+      first.session.householdId,
+      actor,
+    );
+    const recovery = await harness.auth.createRecoveryCode(
+      first.session.householdId,
+      actor,
+      confirmation.ceremonyId,
+      { id: 'credential_private_adult' },
+    );
+    expect(recovery.code).toMatch(/^([A-F0-9]{4}-){7}[A-F0-9]{4}$/);
+    const stored = harness.database
+      .prepare('SELECT code_hash FROM companion_recovery_codes')
+      .get() as { code_hash: string };
+    expect(stored.code_hash).toHaveLength(64);
+    expect(stored.code_hash).not.toContain(recovery.code.replaceAll('-', ''));
+    expect(
+      harness.auth.adultAccess(first.session.householdId, actor).adults[0]?.recovery.configured,
+    ).toBe(true);
+
+    harness.setRegistrationCredentialId('credential_recovered_phone');
+    const recoveryOptions = await harness.auth.recoveryRegistrationOptions(
+      { recoveryCode: recovery.code, passkeyLabel: 'Replacement iPhone' },
+      '192.0.2.20',
+    );
+    const recovered = await harness.auth.verifyRecoveryRegistration(recoveryOptions.ceremonyId, {
+      id: 'credential_recovered_phone',
+    });
+    expect(recovered.session).toMatchObject({ displayName: 'David' });
+    expect(() => harness.auth.session(first.token)).toThrow(/Sign in to continue/);
+    expect(
+      harness.database
+        .prepare('SELECT credential_id FROM passkey_credentials WHERE revoked_at IS NULL')
+        .all(),
+    ).toEqual([{ credential_id: 'credential_recovered_phone' }]);
+    expect(
+      harness.database.prepare('SELECT consumed_at FROM companion_recovery_codes').get(),
+    ).toEqual({
+      consumed_at: '2026-08-02T23:42:00.000Z',
+    });
+    await expect(
+      harness.auth.recoveryRegistrationOptions(
+        { recoveryCode: recovery.code, passkeyLabel: 'Replay phone' },
+        '192.0.2.20',
+      ),
+    ).rejects.toThrow(/not accepted/);
+    expect(
+      harness.database
+        .prepare(
+          "SELECT action_type FROM audit_events WHERE action_type LIKE 'auth.%' ORDER BY rowid",
+        )
+        .all(),
+    ).toEqual([
+      { action_type: 'auth.passkey.register' },
+      { action_type: 'auth.recovery-code.rotate' },
+      { action_type: 'auth.account.recover' },
+    ]);
+    harness.database.close();
+  });
+
+  it('serves the authenticated adult-access and unauthenticated recovery route contracts', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {
+      id: 'credential_private_adult',
+    });
+    const app = buildServer({
+      logger: false,
+      adminRepository: new SqliteAdminRepository(harness.database, { seedDemo: false }),
+      companionAuth: harness.auth,
+      runtime: {
+        mode: 'private',
+        householdId: first.session.householdId,
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(app);
+    const cookie = harness.auth.sessionCookie(first.token).split(';')[0];
+    const headers = { cookie };
+
+    const access = await app.inject({
+      method: 'GET',
+      url: `/api/v1/households/${first.session.householdId}/adult-access`,
+      headers,
+    });
+    expect(access.statusCode).toBe(200);
+    expect(access.json()).toMatchObject({
+      actorMemberId: first.session.memberId,
+      adults: [{ member: { displayName: 'David' } }],
+    });
+    const invalid = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/${first.session.householdId}/adult-access/passkey-registration-options`,
+      headers,
+      payload: { memberId: first.session.memberId },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json()).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+
+    harness.setRegistrationCredentialId('credential_spare_phone');
+    const options = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/${first.session.householdId}/adult-access/passkey-registration-options`,
+      headers,
+      payload: { memberId: first.session.memberId, passkeyLabel: 'Spare phone' },
+    });
+    const verification = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/${first.session.householdId}/adult-access/passkey-registration-verifications`,
+      headers,
+      payload: {
+        ceremonyId: options.json().ceremonyId,
+        response: { id: 'credential_spare_phone' },
+      },
+    });
+    expect(verification.statusCode).toBe(200);
+    expect(verification.json()).toMatchObject({ credential: { label: 'Spare phone' } });
+
+    const confirmation = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/${first.session.householdId}/adult-access/recovery-confirmation-options`,
+      headers,
+    });
+    const code = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/${first.session.householdId}/adult-access/recovery-codes`,
+      headers,
+      payload: {
+        ceremonyId: confirmation.json().ceremonyId,
+        response: { id: 'credential_private_adult' },
+      },
+    });
+    expect(code.statusCode).toBe(200);
+    expect(code.json().code).toMatch(/^([A-F0-9]{4}-){7}[A-F0-9]{4}$/);
+
+    harness.setRegistrationCredentialId('credential_route_recovery');
+    const recoveryOptions = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/recovery/registration-options',
+      payload: { recoveryCode: code.json().code, passkeyLabel: 'Recovered phone' },
+    });
+    const recovered = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/recovery/registration-verifications',
+      payload: {
+        ceremonyId: recoveryOptions.json().ceremonyId,
+        response: { id: 'credential_route_recovery' },
+      },
+    });
+    expect(recovered.statusCode).toBe(200);
+    expect(recovered.headers['set-cookie']).toContain('HttpOnly');
+    expect(recovered.json()).toMatchObject({ authenticated: true, displayName: 'David' });
+    harness.database.close();
+  });
 });
 
 async function authHarness() {
@@ -207,13 +449,14 @@ async function authHarness() {
   const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
   let consumed = false;
   let now = Date.parse('2026-08-03T07:42:00+08:00');
+  let registrationCredentialId = 'credential_private_adult';
   const engine: PasskeyEngine = {
     registrationOptions: async () =>
       creationOptions('registration_challenge') as Awaited<
         ReturnType<PasskeyEngine['registrationOptions']>
       >,
     verifyRegistration: async () => ({
-      id: 'credential_private_adult',
+      id: registrationCredentialId,
       publicKey: Uint8Array.from([1, 2, 3, 4]),
       counter: 0,
       transports: ['internal'],
@@ -247,7 +490,40 @@ async function authHarness() {
     advance: (milliseconds: number) => {
       now += milliseconds;
     },
+    setRegistrationCredentialId: (credentialId: string) => {
+      registrationCredentialId = credentialId;
+    },
   };
+}
+
+function insertAdult(
+  database: Awaited<ReturnType<typeof openHearthDatabase>>,
+  memberId: string,
+  displayName: string,
+): void {
+  database
+    .prepare(
+      `INSERT INTO members
+        (id, household_id, display_name, colour, avatar_key, role, archived_at,
+         created_at, updated_at, capabilities_json)
+       SELECT ?, id, ?, '#6f5a87', '/brand/hearth-mark.png', 'adult', NULL, ?, ?, ?
+       FROM households LIMIT 1`,
+    )
+    .run(
+      memberId,
+      displayName,
+      '2026-08-02T23:42:00.000Z',
+      '2026-08-02T23:42:00.000Z',
+      JSON.stringify([
+        'household.admin',
+        'household.view',
+        'chores.complete',
+        'lists.change',
+        'meals.change',
+        'pocket-money.view',
+        'home.control',
+      ]),
+    );
 }
 
 function setupInput() {

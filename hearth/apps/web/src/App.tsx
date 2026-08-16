@@ -79,6 +79,9 @@ const PhotosSettingsScreen = lazy(async () => ({
 const PeopleSettingsScreen = lazy(async () => ({
   default: (await import('./screens/PeopleSettingsScreen')).PeopleSettingsScreen,
 }));
+const AdultAccessScreen = lazy(async () => ({
+  default: (await import('./screens/AdultAccessScreen')).AdultAccessScreen,
+}));
 const PocketMoneySettingsScreen = lazy(async () => ({
   default: (await import('./screens/PocketMoneySettingsScreen')).PocketMoneySettingsScreen,
 }));
@@ -166,6 +169,7 @@ export function App() {
             <Route path="/admin/appearance" element={<AppearanceSettingsScreen />} />
             <Route path="/admin/household" element={<HouseholdSettingsScreen />} />
             <Route path="/admin/people" element={<PeopleSettingsScreen />} />
+            <Route path="/admin/access" element={<AdultAccessScreen />} />
             <Route path="/admin/today" element={<TodaySettingsScreen />} />
             <Route path="/admin/televisions" element={<TelevisionsSettingsScreen />} />
             <Route path="/admin/connections" element={<ConnectionsSettingsScreen />} />

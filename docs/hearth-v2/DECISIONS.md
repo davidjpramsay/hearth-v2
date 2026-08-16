@@ -410,8 +410,8 @@ Record durable choices here. New decisions should include date, status, context,
   credentials independent.
 - Consequence: Private Admin no longer relies on demo actor headers and first use completes without a
   server restart, but real enrolment cannot happen until the permanent private HTTPS hostname and
-  trusted certificate are approved. A second-adult/additional-passkey and locally confirmed recovery
-  flow remains required before the household pilot.
+  trusted certificate are approved. D-044 supplies the later second-adult/additional-passkey and
+  locally confirmed recovery flow; real-device commissioning evidence remains required.
 
 ## D-033 — Calendar is one destination with three stable views
 
@@ -657,3 +657,41 @@ same-origin derivatives. No original, source path or delete operation crosses th
   System Health surface, but swapping a restored database, Synology Hyper Backup, Home Assistant
   recovery and the real NAS restore drill remain explicit operator/approval work rather than web
   buttons.
+
+## D-044 — Adult access uses named passkeys and one-time local recovery
+
+- Date: 2026-08-15
+- Status: accepted
+- Context: Private first use created one adult passkey, but a household pilot also needs a second
+  adult, a spare credential and a safe lost-device path. A shared password, invitation URL or
+  recoverable plaintext code would weaken the LAN/Tailscale-first boundary selected in D-014 and
+  D-032.
+- Choice: Let an authenticated administrator enrol multiple independently named passkeys against
+  any active adult household member and revoke them separately. Block revocation of an adult's
+  final credential until recovery exists. Creating or replacing recovery requires a fresh
+  user-verified assertion from the current adult, generates 128 random bits, displays the grouped
+  code once, stores only its SHA-256 digest and expires it after 180 days. Recovery is single-use:
+  a valid code creates a replacement discoverable passkey, consumes the code and revokes that
+  adult's earlier passkeys and sessions. Do not use URL tokens or browser storage.
+- Consequence: A family can add the second adult and recover from a lost phone without a common
+  admin secret. Migration `0020_adult_access_recovery.sql` links new sessions to credentials and
+  adds one-active-per-adult recovery records. The flow is implemented and virtual-WebAuthn tested;
+  real-device use remains gated on the approved stable private HTTPS hostname and commissioning
+  evidence.
+
+## D-045 — Pre-commission display testing uses an isolated fictional-data pilot
+
+- Date: 2026-08-16
+- Status: accepted
+- Context: The family needs to test the rendered product on the Samsung M7 before the permanent
+  private HTTPS hostname, passkeys, backups and provider credentials are commissioned. Reusing the
+  private Compose service with temporary authentication values would weaken the WebAuthn boundary,
+  while putting real household data into an unauthenticated HTTP test would be unsafe.
+- Choice: Provide a separate `hearth-v2-demo` Compose project that binds only to an explicitly
+  supplied Synology LAN address, mounts its own demo database directory and uses the deterministic
+  fictional household. It mounts no secrets or photo source, accepts no live calendar or Home
+  Assistant configuration and must not receive a public reverse proxy or router port-forward.
+- Consequence: The M7 can begin browser, layout and remote testing immediately without pretending
+  that private commissioning is complete. The demo database can never become the private household
+  database accidentally; real family data still waits for stable HTTPS, real-device passkey and
+  recovery checks, encrypted backup and restore evidence.

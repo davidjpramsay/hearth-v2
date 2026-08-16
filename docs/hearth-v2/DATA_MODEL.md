@@ -330,8 +330,9 @@ encrypted by a non-exportable Keystore key.
 
 ### Session
 
-The private companion stores a random-session SHA-256 hash, household/member references,
-created/last-seen/expiry timestamps and revocation state. The raw 30-day token exists only in the
+The private companion stores a random-session SHA-256 hash, household/member/passkey references,
+created/last-seen/expiry timestamps and revocation state. The passkey reference permits narrowly
+revoking sessions from a lost credential. The raw 30-day token exists only in the
 `HttpOnly`, `Secure`, `SameSite=Strict` browser cookie and never enters logs, audit rows or SQLite.
 
 ### Passkey credential
@@ -345,6 +346,18 @@ created/last-seen/expiry timestamps and revocation state. The raw 30-day token e
 Registration challenges and the one-time first-use code are ephemeral and never stored in this
 table. Migration `0012_passkey_authentication.sql` implements both credential and companion-session
 records.
+
+### Companion recovery code
+
+- opaque recovery-code row ID and household/member references
+- SHA-256 code hash; never the displayed code
+- creating adult, created/expiry timestamps and consumed/revoked state
+- at most one active code for a household member
+
+Migration `0020_adult_access_recovery.sql` links new companion sessions to their authenticating
+credential and adds these one-time recovery records. Recovery expires after 180 days. Successful
+use consumes the code and revokes the recovered adult's prior passkeys and sessions before issuing
+the replacement session.
 
 ## Audit event
 
@@ -429,6 +442,11 @@ schedule and occurrence queries.
 Migration `0019_home_assistant_connection_setup.sql` adds only the safe Home Assistant connection
 projection described above. JSON validity and provider/status checks are enforced in SQLite; raw
 provider secrets and entity IDs remain outside the database.
+Migration `0020_adult_access_recovery.sql` links companion sessions to passkey credentials and adds
+one-active-per-adult, digest-only recovery records. The forward migration links older sessions when
+the pre-upgrade adult has exactly one active credential; ambiguous rows remain unlinked rather than
+guessing. New sessions always carry their credential reference so a single lost passkey can be
+revoked narrowly.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
 repository boundary. It generates supported one-off, daily and weekly occurrences on

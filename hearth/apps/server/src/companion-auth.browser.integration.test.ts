@@ -7,6 +7,7 @@ import { chromium } from '@playwright/test';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { buildServer } from './app.js';
+import { SqliteAdminRepository } from './admin-repository.js';
 import { CompanionAuthService } from './companion-auth.js';
 import { openHearthDatabase } from './database.js';
 
@@ -36,7 +37,12 @@ describe('real browser WebAuthn contract', () => {
         setupCodeConsumed = true;
       },
     });
-    const app = buildServer({ logger: false, demoMode: false, companionAuth: auth });
+    const app = buildServer({
+      logger: false,
+      demoMode: false,
+      adminRepository: new SqliteAdminRepository(database, { seedDemo: false }),
+      companionAuth: auth,
+    });
     await app.listen({ host: '127.0.0.1', port });
     const browser = await chromium.launch({ headless: true });
     try {
@@ -134,6 +140,75 @@ describe('real browser WebAuthn contract', () => {
       expect(database.prepare('SELECT counter FROM passkey_credentials').get()).toEqual({
         counter: 2,
       });
+
+      const recoveredSession = await page.evaluate(async () => {
+        const confirmationResponse = await fetch(
+          '/api/v1/households/' +
+            ((await (await fetch('/api/v1/auth/session')).json()) as { householdId: string })
+              .householdId +
+            '/adult-access/recovery-confirmation-options',
+          { method: 'POST' },
+        );
+        const confirmation = (await confirmationResponse.json()) as CeremonyResponse;
+        const browserGlobal = globalThis as unknown as BrowserWebAuthnGlobals;
+        const requestOptions = browserGlobal.PublicKeyCredential.parseRequestOptionsFromJSON(
+          confirmation.options,
+        );
+        const existingCredential = await browserGlobal.navigator.credentials.get({
+          publicKey: requestOptions,
+        });
+        if (existingCredential === null) throw new Error('Recovery confirmation was cancelled.');
+        const session = (await (await fetch('/api/v1/auth/session')).json()) as {
+          householdId: string;
+        };
+        const codeResponse = await fetch(
+          `/api/v1/households/${session.householdId}/adult-access/recovery-codes`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ceremonyId: confirmation.ceremonyId,
+              response: existingCredential.toJSON(),
+            }),
+          },
+        );
+        const recovery = (await codeResponse.json()) as { code: string };
+        await fetch('/api/v1/auth/sign-outs', { method: 'POST' });
+        const optionsResponse = await fetch('/api/v1/auth/recovery/registration-options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recoveryCode: recovery.code,
+            passkeyLabel: 'Recovered virtual phone',
+          }),
+        });
+        const ceremony = (await optionsResponse.json()) as CeremonyResponse;
+        const creationOptions = browserGlobal.PublicKeyCredential.parseCreationOptionsFromJSON(
+          ceremony.options,
+        );
+        const replacement = await browserGlobal.navigator.credentials.create({
+          publicKey: creationOptions,
+        });
+        if (replacement === null) throw new Error('Recovery passkey creation was cancelled.');
+        const verification = await fetch('/api/v1/auth/recovery/registration-verifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ceremonyId: ceremony.ceremonyId,
+            response: replacement.toJSON(),
+          }),
+        });
+        return { status: verification.status, body: await verification.json() };
+      });
+      expect(recoveredSession).toMatchObject({
+        status: 200,
+        body: { authenticated: true, displayName: 'David' },
+      });
+      expect(
+        database
+          .prepare('SELECT COUNT(*) AS count FROM passkey_credentials WHERE revoked_at IS NULL')
+          .get(),
+      ).toEqual({ count: 1 });
     } finally {
       await browser.close();
       await app.close();

@@ -15,13 +15,27 @@ import {
 } from '@simplewebauthn/server';
 
 import {
+  AdultAccessSummarySchema,
+  AuditSummarySchema,
   PasskeyAuthStatusSchema,
   PasskeyCeremonyOptionsSchema,
+  PasskeyCredentialSummarySchema,
+  PasskeyRegistrationResultSchema,
+  PasskeyRevocationResultSchema,
   PasskeySessionSchema,
+  RecoveryCodeRevealSchema,
   type FirstUsePasskeyOptionsRequest,
+  type AdditionalPasskeyOptionsRequest,
+  type AdultAccessSummary,
+  type AuditSummary,
   type PasskeyAuthStatus,
   type PasskeyCeremonyOptions,
+  type PasskeyCredentialSummary,
+  type PasskeyRegistrationResult,
+  type PasskeyRevocationResult,
   type PasskeySession,
+  type RecoveryCodeReveal,
+  type RecoveryPasskeyOptionsRequest,
   type RuntimeMode,
 } from '@hearth/shared';
 
@@ -35,6 +49,7 @@ const AUTHENTICATION_ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
 const MAX_AUTHENTICATION_OPTIONS_PER_ADDRESS = 20;
 const MAX_PENDING_AUTHENTICATION_CEREMONIES = 128;
 const MAX_TRACKED_AUTHENTICATION_ADDRESSES = 512;
+const RECOVERY_CODE_LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 const ADULT_CAPABILITIES = [
   'household.admin',
   'household.view',
@@ -60,6 +75,34 @@ interface AuthenticationCeremony {
   expiresAt: number;
 }
 
+interface AdditionalRegistrationCeremony {
+  challenge: string;
+  expiresAt: number;
+  householdId: string;
+  memberId: string;
+  actorId: string;
+  passkeyLabel: string;
+  userId: Uint8Array;
+}
+
+interface RecoveryConfirmationCeremony {
+  challenge: string;
+  expiresAt: number;
+  householdId: string;
+  actorId: string;
+}
+
+interface RecoveryRegistrationCeremony {
+  challenge: string;
+  expiresAt: number;
+  codeId: string;
+  codeDigest: string;
+  householdId: string;
+  memberId: string;
+  passkeyLabel: string;
+  userId: Uint8Array;
+}
+
 interface InvalidSetupAttempts {
   count: number;
   windowStartedAt: number;
@@ -79,6 +122,10 @@ export interface PasskeyEngine {
     rpId: string;
     adultName: string;
     userId: Uint8Array<ArrayBuffer>;
+    excludeCredentials?: Array<{
+      id: string;
+      transports?: AuthenticatorTransportFuture[];
+    }>;
   }): Promise<PublicKeyCredentialCreationOptionsJSON>;
   verifyRegistration(input: {
     response: unknown;
@@ -101,6 +148,10 @@ export class SimpleWebAuthnEngine implements PasskeyEngine {
     rpId: string;
     adultName: string;
     userId: Uint8Array<ArrayBuffer>;
+    excludeCredentials?: Array<{
+      id: string;
+      transports?: AuthenticatorTransportFuture[];
+    }>;
   }): Promise<PublicKeyCredentialCreationOptionsJSON> {
     return generateRegistrationOptions({
       rpName: 'Hearth',
@@ -115,6 +166,9 @@ export class SimpleWebAuthnEngine implements PasskeyEngine {
       },
       supportedAlgorithmIDs: [-7, -257],
       timeout: CEREMONY_LIFETIME_MS,
+      ...(input.excludeCredentials === undefined
+        ? {}
+        : { excludeCredentials: input.excludeCredentials }),
     });
   }
 
@@ -200,6 +254,42 @@ export interface CompanionAuthRepository {
     ceremonyId: string,
     response: unknown,
   ): Promise<{ session: PasskeySession; token: string }>;
+  adultAccess(householdId: string, actor: CommandActor): AdultAccessSummary;
+  additionalRegistrationOptions(
+    householdId: string,
+    actor: CommandActor,
+    input: AdditionalPasskeyOptionsRequest,
+  ): Promise<PasskeyCeremonyOptions>;
+  verifyAdditionalRegistration(
+    householdId: string,
+    actor: CommandActor,
+    ceremonyId: string,
+    response: unknown,
+  ): Promise<PasskeyRegistrationResult>;
+  recoveryConfirmationOptions(
+    householdId: string,
+    actor: CommandActor,
+  ): Promise<PasskeyCeremonyOptions>;
+  createRecoveryCode(
+    householdId: string,
+    actor: CommandActor,
+    ceremonyId: string,
+    response: unknown,
+  ): Promise<RecoveryCodeReveal>;
+  recoveryRegistrationOptions(
+    input: RecoveryPasskeyOptionsRequest,
+    remoteAddress: string,
+  ): Promise<PasskeyCeremonyOptions>;
+  verifyRecoveryRegistration(
+    ceremonyId: string,
+    response: unknown,
+  ): Promise<{ session: PasskeySession; token: string }>;
+  revokePasskey(
+    householdId: string,
+    passkeyId: string,
+    actor: CommandActor,
+    requestId: string,
+  ): PasskeyRevocationResult;
   session(token: string): PasskeySession;
   authenticate(token: string): CommandActor;
   signOut(token: string): void;
@@ -210,8 +300,15 @@ export interface CompanionAuthRepository {
 export class CompanionAuthService implements CompanionAuthRepository {
   private readonly registrationCeremonies = new Map<string, RegistrationCeremony>();
   private readonly authenticationCeremonies = new Map<string, AuthenticationCeremony>();
+  private readonly additionalRegistrationCeremonies = new Map<
+    string,
+    AdditionalRegistrationCeremony
+  >();
+  private readonly recoveryConfirmationCeremonies = new Map<string, RecoveryConfirmationCeremony>();
+  private readonly recoveryRegistrationCeremonies = new Map<string, RecoveryRegistrationCeremony>();
   private readonly invalidSetupAttempts = new Map<string, InvalidSetupAttempts>();
   private readonly authenticationAttempts = new Map<string, InvalidSetupAttempts>();
+  private readonly recoveryAttempts = new Map<string, InvalidSetupAttempts>();
   private readonly now: () => Date;
   private readonly engine: PasskeyEngine;
 
@@ -367,7 +464,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     createHousehold();
 
     await this.configuration.consumeFirstUseCode().catch(() => undefined);
-    const session = this.createSession(householdId, memberId);
+    const session = this.createSession(householdId, memberId, credential.id);
     return session;
   }
 
@@ -402,41 +499,389 @@ export class CompanionAuthService implements CompanionAuthRepository {
     response: unknown,
   ): Promise<{ session: PasskeySession; token: string }> {
     const ceremony = this.takeAuthenticationCeremony(ceremonyId);
-    const credentialId = credentialIdFromResponse(response);
-    const credential = this.database
+    const credential = await this.verifyExistingCredential(ceremony.challenge, response);
+    return this.createSession(
+      credential.household_id,
+      credential.member_id,
+      credential.credential_id,
+    );
+  }
+
+  adultAccess(householdId: string, actor: CommandActor): AdultAccessSummary {
+    this.assertAdultAdministrator(householdId, actor);
+    const members = this.database
       .prepare(
-        `SELECT credential_id, household_id, member_id, public_key, counter, transports_json
-         FROM passkey_credentials
-         WHERE credential_id = ? AND revoked_at IS NULL`,
+        `SELECT id, display_name, avatar_key
+         FROM members
+         WHERE household_id = ? AND role = 'adult' AND archived_at IS NULL
+         ORDER BY datetime(created_at), rowid`,
       )
-      .get(credentialId) as PasskeyCredentialRow | undefined;
-    if (credential === undefined) {
-      throw new RepositoryError('UNAUTHENTICATED', 'That passkey is not recognised by Hearth.');
-    }
-    const transports = parseTransports(credential.transports_json);
-    const newCounter = await this.engine.verifyAuthentication({
-      response,
-      expectedChallenge: ceremony.challenge,
-      expectedOrigin: this.configuration.origin,
-      expectedRpId: this.configuration.rpId,
-      credential: {
-        id: credential.credential_id,
-        publicKey: Uint8Array.from(credential.public_key),
-        counter: credential.counter,
-        ...(transports.length === 0 ? {} : { transports }),
-      },
+      .all(householdId) as AdultMemberRow[];
+    const now = this.now().toISOString();
+    return AdultAccessSummarySchema.parse({
+      householdId,
+      actorMemberId: actor.id,
+      adults: members.map((member) => {
+        const passkeys = this.database
+          .prepare(
+            `SELECT id, member_id, label, device_type, backed_up, created_at, last_used_at
+             FROM passkey_credentials
+             WHERE household_id = ? AND member_id = ? AND revoked_at IS NULL
+             ORDER BY datetime(created_at), rowid`,
+          )
+          .all(householdId, member.id)
+          .map(passkeySummary);
+        const recovery = this.database
+          .prepare(
+            `SELECT created_at, expires_at
+             FROM companion_recovery_codes
+             WHERE household_id = ? AND member_id = ?
+               AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ?
+             LIMIT 1`,
+          )
+          .get(householdId, member.id, now) as RecoveryCodeStatusRow | undefined;
+        return {
+          member: {
+            id: member.id,
+            displayName: member.display_name,
+            avatarUrl: member.avatar_key ?? '/brand/hearth-mark.png',
+          },
+          passkeys,
+          recovery: {
+            configured: recovery !== undefined,
+            createdAt: recovery?.created_at ?? null,
+            expiresAt: recovery?.expires_at ?? null,
+          },
+        };
+      }),
     });
-    if (newCounter === null) {
-      throw new RepositoryError('UNAUTHENTICATED', 'That passkey could not be verified.');
+  }
+
+  async additionalRegistrationOptions(
+    householdId: string,
+    actor: CommandActor,
+    input: AdditionalPasskeyOptionsRequest,
+  ): Promise<PasskeyCeremonyOptions> {
+    this.assertAdultAdministrator(householdId, actor);
+    const member = this.readAdultMember(householdId, input.memberId);
+    this.pruneExpiredRegistrationState();
+    const userId = this.webAuthnUserId(householdId, member.id);
+    const existingCredentials = this.activeCredentials(householdId, member.id);
+    const options = await this.engine.registrationOptions({
+      rpId: this.configuration.rpId,
+      adultName: member.display_name,
+      userId,
+      excludeCredentials: existingCredentials.map((credential) => ({
+        id: credential.credential_id,
+        ...(parseTransports(credential.transports_json).length === 0
+          ? {}
+          : { transports: parseTransports(credential.transports_json) }),
+      })),
+    });
+    const ceremonyId = opaqueId('ceremony_registration');
+    const expiresAt = this.now().getTime() + CEREMONY_LIFETIME_MS;
+    this.additionalRegistrationCeremonies.set(ceremonyId, {
+      challenge: options.challenge,
+      expiresAt,
+      householdId,
+      memberId: member.id,
+      actorId: actor.id,
+      passkeyLabel: input.passkeyLabel,
+      userId,
+    });
+    return ceremonyOptions(ceremonyId, options, expiresAt);
+  }
+
+  async verifyAdditionalRegistration(
+    householdId: string,
+    actor: CommandActor,
+    ceremonyId: string,
+    response: unknown,
+  ): Promise<PasskeyRegistrationResult> {
+    this.assertAdultAdministrator(householdId, actor);
+    const ceremony = this.takeAdditionalRegistrationCeremony(ceremonyId);
+    if (ceremony.householdId !== householdId || ceremony.actorId !== actor.id) {
+      throw new RepositoryError('FORBIDDEN', 'That passkey setup belongs to another adult.');
+    }
+    const credential = await this.verifyNewCredential(ceremony.challenge, response);
+    const now = this.now().toISOString();
+    const credentialRowId = opaqueId('passkey');
+    const audit = this.database.transaction(() => {
+      this.assertCredentialIsNew(credential.id);
+      this.insertCredential({
+        id: credentialRowId,
+        credential,
+        householdId,
+        memberId: ceremony.memberId,
+        userId: ceremony.userId,
+        label: ceremony.passkeyLabel,
+        now,
+      });
+      return this.writeAudit({
+        householdId,
+        actorId: actor.id,
+        action: 'auth.passkey.register',
+        targetType: 'passkey_credential',
+        targetId: credentialRowId,
+        now,
+        safeSummary: { firstUse: false, memberId: ceremony.memberId },
+      });
+    })();
+    return PasskeyRegistrationResultSchema.parse({
+      credential: this.readPasskeySummary(credentialRowId),
+      audit,
+    });
+  }
+
+  async recoveryConfirmationOptions(
+    householdId: string,
+    actor: CommandActor,
+  ): Promise<PasskeyCeremonyOptions> {
+    this.assertAdultAdministrator(householdId, actor);
+    this.pruneExpiredRegistrationState();
+    const options = await this.engine.authenticationOptions({ rpId: this.configuration.rpId });
+    const ceremonyId = opaqueId('ceremony_recovery_confirmation');
+    const expiresAt = this.now().getTime() + CEREMONY_LIFETIME_MS;
+    this.recoveryConfirmationCeremonies.set(ceremonyId, {
+      challenge: options.challenge,
+      expiresAt,
+      householdId,
+      actorId: actor.id,
+    });
+    return ceremonyOptions(ceremonyId, options, expiresAt);
+  }
+
+  async createRecoveryCode(
+    householdId: string,
+    actor: CommandActor,
+    ceremonyId: string,
+    response: unknown,
+  ): Promise<RecoveryCodeReveal> {
+    this.assertAdultAdministrator(householdId, actor);
+    const ceremony = this.takeRecoveryConfirmationCeremony(ceremonyId);
+    if (ceremony.householdId !== householdId || ceremony.actorId !== actor.id) {
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'That recovery confirmation belongs to another adult.',
+      );
+    }
+    await this.verifyExistingCredential(ceremony.challenge, response, {
+      householdId,
+      memberId: actor.id,
+    });
+    const code = recoveryCode();
+    const createdAt = this.now();
+    const expiresAt = new Date(createdAt.getTime() + RECOVERY_CODE_LIFETIME_MS);
+    const codeId = opaqueId('recovery');
+    this.database.transaction(() => {
+      this.database
+        .prepare(
+          `UPDATE companion_recovery_codes SET revoked_at = ?
+           WHERE household_id = ? AND member_id = ?
+             AND consumed_at IS NULL AND revoked_at IS NULL`,
+        )
+        .run(createdAt.toISOString(), householdId, actor.id);
+      this.database
+        .prepare(
+          `INSERT INTO companion_recovery_codes
+            (id, household_id, member_id, code_hash, created_by_member_id, created_at,
+             expires_at, consumed_at, revoked_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+        )
+        .run(
+          codeId,
+          householdId,
+          actor.id,
+          recoveryCodeDigest(code),
+          actor.id,
+          createdAt.toISOString(),
+          expiresAt.toISOString(),
+        );
+      this.writeAudit({
+        householdId,
+        actorId: actor.id,
+        action: 'auth.recovery-code.rotate',
+        targetType: 'companion_recovery_code',
+        targetId: codeId,
+        now: createdAt.toISOString(),
+        safeSummary: { expiresAt: expiresAt.toISOString() },
+      });
+    })();
+    return RecoveryCodeRevealSchema.parse({
+      code,
+      createdAt: createdAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    });
+  }
+
+  async recoveryRegistrationOptions(
+    input: RecoveryPasskeyOptionsRequest,
+    remoteAddress: string,
+  ): Promise<PasskeyCeremonyOptions> {
+    this.pruneRecoveryAttempts();
+    this.recordRecoveryAttempt(remoteAddress);
+    const codeHash = recoveryCodeDigest(input.recoveryCode);
+    const now = this.now().toISOString();
+    const row = this.database
+      .prepare(
+        `SELECT r.id, r.household_id, r.member_id, m.display_name
+         FROM companion_recovery_codes r
+         JOIN members m ON m.id = r.member_id AND m.household_id = r.household_id
+         WHERE r.code_hash = ? AND r.consumed_at IS NULL AND r.revoked_at IS NULL
+           AND r.expires_at > ? AND m.archived_at IS NULL AND m.role = 'adult'`,
+      )
+      .get(codeHash, now) as RecoveryCodeMemberRow | undefined;
+    if (row === undefined) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That recovery code was not accepted.');
+    }
+    const userId = this.webAuthnUserId(row.household_id, row.member_id);
+    const options = await this.engine.registrationOptions({
+      rpId: this.configuration.rpId,
+      adultName: row.display_name,
+      userId,
+    });
+    const ceremonyId = opaqueId('ceremony_recovery_registration');
+    const expiresAt = this.now().getTime() + CEREMONY_LIFETIME_MS;
+    this.recoveryRegistrationCeremonies.set(ceremonyId, {
+      challenge: options.challenge,
+      expiresAt,
+      codeId: row.id,
+      codeDigest: codeHash,
+      householdId: row.household_id,
+      memberId: row.member_id,
+      passkeyLabel: input.passkeyLabel,
+      userId,
+    });
+    return ceremonyOptions(ceremonyId, options, expiresAt);
+  }
+
+  async verifyRecoveryRegistration(
+    ceremonyId: string,
+    response: unknown,
+  ): Promise<{ session: PasskeySession; token: string }> {
+    const ceremony = this.takeRecoveryRegistrationCeremony(ceremonyId);
+    const activeCode = this.database
+      .prepare(
+        `SELECT code_hash FROM companion_recovery_codes
+         WHERE id = ? AND household_id = ? AND member_id = ?
+           AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ?`,
+      )
+      .get(ceremony.codeId, ceremony.householdId, ceremony.memberId, this.now().toISOString()) as
+      { code_hash: string } | undefined;
+    if (activeCode === undefined || !safeEqual(activeCode.code_hash, ceremony.codeDigest)) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That recovery attempt expired. Start again.');
+    }
+    const credential = await this.verifyNewCredential(ceremony.challenge, response);
+    const now = this.now().toISOString();
+    const credentialRowId = opaqueId('passkey');
+    this.database.transaction(() => {
+      this.assertCredentialIsNew(credential.id);
+      this.database
+        .prepare(
+          `UPDATE passkey_credentials SET revoked_at = ?
+           WHERE household_id = ? AND member_id = ? AND revoked_at IS NULL`,
+        )
+        .run(now, ceremony.householdId, ceremony.memberId);
+      this.database
+        .prepare(
+          `UPDATE companion_sessions SET revoked_at = ?
+           WHERE household_id = ? AND member_id = ? AND revoked_at IS NULL`,
+        )
+        .run(now, ceremony.householdId, ceremony.memberId);
+      this.database
+        .prepare(
+          `UPDATE companion_recovery_codes SET consumed_at = ?
+           WHERE id = ? AND consumed_at IS NULL AND revoked_at IS NULL`,
+        )
+        .run(now, ceremony.codeId);
+      this.insertCredential({
+        id: credentialRowId,
+        credential,
+        householdId: ceremony.householdId,
+        memberId: ceremony.memberId,
+        userId: ceremony.userId,
+        label: ceremony.passkeyLabel,
+        now,
+      });
+      this.writeAudit({
+        householdId: ceremony.householdId,
+        actorId: ceremony.memberId,
+        action: 'auth.account.recover',
+        targetType: 'passkey_credential',
+        targetId: credentialRowId,
+        now,
+        safeSummary: { previousAccessRevoked: true },
+      });
+    })();
+    return this.createSession(ceremony.householdId, ceremony.memberId, credential.id);
+  }
+
+  revokePasskey(
+    householdId: string,
+    passkeyId: string,
+    actor: CommandActor,
+    requestId: string,
+  ): PasskeyRevocationResult {
+    this.assertAdultAdministrator(householdId, actor);
+    const commandType = `auth.passkey.revoke:${passkeyId}`;
+    const receipt = this.readRevocationReceipt(householdId, requestId, commandType);
+    if (receipt !== null) return { ...receipt, replayed: true };
+    const row = this.database
+      .prepare(
+        `SELECT id, credential_id, member_id
+         FROM passkey_credentials
+         WHERE id = ? AND household_id = ? AND revoked_at IS NULL`,
+      )
+      .get(passkeyId, householdId) as RevocablePasskeyRow | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That passkey was not found.');
+    const activeCount = this.database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM passkey_credentials
+         WHERE household_id = ? AND member_id = ? AND revoked_at IS NULL`,
+      )
+      .get(householdId, row.member_id) as { count: number };
+    const hasRecovery = this.hasActiveRecoveryCode(householdId, row.member_id);
+    if (activeCount.count <= 1 && !hasRecovery) {
+      throw new RepositoryError(
+        'CONFLICT',
+        'Create a recovery code before removing this adult’s final passkey.',
+      );
     }
     const now = this.now().toISOString();
-    this.database
-      .prepare(
-        `UPDATE passkey_credentials SET counter = ?, last_used_at = ?
-         WHERE credential_id = ? AND revoked_at IS NULL`,
-      )
-      .run(newCounter, now, credential.credential_id);
-    return this.createSession(credential.household_id, credential.member_id);
+    return this.database.transaction(() => {
+      this.database
+        .prepare('UPDATE passkey_credentials SET revoked_at = ? WHERE id = ?')
+        .run(now, passkeyId);
+      this.database
+        .prepare(
+          `UPDATE companion_sessions SET revoked_at = ?
+           WHERE credential_id = ? AND revoked_at IS NULL`,
+        )
+        .run(now, row.credential_id);
+      const audit = this.writeAudit({
+        householdId,
+        actorId: actor.id,
+        action: 'auth.passkey.revoke',
+        targetType: 'passkey_credential',
+        targetId: passkeyId,
+        requestId,
+        now,
+        safeSummary: { memberId: row.member_id },
+      });
+      const result = PasskeyRevocationResultSchema.parse({
+        access: this.adultAccess(householdId, actor),
+        audit,
+        replayed: false,
+      });
+      this.database
+        .prepare(
+          `INSERT INTO command_receipts
+            (household_id, request_id, command_type, response_json, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+        .run(householdId, requestId, commandType, JSON.stringify(result), now);
+      return result;
+    })();
   }
 
   session(token: string): PasskeySession {
@@ -474,9 +919,319 @@ export class CompanionAuthService implements CompanionAuthRepository {
     return `${HEARTH_COMPANION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
   }
 
+  private async verifyExistingCredential(
+    challenge: string,
+    response: unknown,
+    expected?: { householdId: string; memberId: string },
+  ): Promise<PasskeyCredentialRow> {
+    const credentialId = credentialIdFromResponse(response);
+    const credential = this.database
+      .prepare(
+        `SELECT credential_id, household_id, member_id, public_key, counter, transports_json
+         FROM passkey_credentials
+         WHERE credential_id = ? AND revoked_at IS NULL`,
+      )
+      .get(credentialId) as PasskeyCredentialRow | undefined;
+    if (
+      credential === undefined ||
+      (expected !== undefined &&
+        (credential.household_id !== expected.householdId ||
+          credential.member_id !== expected.memberId))
+    ) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That passkey is not recognised by Hearth.');
+    }
+    const transports = parseTransports(credential.transports_json);
+    const newCounter = await this.engine.verifyAuthentication({
+      response,
+      expectedChallenge: challenge,
+      expectedOrigin: this.configuration.origin,
+      expectedRpId: this.configuration.rpId,
+      credential: {
+        id: credential.credential_id,
+        publicKey: Uint8Array.from(credential.public_key),
+        counter: credential.counter,
+        ...(transports.length === 0 ? {} : { transports }),
+      },
+    });
+    if (newCounter === null) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That passkey could not be verified.');
+    }
+    this.database
+      .prepare(
+        `UPDATE passkey_credentials SET counter = ?, last_used_at = ?
+         WHERE credential_id = ? AND revoked_at IS NULL`,
+      )
+      .run(newCounter, this.now().toISOString(), credential.credential_id);
+    return credential;
+  }
+
+  private async verifyNewCredential(
+    challenge: string,
+    response: unknown,
+  ): Promise<PasskeyCredential> {
+    const credential = await this.engine.verifyRegistration({
+      response,
+      expectedChallenge: challenge,
+      expectedOrigin: this.configuration.origin,
+      expectedRpId: this.configuration.rpId,
+    });
+    if (credential === null) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That passkey could not be verified.');
+    }
+    return credential;
+  }
+
+  private assertAdultAdministrator(householdId: string, actor: CommandActor): void {
+    if (actor.type !== 'member' || actor.source !== 'companion') {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult administrator can manage access.');
+    }
+    const row = this.database
+      .prepare(
+        `SELECT role, capabilities_json FROM members
+         WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+      )
+      .get(actor.id, householdId) as { role: string; capabilities_json: string } | undefined;
+    const capabilities = row === undefined ? [] : (JSON.parse(row.capabilities_json) as unknown);
+    if (
+      row?.role !== 'adult' ||
+      !Array.isArray(capabilities) ||
+      !capabilities.includes('household.admin')
+    ) {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult administrator can manage access.');
+    }
+  }
+
+  private readAdultMember(householdId: string, memberId: string): AdultMemberRow {
+    const member = this.database
+      .prepare(
+        `SELECT id, display_name, avatar_key FROM members
+         WHERE id = ? AND household_id = ? AND role = 'adult' AND archived_at IS NULL`,
+      )
+      .get(memberId, householdId) as AdultMemberRow | undefined;
+    if (member === undefined) {
+      throw new RepositoryError('NOT_FOUND', 'Choose an active adult household member.');
+    }
+    return member;
+  }
+
+  private webAuthnUserId(householdId: string, memberId: string): Uint8Array<ArrayBuffer> {
+    const row = this.database
+      .prepare(
+        `SELECT webauthn_user_id FROM passkey_credentials
+         WHERE household_id = ? AND member_id = ?
+         ORDER BY datetime(created_at), rowid LIMIT 1`,
+      )
+      .get(householdId, memberId) as { webauthn_user_id: string } | undefined;
+    return row === undefined
+      ? Uint8Array.from(randomBytes(32))
+      : Uint8Array.from(Buffer.from(row.webauthn_user_id, 'base64url'));
+  }
+
+  private activeCredentials(householdId: string, memberId: string): ExistingCredentialRow[] {
+    return this.database
+      .prepare(
+        `SELECT credential_id, transports_json FROM passkey_credentials
+         WHERE household_id = ? AND member_id = ? AND revoked_at IS NULL`,
+      )
+      .all(householdId, memberId) as ExistingCredentialRow[];
+  }
+
+  private assertCredentialIsNew(credentialId: string): void {
+    const existing = this.database
+      .prepare('SELECT 1 FROM passkey_credentials WHERE credential_id = ?')
+      .get(credentialId);
+    if (existing !== undefined) {
+      throw new RepositoryError('CONFLICT', 'That passkey is already enrolled with Hearth.');
+    }
+  }
+
+  private insertCredential(input: {
+    id: string;
+    credential: PasskeyCredential;
+    householdId: string;
+    memberId: string;
+    userId: Uint8Array;
+    label: string;
+    now: string;
+  }): void {
+    this.database
+      .prepare(
+        `INSERT INTO passkey_credentials
+          (id, credential_id, household_id, member_id, webauthn_user_id, public_key, counter,
+           device_type, backed_up, transports_json, label, created_at, last_used_at, revoked_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+      )
+      .run(
+        input.id,
+        input.credential.id,
+        input.householdId,
+        input.memberId,
+        Buffer.from(input.userId).toString('base64url'),
+        Buffer.from(input.credential.publicKey),
+        input.credential.counter,
+        input.credential.deviceType,
+        input.credential.backedUp ? 1 : 0,
+        JSON.stringify(input.credential.transports ?? []),
+        input.label,
+        input.now,
+      );
+  }
+
+  private readPasskeySummary(passkeyId: string): PasskeyCredentialSummary {
+    const row = this.database
+      .prepare(
+        `SELECT id, member_id, label, device_type, backed_up, created_at, last_used_at
+         FROM passkey_credentials WHERE id = ?`,
+      )
+      .get(passkeyId) as PasskeySummaryRow | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That passkey was not found.');
+    return passkeySummary(row);
+  }
+
+  private writeAudit(input: {
+    householdId: string;
+    actorId: string;
+    action: AuditSummary['action'];
+    targetType: string;
+    targetId: string;
+    now: string;
+    requestId?: string;
+    safeSummary: Record<string, unknown>;
+  }): AuditSummary {
+    const id = opaqueId('audit_auth');
+    this.database
+      .prepare(
+        `INSERT INTO audit_events
+          (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
+           target_type, target_id, request_id, result, safe_summary_json)
+         VALUES (?, ?, ?, 'member', ?, 'companion', ?, ?, ?, ?, 'succeeded', ?)`,
+      )
+      .run(
+        id,
+        input.now,
+        input.householdId,
+        input.actorId,
+        input.action,
+        input.targetType,
+        input.targetId,
+        input.requestId ?? null,
+        JSON.stringify(input.safeSummary),
+      );
+    return AuditSummarySchema.parse({
+      id,
+      actorType: 'member',
+      actorId: input.actorId,
+      source: 'companion',
+      action: input.action,
+      targetId: input.targetId,
+      occurredAt: input.now,
+      result: 'succeeded',
+    });
+  }
+
+  private hasActiveRecoveryCode(householdId: string, memberId: string): boolean {
+    return (
+      this.database
+        .prepare(
+          `SELECT 1 FROM companion_recovery_codes
+           WHERE household_id = ? AND member_id = ?
+             AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ?`,
+        )
+        .get(householdId, memberId, this.now().toISOString()) !== undefined
+    );
+  }
+
+  private readRevocationReceipt(
+    householdId: string,
+    requestId: string,
+    commandType: string,
+  ): PasskeyRevocationResult | null {
+    const row = this.database
+      .prepare(
+        `SELECT response_json FROM command_receipts
+         WHERE household_id = ? AND request_id = ? AND command_type = ?`,
+      )
+      .get(householdId, requestId, commandType) as { response_json: string } | undefined;
+    return row === undefined
+      ? null
+      : PasskeyRevocationResultSchema.parse(JSON.parse(row.response_json) as unknown);
+  }
+
+  private recordRecoveryAttempt(remoteAddress: string): void {
+    const now = this.now().getTime();
+    const current = this.recoveryAttempts.get(remoteAddress);
+    if (current !== undefined) {
+      if (current.count >= MAX_INVALID_SETUP_ATTEMPTS) {
+        throw new RepositoryError(
+          'FORBIDDEN',
+          'Too many recovery attempts. Wait a little before trying again.',
+        );
+      }
+      current.count += 1;
+      return;
+    }
+    if (this.recoveryAttempts.size >= MAX_TRACKED_AUTHENTICATION_ADDRESSES) {
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Too many recovery attempts. Wait a little before trying again.',
+      );
+    }
+    this.recoveryAttempts.set(remoteAddress, { count: 1, windowStartedAt: now });
+  }
+
+  private pruneRecoveryAttempts(): void {
+    const now = this.now().getTime();
+    for (const [remoteAddress, attempt] of this.recoveryAttempts) {
+      if (now - attempt.windowStartedAt >= INVALID_SETUP_WINDOW_MS) {
+        this.recoveryAttempts.delete(remoteAddress);
+      }
+    }
+  }
+
+  private pruneExpiredRegistrationState(): void {
+    const now = this.now().getTime();
+    for (const ceremonies of [
+      this.additionalRegistrationCeremonies,
+      this.recoveryConfirmationCeremonies,
+      this.recoveryRegistrationCeremonies,
+    ]) {
+      for (const [ceremonyId, ceremony] of ceremonies) {
+        if (ceremony.expiresAt <= now) ceremonies.delete(ceremonyId);
+      }
+    }
+  }
+
+  private takeAdditionalRegistrationCeremony(ceremonyId: string): AdditionalRegistrationCeremony {
+    const ceremony = this.additionalRegistrationCeremonies.get(ceremonyId);
+    this.additionalRegistrationCeremonies.delete(ceremonyId);
+    if (ceremony === undefined || ceremony.expiresAt <= this.now().getTime()) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That passkey setup expired. Start again.');
+    }
+    return ceremony;
+  }
+
+  private takeRecoveryConfirmationCeremony(ceremonyId: string): RecoveryConfirmationCeremony {
+    const ceremony = this.recoveryConfirmationCeremonies.get(ceremonyId);
+    this.recoveryConfirmationCeremonies.delete(ceremonyId);
+    if (ceremony === undefined || ceremony.expiresAt <= this.now().getTime()) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That confirmation expired. Start again.');
+    }
+    return ceremony;
+  }
+
+  private takeRecoveryRegistrationCeremony(ceremonyId: string): RecoveryRegistrationCeremony {
+    const ceremony = this.recoveryRegistrationCeremonies.get(ceremonyId);
+    this.recoveryRegistrationCeremonies.delete(ceremonyId);
+    if (ceremony === undefined || ceremony.expiresAt <= this.now().getTime()) {
+      throw new RepositoryError('UNAUTHENTICATED', 'That recovery attempt expired. Start again.');
+    }
+    return ceremony;
+  }
+
   private createSession(
     householdId: string,
     memberId: string,
+    credentialId: string,
   ): { session: PasskeySession; token: string } {
     const token = randomBytes(32).toString('base64url');
     const createdAt = this.now();
@@ -484,8 +1239,9 @@ export class CompanionAuthService implements CompanionAuthRepository {
     this.database
       .prepare(
         `INSERT INTO companion_sessions
-          (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at)
-         VALUES (?, ?, ?, ?, ?, ?, NULL)`,
+          (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at,
+           credential_id)
+         VALUES (?, ?, ?, ?, ?, ?, NULL, ?)`,
       )
       .run(
         tokenDigest(token),
@@ -494,6 +1250,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
         createdAt.toISOString(),
         createdAt.toISOString(),
         expiresAt,
+        credentialId,
       );
     const member = this.readMember(householdId, memberId);
     return {
@@ -674,6 +1431,45 @@ interface PasskeyCredentialRow {
   transports_json: string;
 }
 
+interface ExistingCredentialRow {
+  credential_id: string;
+  transports_json: string;
+}
+
+interface PasskeySummaryRow {
+  id: string;
+  member_id: string;
+  label: string;
+  device_type: CredentialDeviceType;
+  backed_up: number;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+interface AdultMemberRow {
+  id: string;
+  display_name: string;
+  avatar_key: string | null;
+}
+
+interface RecoveryCodeStatusRow {
+  created_at: string;
+  expires_at: string;
+}
+
+interface RecoveryCodeMemberRow {
+  id: string;
+  household_id: string;
+  member_id: string;
+  display_name: string;
+}
+
+interface RevocablePasskeyRow {
+  id: string;
+  credential_id: string;
+  member_id: string;
+}
+
 interface SessionMemberRow {
   household_id: string;
   member_id: string;
@@ -692,6 +1488,31 @@ interface SessionMember {
 
 function serializableRecord(value: object): Record<string, unknown> {
   return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+}
+
+function ceremonyOptions(
+  ceremonyId: string,
+  options: object,
+  expiresAt: number,
+): PasskeyCeremonyOptions {
+  return PasskeyCeremonyOptionsSchema.parse({
+    ceremonyId,
+    options: serializableRecord(options),
+    expiresAt: new Date(expiresAt).toISOString(),
+  });
+}
+
+function passkeySummary(value: unknown): PasskeyCredentialSummary {
+  const row = value as PasskeySummaryRow;
+  return PasskeyCredentialSummarySchema.parse({
+    id: row.id,
+    memberId: row.member_id,
+    label: row.label,
+    deviceType: row.device_type,
+    backedUp: row.backed_up === 1,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at,
+  });
 }
 
 function credentialIdFromResponse(value: unknown): string {
@@ -726,6 +1547,22 @@ function digest(value: string): Buffer {
 
 function tokenDigest(token: string): string {
   return digest(token).toString('hex');
+}
+
+function recoveryCode(): string {
+  return randomBytes(16)
+    .toString('hex')
+    .toUpperCase()
+    .match(/.{1,4}/g)!
+    .join('-');
+}
+
+function recoveryCodeDigest(value: string): string {
+  const normalized = value.replaceAll('-', '').replaceAll(' ', '').toUpperCase();
+  if (!/^[A-F0-9]{32}$/.test(normalized)) {
+    throw new RepositoryError('UNAUTHENTICATED', 'That recovery code was not accepted.');
+  }
+  return digest(normalized).toString('hex');
 }
 
 function safeEqual(actual: string, expected: string): boolean {

@@ -12,6 +12,12 @@ DSM Reverse Proxy and the bundled nginx container are the two trusted HTTP proxy
 trusts exactly those two hops so client-address rate limiting resolves the household device rather
 than collapsing every request to DSM/nginx or accepting a longer arbitrary forwarding chain.
 
+`compose.demo.yaml` is a separate, LAN-only pilot for television layout and remote testing before
+private HTTPS is commissioned. It contains fictional data, accepts no provider credentials, mounts
+no household photo folder and deliberately exposes the web container only on the exact Synology LAN
+address supplied in `.env.demo`. Do not add a DSM public reverse proxy or router port-forward for the
+demo pilot, and never enter real family information into it.
+
 ## Local validation
 
 From `hearth/`:
@@ -93,6 +99,24 @@ The hostname and certificate mechanism are intentionally unresolved deployment i
 contract is implemented, but enrolment remains inert until those values and the first-use code file
 are supplied. Changing the WebAuthn relying-party origin later invalidates the intended trust
 boundary.
+
+## Fictional-data M7 pilot
+
+Use this path only for the temporary household-screen pilot. Copy `demo.env.example` to an
+access-restricted `.env.demo` outside source control, set the immutable tested commit, the dedicated
+Synology UID/GID, the Synology's exact LAN address and a separate demo data directory, then validate:
+
+```sh
+docker compose --env-file /volume1/docker/hearth-v2/env/hearth-demo.env \
+  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/compose.demo.yaml \
+  config --quiet
+```
+
+After explicit approval, start it with the same arguments plus `up --detach --build`. Open
+`http://<synology-lan-address>:8432` in the M7 Internet app. The demo exposes its reset and visual
+scenario controls to the local network, so it must stay fictional and LAN-only. Stop and remove its
+containers before commissioning private mode; the private Compose file uses a different project
+name and data directory so no demo database can become the household database accidentally.
 
 ## Backup verification and clean-location restore
 

@@ -31,6 +31,9 @@ export const queryKeys = {
   get activity() {
     return [householdId(getHearthRuntime()), 'activity'] as const;
   },
+  get adultAccess() {
+    return [householdId(getHearthRuntime()), 'adult-access'] as const;
+  },
   get todayConfiguration() {
     return [householdId(getHearthRuntime()), 'today-configuration'] as const;
   },

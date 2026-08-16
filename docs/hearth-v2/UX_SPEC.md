@@ -213,6 +213,11 @@ the phone More hub.
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
   and see which eligible notice currently wins. It also owns the four optional
   Today summary switches; it is not a general layout editor.
+- Adult access shows every named adult's enrolled passkeys and recovery readiness. An administrator
+  can enrol another passkey on that adult's phone, revoke a lost credential and, after confirming
+  their current passkey, rotate a one-time recovery code that is displayed only once. The signed-out
+  recovery surface explains that recovery replaces the passkey and signs out that adult's older
+  sessions; no shared password or invitation URL is exposed.
 
 ### Appearance and evening comfort
 
@@ -238,6 +243,7 @@ The same web application may present a phone-oriented shell for:
 - uploading/approving photos
 - reviewing connection problems
 - configuring Home Assistant actions
+- managing named adult passkeys and one-time local recovery
 
 The companion is responsive, not a shrunken TV canvas. Shared domain components are encouraged; television navigation chrome need not be reused on mobile.
 

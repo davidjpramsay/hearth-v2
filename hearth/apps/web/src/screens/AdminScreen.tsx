@@ -38,6 +38,12 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
         icon: 'users',
         path: '/admin/people',
       },
+      {
+        title: 'Adult access',
+        description: () => 'Passkeys, trusted devices and recovery',
+        icon: 'shield',
+        path: '/admin/access',
+      },
     ],
   },
   {

@@ -11,8 +11,10 @@ import {
 
 import {
   AddListItemRequestSchema,
+  AdditionalPasskeyOptionsRequestSchema,
   ActivityFeedSchema,
   AdminOverviewSchema,
+  AdultAccessSummarySchema,
   ApiErrorSchema,
   AssistAddListItemRequestSchema,
   AssistChoreCompletionRequestSchema,
@@ -77,6 +79,8 @@ import {
   PasskeyAuthStatusSchema,
   PasskeyCeremonyOptionsSchema,
   PasskeyCeremonyVerificationRequestSchema,
+  PasskeyRegistrationResultSchema,
+  PasskeyRevocationResultSchema,
   PasskeySessionSchema,
   PasskeySignOutResultSchema,
   PhotoCurationCommandResultSchema,
@@ -93,11 +97,15 @@ import {
   PocketMoneyPaymentVoidCommandResultSchema,
   PocketMoneySettingsCommandResultSchema,
   RealtimeEventSchema,
+  RecoveryCodeConfirmationRequestSchema,
+  RecoveryCodeRevealSchema,
+  RecoveryPasskeyOptionsRequestSchema,
   RecordPocketMoneyPaymentRequestSchema,
   RemoveCalendarConnectionRequestSchema,
   RemoveHomeAssistantConnectionRequestSchema,
   ResetMemberAvatarRequestSchema,
   RevokeDeviceRequestSchema,
+  RevokePasskeyRequestSchema,
   RuntimeContextSchema,
   SavedMealCommandResultSchema,
   SavedMealLibrarySchema,
@@ -180,6 +188,7 @@ const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: Opa
 const NoticeParamsSchema = HouseholdParamsSchema.extend({ noticeId: OpaqueIdSchema });
 const PocketMoneyPaymentParamsSchema = HouseholdParamsSchema.extend({ paymentId: OpaqueIdSchema });
 const PhotoCurationParamsSchema = HouseholdParamsSchema.extend({ assetId: OpaqueIdSchema });
+const PasskeyParamsSchema = HouseholdParamsSchema.extend({ passkeyId: OpaqueIdSchema });
 const PhotoAssetParamsSchema = HouseholdParamsSchema.extend({
   assetId: OpaqueIdSchema,
   variant: z.enum(['display', 'thumbnail']),
@@ -206,6 +215,7 @@ export const LOGGER_REDACT_PATHS = [
   '*.appPassword',
   '*.accessToken',
   '*.setupCode',
+  '*.recoveryCode',
 ] as const;
 
 export const HEARTH_DEVICE_COOKIE = 'hearth_device';
@@ -476,6 +486,29 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (token !== null) auth.signOut(token);
     reply.header('Cache-Control', 'no-store').header('Set-Cookie', auth.clearSessionCookie());
     return PasskeySignOutResultSchema.parse({ signedOut: true });
+  });
+
+  server.post('/api/v1/auth/recovery/registration-options', async (request, reply) => {
+    const body = parse(RecoveryPasskeyOptionsRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () =>
+      PasskeyCeremonyOptionsSchema.parse(
+        await companionAuth(options).recoveryRegistrationOptions(body, request.ip),
+      ),
+    );
+  });
+
+  server.post('/api/v1/auth/recovery/registration-verifications', async (request, reply) => {
+    const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const auth = companionAuth(options);
+      const result = await auth.verifyRecoveryRegistration(body.ceremonyId, body.response);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', auth.sessionCookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    });
   });
 
   server.get('/api/v1/health', async () => ({
@@ -785,6 +818,110 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return overview;
     });
   });
+
+  server.get('/api/v1/households/:householdId/adult-access', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      AdultAccessSummarySchema.parse(
+        companionAuth(options).adultAccess(
+          params.householdId,
+          companionActor(request.headers, options),
+        ),
+      ),
+    );
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/passkey-registration-options',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(AdditionalPasskeyOptionsRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        PasskeyCeremonyOptionsSchema.parse(
+          await companionAuth(options).additionalRegistrationOptions(
+            params.householdId,
+            companionActor(request.headers, options),
+            body,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/passkey-registration-verifications',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        PasskeyRegistrationResultSchema.parse(
+          await companionAuth(options).verifyAdditionalRegistration(
+            params.householdId,
+            companionActor(request.headers, options),
+            body.ceremonyId,
+            body.response,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/recovery-confirmation-options',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () =>
+        PasskeyCeremonyOptionsSchema.parse(
+          await companionAuth(options).recoveryConfirmationOptions(
+            params.householdId,
+            companionActor(request.headers, options),
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/recovery-codes',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(RecoveryCodeConfirmationRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        RecoveryCodeRevealSchema.parse(
+          await companionAuth(options).createRecoveryCode(
+            params.householdId,
+            companionActor(request.headers, options),
+            body.ceremonyId,
+            body.response,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/passkeys/:passkeyId/revocations',
+    async (request, reply) => {
+      const params = parse(PasskeyParamsSchema, request.params, reply);
+      const body = parse(RevokePasskeyRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        PasskeyRevocationResultSchema.parse(
+          companionAuth(options).revokePasskey(
+            params.householdId,
+            params.passkeyId,
+            companionActor(request.headers, options),
+            body.requestId,
+          ),
+        ),
+      );
+    },
+  );
 
   server.post('/api/v1/households/:householdId/members', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);

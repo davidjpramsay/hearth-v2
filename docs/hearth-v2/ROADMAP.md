@@ -366,10 +366,17 @@ with same-origin proxying, non-root/read-only processes, readiness gating,
 forward migrations and clean shutdown verified locally. A three-job GitHub Actions gate mirrors
 the complete web/server/browser suite, Android TV shell and production container image builds and
 has passed on the release-checkpoint branch. Live Synology
-commissioning, hostname/TLS and real-device passkey enrolment/recovery, approved live photo-folder
+commissioning, hostname/TLS and real-device passkey enrolment/recovery validation, approved live photo-folder
 selection/mount and scan evidence,
 Home Assistant presence/quiet-hours coordination,
 restore evidence and the household pilot remain open; Phase 7 is not complete.
+
+Adult-access extension (2026-08-15): private Admin now manages named adults with multiple passkeys,
+independent credential revocation and a passkey-confirmed, 128-bit one-time recovery code. Recovery
+creates a replacement passkey and revokes that adult's earlier credentials and sessions. Migration
+`0020_adult_access_recovery.sql`, schema/route/repository tests and virtual-WebAuthn browser coverage
+exercise the local contract; stable-hostname real-device enrolment and code recovery remain a live
+commissioning gate rather than an unimplemented software flow.
 
 Cross-cutting appearance extension (2026-08-05): Light, Dark and Automatic are
 implemented as per-display browser/WebView preferences, with Automatic following

@@ -62,6 +62,30 @@ function privateCompanionAuth(): CompanionAuthRepository {
     verifyAuthentication: async () => {
       throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
     },
+    adultAccess: () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Adult access is not required.');
+    },
+    additionalRegistrationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    verifyAdditionalRegistration: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    recoveryConfirmationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    createRecoveryCode: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Recovery is not required.');
+    },
+    recoveryRegistrationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Recovery is not required.');
+    },
+    verifyRecoveryRegistration: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Recovery is not required.');
+    },
+    revokePasskey: () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Adult access is not required.');
+    },
     session,
     authenticate: (token) => ({ id: session(token).memberId, type: 'member', source: 'companion' }),
     signOut: () => undefined,
@@ -130,7 +154,7 @@ describe('Hearth v2 API', () => {
     expect(status.json()).toMatchObject({
       mode: 'test',
       generatedAt: '2026-08-02T23:42:00.000Z',
-      database: { state: 'ready', migrationVersion: 19 },
+      database: { state: 'ready', migrationVersion: 20 },
       backup: { state: 'ready', scheduled: true, retentionCount: 14 },
     });
 
@@ -868,6 +892,7 @@ describe('Hearth v2 API', () => {
         '*.accessToken',
         '*.dataBase64',
         '*.setupCode',
+        '*.recoveryCode',
       ]),
     );
     const app = server();

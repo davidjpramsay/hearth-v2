@@ -5,7 +5,8 @@ pairing contracts, Android builds and emulator lifecycle evidence are implemente
 evidence is still required. Phase 3 includes the first read-only CalDAV/iCloud adapter. Phase 5
 includes fake and private REST Home Assistant contracts plus an adult connection/mapping workflow;
 the private deployment now also has integrity-checked online database backups, fail-safe restore
-tooling and a calm adult System Health surface. No live credential, calendar write, restore or
+tooling, a calm adult System Health surface, and named-adult multi-passkey access with one-time
+local recovery. No live credential, calendar write, restore or
 household automation was used. The separate Music
 Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or verified.**
 

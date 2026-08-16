@@ -5,8 +5,16 @@ import {
   type PublicKeyCredentialRequestOptionsJSON,
 } from '@simplewebauthn/browser';
 
-import type { FirstUsePasskeyOptionsRequest, PasskeySession } from '@hearth/shared';
+import type {
+  AdditionalPasskeyOptionsRequest,
+  FirstUsePasskeyOptionsRequest,
+  PasskeyRegistrationResult,
+  PasskeySession,
+  RecoveryCodeReveal,
+  RecoveryPasskeyOptionsRequest,
+} from '@hearth/shared';
 
+import { adultAccessApi } from '../api/adultAccess';
 import { runtimeApi as hearthApi } from '../api/runtime';
 
 export async function createFirstUsePasskey(
@@ -27,6 +35,37 @@ export async function authenticateWithPasskey(): Promise<PasskeySession> {
     optionsJSON: ceremony.options as unknown as PublicKeyCredentialRequestOptionsJSON,
   });
   return hearthApi.verifyAuthentication(ceremony.ceremonyId, serializable(response));
+}
+
+export async function createAdditionalPasskey(
+  input: AdditionalPasskeyOptionsRequest,
+): Promise<PasskeyRegistrationResult> {
+  assertPasskeysAvailable();
+  const ceremony = await adultAccessApi.getAdditionalRegistrationOptions(input);
+  const response = await startRegistration({
+    optionsJSON: ceremony.options as unknown as PublicKeyCredentialCreationOptionsJSON,
+  });
+  return adultAccessApi.verifyAdditionalRegistration(ceremony.ceremonyId, serializable(response));
+}
+
+export async function createConfirmedRecoveryCode(): Promise<RecoveryCodeReveal> {
+  assertPasskeysAvailable();
+  const ceremony = await adultAccessApi.getRecoveryConfirmationOptions();
+  const response = await startAuthentication({
+    optionsJSON: ceremony.options as unknown as PublicKeyCredentialRequestOptionsJSON,
+  });
+  return adultAccessApi.createRecoveryCode(ceremony.ceremonyId, serializable(response));
+}
+
+export async function recoverWithCode(
+  input: RecoveryPasskeyOptionsRequest,
+): Promise<PasskeySession> {
+  assertPasskeysAvailable();
+  const ceremony = await hearthApi.getRecoveryRegistrationOptions(input);
+  const response = await startRegistration({
+    optionsJSON: ceremony.options as unknown as PublicKeyCredentialCreationOptionsJSON,
+  });
+  return hearthApi.verifyRecoveryRegistration(ceremony.ceremonyId, serializable(response));
 }
 
 export function passkeysAvailable(): boolean {

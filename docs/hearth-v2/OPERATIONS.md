@@ -168,6 +168,12 @@ Keep v2 separate from the old deployment:
 
 Deployment files belong in `hearth/deploy/synology`; live secrets never return to the workspace.
 
+For pre-commission television testing, `compose.demo.yaml` provides a separate LAN-bound pilot with
+fictional data only. It does not mount the secrets directory, calendar/Home Assistant configuration
+or a Synology photo source. Its bind address must be the NAS's exact private LAN address; never add a
+router port-forward or public reverse proxy. This pilot is not the private household deployment and
+must use its own project name and data directory.
+
 ## Implemented container scaffold
 
 As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffold: a multi-stage
@@ -196,7 +202,8 @@ docker build --platform linux/amd64 --target web \
 ```
 
 Live commissioning remains blocked on an owner-approved private hostname/certificate, dedicated
-Synology service UID/GID and folders, real-device passkey enrolment plus second-adult recovery,
+Synology service UID/GID and folders, real-device enrolment and recovery validation for the
+implemented named-adult passkey flow,
 an actual Synology restore drill and a focused security review. Do not enter real household or
 provider data before those controls are complete.
 

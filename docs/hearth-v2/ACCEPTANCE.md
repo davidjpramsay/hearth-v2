@@ -314,6 +314,11 @@ theme reporting remain untested until the physical-TV pilot.
   code and a user-verified passkey; Admin then requires a valid revocable `HttpOnly` companion
   session. The database stores public-key material and session hashes, never the setup code or raw
   session token.
+- A signed-in administrator can enrol additional independently named passkeys for any active adult
+  and revoke a lost credential. Hearth blocks removal of an adult's final passkey until recovery is
+  configured. Recovery-code creation re-verifies the current passkey, displays a 128-bit code once,
+  stores only its digest and expires it after 180 days. Successful one-time recovery creates a
+  replacement passkey, consumes the code and revokes that adult's earlier credentials and sessions.
 - After private first use, an unauthenticated browser cannot discover the household identifier or
   name through runtime bootstrap and receives `UNAUTHENTICATED` from household JSON, photo and
   event-stream routes. A same-household companion with `household.view` and a paired television
@@ -330,6 +335,14 @@ theme reporting remain untested until the physical-TV pilot.
 - Logs do not include tokens or full sensitive calendar content by default; calendar and Home
   Assistant connection tests explicitly redact their credential fields.
 - Public internet exposure is absent unless separately reviewed and approved.
+
+Adult-access evidence as of 2026-08-15: shared-schema, Fastify route, SQLite repository, migration
+backfill, idempotent revocation and virtual-WebAuthn browser tests cover additional named-adult
+passkeys, current-passkey confirmation, digest-only code rotation, one-time recovery and previous
+session/credential revocation. The responsive Admin and signed-out recovery surfaces pass focused
+390×844 and 844×390 renders, serious/critical accessibility checks and the complete 206-test
+Playwright suite. Stable-hostname enrolment and recovery on the actual adult phones remain a live
+commissioning acceptance gate.
 
 Phase 6 source/build evidence as of 2026-08-04: the release manifest requires
 Leanback, marks touch optional, declares only network access plus the protected
@@ -354,7 +367,7 @@ not yet complete.
 
 Local deployment evidence as of 2026-08-09: the production server/web images build and become
 healthy together in private mode on native ARM64 and emulated DS920+ `linux/amd64`; the same-origin
-readiness route, 19-migration database startup, unseeded first-use runtime, non-root/read-only
+readiness route, 20-migration database startup, unseeded first-use runtime, non-root/read-only
 security settings and clean `SIGTERM` shutdown pass. These checks validate the scaffold only. The
 online backup service now also creates mode-restricted, integrity-checked SQLite copies with
 bounded retention; an automated clean-location restore reads the household successfully, and a

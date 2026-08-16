@@ -295,12 +295,12 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0019` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0020` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
-management history, snapshotted chore windows/order, and credential-free Home Assistant connection
-metadata. The live demo server uses the SQLite
+management history, snapshotted chore windows/order, credential-free Home Assistant connection
+metadata, and named-adult passkey recovery. The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
@@ -339,10 +339,14 @@ Authentication-option issuance is rate-limited per resolved client address, pend
 globally capped, and expired ceremonies/address windows are physically removed before new options
 are created. This keeps the unauthenticated passkey entry point memory-bounded.
 
-A second-adult/recovery flow remains required before the household pilot. It may issue a renewable
-recovery code only after adult confirmation on an already trusted surface; it must never place a
-shared admin token in a URL. Passkeys require a stable private hostname and HTTPS secure origin
-before real household data is entered.
+Adult access supports several named adult accounts and several independently revocable passkeys per
+adult. Adding a passkey or issuing a replacement recovery code requires a current administrator
+session; issuing the code additionally re-verifies the current passkey. The 128-bit recovery code
+is displayed once, expires after 180 days, and is stored only as a SHA-256 digest. Successful
+recovery consumes the code, creates a replacement passkey and revokes that adult's earlier passkeys
+and sessions. Hearth never places a shared admin token in a URL and does not permit the final
+passkey to be revoked before recovery exists. Passkeys still require a stable private hostname and
+HTTPS secure origin before real household data is entered.
 
 During the isolated demo, a server-resolved Maya administrator session exercises the same role/capability checks without pretending to be production authentication. This demo actor header is disabled outside demo mode. See D-014.
 

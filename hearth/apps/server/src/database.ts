@@ -46,6 +46,10 @@ const migrations = [
     version: 19,
     url: new URL('./migrations/0019_home_assistant_connection_setup.sql', import.meta.url),
   },
+  {
+    version: 20,
+    url: new URL('./migrations/0020_adult_access_recovery.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

@@ -25,6 +25,15 @@ const PRE_PAYMENT_HISTORY_MIGRATIONS = [
   '0012_passkey_authentication.sql',
   '0013_notices_and_today_sections.sql',
 ] as const;
+const PRE_ADULT_ACCESS_MIGRATIONS = [
+  ...PRE_PAYMENT_HISTORY_MIGRATIONS,
+  '0014_pocket_money_payment_history.sql',
+  '0015_synology_photo_index.sql',
+  '0016_meal_planning_polish.sql',
+  '0017_chore_occurrence_management.sql',
+  '0018_chore_windows_and_order.sql',
+  '0019_home_assistant_connection_setup.sql',
+] as const;
 
 afterEach(async () => {
   await Promise.all(
@@ -823,6 +832,90 @@ describe('0001 household core migration', () => {
         WHERE household_id = 'household_ha_setup';
       `),
     ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds adult recovery codes and links sessions to revocable passkeys', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    for (const migration of PRE_ADULT_ACCESS_MIGRATIONS) {
+      database.exec(readFileSync(fileURLToPath(new URL(migration, import.meta.url)), 'utf8'));
+    }
+    database.exec(`
+      INSERT INTO households
+        (id, name, timezone, locale, week_starts_on, created_at, updated_at)
+      VALUES ('household_existing', 'Existing', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members
+        (id, household_id, display_name, colour, avatar_key, role, archived_at, created_at,
+         updated_at, capabilities_json)
+      VALUES ('member_existing', 'household_existing', 'Existing adult', '#2f766d', NULL,
+              'adult', NULL, 'now', 'now', '["household.admin","household.view"]');
+      INSERT INTO passkey_credentials
+        (id, credential_id, household_id, member_id, webauthn_user_id, public_key, counter,
+         device_type, backed_up, transports_json, label, created_at, last_used_at, revoked_at)
+      VALUES ('passkey_existing', 'credential_existing', 'household_existing', 'member_existing',
+              'user_existing', X'0102', 0, 'singleDevice', 0, '[]', 'Existing iPhone', 'now',
+              NULL, NULL);
+      INSERT INTO companion_sessions
+        (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at)
+      VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+              'household_existing', 'member_existing', 'now', 'now', 'later', NULL);
+    `);
+    database.exec(
+      readFileSync(
+        fileURLToPath(new URL('./0020_adult_access_recovery.sql', import.meta.url)),
+        'utf8',
+      ),
+    );
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 20').get()).toEqual(
+      { name: 'adult_access_recovery' },
+    );
+    const sessionColumns = database
+      .prepare('PRAGMA table_info(companion_sessions)')
+      .all() as Array<{ name: string }>;
+    expect(sessionColumns.map((column) => column.name)).toContain('credential_id');
+    expect(
+      database
+        .prepare(
+          `SELECT credential_id FROM companion_sessions
+           WHERE household_id = 'household_existing'`,
+        )
+        .get(),
+    ).toEqual({ credential_id: 'credential_existing' });
+    database.exec(`
+      INSERT INTO households VALUES ('household_access', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES (
+        'member_access', 'household_access', 'Adult', '#2f766d', NULL, 'adult', NULL,
+        'now', 'now', '["household.admin","household.view"]'
+      );
+      INSERT INTO companion_recovery_codes VALUES (
+        'recovery_one', 'household_access', 'member_access',
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'member_access', '2026-08-15T00:00:00.000Z', '2027-02-11T00:00:00.000Z', NULL, NULL
+      );
+    `);
+    expect(() =>
+      database.exec(`
+        INSERT INTO companion_recovery_codes VALUES (
+          'recovery_two', 'household_access', 'member_access',
+          'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          'member_access', '2026-08-15T00:00:00.000Z', '2027-02-11T00:00:00.000Z', NULL, NULL
+        );
+      `),
+    ).toThrow(/UNIQUE/);
+    database.exec(`
+      UPDATE companion_recovery_codes SET revoked_at = '2026-08-15T00:01:00.000Z'
+      WHERE id = 'recovery_one';
+      INSERT INTO companion_recovery_codes VALUES (
+        'recovery_two', 'household_access', 'member_access',
+        'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        'member_access', '2026-08-15T00:02:00.000Z', '2027-02-11T00:00:00.000Z', NULL, NULL
+      );
+    `);
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();

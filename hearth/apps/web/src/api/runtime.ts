@@ -3,6 +3,7 @@ import {
   PasskeyCeremonyOptionsSchema,
   PasskeySessionSchema,
   PasskeySignOutResultSchema,
+  type RecoveryPasskeyOptionsRequest,
   RuntimeContextSchema,
   type FirstUsePasskeyOptionsRequest,
 } from '@hearth/shared';
@@ -33,4 +34,14 @@ export const runtimeApi = {
     }),
   signOut: () =>
     request(`${API_BASE}/auth/sign-outs`, PasskeySignOutResultSchema, { method: 'POST' }),
+  getRecoveryRegistrationOptions: (input: RecoveryPasskeyOptionsRequest) =>
+    request(`${API_BASE}/auth/recovery/registration-options`, PasskeyCeremonyOptionsSchema, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  verifyRecoveryRegistration: (ceremonyId: string, response: Record<string, unknown>) =>
+    request(`${API_BASE}/auth/recovery/registration-verifications`, PasskeySessionSchema, {
+      method: 'POST',
+      body: JSON.stringify({ ceremonyId, response }),
+    }),
 };

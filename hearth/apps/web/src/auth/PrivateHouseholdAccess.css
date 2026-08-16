@@ -1,0 +1,52 @@
+.runtime-recovery-form {
+  width: min(100%, 560px);
+  margin: 20px auto 0;
+  display: grid;
+  gap: 13px;
+  text-align: left;
+}
+
+.runtime-recovery-form label {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.runtime-recovery-form input {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 6px;
+  padding: 0 13px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--input-surface);
+  font: inherit;
+}
+
+.runtime-recovery-form input[name='recoveryCode'] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.runtime-recovery-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.runtime-recovery-form .form-message {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .runtime-recovery-form__actions {
+    flex-direction: column-reverse;
+  }
+
+  .runtime-recovery-form__actions .button {
+    width: 100%;
+  }
+}

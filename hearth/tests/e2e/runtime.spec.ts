@@ -119,4 +119,14 @@ test('configured private Hearth requires a passkey before revealing household da
     path: resolve(evidence, 'private-sign-in-phone-portrait.png'),
     animations: 'disabled',
   });
+  await page.getByRole('button', { name: 'Use a recovery code' }).click();
+  await expect(page.getByRole('heading', { name: 'Recover adult access' })).toBeVisible();
+  await expect(page.getByLabel('Recovery code')).toHaveAttribute('autocomplete', 'off');
+  await expect(page.getByText(/removes the old passkeys and signed-in sessions/i)).toBeVisible();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'private-recovery-phone-portrait.png'),
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Back to sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Sign in to open Hearth' })).toBeVisible();
 });
