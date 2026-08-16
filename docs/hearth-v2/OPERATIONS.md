@@ -171,11 +171,10 @@ Deployment files belong in `hearth/deploy/synology`; live secrets never return t
 For pre-commission television testing, `compose.demo.yaml` provides a separate LAN-bound pilot with
 fictional data only. It does not mount the secrets directory, calendar/Home Assistant configuration
 or a Synology photo source. Its bind address must be the NAS's exact private LAN address; never add a
-router port-forward or public reverse proxy. This pilot is not the private household deployment and
-must use its own project name and data directory. It may run concurrently with private mode during
-development only when it also uses a different host port and remains fictional, credential-free and
-LAN-only. The private instance remains loopback-bound behind the allowlisted DSM HTTPS reverse proxy;
-never copy the private database, secrets or approved photo mount into the demo project.
+router port-forward or public reverse proxy. This pilot is not the private household deployment.
+Once the private instance is commissioned, stop and remove the NAS demo project and its separate
+data. Continue routine UI work in local demo/test mode; never copy the private database, secrets or
+approved photo mount into development.
 
 ## Implemented container scaffold
 
@@ -204,11 +203,19 @@ docker build --platform linux/amd64 --target web \
   -t hearth-v2-web:local-amd64 -f deploy/synology/Dockerfile .
 ```
 
-Live commissioning remains blocked on an owner-approved private hostname/certificate, dedicated
-Synology service UID/GID and folders, real-device enrolment and recovery validation for the
-implemented named-adult passkey flow,
-an actual Synology restore drill and a focused security review. Do not enter real household or
-provider data before those controls are complete.
+On 2026-08-16 the private Synology service was commissioned at the allowlisted HTTPS origin recorded
+in the private commissioning runbook. It uses a dedicated non-root service identity, external data
+and secret folders, and a separate read-only photo share. The temporary fictional NAS demo was then
+stopped and removed at the owner's request. First-adult enrolment, second-adult recovery validation,
+an encrypted off-device backup, an actual clean-location restore drill and a focused security review
+remain operational acceptance work.
+
+Promote future changes from an exact commit that has passed the repository verification workflow.
+`hearth/deploy/synology/stage-private-release.sh <verified-commit>` exports only that commit to the
+NAS source tree while preserving the ignored private project directory, then records the immutable
+image version. Rebuild the `hearth-v2` project in DSM Container Manager and verify private readiness
+and runtime before considering the update accepted. The database, secrets and photo originals stay
+outside the source tree and container images.
 
 ## Backup design
 

@@ -12,11 +12,10 @@ DSM Reverse Proxy and the bundled nginx container are the two trusted HTTP proxy
 trusts exactly those two hops so client-address rate limiting resolves the household device rather
 than collapsing every request to DSM/nginx or accepting a longer arbitrary forwarding chain.
 
-`compose.demo.yaml` is a separate, LAN-only pilot for television layout and remote testing before
-private HTTPS is commissioned. It contains fictional data, accepts no provider credentials, mounts
-no household photo folder and deliberately exposes the web container only on the exact Synology LAN
-address supplied in `.env.demo`. Do not add a DSM public reverse proxy or router port-forward for the
-demo pilot, and never enter real family information into it.
+`compose.demo.yaml` remains available for temporary local or pre-commission television testing. It
+contains fictional data and accepts no provider credentials. Do not keep that pilot running on a
+commissioned household NAS unless a short, explicit test requires it; remove it again after the test.
+The private instance is the only long-lived Synology deployment.
 
 ## Local validation
 
@@ -114,11 +113,39 @@ docker compose --env-file /volume1/docker/hearth-v2/env/hearth-demo.env \
 
 After explicit approval, start it with the same arguments plus `up --detach --build`. Open
 `http://<synology-lan-address>:8432` in the M7 Internet app. The demo exposes its reset and visual
-scenario controls to the local network, so it must stay fictional and LAN-only. It may remain
-available alongside the commissioned private instance only when all of the following stay
-separate: Compose project name, host port, database/data directory, secrets directory and photo
-mount. The private web service remains loopback-only behind DSM HTTPS; the demo remains bound only
-to the exact LAN address and must never receive household information or provider credentials.
+scenario controls to the local network, so it must stay fictional and LAN-only. Stop and delete the
+pilot project and its separate data directory once private HTTPS is commissioned. Never copy the
+private database, secrets or approved photo mount into a demo or local development environment.
+
+## Updating the commissioned private instance
+
+Private household state is not stored in an image or source checkout. Rebuilding `hearth-v2`
+preserves `/volume1/hearth-v2-private` and the read-only `/volume1/hearth-photos` mount.
+
+After a commit has passed the repository verification workflow, run this from the repository root:
+
+```sh
+hearth/deploy/synology/stage-private-release.sh <full-verified-commit>
+```
+
+The script uses the `hearth-synology` SSH alias by default. If that alias needs a hostname override,
+set `HEARTH_DEPLOY_SSH_HOSTNAME=<private-nas-hostname>` for the command.
+
+The script exports that exact Git commit, transfers it through a release-specific staging directory,
+updates only the source tree, preserves the ignored private project configuration and records the
+12-character image version. It cannot start or rebuild containers. In DSM Container Manager, select
+the `hearth-v2` project and choose **Action → Build**. Wait for both containers to become healthy,
+then verify:
+
+```sh
+curl --fail --silent --show-error \
+  https://<private-hearth-origin>/api/v1/readiness
+curl --fail --silent --show-error \
+  https://<private-hearth-origin>/api/v1/runtime
+```
+
+Perform this from the home LAN or connected Tailscale because the private origin denies other
+networks. Do not deploy an uncommitted working tree or automatically follow an unverified branch.
 
 ## Backup verification and clean-location restore
 
@@ -175,6 +202,7 @@ Expected checks:
 - Admin → System Health reports migration, version and recovery-copy state; “Create backup now”
   creates an adult audit event and the chosen copy passes the clean-location restore command above.
 
-Do not enter real family or provider data yet. Real-device passkey enrolment, a second-adult recovery
-path, the exact HTTPS origin, encrypted off-device backup, an actual restore drill and a focused
-security review remain required before household use.
+Before relying on the appliance, complete real-device passkey enrolment, a second-adult recovery
+path, encrypted off-device backup, an actual restore drill and a focused security review. The
+private origin, certificate, service identity, data folders and network allowlist must be
+commissioned before entering household or provider data.
