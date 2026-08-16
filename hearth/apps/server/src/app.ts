@@ -216,9 +216,11 @@ export const LOGGER_REDACT_PATHS = [
   '*.accessToken',
   '*.setupCode',
   '*.recoveryCode',
+  '*.pairingSecret',
 ] as const;
 
 export const HEARTH_DEVICE_COOKIE = 'hearth_device';
+const DEVICE_SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
 
 export interface BuildServerOptions {
   repository?: HearthRepository;
@@ -1071,15 +1073,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const params = parse(PairingParamsSchema, request.params, reply);
       const body = parse(ExchangeTvPairingRequestSchema, request.body, reply);
       if (params === null || body === null) return reply;
-      return run(reply, async () =>
-        TvDeviceSessionSchema.parse(
+      return run(reply, async () => {
+        const session = TvDeviceSessionSchema.parse(
           await adminRepository.exchangeTvPairing(
             params.pairingId,
             body.pairingSecret,
             body.requestId,
           ),
-        ),
-      );
+        );
+        reply
+          .header('Cache-Control', 'no-store')
+          .header('Set-Cookie', deviceSessionCookie(body.pairingSecret, isPrivateMode(options)));
+        return session;
+      });
     },
   );
 
@@ -2435,6 +2441,11 @@ function safeDecodeCookie(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+function deviceSessionCookie(credential: string, secure: boolean): string {
+  const secureAttribute = secure ? '; Secure' : '';
+  return `${HEARTH_DEVICE_COOKIE}=${encodeURIComponent(credential)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${DEVICE_SESSION_MAX_AGE_SECONDS}${secureAttribute}`;
 }
 
 function memberLookup(members: Member[]): Map<string, Member> {

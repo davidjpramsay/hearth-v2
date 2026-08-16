@@ -696,3 +696,23 @@ same-origin derivatives. No original, source path or delete operation crosses th
   that private commissioning is complete. The demo database can never become the private household
   database accidentally; real family data still waits for stable HTTPS, real-device passkey and
   recovery checks, encrypted backup and restore evidence.
+
+## D-046 — Non-Android television browsers use restricted short-code pairing
+
+- Date: 2026-08-16
+- Status: accepted
+- Context: The commissioned Samsung M7 Tizen Browser exposes WebAuthn but rejects discoverable
+  resident credentials and an empty `allowCredentials` list. It cannot install the Android TV
+  shell, and signing the shared display in as an adult would unnecessarily grant Admin capability.
+- Choice: Offer an explicit browser-television pairing path alongside adult passkey sign-in. The
+  display creates a 256-bit secret with Web Crypto, retains it only in volatile component memory,
+  requests a short-lived six-character code and exchanges the secret only after an authenticated
+  adult approves that code in Admin → Televisions. The server stores only its existing hash and
+  sets the raw value directly as a persistent `Secure`, `HttpOnly`, `SameSite=Strict` device cookie.
+  Never place it in a URL, local/session storage, response body, audit row or log. Clearing browser
+  site data requires re-pairing; revocation remains per display.
+- Consequence: The M7 can display the real private dashboard without a recovery code, adult passkey
+  session or LAN-cleartext port. Browser JavaScript briefly creates and submits the secret during
+  pairing, so D-021's stronger native-only secret boundary remains authoritative for Android but
+  does not describe this explicit Tizen fallback. The Android shell remains preferred where
+  available because it adds Keystore storage, launcher integration and lifecycle recovery.

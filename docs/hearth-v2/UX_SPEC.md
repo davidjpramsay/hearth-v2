@@ -193,6 +193,10 @@ the phone More hub.
 - Household, member, integration and permissions management.
 - Optimised for the companion browser rather than the family TV.
 - The TV may show connection status and pairing QR/code but should not expose secrets.
+- A non-Android television browser that cannot complete passkey authentication offers **Pair this
+  screen as a television**. It creates a short-lived six-character code for approval in phone Admin
+  → Televisions, then opens the family dashboard with television scope rather than adult Admin
+  scope. Recovery codes are never a television sign-in mechanism.
 - Connections > Calendar offers an adult-only, phone-first setup sequence: enter
   an HTTPS CalDAV address/account/app-specific password, test, review the
   discovered names, select the exact calendars, optionally map each to a person,

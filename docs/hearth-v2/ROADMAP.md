@@ -304,6 +304,14 @@ the selected TCL television passes the same checks, including a visible launcher
 tile, actual network disconnect and overnight standby/resume. No media-launch or
 Home Assistant bridge was added.
 
+Browser-display extension (2026-08-16): Samsung M7 testing demonstrated that Tizen Browser exposes
+WebAuthn but rejects resident credentials and an empty `allowCredentials` list. Private signed-out
+Hearth now offers the same adult-approved short-code pairing outcome for non-Android television
+browsers. The display generates the 256-bit secret with Web Crypto, keeps it only in volatile page
+memory during approval, and receives a restricted persistent `HttpOnly` device cookie. The Android
+shell remains the preferred Google TV installation because it additionally provides Keystore,
+launcher, lifecycle and recovery guarantees.
+
 ## Parallel deployment workstream — Home Assistant voice and music
 
 Status: planned and documented; not installed or verified on the live Pi,

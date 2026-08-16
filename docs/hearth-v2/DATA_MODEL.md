@@ -325,8 +325,11 @@ and removal are normal adult-authorised, idempotent and audited commands.
 Migration `0002_admin_and_pairing` implements the initial paired-device and
 short-lived pairing-request records. Migration `0007_tv_device_credentials`
 adds the SHA-256 credential hash, requesting shell version and exchange time.
-The server never stores the raw television pairing secret; Android retains it
-encrypted by a non-exportable Keystore key.
+The server never stores the raw television pairing secret. Android retains it
+encrypted by a non-exportable Keystore key. On an approved non-Android browser display, Web Crypto
+creates the same 256-bit secret and holds it only in volatile page memory until the server installs
+it as a persistent `HttpOnly`, `Secure`, `SameSite=Strict` device cookie. It never enters a URL,
+browser storage, response body, audit row or log; clearing site data requires re-pairing.
 
 ### Session
 

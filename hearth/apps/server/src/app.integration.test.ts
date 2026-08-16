@@ -347,6 +347,10 @@ describe('Hearth v2 API', () => {
       },
     });
     expect(exchange.statusCode).toBe(200);
+    expect(exchange.headers['set-cookie']).toMatch(
+      /^hearth_device=.*; Path=\/; HttpOnly; SameSite=Strict; Max-Age=31536000; Secure$/,
+    );
+    expect(exchange.headers['cache-control']).toBe('no-store');
 
     const televisionRuntime = await app.inject({
       method: 'GET',
@@ -893,6 +897,7 @@ describe('Hearth v2 API', () => {
         '*.dataBase64',
         '*.setupCode',
         '*.recoveryCode',
+        '*.pairingSecret',
       ]),
     );
     const app = server();

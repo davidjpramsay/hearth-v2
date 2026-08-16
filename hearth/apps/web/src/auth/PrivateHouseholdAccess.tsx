@@ -6,6 +6,7 @@ import './PrivateHouseholdAccess.css';
 import type { PasskeyAuthStatus } from '@hearth/shared';
 
 import { runtimeApi as hearthApi } from '../api/runtime';
+import { BrowserTelevisionPairing } from './BrowserTelevisionPairing';
 import { authenticateWithPasskey, passkeysAvailable, recoverWithCode } from './passkeys';
 
 export function PrivateHouseholdAccess({
@@ -89,6 +90,7 @@ export function PrivateHouseholdAccess({
       >
         Use a recovery code
       </button>
+      <BrowserTelevisionPairing onComplete={onComplete} />
     </AccessFrame>
   );
 }

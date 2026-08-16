@@ -309,6 +309,11 @@ theme reporting remain untested until the physical-TV pilot.
 ### Security and privacy
 
 - Television pairing can be revoked.
+- A private non-Android television browser can replace unsupported passkey sign-in with a
+  short-code pairing approved by an authenticated adult. The raw device secret is absent from the
+  URL, rendered UI, local/session storage, response bodies and logs; after exchange it exists only
+  in a `Secure`, `HttpOnly`, `SameSite=Strict` device cookie and grants television rather than Admin
+  scope.
 - Server-side secrets are absent from built JS and APK artefacts.
 - Child/guest roles cannot access admin configuration.
 - In private mode, an adult can create the first household only with the external one-time setup
