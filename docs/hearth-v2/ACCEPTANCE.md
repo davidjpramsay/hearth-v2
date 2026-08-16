@@ -116,6 +116,7 @@ Chromium fallback produced the retained evidence.
 - A child cannot modify another person's history or household rules without permission.
 - Every participating child has a required weekly amount and payday in phone administration.
 - Chores shows each child's week-to-date completed/total count, percentage and proportional amount due without requiring scroll on the primary television layout.
+- On a day with no due occurrence, each child remains visible with weekly pocket-money progress and explicit unscheduled-day wording; private households never expose a demo-bootstrap action.
 - Completing and undoing a chore updates that running total through the same typed chore contract.
 - Excused and cancelled occurrences do not reduce the percentage; skipped occurrences remain incomplete.
 - Pocket-money administration can move to the previous, current or next Monday–Sunday week and exposes an immutable recent payment history.

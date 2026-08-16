@@ -4,6 +4,7 @@
 .playwright-cli/
 playwright-report/
 test-results/
+.codex-deploy/
 
 # Hearth v2 web/server workspace
 node_modules/

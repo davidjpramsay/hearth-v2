@@ -102,7 +102,7 @@ the phone More hub.
 
 ### Chores and routines
 
-- The television family overview uses dynamic person columns. Three children produce three primary columns; additional assignees appear only when they have chores due.
+- The television family overview uses dynamic person columns. Three children produce three primary columns; children remain visible with their weekly pocket-money progress and a clear "No chores due today" state on unscheduled days. Additional assignees appear only when they have chores due.
 - Keep ordinary daily workloads within one television viewport by tightening row density only as needed, never below the minimum remote target size. Exceptional workloads must not silently hide chores.
 - Up/Down moves within one person’s chores and Left/Right moves to the nearest chore in an adjacent person column.
 - Personal view with outstanding and completed items.

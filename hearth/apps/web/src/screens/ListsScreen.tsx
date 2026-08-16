@@ -15,6 +15,7 @@ import { EmptyState, FailureState, LoadingState, StatusBanner } from '../compone
 import { useListMutation } from '../hooks/useListMutation';
 import { useListsQuery } from '../hooks/useListQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useHearthRuntime } from '../runtime/context';
 
 export function ListsScreen({
   scenario,
@@ -24,6 +25,7 @@ export function ListsScreen({
   preparing: boolean;
 }) {
   const query = useListsQuery(!preparing);
+  const runtime = useHearthRuntime();
   const queryClient = useQueryClient();
   const itemMutation = useListMutation();
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
@@ -60,10 +62,20 @@ export function ListsScreen({
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
-  if (query.data.lists.length === 0) return <EmptyState onBootstrap={() => void query.refetch()} />;
+  if (query.data.lists.length === 0)
+    return (
+      <EmptyState
+        onBootstrap={runtime.mode === 'private' ? undefined : () => void query.refetch()}
+      />
+    );
   const selected =
     query.data.lists.find((list) => list.id === selectedListId) ?? query.data.lists[0];
-  if (selected === undefined) return <EmptyState onBootstrap={() => void query.refetch()} />;
+  if (selected === undefined)
+    return (
+      <EmptyState
+        onBootstrap={runtime.mode === 'private' ? undefined : () => void query.refetch()}
+      />
+    );
   const selectedListIdForCommand = selected.id;
   const orderedItems = [
     ...selected.items.filter((item) => !item.checked),

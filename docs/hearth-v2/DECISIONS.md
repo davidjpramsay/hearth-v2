@@ -165,7 +165,8 @@ Record durable choices here. New decisions should include date, status, context,
   it with AES-256-GCM under a non-exportable Keystore key before native code
   installs an `HttpOnly`, `SameSite=Strict` WebView cookie. The native shell
   preserves the product's 1920-pixel logical TV canvas across Android display
-  densities; cleartext debug command IDs use the cryptographic random-values
+  densities by combining an Android density-derived initial scale with an
+  equivalent TV-only viewport declaration before React renders; cleartext debug command IDs use the cryptographic random-values
   fallback because UUID generation is secure-context-only.
 - Consequence: Browser JavaScript and API responses never contain the raw device
   credential, revoking one television fails its next native session check, and

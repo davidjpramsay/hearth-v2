@@ -222,6 +222,65 @@ test('three active assignees become three television columns with horizontal D-p
   await expect(board.locator('.chore-group').nth(2).getByRole('button').first()).toBeFocused();
 });
 
+test('an open television Chores screen refreshes when the phone adds a child and due chore', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/chores');
+  await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Jordan' })).toHaveCount(0);
+
+  const headers = { 'x-hearth-demo-actor': 'member_maya' };
+  const memberResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/members',
+    {
+      headers,
+      data: {
+        requestId: 'request_realtime_child',
+        displayName: 'Jordan',
+        role: 'child',
+        color: '#557a70',
+        administrator: false,
+      },
+    },
+  );
+  expect(memberResponse.ok()).toBe(true);
+  const member = (await memberResponse.json()) as { id: string };
+
+  const templateResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-templates',
+    {
+      headers,
+      data: {
+        requestId: 'request_realtime_chore',
+        title: 'Put shoes away',
+        description: null,
+        assigneeIds: [member.id],
+        routineLabel: 'After school',
+        availableFromTime: null,
+        dueTime: '16:30',
+        repeat: 'weekly',
+        repeatDays: ['MO'],
+        activeFrom: '2026-08-03',
+      },
+    },
+  );
+  expect(templateResponse.ok()).toBe(true);
+
+  await expect(page.getByRole('heading', { name: 'Jordan' })).toBeVisible();
+  await expect(page.getByText('Put shoes away')).toBeVisible();
+});
+
+test('a no-chore day keeps children and weekly progress visible without demo wording', async ({
+  page,
+}) => {
+  await page.goto('/chores?scenario=empty');
+  await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
+  await expect(page.getByText('No chores due today').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ezra' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show demo household' })).toHaveCount(0);
+});
+
 test('long chore navigation keeps the final row visible', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto('/chores');
