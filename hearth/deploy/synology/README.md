@@ -114,9 +114,11 @@ docker compose --env-file /volume1/docker/hearth-v2/env/hearth-demo.env \
 
 After explicit approval, start it with the same arguments plus `up --detach --build`. Open
 `http://<synology-lan-address>:8432` in the M7 Internet app. The demo exposes its reset and visual
-scenario controls to the local network, so it must stay fictional and LAN-only. Stop and remove its
-containers before commissioning private mode; the private Compose file uses a different project
-name and data directory so no demo database can become the household database accidentally.
+scenario controls to the local network, so it must stay fictional and LAN-only. It may remain
+available alongside the commissioned private instance only when all of the following stay
+separate: Compose project name, host port, database/data directory, secrets directory and photo
+mount. The private web service remains loopback-only behind DSM HTTPS; the demo remains bound only
+to the exact LAN address and must never receive household information or provider credentials.
 
 ## Backup verification and clean-location restore
 

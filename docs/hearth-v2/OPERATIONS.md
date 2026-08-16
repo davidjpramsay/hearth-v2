@@ -172,7 +172,10 @@ For pre-commission television testing, `compose.demo.yaml` provides a separate L
 fictional data only. It does not mount the secrets directory, calendar/Home Assistant configuration
 or a Synology photo source. Its bind address must be the NAS's exact private LAN address; never add a
 router port-forward or public reverse proxy. This pilot is not the private household deployment and
-must use its own project name and data directory.
+must use its own project name and data directory. It may run concurrently with private mode during
+development only when it also uses a different host port and remains fictional, credential-free and
+LAN-only. The private instance remains loopback-bound behind the allowlisted DSM HTTPS reverse proxy;
+never copy the private database, secrets or approved photo mount into the demo project.
 
 ## Implemented container scaffold
 
