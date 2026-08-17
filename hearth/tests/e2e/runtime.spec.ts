@@ -12,6 +12,25 @@ test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
 });
 
+test('a 4K browser surface uses layout zoom rather than a transformed application bitmap', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/photos');
+
+  const shell = page.locator('.app-shell');
+  await expect(shell).toHaveCSS('zoom', '2');
+  await expect(shell).toHaveCSS('transform', 'none');
+  const shellBounds = await shell.boundingBox();
+  expect(shellBounds?.width).toBe(3840);
+  expect(shellBounds?.height).toBe(2160);
+
+  await page.getByRole('button', { name: 'Start ambient' }).click();
+  const ambientImage = page.locator('.photo-ambient__image');
+  await expect(ambientImage).toHaveAttribute('fetchpriority', 'high');
+  await expect(ambientImage).not.toHaveAttribute('src', /thumbs|thumbnail/);
+});
+
 test('private first use is honest and does not request demo household data', async ({ page }) => {
   let householdRequests = 0;
   page.on('request', (request) => {

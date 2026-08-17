@@ -7,11 +7,13 @@ import { Icon } from './Icon';
 export function PhotoAssetImage({
   alt,
   className,
+  fetchPriority = 'auto',
   loading = 'lazy',
   src,
 }: {
   alt: string;
   className: string;
+  fetchPriority?: 'auto' | 'high' | 'low';
   loading?: 'eager' | 'lazy';
   src: string;
 }) {
@@ -34,6 +36,8 @@ export function PhotoAssetImage({
     <img
       alt={alt}
       className={className}
+      decoding="async"
+      fetchPriority={fetchPriority}
       loading={loading}
       onError={() => setFailed(true)}
       src={src}

@@ -93,6 +93,19 @@ export function PhotosScreen({
   }, []);
 
   useEffect(() => {
+    if (gallery === undefined || selected === null || gallery.photos.length < 2) return;
+    const upcomingId = nextPhotoId(gallery.photos, selected.id);
+    const upcoming = gallery.photos.find((photo) => photo.id === upcomingId);
+    if (upcoming === undefined) return;
+    const preload = new Image();
+    preload.decoding = 'async';
+    preload.src = upcoming.displayUrl;
+    return () => {
+      preload.src = '';
+    };
+  }, [gallery, selected]);
+
+  useEffect(() => {
     if (
       prefersReducedMotion ||
       rotationPaused ||
@@ -250,7 +263,7 @@ export function PhotosScreen({
           <span className="photos-rotation-note">
             <Icon name="refresh" />
             <span>
-              {rotationPaused ? 'Automatic rotation paused' : 'Automatic · every 30 seconds'}
+              {rotationPaused ? 'Automatic rotation paused' : 'Automatic · every 45 seconds'}
             </span>
             {!rotationPaused ? (
               <span
@@ -273,7 +286,7 @@ export function PhotosScreen({
       </div>
       <div className="photos-layout">
         <div
-          aria-label="Family photos. The featured photo and collage arrangement change about once every 30 seconds."
+          aria-label="Family photos. The featured photo and collage arrangement change about once every 45 seconds."
           className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--feature-${collageFeatureSide} photos-collage--count-${visibleCollageItems.length}`}
         >
           {visibleCollageItems.map((item) => (
@@ -298,6 +311,7 @@ export function PhotosScreen({
           <PhotoAssetImage
             alt={selected.alt}
             className="photo-ambient__image"
+            fetchPriority="high"
             loading="eager"
             src={selected.displayUrl}
           />
@@ -361,6 +375,7 @@ function PhotoThumbnail({
         className={
           featured ? 'photo-thumbnail__image photos-hero__image' : 'photo-thumbnail__image'
         }
+        fetchPriority={featured ? 'high' : 'low'}
         key={`${photo.id}-${slot}`}
         loading={featured ? 'eager' : 'lazy'}
         src={featured ? photo.displayUrl : photo.thumbnailUrl}

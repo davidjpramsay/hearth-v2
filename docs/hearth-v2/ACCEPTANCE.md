@@ -263,7 +263,7 @@ live-system commissioning tasks requiring owner approval.
   advance visibly changes the feature: a featured portrait becomes a useful tall anchor and a
   featured landscape becomes a wide anchor. Portrait support tiles remain substantial, with no
   skinny portrait column, shallow landscape ribbon or horizontal overflow. Rotation occurs every
-  30 seconds, exposes subtle visible progress to the next composition and remains static under
+  45 seconds, exposes subtle visible progress to the next composition and remains static under
   reduced motion. Phone landscape shows three
   substantial rotating occupants rather than five compressed strips.
 - Remote/voice input exits ambient mode immediately.
@@ -277,7 +277,7 @@ live-system commissioning tasks requiring owner approval.
   reach any response or log.
 
 Status as of 2026-08-10: the local browser/server slice passes a unique-image,
-orientation-selected full-screen collage with bounded tile geometry, visible 30-second occupant
+orientation-selected full-screen collage with bounded tile geometry, visible 45-second occupant
 rotation and a reduced-motion pause, mixed landscape and portrait rendering, path-safe typed
 responses, D-pad gallery selection,
 immediate keyboard/Back-equivalent ambient exit, real offline cached content,

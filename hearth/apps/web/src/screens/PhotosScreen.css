@@ -76,7 +76,7 @@
   background: currentColor;
   transform: scaleX(0);
   transform-origin: left;
-  animation: photo-rotation-progress var(--photo-rotation-duration, 30000ms) linear forwards;
+  animation: photo-rotation-progress var(--photo-rotation-duration, 45000ms) linear forwards;
 }
 @keyframes photo-rotation-progress {
   to {

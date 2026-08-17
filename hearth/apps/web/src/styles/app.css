@@ -2214,8 +2214,7 @@
   .app-shell {
     width: 50vw;
     height: 50vh;
-    transform: scale(2);
-    transform-origin: top left;
+    zoom: 2;
   }
   .app-content {
     height: 50vh;
@@ -2223,8 +2222,7 @@
   .pairing-screen {
     width: 50vw;
     height: 50vh;
-    transform: scale(2);
-    transform-origin: top left;
+    zoom: 2;
   }
 }
 

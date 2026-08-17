@@ -716,3 +716,31 @@ same-origin derivatives. No original, source path or delete operation crosses th
   pairing, so D-021's stronger native-only secret boundary remains authoritative for Android but
   does not describe this explicit Tizen fallback. The Android shell remains preferred where
   available because it adds Keystore storage, launcher integration and lifecycle recovery.
+
+## D-047 — Television UI targets a crisp 1080p application surface; 4K remains media-specific
+
+- Date: 2026-08-17
+- Status: accepted
+- Context: The Samsung M7 has a 3840×2160 panel, but Samsung specifies a 1920×1080 application
+  surface for UHD television apps. Amazon likewise directs Fire TV and Fire TV web apps to target
+  1920×1080 while separately supporting 4K hardware-decoded video. Trying to make the dashboard
+  claim native 4K would add device-specific complexity without increasing the application surface
+  exposed by either platform.
+- Choice: Keep one sofa-readable 1920×1080 logical television canvas. On genuine 3840×2160 browser
+  viewports, use browser layout zoom rather than a transformed completed application layer. Keep
+  approved photo display derivatives at up to 3840×2160, request the full display asset for the
+  feature and ambient views, and preload the next full display asset. Do not encode photos into a
+  synthetic video merely to reach a platform's 4K video plane; a future native ambient player must
+  justify that extra transcoding, lifecycle and device-specific surface with real viewing evidence.
+- Consequence: Samsung Browser, the Android/Google TV shell and Fire TV candidates share the same
+  predictable layout and D-pad contract. Native streaming apps can still use their independent 4K
+  video paths, but Hearth does not confuse that media capability with dashboard resolution. Device
+  acceptance now prioritises typography, focus, overscan, image quality and stability at the actual
+  application surface rather than a misleading pixel-count badge.
+
+Official platform references:
+
+- <https://developer.samsung.com/smarttv/develop/guides/fundamentals/managing-screen-resolution.html>
+- <https://developer.samsung.com/smarttv/develop/guides/multimedia/4k-8k-uhd-video.html>
+- <https://developer.amazon.com/docs/fire-tv/design-and-user-experience-guidelines.html>
+- <https://developer.amazon.com/docs/fire-tv/4k-tunnel-mode-playback.html>

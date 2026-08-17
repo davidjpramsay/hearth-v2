@@ -363,7 +363,7 @@ Status as of 2026-08-10: in progress. The browser/server Photos slice is
 implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
 responsive full-screen collage templates with no skinny leftover strips, calm
-30-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
+45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
 slideshow, immediate remote exit, cached-source states and corrupt-image fallback. The private
 server now includes the concrete read-only Synology-folder indexer, incremental fingerprinting,
 orientation-correct display/thumbnail WebPs, opaque immutable asset routes, adult-only audited
