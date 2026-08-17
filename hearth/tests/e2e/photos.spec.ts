@@ -370,8 +370,8 @@ test('@visual phone administration reports and refreshes the safe photo index', 
   await expect(page.getByText('3 Aug 2026, 7:30 am')).toBeVisible();
   await page.getByRole('button', { name: 'Scan now' }).click();
   await expect(page.getByRole('status')).toContainText('Photo folder checked. 5 photos are ready.');
-  await expect(page.getByText('Apple Shared Album link')).toBeVisible();
-  await expect(page.getByText(/not a supported private Hearth feed/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add images from Synology' })).toBeVisible();
+  await expect(page.getByText('hearth-photos')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Choose family photos' })).toBeVisible();
   await expect(page.getByText('5 showing')).toBeVisible();
   await expect(page.getByText('0 hidden')).toBeVisible();
@@ -450,6 +450,38 @@ test('@visual phone administration reports and refreshes the safe photo index', 
   await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
   await expect(page.locator('.photo-collage__tile')).toHaveCount(4);
   await expect(page.locator('[data-photo-id="photo_coastal_picnic"]')).toHaveCount(0);
+});
+
+test('phone administration explains an unavailable Synology folder without exposing paths', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/households/*/photo-source', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const data = (await response.json()) as {
+      collection: {
+        source: { message: string; status: string };
+      };
+    };
+    data.collection.source.status = 'unavailable';
+    data.collection.source.message =
+      'Saved photos remain available while Hearth checks the approved folder.';
+    await route.fulfill({ response, json: data });
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/photos');
+  await expect(
+    page.getByRole('heading', { name: 'Connect the family photo folder' }),
+  ).toBeVisible();
+  await expect(page.getByText(/cannot read the dedicated Synology folder right now/)).toBeVisible();
+  await expect(page.getByText('Folder connection needs attention')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Scan now' })).toBeVisible();
+  await expect(page.locator('body')).not.toContainText('/volume1');
+  await expect(page.locator('body')).not.toContainText('/photos-source');
 });
 
 test('@visual photo curation remains calm in dark phone landscape', async ({ page }) => {

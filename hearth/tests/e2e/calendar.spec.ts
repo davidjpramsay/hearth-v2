@@ -75,6 +75,61 @@ test('legacy Week and Month links preserve their query while redirecting to Cale
   await expect(page.getByRole('heading', { name: 'September' })).toBeVisible();
 });
 
+test('Month renders on television browsers without Array.prototype.toSorted', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Array.prototype, 'toSorted', {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    });
+  });
+
+  await page.goto('/calendar/month');
+  await expect(page.getByRole('heading', { name: 'August', exact: true })).toBeVisible();
+  await expect(page.locator('.month-grid')).toBeVisible();
+  await expect(page.locator('.month-legend')).toContainText('Calendar key');
+});
+
+test('Month fills the television height and matches the Week navigation bar', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/calendar/month');
+
+  const monthGridBox = await page.locator('.month-grid').boundingBox();
+  const monthFooterBox = await page.locator('.month-footer-controls').boundingBox();
+  if (monthGridBox === null || monthFooterBox === null) {
+    throw new Error('Expected the Month calendar and navigation bar to be visible');
+  }
+
+  expect(monthGridBox.height).toBeGreaterThan(470);
+  expect(monthFooterBox.y + monthFooterBox.height).toBeGreaterThan(860);
+
+  await page.goto('/calendar/week');
+  const weekFooterBox = await page.locator('.week-footer-controls').boundingBox();
+  if (weekFooterBox === null) throw new Error('Expected the Week navigation bar to be visible');
+  expect(monthFooterBox.height).toBe(weekFooterBox.height);
+});
+
+test('Week and Month events use their calendar colour as a card surface', async ({ page }) => {
+  await page.goto('/calendar/week');
+  const weekEvent = page.getByRole('button', { name: /School drop-off, Ezra$/ }).first();
+  await expect(weekEvent).toBeVisible();
+  expect(await weekEvent.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(
+    'rgba(0, 0, 0, 0)',
+  );
+  await expect(weekEvent).toHaveCSS('border-left-width', '1px');
+
+  await page.goto('/calendar/month');
+  const monthEvent = page
+    .locator('.month-event-label')
+    .filter({ hasText: 'School drop-off' })
+    .first();
+  await expect(monthEvent).toBeVisible();
+  expect(
+    await monthEvent.evaluate((element) => getComputedStyle(element).backgroundColor),
+  ).not.toBe('rgba(0, 0, 0, 0)');
+  await expect(monthEvent.locator('i')).toHaveCount(0);
+});
+
 test('phone Calendar exposes sources and More exposes family tools before settings', async ({
   page,
 }) => {

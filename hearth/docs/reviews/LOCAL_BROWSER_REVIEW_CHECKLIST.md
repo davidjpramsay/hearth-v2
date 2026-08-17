@@ -273,8 +273,8 @@ television rail. These preferences are deliberately saved on this display only.
 
 ## Photos and ambient mode — Phase 7 decisions
 
-- [ ] Decide which Synology photo source/albums Hearth is allowed to index.
-- [x] Use only an explicitly approved album; never scan all household photos by default.
+- [ ] Decide which Synology photo source folder Hearth is allowed to index.
+- [x] Use only an explicitly approved folder; never scan all household photos by default.
 - [ ] Decide how recent photos, favourites and exclusions should work.
 - [x] Contain portrait photos in the selected/ambient view rather than distorting them.
 - [x] Show family-readable captions in the gallery; dates and locations remain undecided.
@@ -282,7 +282,6 @@ television rail. These preferences are deliberately saved on this display only.
 - [ ] Decide quiet hours and how presence starts/stops ambient mode.
 - [x] Replace a missing/corrupt photo with a plain `Photo unavailable` surface.
 - [x] Confirm no Synology filesystem path appears in the browser contract or screen.
-- [x] Treat an Apple public Shared Album link as view-only, not a supported Hearth feed.
 
 ## Accessibility, comfort and polish
 

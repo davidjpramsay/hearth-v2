@@ -10,6 +10,7 @@ import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useMonthQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
+import { eventColorVariables } from '../utils/calendar';
 import { formatEventTime } from '../utils/date';
 
 const WEEKDAYS = [
@@ -233,9 +234,9 @@ function MonthCell({
           <span
             className={`month-event-label${eventIndex === 1 ? ' month-event-label--secondary' : ''}`}
             key={event.id}
+            style={eventColorVariables(event.color) as CSSProperties}
             title={event.title}
           >
-            <i style={{ '--event-color': event.color } as CSSProperties} />
             <span>{event.title}</span>
           </span>
         ))}
@@ -296,7 +297,7 @@ function MonthDayDetails({
 }
 
 function MonthLegend({ calendars }: { calendars: CalendarSource[] }) {
-  const orderedCalendars = calendars.toSorted(
+  const orderedCalendars = [...calendars].sort(
     (left, right) => Number(left.owner === null) - Number(right.owner === null),
   );
   return (

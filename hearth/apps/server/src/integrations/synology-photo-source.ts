@@ -619,7 +619,7 @@ function sourceSummary(source: PhotoSourceRow | null, visibleCount: number): Pho
     message:
       source?.status === 'ready'
         ? `${visibleCount} approved ${visibleCount === 1 ? 'photo is' : 'photos are'} indexed locally.`
-        : 'Choose one approved Synology folder in companion administration.',
+        : 'The dedicated Synology photo folder has not been connected to this Hearth.',
   };
 }
 

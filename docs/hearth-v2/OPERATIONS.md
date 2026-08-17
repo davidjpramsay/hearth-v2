@@ -122,12 +122,19 @@ mode `0600` and activates it without restart. The page shows only the hostname
 and a masked account hint after save. If the path is missing or unwritable, save
 fails safely and the entered secret is not copied into SQLite or logs.
 
-Before the first live read, the owner must create a dedicated revocable iCloud
-app-specific password, approve the exact calendar names and place the secret
-file through the deployment secret mechanism. Start Hearth in private mode,
-confirm all returned sources are read-only, then revoke the password after the
-validation if the deployment is not proceeding. No calendar write method is
-present.
+Before the first live iCloud read, use the full Apple Account email as the username and create a
+dedicated revocable app-specific password under **Apple Account > Sign-In and Security >
+App-Specific Passwords**. Apple requires two-factor authentication before it will issue one. Enter
+that generated password in Hearth; never enter the main Apple Account password. Apple documents
+this fallback for third-party Calendar access at
+<https://support.apple.com/en-us/121539> and the generation/revocation steps at
+<https://support.apple.com/en-au/102654>.
+
+Approve the exact calendar names returned by discovery and save through the companion Calendar
+page. Start Hearth in private mode, confirm all returned sources are read-only, then revoke the
+app-specific password after validation if the deployment is not proceeding. No calendar write
+method is present. This code path is covered against a deterministic CalDAV service, but the real
+iCloud account remains unverified until the owner performs the first credentialed test.
 
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.

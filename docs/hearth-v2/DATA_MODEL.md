@@ -120,7 +120,7 @@ The external credential/config file is never stored in SQLite.
 - title, description and optional icon
 - default assignee set
 - recurrence rule
-- routine/time-of-day grouping
+- time-of-day grouping, constrained to Morning, After school, Evening, Bedtime or Anytime
 - optional available-from and due-by local times
 - stable household-local display order
 - active date range and archive state
@@ -457,6 +457,10 @@ query, snapshots title/routine/assignee identity, and commits occurrence
 mutation, audit and idempotent receipt transactionally. Duplicate request IDs
 replay the stored typed result. The in-memory repository remains available only
 for fast isolated contract tests.
+
+Migration `0021_routine_time_of_day.sql` normalizes historical free-text routine labels into the
+five supported time-of-day values. Browser commands and read models use the same enum while the
+existing `routine_label` column names remain for forward-compatible storage.
 
 The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administration
 on the same SQLite connection. Voice list commands resolve a normalized list

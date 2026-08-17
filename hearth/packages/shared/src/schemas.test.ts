@@ -50,6 +50,8 @@ import {
   TodaySectionVisibilitySchema,
   ChoreTemplateSchema,
   CreateChoreTemplateRequestSchema,
+  ROUTINE_TIME_OF_DAY_VALUES,
+  RoutineTimeOfDaySchema,
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
@@ -151,7 +153,7 @@ describe('shared wire schemas', () => {
       title: 'Bring bins in',
       description: null,
       assigneeId: 'member_ezra',
-      routineLabel: 'Extra jobs',
+      routineLabel: 'Anytime',
       dueTime: '16:30',
       repeat: 'once',
       repeatDays: [],
@@ -197,6 +199,23 @@ describe('shared wire schemas', () => {
     expect(CreateChoreTemplateRequestSchema.safeParse({ ...once, assigneeIds: [] }).success).toBe(
       false,
     );
+    expect(ROUTINE_TIME_OF_DAY_VALUES).toEqual([
+      'Morning',
+      'After school',
+      'Evening',
+      'Bedtime',
+      'Anytime',
+    ]);
+    expect(
+      ROUTINE_TIME_OF_DAY_VALUES.every((value) => RoutineTimeOfDaySchema.safeParse(value).success),
+    ).toBe(true);
+    expect(
+      CreateChoreTemplateRequestSchema.safeParse({
+        ...once,
+        requestId: 'request_chore_invalid_time_of_day',
+        routineLabel: 'Whenever we remember',
+      }).success,
+    ).toBe(false);
     expect(
       CreateChoreTemplateRequestSchema.safeParse({
         ...once,

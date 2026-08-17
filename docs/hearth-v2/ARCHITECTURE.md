@@ -295,12 +295,12 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0020` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0021` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
 management history, snapshotted chore windows/order, credential-free Home Assistant connection
-metadata, and named-adult passkey recovery. The live demo server uses the SQLite
+metadata, named-adult passkey recovery, and canonical chore time-of-day grouping. The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.

@@ -63,7 +63,8 @@ status and timestamps. The password and full server URL are held only in the
 short-lived in-process test result until save, then discarded. Demo mode uses a
 deterministic fake verifier and never contacts iCloud.
 
-Do not scrape calendar web interfaces or ingest private ICS links into client code.
+Only authenticated CalDAV account connections are supported. Calendar web interfaces and
+alternate URL-ingestion paths remain outside the integration boundary.
 
 ## Home Assistant
 
@@ -272,7 +273,7 @@ a new recorded decision.
 
 ## Photos
 
-Start with one approved Synology directory or album. The server:
+Start with one approved Synology directory. The server:
 
 - indexes only that configured source
 - stores opaque asset references
@@ -282,15 +283,6 @@ Start with one approved Synology directory or album. The server:
 - never exposes the parent filesystem
 
 Do not attempt facial recognition or ingest every personal photo folder in the first release.
-
-An Apple Photos Shared Album public website is a viewing link, not Hearth's
-photo-source API. Apple documents that anyone with the link can view a public
-album in a browser; it should therefore be treated as public-by-link. Apple's
-supported PhotoKit asset access runs inside an authorised Apple-platform app,
-not as a documented headless Synology or Google TV feed. Hearth does not scrape,
-index or persist an iCloud Shared Album webpage URL. If selected Apple photos
-are wanted in Hearth, export or sync them into the one approved Synology source,
-or add a separately reviewed future iPhone PhotoKit upload flow.
 
 The current Phase 7 product slice provides the typed source boundary, safe demo
 display/thumbnail derivatives, gallery, cached-source states and ambient exit. Private mode now

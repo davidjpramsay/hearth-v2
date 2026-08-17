@@ -113,18 +113,20 @@
 }
 .week-event {
   --event-color: var(--sky);
+  --event-background: var(--sky-soft);
+  --event-background-dark: var(--sky-soft);
+  --event-border: var(--sky);
   min-height: 0;
   height: max(78px, var(--event-height));
-  padding: 8px 9px 8px 13px;
+  padding: 8px 10px;
   position: absolute;
   z-index: 1;
   top: var(--event-top);
   right: 6px;
   left: 6px;
-  border: 1px solid var(--hairline);
-  border-left: 5px solid var(--event-color);
+  border: 1px solid var(--event-border);
   border-radius: 12px;
-  background: rgb(255 254 250 / 96%);
+  background: var(--event-background);
   box-shadow: 0 5px 14px rgb(52 44 45 / 5%);
   display: flex;
   flex-direction: column;
@@ -176,10 +178,8 @@
   color: #aaa69e;
   font-size: 28px;
 }
-.week-agenda {
-  display: none;
-}
-.week-footer-controls {
+.week-footer-controls,
+.month-footer-controls {
   min-height: 72px;
   margin-top: 18px;
   padding: 0 22px;
@@ -190,7 +190,8 @@
   justify-content: space-between;
   background: rgb(255 254 250 / 54%);
 }
-.week-footer-controls button {
+.week-footer-controls button,
+.month-footer-controls button {
   min-height: 60px;
   padding: 0 12px;
   border: 0;
@@ -203,7 +204,8 @@
   font-size: 22px;
   cursor: pointer;
 }
-.week-footer-controls svg {
+.week-footer-controls svg,
+.month-footer-controls svg {
   width: 27px;
   height: 27px;
 }
@@ -333,12 +335,18 @@
   overflow: hidden;
 }
 .month-event-label {
+  --event-background: var(--sky-soft);
+  --event-background-dark: var(--sky-soft);
+  --event-border: var(--sky);
   min-width: 0;
-  min-height: 20px;
+  min-height: 24px;
+  padding: 1px 7px;
+  border: 1px solid var(--event-border);
+  border-radius: 7px;
   color: var(--ink);
+  background: var(--event-background);
   display: flex;
   align-items: center;
-  gap: 7px;
   font-size: 18px;
   font-weight: 630;
   line-height: 20px;
@@ -349,7 +357,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.month-event-label > i,
 .month-event-compact-marks i,
 .month-legend__item > i {
   --event-color: var(--sky);
@@ -415,34 +422,13 @@
   font-size: 18px;
   font-weight: 750;
 }
-.month-footer-controls {
-  min-height: 64px;
-  margin-top: 12px;
-  padding: 0 22px;
-  border: 1px solid var(--hairline);
-  border-radius: 16px;
-  background: rgb(255 254 250 / 54%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.month-footer-controls button {
-  min-height: 56px;
-  padding: 0 12px;
-  border: 0;
-  color: var(--ink);
-  background: transparent;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  cursor: pointer;
-}
-
 .calendar-agenda {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+.calendar-agenda.week-agenda {
+  display: none;
 }
 .agenda-screen .screen-header {
   margin-bottom: 8px;
@@ -558,10 +544,6 @@
   height: 23px;
 }
 
-.month-footer-controls svg {
-  width: 25px;
-  height: 25px;
-}
 .month-empty-note {
   min-height: 48px;
   margin-bottom: 10px;
@@ -589,9 +571,33 @@
 :root[data-theme='dark'] .calendar-period-controls {
   background: var(--surface-glass);
 }
+:root[data-theme='dark'] .week-event,
+:root[data-theme='dark'] .month-event-label {
+  background: var(--event-background-dark);
+}
+:root[data-theme='dark'] .week-event__meta time {
+  color: var(--event-foreground-dark, var(--event-color));
+}
 :root[data-theme='dark'] .week-column,
 :root[data-theme='dark'] .week-column:last-child {
   border-color: color-mix(in srgb, var(--hairline) 72%, transparent);
+}
+
+@media (min-width: 901px) {
+  .month-screen {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .month-grid {
+    height: auto;
+    min-height: 600px;
+    flex: 1 1 auto;
+  }
+  .month-legend,
+  .month-footer-controls {
+    flex: none;
+  }
 }
 
 @media (max-width: 1500px) and (min-width: 901px) {
@@ -635,7 +641,7 @@
     font-size: 15px;
   }
   .month-screen .screen-header {
-    min-height: 72px;
+    min-height: 88px;
     margin-bottom: 2px;
   }
   .month-weekdays {
@@ -643,7 +649,8 @@
     font-size: 17px;
   }
   .month-grid {
-    height: 414px;
+    height: auto;
+    min-height: 344px;
   }
   .month-cell {
     padding: 4px 9px;
@@ -656,7 +663,8 @@
   }
   .month-event-label {
     min-height: 17px;
-    gap: 5px;
+    padding: 0 5px;
+    border-radius: 5px;
     font-size: 15px;
     line-height: 17px;
   }
@@ -669,7 +677,6 @@
     font-size: 13px;
     line-height: 14px;
   }
-  .month-event-label > i,
   .month-legend__item > i {
     width: 7px;
     height: 7px;
@@ -692,13 +699,26 @@
     width: 31px;
     height: 31px;
   }
-  .month-footer-controls {
-    min-height: 50px;
-    margin-top: 8px;
+}
+
+@media (min-width: 901px) and (max-height: 740px) {
+  .month-cell {
+    padding: 2px 8px;
+    gap: 0;
   }
-  .month-footer-controls button {
-    min-height: 44px;
-    font-size: 17px;
+  .month-cell > strong {
+    height: 19px;
+    font-size: 18px;
+  }
+  .month-event-label {
+    min-height: 15px;
+    padding: 0 4px;
+    font-size: 14px;
+    line-height: 15px;
+  }
+  .month-event-more--compact {
+    font-size: 12px;
+    line-height: 12px;
   }
 }
 
@@ -751,7 +771,7 @@
   .week-grid {
     display: none;
   }
-  .week-agenda {
+  .calendar-agenda.week-agenda {
     display: flex;
     flex-direction: column;
     gap: 19px;
@@ -983,7 +1003,7 @@
 }
 
 @media (max-width: 900px) and (orientation: landscape) {
-  .week-agenda {
+  .calendar-agenda.week-agenda {
     display: grid;
     grid-template-columns: 1fr 1fr;
   }

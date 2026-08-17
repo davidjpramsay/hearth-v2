@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAppearance } from '../appearance/appearance';
+import { HouseholdClockProvider } from '../hooks/useHouseholdClock';
 import { useHearthRuntime } from '../runtime/context';
+import { HouseholdDateTime } from './HouseholdDateTime';
 import { Icon, type IconName } from './Icon';
 
 interface NavigationItem {
@@ -27,6 +29,14 @@ const phoneNavigation = navigation.filter((item) =>
 );
 
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <HouseholdClockProvider>
+      <AppShellLayout>{children}</AppShellLayout>
+    </HouseholdClockProvider>
+  );
+}
+
+function AppShellLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { preferences } = useAppearance();
   const runtime = useHearthRuntime();
@@ -40,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname.startsWith('/admin')) {
     return (
       <div className="companion-shell">
+        <HouseholdDateTime placement="companion" />
         <main className="companion-content" id="main-content">
           {children}
         </main>
@@ -60,6 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="tv-rail__footer">
+          <HouseholdDateTime placement="rail" />
           <NavLink
             aria-label="Appearance settings"
             className="rail-appearance focusable"
@@ -78,6 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </aside>
+      <HouseholdDateTime placement="mobile" />
       <main className="app-content" id="main-content">
         {children}
       </main>

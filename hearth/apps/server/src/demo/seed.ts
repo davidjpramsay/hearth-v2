@@ -95,8 +95,8 @@ export function createDemoSeed(): DemoSeed {
 
   const chores: ChoreOccurrence[] = [
     chore('occurrence_school_bag', 'Pack school bag', ezra, 'Morning', '07:00', '07:30', 0),
-    chore('occurrence_feed_pepper', 'Feed Pepper', ezra, 'Before school', null, '07:15', 1),
-    chore('occurrence_dishes', 'Dishwasher', ezra, 'After dinner', '17:30', '18:45', 2),
+    chore('occurrence_feed_pepper', 'Feed Pepper', ezra, 'Morning', null, '07:15', 1),
+    chore('occurrence_dishes', 'Dishwasher', ezra, 'Evening', '17:30', '18:45', 2),
     chore('occurrence_laundry', 'Start laundry', maya, 'Morning', null, '07:20', 3),
     chore('occurrence_herbs', 'Water herbs', maya, 'Evening', '16:30', '17:00', 4),
     {
@@ -173,7 +173,7 @@ function chore(
   id: string,
   title: string,
   assignee: Member,
-  routineLabel: string,
+  routineLabel: ChoreOccurrence['routineLabel'],
   availableFromTime: string | null,
   dueTime: string | null,
   sortOrder: number,

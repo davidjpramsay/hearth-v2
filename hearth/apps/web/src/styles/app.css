@@ -318,6 +318,59 @@
   flex-direction: column;
   gap: 8px;
 }
+.household-date-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.household-date-time time {
+  white-space: nowrap;
+}
+.household-date-time--rail {
+  min-height: 64px;
+  padding: 4px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-bottom: 1px solid var(--hairline);
+}
+.household-date-time--rail .household-date-time__time {
+  color: var(--ink);
+  font-size: 31px;
+  font-weight: 700;
+  line-height: 1;
+}
+.household-date-time--rail .household-date-time__date {
+  margin-top: 5px;
+  font-size: 17px;
+  line-height: 1.1;
+}
+.household-date-time--mobile {
+  display: none;
+}
+.household-date-time--companion {
+  min-height: 58px;
+  padding: 8px 24px;
+  position: sticky;
+  z-index: 19;
+  top: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+}
+.household-date-time--companion .household-date-time__time,
+.household-date-time--mobile .household-date-time__time {
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 720;
+}
+.household-date-time--companion .household-date-time__date,
+.household-date-time--mobile .household-date-time__date {
+  font-size: 17px;
+  font-weight: 600;
+}
 .rail-appearance {
   min-height: 54px;
   padding: 0 15px;
@@ -398,16 +451,11 @@
   align-items: center;
   gap: 36px;
 }
-.today-glance > div {
+.today-glance .weather {
   display: grid;
   grid-template-columns: auto auto;
   align-items: center;
   column-gap: 8px;
-}
-.today-glance > div:first-child {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
 }
 .today-glance strong {
   font-size: 38px;
@@ -1010,7 +1058,7 @@
   box-shadow: 0 0 48px rgb(53 42 48 / 10%);
 }
 .companion-content {
-  min-height: 100dvh;
+  min-height: calc(100dvh - 58px);
   padding-bottom: 90px;
 }
 .companion-shell .phone-tabs {
@@ -2242,6 +2290,17 @@
     min-height: 54px;
     font-size: 22px;
   }
+  .household-date-time--rail {
+    min-height: 54px;
+    padding: 3px 13px 7px;
+  }
+  .household-date-time--rail .household-date-time__time {
+    font-size: 27px;
+  }
+  .household-date-time--rail .household-date-time__date {
+    margin-top: 3px;
+    font-size: 15px;
+  }
   .screen {
     padding-top: 28px;
     padding-bottom: 24px;
@@ -2291,17 +2350,30 @@
     overflow: visible;
     height: auto;
   }
+  .household-date-time--mobile {
+    min-height: 52px;
+    padding: 7px var(--safe);
+    position: sticky;
+    z-index: 19;
+    top: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid var(--hairline);
+    background: var(--surface);
+  }
   .tv-rail {
     display: none;
   }
   .app-content {
-    min-height: 100dvh;
+    min-height: calc(100dvh - 52px);
     height: auto;
     overflow: visible;
     padding-bottom: 82px;
   }
   .screen {
-    min-height: calc(100dvh - 82px);
+    min-height: calc(100dvh - 134px);
     padding: 22px var(--safe) 28px;
   }
   .screen-header {
@@ -2478,6 +2550,13 @@
     width: 100%;
     height: calc(72px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .household-date-time--companion {
+    min-height: 52px;
+    padding: 7px var(--safe);
+  }
+  .companion-content {
+    min-height: calc(100dvh - 52px);
   }
   .admin-home,
   .admin-page {

@@ -10,10 +10,12 @@ import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useCalendarConnectionQuery } from '../hooks/useConnectionQueries';
+import { useHearthRuntime } from '../runtime/context';
 
 type OwnerByCalendar = Record<string, string>;
 
 export function CalendarConnectionSettingsScreen() {
+  const runtime = useHearthRuntime();
   const admin = useAdminQuery();
   const connection = useCalendarConnectionQuery();
   const queryClient = useQueryClient();
@@ -113,8 +115,9 @@ export function CalendarConnectionSettingsScreen() {
         <div>
           <strong>Read-only by design</strong>
           <p>
-            Hearth stores the account password only in its private server secret file. It never
-            sends the password back to the phone or TV and cannot change calendar events.
+            Hearth stores the calendar credential only in its private server secret file. For
+            iCloud, use a dedicated app-specific password—not the main Apple Account password.
+            Hearth never sends it back to the phone or TV and cannot change calendar events.
           </p>
         </div>
       </div>
@@ -200,10 +203,12 @@ export function CalendarConnectionSettingsScreen() {
         <>
           {testResult === null ? (
             <form className="admin-form calendar-connection-form" onSubmit={submitTest}>
-              <div className="calendar-demo-note">
-                <strong>Local demo:</strong> this screen uses a fake calendar account and does not
-                contact iCloud. Use fictional sign-in details while testing the interface.
-              </div>
+              {runtime.mode === 'private' ? null : (
+                <div className="calendar-demo-note">
+                  <strong>Local demo:</strong> this screen uses a fake calendar account and does not
+                  contact iCloud. Use fictional sign-in details while testing the interface.
+                </div>
+              )}
               <label>
                 Calendar server address
                 <input
@@ -221,11 +226,11 @@ export function CalendarConnectionSettingsScreen() {
                 />
               </label>
               <p className="field-help">
-                For Apple Calendar, use the iCloud CalDAV address above—not a public shared-calendar
-                link.
+                For iCloud, keep the CalDAV address above. Hearth will securely discover the
+                calendars available to this account.
               </p>
               <label>
-                Apple ID or account name
+                Apple Account email or CalDAV username
                 <input
                   autoCapitalize="none"
                   autoComplete="username"
@@ -250,7 +255,8 @@ export function CalendarConnectionSettingsScreen() {
                 />
               </label>
               <p className="field-help">
-                Use an app-specific password, never the main password for the account.
+                For iCloud, create a dedicated app-specific password in Apple Account → Sign-In and
+                Security. Never enter your main Apple Account password.
               </p>
               <button className="admin-submit" disabled={testConnection.isPending} type="submit">
                 {testConnection.isPending ? 'Testing securely…' : 'Test connection'}

@@ -14,7 +14,7 @@ import { EmptyState, FailureState, LoadingState, StatusBanner } from '../compone
 import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
-import { eventsForDay, forecastIcon } from '../utils/calendar';
+import { eventColorVariables, eventsForDay, forecastIcon } from '../utils/calendar';
 import { formatEventTime } from '../utils/date';
 
 export function WeekScreen({
@@ -246,7 +246,7 @@ function WeekColumn({
 function timelineStyle(event: CalendarEvent, timezone: string): React.CSSProperties {
   if (event.allDay) {
     return {
-      '--event-color': event.color,
+      ...eventColorVariables(event.color),
       '--event-top': '0%',
       '--event-height': '11.25%',
     } as React.CSSProperties;
@@ -257,7 +257,7 @@ function timelineStyle(event: CalendarEvent, timezone: string): React.CSSPropert
     Math.round((new Date(event.end).getTime() - new Date(event.start).getTime()) / 60_000),
   );
   return {
-    '--event-color': event.color,
+    ...eventColorVariables(event.color),
     '--event-top': `${(Math.max(0, start - 8 * 60) / (12 * 60)) * 100}%`,
     '--event-height': `${(duration / (12 * 60)) * 100}%`,
   } as React.CSSProperties;

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const runtimeTokens = new Set([
   '--chore-column-count',
   '--event-height',
+  '--event-foreground-dark',
   '--event-top',
   '--member-colour',
   '--photo-rotation-duration',

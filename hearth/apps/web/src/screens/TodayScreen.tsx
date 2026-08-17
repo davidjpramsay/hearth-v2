@@ -114,13 +114,8 @@ export function TodayScreen({
       <ScreenHeader
         eyebrow={today.household.mode}
         title="Today"
-        meta={<span>{today.displayDate}</span>}
         actions={
           <div className="today-glance">
-            <div>
-              <strong>{today.displayTime}</strong>
-              <span>{timezoneLabel(today.household.timezone)}</span>
-            </div>
             <div className="weather">
               <Icon name={today.weather === null ? 'cloud' : 'sun'} />
               <strong>
@@ -310,8 +305,4 @@ export function TodayScreen({
       <NoticeDetailsDialog message={selectedNotice} onClose={() => setSelectedNotice(null)} />
     </div>
   );
-}
-
-function timezoneLabel(timezone: string): string {
-  return (timezone.split('/').at(-1) ?? timezone).replaceAll('_', ' ');
 }

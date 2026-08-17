@@ -204,11 +204,21 @@ export const CalendarEventSchema = z.object({
 
 export const ChoreStateSchema = z.enum(['pending', 'completed', 'skipped', 'excused', 'cancelled']);
 
+export const ROUTINE_TIME_OF_DAY_VALUES = [
+  'Morning',
+  'After school',
+  'Evening',
+  'Bedtime',
+  'Anytime',
+] as const;
+
+export const RoutineTimeOfDaySchema = z.enum(ROUTINE_TIME_OF_DAY_VALUES);
+
 export const ChoreOccurrenceSchema = z.object({
   id: OpaqueIdSchema,
   title: z.string().min(1).max(140),
   assignee: MemberSchema,
-  routineLabel: z.string().min(1).max(80),
+  routineLabel: RoutineTimeOfDaySchema,
   availableFromTime: LocalTimeSchema.nullable().default(null),
   dueTime: LocalTimeSchema.nullable().default(null),
   sortOrder: z.number().int().nonnegative().default(0),
@@ -563,7 +573,7 @@ export const ChoreTemplateSchema = z.preprocess(
       title: z.string().min(1).max(140),
       description: z.string().max(320).nullable(),
       assignees: ChoreTemplateAssigneesSchema,
-      routineLabel: z.string().min(1).max(80),
+      routineLabel: RoutineTimeOfDaySchema,
       availableFromTime: LocalTimeSchema.nullable().default(null),
       dueTime: LocalTimeSchema.nullable().default(null),
       sortOrder: z.number().int().nonnegative().default(0),
@@ -593,7 +603,7 @@ const ChoreTemplateFieldsSchema = CommandRequestSchema.extend({
   title: z.string().trim().min(1).max(140),
   description: z.string().trim().max(320).nullable(),
   assigneeIds: ChoreTemplateAssigneeIdsSchema,
-  routineLabel: z.string().trim().min(1).max(80),
+  routineLabel: RoutineTimeOfDaySchema,
   availableFromTime: LocalTimeSchema.nullable().default(null),
   dueTime: LocalTimeSchema.nullable().default(null),
   repeat: ChoreRepeatSchema,
@@ -1655,6 +1665,7 @@ export type IntegrationState = z.infer<typeof IntegrationStateSchema>;
 export type CalendarSource = z.infer<typeof CalendarSourceSchema>;
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
 export type ChoreState = z.infer<typeof ChoreStateSchema>;
+export type RoutineTimeOfDay = z.infer<typeof RoutineTimeOfDaySchema>;
 export type ChoreOccurrence = z.infer<typeof ChoreOccurrenceSchema>;
 export type TodaySummary = z.infer<typeof TodaySummarySchema>;
 export type TodaySectionVisibility = z.infer<typeof TodaySectionVisibilitySchema>;

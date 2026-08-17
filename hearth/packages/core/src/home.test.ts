@@ -32,7 +32,7 @@ const chores = {
             role: 'child',
             capabilities: ['household.view', 'chores.complete'],
           },
-          routineLabel: 'After dinner',
+          routineLabel: 'Evening',
           availableFromTime: '17:30',
           dueTime: '18:45',
           sortOrder: 0,

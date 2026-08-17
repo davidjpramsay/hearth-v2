@@ -55,7 +55,7 @@ These are intentionally deferred and should not block the first rendered prototy
   Cast entity and a dedicated least-privilege Jellyfin account for Music
   Assistant; the read-only Synology music-share fallback is used only if the
   best-effort Jellyfin provider fails household reliability testing
-- Initial photo source folder/album
+- Exact dedicated Synology photo source folder and its display name
 - Final TV and audio purchase
 
 Use typed provider interfaces and seeded demo data until these choices are supplied. Do not invent live credentials or mutate a real calendar to unblock development. D-012 selects iCloud through CalDAV as the first read provider, but the adapter fails closed until an exact external allowlist is approved.
