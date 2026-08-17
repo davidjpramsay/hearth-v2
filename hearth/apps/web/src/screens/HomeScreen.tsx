@@ -1,14 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import './HomeScreen.css';
+
 import type { DemoScenario, HomeAction, HomeActionId } from '@hearth/shared';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { createRequestId } from '../api/core';
+import { homeApi as hearthApi } from '../api/home';
+import { queryKeys } from '../api/queryKeys';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
-import { useHomeQuery } from '../hooks/useHearthQueries';
+import { useHomeQuery } from '../hooks/useHomeQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export function HomeScreen({
@@ -130,6 +134,7 @@ export function HomeScreen({
                     aria-disabled={!action.enabled || mutation.isPending}
                     aria-label={`${action.label}. ${action.description}`}
                     className="home-action focusable"
+                    data-focus-entry={index === 0 ? 'true' : undefined}
                     data-focus-down={`home-action-${actions[Math.min(index + 1, actions.length - 1)]?.id ?? action.id}`}
                     data-focus-id={`home-action-${action.id}`}
                     data-focus-left="nav-home"

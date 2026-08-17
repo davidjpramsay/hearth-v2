@@ -1,0 +1,360 @@
+/* Family-facing list checking. Dense editing remains in ListsSettingsScreen. */
+.lists-layout {
+  min-height: 690px;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 28px;
+}
+
+.list-chooser {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.list-choice {
+  width: 100%;
+  min-height: 94px;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 17px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  background: rgb(255 254 250 / 72%);
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-choice > svg {
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+}
+
+.list-choice > span,
+.list-choice strong,
+.list-choice small {
+  display: block;
+}
+
+.list-choice > span {
+  min-width: 0;
+}
+
+.list-choice strong {
+  color: var(--ink);
+  font-size: 25px;
+}
+
+.list-choice small {
+  margin-top: 3px;
+  font-size: 19px;
+}
+
+.list-choice--selected {
+  border-color: #acc7b4;
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+}
+
+.active-list {
+  min-width: 0;
+  padding: 22px 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow-rest);
+}
+
+.active-list__heading {
+  min-height: 70px;
+  padding: 0 6px 15px;
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.active-list__heading h2,
+.active-list__heading p {
+  margin: 0;
+}
+
+.active-list__heading h2 {
+  font-size: 34px;
+}
+
+.active-list__heading p {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.active-list__heading > svg {
+  width: 36px;
+  height: 36px;
+  color: var(--eucalyptus);
+}
+
+.list-items {
+  margin-top: 10px;
+}
+
+.list-completed-divider {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 680;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.list-completed-divider::before,
+.list-completed-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--hairline);
+  content: '';
+}
+
+.list-completed-divider small {
+  font: inherit;
+}
+
+.list-item-wrap + .list-item-wrap {
+  border-top: 1px solid #ebe7df;
+}
+
+.list-item-row {
+  width: 100%;
+  min-height: 76px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto 26px;
+  align-items: center;
+  gap: 15px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-item-check {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #8b9290;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: transparent;
+}
+
+.list-item-check svg {
+  width: 22px;
+}
+
+.list-item-copy strong,
+.list-item-copy small {
+  display: block;
+}
+
+.list-item-copy strong {
+  font-size: 27px;
+}
+
+.list-item-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.list-item-state {
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.list-item-row--checked {
+  color: #697170;
+  background: #f4f2ec;
+}
+
+.list-item-row--checked .list-item-copy strong {
+  text-decoration: line-through;
+}
+
+.list-item-row--checked .list-item-check {
+  border-color: var(--eucalyptus);
+  color: white;
+  background: var(--eucalyptus);
+}
+
+.phone-list-add,
+.lists-manage-link {
+  display: none;
+}
+
+.list-command-error {
+  margin: 8px 0 0;
+  color: var(--brick);
+  font-size: 18px;
+}
+
+.assist-availability-note {
+  margin: 16px 4px 2px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+@media (max-width: 900px) {
+  .lists-layout {
+    min-height: 0;
+    display: block;
+  }
+
+  .list-chooser {
+    margin: 0 -18px 14px;
+    padding: 0 18px 4px;
+    overflow-x: auto;
+    flex-direction: row;
+  }
+
+  .list-choice {
+    width: auto;
+    min-width: 145px;
+    min-height: 62px;
+    padding: 9px 12px;
+    border-radius: 14px;
+  }
+
+  .list-choice > svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .list-choice strong {
+    font-size: 17px;
+  }
+
+  .list-choice small {
+    font-size: 13px;
+  }
+
+  .active-list {
+    padding: 12px;
+    border-radius: 17px;
+  }
+
+  .active-list__heading {
+    min-height: 57px;
+    padding: 0 4px 9px;
+  }
+
+  .active-list__heading h2 {
+    font-size: 25px;
+  }
+
+  .active-list__heading p {
+    font-size: 15px;
+  }
+
+  .list-item-row {
+    min-height: 68px;
+    padding: 7px 5px;
+    grid-template-columns: 34px minmax(0, 1fr) 22px;
+    gap: 10px;
+  }
+
+  .list-completed-divider {
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .list-item-copy strong {
+    font-size: 19px;
+  }
+
+  .list-item-copy small {
+    font-size: 13px;
+  }
+
+  .list-item-state {
+    display: none;
+  }
+
+  .phone-list-add {
+    margin-top: 13px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px 70px;
+    gap: 8px;
+  }
+
+  .phone-list-add input,
+  .phone-list-add button {
+    min-height: 48px;
+    border: 1px solid #cfc5bd;
+    border-radius: 11px;
+    font-size: 16px;
+  }
+
+  .phone-list-add input {
+    min-width: 0;
+    padding: 0 12px;
+  }
+
+  .phone-list-add button {
+    border-color: var(--plum-solid);
+    color: white;
+    background: var(--plum-solid);
+    font-weight: 700;
+  }
+
+  .lists-manage-link {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    color: var(--plum);
+    background: var(--surface-raised);
+    font-size: 14px;
+    font-weight: 720;
+    text-decoration: none;
+  }
+
+  .assist-availability-note {
+    font-size: 14px;
+  }
+}
+
+:root[data-theme='dark'] .list-item-row--checked {
+  border-color: #365744;
+  color: var(--muted);
+  background: #213128;
+}
+
+:root[data-theme='dark'] .list-choice {
+  background: var(--surface-glass);
+}
+
+:root[data-theme='dark'] .list-item-wrap + .list-item-wrap {
+  border-color: var(--hairline);
+}
+
+:root[data-theme='dark'] .phone-list-add input {
+  border-color: var(--hairline);
+  color: var(--ink);
+  background: var(--input-surface);
+}
+
+:root[data-theme='dark'] .list-choice--selected {
+  border-color: var(--eucalyptus);
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+}

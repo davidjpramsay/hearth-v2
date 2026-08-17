@@ -11,17 +11,29 @@ export function nextFocusId(element: HTMLElement, direction: FocusDirection): st
   return element.dataset[attributeByDirection[direction]] ?? null;
 }
 
-export function focusById(id: string | null): boolean {
+export function focusById(id: string | null, options: { scroll?: boolean } = {}): boolean {
   if (id === null) return false;
-  const target = document.querySelector<HTMLElement>(`[data-focus-id="${CSS.escape(id)}"]`);
+  const target =
+    id === 'screen-entry'
+      ? (document.querySelector<HTMLElement>('#main-content [data-focus-entry="true"]') ??
+        document.querySelector<HTMLElement>('#main-content [data-focus-id]'))
+      : document.querySelector<HTMLElement>(`[data-focus-id="${CSS.escape(id)}"]`);
   if (target === null || target.getAttribute('aria-disabled') === 'true') return false;
   target.focus({ preventScroll: true });
-  target.scrollIntoView({
-    block: 'nearest',
-    inline: 'nearest',
-    behavior: reducedMotion() ? 'auto' : 'smooth',
-  });
+  if (options.scroll ?? true) {
+    target.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: reducedMotion() ? 'auto' : 'smooth',
+    });
+  }
   return true;
+}
+
+export function focusIsWithin(container: Element | null): boolean {
+  return container !== null && document.activeElement instanceof HTMLElement
+    ? container.contains(document.activeElement)
+    : false;
 }
 
 export class FocusMemory {

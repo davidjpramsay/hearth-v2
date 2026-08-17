@@ -1,19 +1,23 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
-import type { DemoScenario } from '@hearth/shared';
+import type { CalendarEvent, DemoScenario } from '@hearth/shared';
 
-import { hearthApi } from '../api/client';
+import { demoApi as hearthApi } from '../api/demo';
 import { ChoreRow } from '../components/ChoreRow';
+import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { EventRow } from '../components/EventRow';
 import { Icon } from '../components/Icon';
+import { NoticeDetailsDialog } from '../components/NoticeDetailsDialog';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { SummaryBand } from '../components/SummaryBand';
 import { TodayPhoto } from '../components/TodayPhoto';
 import { useChoreMutation } from '../hooks/useChoreMutation';
-import { useTodayQuery } from '../hooks/useHearthQueries';
+import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useHearthRuntime } from '../runtime/context';
 
 export function TodayScreen({
   scenario,
@@ -23,23 +27,86 @@ export function TodayScreen({
   preparing: boolean;
 }) {
   const query = useTodayQuery(!preparing);
+  const runtime = useHearthRuntime();
   const mutation = useChoreMutation();
   const online = useOnlineStatus(scenario === 'offline');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedNotice, setSelectedNotice] = useState<string | null>(null);
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const today = query.data;
-  const empty = today.events.length === 0 && today.chores.length === 0;
+  const visibleEvents = today.events.slice(0, 3);
+  const visibleChores = today.chores.slice(0, 3);
+  const eventOverflowCount = Math.max(0, today.events.length - visibleEvents.length);
+  const choreOverflowCount = Math.max(0, today.chores.length - visibleChores.length);
+  const primaryChoreId =
+    today.chores.find((chore) => chore.state === 'pending' && !chore.locked)?.id ??
+    today.chores[0]?.id;
+  const visibleSummaryCount = [
+    today.sections.dinner,
+    today.sections.listSummary,
+    today.sections.notice,
+  ].filter(Boolean).length;
+  const showPhoto = today.sections.photo && today.photo !== null;
+  const summaryFocusIds = [
+    today.sections.dinner ? 'today-summary-dinner' : null,
+    today.sections.listSummary ? 'today-summary-list' : null,
+    today.sections.notice && today.notice !== null ? 'today-summary-notice' : null,
+  ].filter((focusId): focusId is string => focusId !== null);
+  const lastEventFocusId = visibleEvents.at(-1)
+    ? `today-event-${visibleEvents.at(-1)!.id}`
+    : 'nav-today';
+  const lastChoreFocusId = visibleChores.at(-1)
+    ? `today-chore-${visibleChores.at(-1)!.id}`
+    : 'nav-today';
+  const firstBottomFocusId = summaryFocusIds[0] ?? (showPhoto ? 'today-photo' : 'nav-today');
+  const eventAfterRowsFocusId =
+    eventOverflowCount > 0
+      ? 'today-event-overflow'
+      : firstBottomFocusId === 'nav-today'
+        ? lastEventFocusId
+        : firstBottomFocusId;
+  const choreAfterRowsFocusId =
+    choreOverflowCount > 0
+      ? 'today-chore-overflow'
+      : showPhoto
+        ? 'today-photo'
+        : (summaryFocusIds[0] ?? lastChoreFocusId);
+  const hasVisibleSummaryContent =
+    (today.sections.dinner && today.dinner !== null) ||
+    (today.sections.listSummary && today.listSummary !== null) ||
+    (today.sections.notice && today.notice !== null) ||
+    showPhoto;
+  const empty = today.events.length === 0 && today.chores.length === 0 && !hasVisibleSummaryContent;
   if (empty) {
-    return <EmptyState onBootstrap={() => void bootstrap()} />;
+    return (
+      <EmptyState onBootstrap={runtime.mode === 'private' ? undefined : () => void bootstrap()} />
+    );
   }
 
   async function bootstrap() {
     await hearthApi.resetDemo();
     await queryClient.invalidateQueries();
     navigate('/today', { replace: true });
+  }
+
+  function summaryFocus(focusId: string) {
+    const index = summaryFocusIds.indexOf(focusId);
+    return {
+      'data-focus-id': focusId,
+      'data-focus-up':
+        index === 0
+          ? eventOverflowCount > 0
+            ? 'today-event-overflow'
+            : lastEventFocusId
+          : (summaryFocusIds[index - 1] ?? focusId),
+      'data-focus-down': summaryFocusIds[index + 1] ?? focusId,
+      'data-focus-left': 'nav-today',
+      'data-focus-right': showPhoto ? 'today-photo' : focusId,
+    };
   }
 
   return (
@@ -52,12 +119,14 @@ export function TodayScreen({
           <div className="today-glance">
             <div>
               <strong>{today.displayTime}</strong>
-              <span>Perth</span>
+              <span>{timezoneLabel(today.household.timezone)}</span>
             </div>
             <div className="weather">
-              <Icon name="sun" />
-              <strong>{today.weather.temperatureCelsius}°</strong>
-              <span>{today.weather.condition}</span>
+              <Icon name={today.weather === null ? 'cloud' : 'sun'} />
+              <strong>
+                {today.weather === null ? '—' : `${today.weather.temperatureCelsius}°`}
+              </strong>
+              <span>{today.weather?.condition ?? 'Forecast unavailable'}</span>
             </div>
           </div>
         }
@@ -74,10 +143,27 @@ export function TodayScreen({
         <section className="today-section upcoming-section">
           <div className="section-heading">
             <h2>Upcoming</h2>
-            <span>{today.events.length} plans</span>
+            {eventOverflowCount > 0 ? (
+              <Link
+                aria-label={`View ${eventOverflowCount} more ${eventOverflowCount === 1 ? 'plan' : 'plans'} in Calendar`}
+                className="today-section-more focusable"
+                data-focus-down={firstBottomFocusId}
+                data-focus-id="today-event-overflow"
+                data-focus-left="nav-today"
+                data-focus-right={
+                  choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId
+                }
+                data-focus-up={lastEventFocusId}
+                to={`/calendar/agenda?start=${runtime.weekStart}`}
+              >
+                +{eventOverflowCount} more <Icon name="chevron-right" />
+              </Link>
+            ) : (
+              <span>{today.events.length} plans</span>
+            )}
           </div>
           <div className="event-list">
-            {today.events.slice(0, 3).map((event, index, events) => (
+            {visibleEvents.map((event, index, events) => (
               <EventRow
                 event={event}
                 focus={{
@@ -88,12 +174,15 @@ export function TodayScreen({
                       : `today-event-${events[index - 1]?.id}`,
                   'data-focus-down':
                     index === events.length - 1
-                      ? `today-event-${event.id}`
+                      ? eventAfterRowsFocusId
                       : `today-event-${events[index + 1]?.id}`,
                   'data-focus-left': 'nav-today',
-                  'data-focus-right': `today-chore-${today.chores[Math.min(index, today.chores.length - 1)]?.id ?? 'occurrence_school_bag'}`,
+                  'data-focus-right': visibleChores[Math.min(index, visibleChores.length - 1)]
+                    ? `today-chore-${visibleChores[Math.min(index, visibleChores.length - 1)]!.id}`
+                    : 'nav-today',
                 }}
                 key={event.id}
+                onSelect={setSelectedEvent}
               />
             ))}
           </div>
@@ -101,26 +190,40 @@ export function TodayScreen({
         <section className="today-section chores-due-section">
           <div className="section-heading">
             <h2>Due now &amp; today</h2>
-            <span>
-              {today.chores.slice(0, 3).filter((item) => item.state === 'pending').length} left
-            </span>
+            {choreOverflowCount > 0 ? (
+              <Link
+                aria-label={`View ${choreOverflowCount} more ${choreOverflowCount === 1 ? 'chore' : 'chores'}`}
+                className="today-section-more focusable"
+                data-focus-down={showPhoto ? 'today-photo' : firstBottomFocusId}
+                data-focus-id="today-chore-overflow"
+                data-focus-left={eventOverflowCount > 0 ? 'today-event-overflow' : lastEventFocusId}
+                data-focus-right="today-chore-overflow"
+                data-focus-up={lastChoreFocusId}
+                to="/chores"
+              >
+                +{choreOverflowCount} more <Icon name="chevron-right" />
+              </Link>
+            ) : (
+              <span>{today.chores.filter((item) => item.state === 'pending').length} left</span>
+            )}
           </div>
           <div className="chore-list">
-            {today.chores.slice(0, 3).map((occurrence, index, chores) => (
+            {visibleChores.map((occurrence, index, chores) => (
               <ChoreRow
                 focus={{
                   'data-focus-id': `today-chore-${occurrence.id}`,
+                  'data-focus-entry': occurrence.id === primaryChoreId ? 'true' : undefined,
                   'data-focus-up':
                     index === 0
                       ? `today-chore-${occurrence.id}`
                       : `today-chore-${chores[index - 1]?.id}`,
                   'data-focus-down':
                     index === chores.length - 1
-                      ? `today-chore-${occurrence.id}`
+                      ? choreAfterRowsFocusId
                       : `today-chore-${chores[index + 1]?.id}`,
                   'data-focus-left':
-                    index < today.events.length
-                      ? `today-event-${today.events[index]?.id}`
+                    index < visibleEvents.length
+                      ? `today-event-${visibleEvents[index]?.id}`
                       : 'nav-today',
                 }}
                 key={occurrence.id}
@@ -131,25 +234,84 @@ export function TodayScreen({
           </div>
         </section>
       </div>
-      <div className={`summary-row${today.photo === null ? ' summary-row--without-photo' : ''}`}>
-        <div className="summary-details">
-          <SummaryBand icon="meal" label="Dinner">
-            {today.dinner ?? 'Nothing planned'}
-          </SummaryBand>
-          <SummaryBand icon="list" label="List summary">
-            {today.listSummary === null
-              ? 'No active list'
-              : `${today.listSummary.name} · ${today.listSummary.remainingCount} items left`}
-          </SummaryBand>
-          <SummaryBand icon="home" label="Notice">
-            {today.notice ?? 'No notices'}
-          </SummaryBand>
+      {visibleSummaryCount === 0 && !showPhoto ? null : (
+        <div
+          className={`summary-row${showPhoto ? '' : ' summary-row--without-photo'}${visibleSummaryCount === 0 ? ' summary-row--photo-only' : ''}`}
+        >
+          {visibleSummaryCount === 0 ? null : (
+            <div className={`summary-details summary-details--count-${visibleSummaryCount}`}>
+              {today.sections.dinner ? (
+                <SummaryBand
+                  ariaLabel="Open the family meal plan"
+                  focus={summaryFocus('today-summary-dinner')}
+                  icon="meal"
+                  label="Dinner"
+                  to="/meals"
+                >
+                  {today.dinner ?? 'Nothing planned'}
+                </SummaryBand>
+              ) : null}
+              {today.sections.listSummary ? (
+                <SummaryBand
+                  ariaLabel="Open household lists"
+                  focus={summaryFocus('today-summary-list')}
+                  icon="list"
+                  label="List summary"
+                  to="/lists"
+                >
+                  {today.listSummary === null
+                    ? 'No active list'
+                    : `${today.listSummary.name} · ${today.listSummary.remainingCount} items left`}
+                </SummaryBand>
+              ) : null}
+              {today.sections.notice ? (
+                today.notice === null ? (
+                  <SummaryBand icon="home" label="Notice">
+                    No notices
+                  </SummaryBand>
+                ) : (
+                  <SummaryBand
+                    ariaLabel="Read the full household notice"
+                    focus={summaryFocus('today-summary-notice')}
+                    icon="home"
+                    label="Notice"
+                    onActivate={() => setSelectedNotice(today.notice)}
+                  >
+                    {today.notice}
+                  </SummaryBand>
+                )
+              ) : null}
+            </div>
+          )}
+          {showPhoto && today.photo !== null ? (
+            <Link
+              aria-label="Open family photos"
+              className="today-photo-action focusable"
+              data-focus-down="today-photo"
+              data-focus-id="today-photo"
+              data-focus-left={summaryFocusIds.at(-1) ?? 'nav-today'}
+              data-focus-right="today-photo"
+              data-focus-up={choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId}
+              to="/photos"
+            >
+              <TodayPhoto photo={today.photo} />
+            </Link>
+          ) : null}
         </div>
-        {today.photo === null ? null : <TodayPhoto photo={today.photo} />}
-      </div>
+      )}
       <p className="sr-only" aria-live="polite">
         {mutation.pendingOccurrenceId === null ? '' : 'Saving chore change'}
       </p>
+      <EventDetailsDialog
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        timezone={runtime.timezone}
+      />
+      <NoticeDetailsDialog message={selectedNotice} onClose={() => setSelectedNotice(null)} />
     </div>
   );
+}
+
+function timezoneLabel(timezone: string): string {
+  return (timezone.split('/').at(-1) ?? timezone).replaceAll('_', ' ');
 }

@@ -3,13 +3,17 @@ import type { SVGProps } from 'react';
 export type IconName =
   | 'calendar'
   | 'check'
+  | 'chevron-down'
   | 'chevron-left'
   | 'chevron-right'
+  | 'chevron-up'
   | 'chores'
   | 'cloud'
   | 'cloud-rain'
   | 'cloud-sun'
   | 'cloud-off'
+  | 'eye'
+  | 'eye-off'
   | 'home'
   | 'image'
   | 'leaf'
@@ -19,6 +23,8 @@ export type IconName =
   | 'mic'
   | 'moon'
   | 'more'
+  | 'pause'
+  | 'play'
   | 'plus'
   | 'power'
   | 'refresh'
@@ -40,8 +46,10 @@ const paths: Record<IconName, React.ReactNode> = {
     </>
   ),
   check: <path d="m5 12 4 4L19 6" />,
+  'chevron-down': <path d="m6 9 6 6 6-6" />,
   'chevron-left': <path d="m15 18-6-6 6-6" />,
   'chevron-right': <path d="m9 18 6-6-6-6" />,
+  'chevron-up': <path d="m18 15-6-6-6 6" />,
   chores: (
     <>
       <path d="M9 11l3 3L22 4" />
@@ -65,6 +73,19 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="m2 2 20 20" />
       <path d="M5.8 5.8A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 3.8-6.9M8.7 3.6A7 7 0 0 1 19 9.3" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  'eye-off': (
+    <>
+      <path d="m3 3 18 18" />
+      <path d="M10.6 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a16 16 0 0 1-2.1 3.2M6.2 6.2C3.5 8 2 12 2 12s3.5 7 10 7a10.4 10.4 0 0 0 4.1-.8" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
     </>
   ),
   home: (
@@ -117,6 +138,13 @@ const paths: Record<IconName, React.ReactNode> = {
       <circle cx="19" cy="12" r="1" />
     </>
   ),
+  pause: (
+    <>
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </>
+  ),
+  play: <path d="m7 4 13 8-13 8V4Z" />,
   plus: <path d="M12 5v14M5 12h14" />,
   power: (
     <>

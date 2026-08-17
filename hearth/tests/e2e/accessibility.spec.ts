@@ -5,7 +5,14 @@ test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
 });
 
-for (const path of ['/today', '/week', '/month', '/chores']) {
+for (const path of [
+  '/today',
+  '/calendar/week',
+  '/calendar/month',
+  '/calendar/agenda',
+  '/chores',
+  '/more',
+]) {
   test(`@a11y ${path} has no automatically detectable serious accessibility violations`, async ({
     page,
   }) => {

@@ -1,16 +1,21 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FormEvent } from 'react';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { adminApi as hearthApi } from '../api/admin';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
-import { useAdminQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
 
 export function HouseholdSettingsScreen() {
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
   const save = useMutation({
     mutationFn: hearthApi.updateHousehold,
-    onSuccess: (overview) => queryClient.setQueryData(queryKeys.admin, overview),
+    onSuccess: async (overview) => {
+      queryClient.setQueryData(queryKeys.admin, overview);
+      await queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] });
+    },
   });
   if (admin.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;

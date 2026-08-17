@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const screenshotDirectory = '/tmp/hearth-appearance-evidence';
 
 test.beforeAll(async () => {
@@ -56,6 +58,43 @@ test('evening dimming is separate, persistent and family-readable', async ({ pag
   );
 });
 
+test('shared raised surfaces stay distinct in light and dark themes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const theme of ['Light', 'Dark'] as const) {
+    await page.goto('/admin/appearance');
+    await page.getByRole('radio', { name: new RegExp(`^${theme}`) }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme.toLowerCase());
+
+    for (const action of [
+      { path: '/lists', selector: '.lists-manage-link' },
+      { path: '/meals', selector: '.meals-manage-link' },
+    ]) {
+      await page.goto(action.path);
+      const control = page.locator(action.selector);
+      await expect(control).toBeVisible();
+      const styles = await control.evaluate((element) => {
+        const computed = getComputedStyle(element);
+        return {
+          backgroundColor: computed.backgroundColor,
+          borderStyle: computed.borderTopStyle,
+          borderWidth: computed.borderTopWidth,
+        };
+      });
+      expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+      expect(styles.borderStyle).toBe('solid');
+      expect(styles.borderWidth).toBe('1px');
+    }
+  }
+
+  await page.goto('/admin/activity');
+  const selectedFilter = page.getByRole('button', { name: 'All' });
+  await expect(selectedFilter).toHaveAttribute('aria-pressed', 'true');
+  expect(
+    await selectedFilter.evaluate((element) => getComputedStyle(element).backgroundColor),
+  ).not.toBe('rgba(0, 0, 0, 0)');
+});
+
 test('remote navigation reaches Appearance, changes dimming and restores focus on Back', async ({
   page,
 }) => {
@@ -63,8 +102,7 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
   await page.goto('/admin');
   await expect(page.locator('[data-focus-id="admin-household"]')).toBeFocused();
 
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/admin\/appearance$/);
@@ -85,10 +123,11 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
 test('television rail opens the per-display Appearance control', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
+  await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/admin\/appearance$/);
@@ -127,7 +166,7 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(screenshotDirectory, 'dark-today-tv-1080.png'),
     animations: 'disabled',
   });
@@ -135,7 +174,7 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/appearance');
   await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(screenshotDirectory, 'dark-appearance-phone.png'),
     animations: 'disabled',
     fullPage: true,
@@ -143,14 +182,27 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
 });
 
 const darkViewportCases = [
-  { name: 'today-tv-4k', path: '/today', width: 3840, height: 2160 },
-  { name: 'week-tv-1080', path: '/week', width: 1920, height: 1080 },
-  { name: 'month-tv-1366', path: '/month', width: 1366, height: 768 },
-  { name: 'chores-tv-1080', path: '/chores', width: 1920, height: 1080 },
-  { name: 'photos-tv-1080', path: '/photos', width: 1920, height: 1080 },
-  { name: 'home-tv-1080', path: '/home', width: 1920, height: 1080 },
-  { name: 'today-phone-portrait', path: '/today', width: 390, height: 844 },
-  { name: 'week-phone-landscape', path: '/week', width: 844, height: 390 },
+  { name: 'today-tv-4k', path: '/today', heading: 'Today', width: 3840, height: 2160 },
+  { name: 'week-tv-1080', path: '/week', heading: /week/i, width: 1920, height: 1080 },
+  { name: 'month-tv-1366', path: '/month', heading: 'August', width: 1366, height: 768 },
+  { name: 'chores-tv-1080', path: '/chores', heading: 'Chores', width: 1920, height: 1080 },
+  { name: 'photos-tv-1080', path: '/photos', heading: 'Photos', width: 1920, height: 1080 },
+  { name: 'home-tv-1080', path: '/home', heading: 'Home', width: 1920, height: 1080 },
+  { name: 'today-phone-portrait', path: '/today', heading: 'Today', width: 390, height: 844 },
+  {
+    name: 'pocket-money-phone-portrait',
+    path: '/admin/pocket-money',
+    heading: 'Pocket money',
+    width: 390,
+    height: 844,
+  },
+  {
+    name: 'week-phone-landscape',
+    path: '/week',
+    heading: /week/i,
+    width: 844,
+    height: 390,
+  },
 ] as const;
 
 for (const viewport of darkViewportCases) {
@@ -163,11 +215,16 @@ for (const viewport of darkViewportCases) {
     });
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto(viewport.path);
-    await expect(page.locator('h1')).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: viewport.heading,
+        exact: typeof viewport.heading === 'string',
+      }),
+    ).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(screenshotDirectory, `dark-${viewport.name}.png`),
       animations: 'disabled',
     });

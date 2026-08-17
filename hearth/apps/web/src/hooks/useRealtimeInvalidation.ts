@@ -3,14 +3,15 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { RealtimeEventSchema } from '@hearth/shared';
 
-import { hearthApi, queryKeys } from '../api/client';
+import { queryKeys } from '../api/queryKeys';
+import { getRealtimeUrl } from '../api/realtime';
 
 export function useRealtimeInvalidation(): void {
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (typeof EventSource === 'undefined') return undefined;
-    const source = new EventSource(hearthApi.realtimeUrl);
+    const source = new EventSource(getRealtimeUrl());
     const receive = (message: MessageEvent<string>) => {
       let payload: unknown;
       try {
@@ -24,7 +25,7 @@ export function useRealtimeInvalidation(): void {
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.today }),
           queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot }),
         ]);
         return;
       }
@@ -43,7 +44,7 @@ export function useRealtimeInvalidation(): void {
         return;
       }
       if (parsed.data.kind === 'pocket-money.changed') {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot });
         return;
       }
       if (parsed.data.kind === 'chore-template.changed') {
@@ -58,9 +59,24 @@ export function useRealtimeInvalidation(): void {
         void queryClient.invalidateQueries({ queryKey: queryKeys.home });
         return;
       }
+      if (parsed.data.kind === 'today.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.todayConfiguration }),
+        ]);
+        return;
+      }
+      if (parsed.data.kind === 'photos.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.photoSource }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        ]);
+        return;
+      }
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.week }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
         queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
         queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
@@ -73,6 +89,8 @@ export function useRealtimeInvalidation(): void {
     source.addEventListener('pocket-money.changed', receive as EventListener);
     source.addEventListener('chore-template.changed', receive as EventListener);
     source.addEventListener('home.changed', receive as EventListener);
+    source.addEventListener('today.changed', receive as EventListener);
+    source.addEventListener('photos.changed', receive as EventListener);
     return () => source.close();
   }, [queryClient]);
 }

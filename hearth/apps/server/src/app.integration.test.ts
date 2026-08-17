@@ -1,8 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildServer, LOGGER_REDACT_PATHS } from './app.js';
+import type { CompanionAuthRepository } from './companion-auth.js';
 import { HomeService } from './home-repository.js';
 import { FakeHomeAssistantProvider } from './integrations/home-assistant-provider.js';
+import {
+  FakePhotoSourceProvider,
+  type PhotoDerivativeAsset,
+  type PhotoDerivativeVariant,
+} from './integrations/photo-source.js';
+import { PhotoService } from './photo-repository.js';
+import { RepositoryError } from './repository.js';
+import { FixedClock } from './runtime-context.js';
 
 const servers: ReturnType<typeof buildServer>[] = [];
 
@@ -16,7 +25,348 @@ function server() {
   return instance;
 }
 
+function privateCompanionAuth(): CompanionAuthRepository {
+  const session = (token: string) => {
+    if (token !== 'private-session') {
+      throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+    }
+    return {
+      authenticated: true as const,
+      householdId: 'household_hearth_demo',
+      memberId: 'member_maya',
+      displayName: 'Maya',
+      expiresAt: '2027-01-31T00:00:00.000Z',
+    };
+  };
+  return {
+    status: (token) => ({
+      mode: 'private',
+      configured: true,
+      secureOrigin: true,
+      requiresSetup: false,
+      authenticated: token === 'private-session',
+      actor:
+        token === 'private-session'
+          ? { id: 'member_maya', displayName: 'Maya', role: 'adult' }
+          : null,
+    }),
+    firstUseRegistrationOptions: async () => {
+      throw new RepositoryError('CONFLICT', 'Setup is already complete.');
+    },
+    verifyFirstUseRegistration: async () => {
+      throw new RepositoryError('CONFLICT', 'Setup is already complete.');
+    },
+    authenticationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    verifyAuthentication: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    adultAccess: () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Adult access is not required.');
+    },
+    additionalRegistrationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    verifyAdditionalRegistration: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    recoveryConfirmationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Passkey ceremony is not required.');
+    },
+    createRecoveryCode: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Recovery is not required.');
+    },
+    recoveryRegistrationOptions: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Recovery is not required.');
+    },
+    verifyRecoveryRegistration: async () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Recovery is not required.');
+    },
+    revokePasskey: () => {
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Adult access is not required.');
+    },
+    session,
+    authenticate: (token) => ({ id: session(token).memberId, type: 'member', source: 'companion' }),
+    signOut: () => undefined,
+    sessionCookie: (token) => `hearth_session=${token}; HttpOnly; SameSite=Strict`,
+    clearSessionCookie: () => 'hearth_session=; Max-Age=0; HttpOnly; SameSite=Strict',
+  };
+}
+
+function privateHouseholdServer() {
+  const instance = buildServer({
+    logger: false,
+    companionAuth: privateCompanionAuth(),
+    runtime: {
+      mode: 'private',
+      householdId: 'household_hearth_demo',
+      clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+    },
+  });
+  servers.push(instance);
+  return instance;
+}
+
+class DerivativePhotoSourceProvider extends FakePhotoSourceProvider {
+  override async getDerivative(
+    _householdId: string,
+    _assetId: string,
+    _variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null> {
+    return {
+      bytes: new Uint8Array([82, 73, 70, 70]),
+      mimeType: 'image/webp',
+      cacheKey: 'opaque-display.webp',
+    };
+  }
+}
+
 describe('Hearth v2 API', () => {
+  it('distinguishes process health from database readiness', async () => {
+    const ready = server();
+    expect((await ready.inject({ method: 'GET', url: '/api/v1/health' })).json()).toMatchObject({
+      status: 'ok',
+    });
+    expect((await ready.inject({ method: 'GET', url: '/api/v1/readiness' })).json()).toMatchObject({
+      status: 'ready',
+      database: 'ready',
+    });
+
+    const unavailable = buildServer({
+      logger: false,
+      readiness: () => {
+        throw new Error('database unavailable');
+      },
+    });
+    servers.push(unavailable);
+    const response = await unavailable.inject({ method: 'GET', url: '/api/v1/readiness' });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ status: 'not-ready', database: 'unavailable' });
+  });
+
+  it('reports calm adult-only system health and creates idempotent recovery copies', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const status = await app.inject({ method: 'GET', url: `${base}/system-status`, headers });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({
+      mode: 'test',
+      generatedAt: '2026-08-02T23:42:00.000Z',
+      database: { state: 'ready', migrationVersion: 20 },
+      backup: { state: 'ready', scheduled: true, retentionCount: 14 },
+    });
+
+    const first = await app.inject({
+      method: 'POST',
+      url: `${base}/system-backups`,
+      headers,
+      payload: { requestId: 'request_system_backup_http' },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({
+      replayed: false,
+      status: { backup: { lastSuccessfulAt: '2026-08-02T23:42:00.000Z' } },
+      audit: { action: 'system.backup.create' },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${base}/system-backups`,
+      headers,
+      payload: { requestId: 'request_system_backup_http' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+
+    const activity = await app.inject({
+      method: 'GET',
+      url: `${base}/activity?limit=10`,
+      headers,
+    });
+    expect(activity.statusCode).toBe(200);
+    expect(activity.json()).toMatchObject({
+      entries: [{ action: 'system.backup.create', actorId: 'member_maya' }],
+    });
+
+    const forbidden = await app.inject({
+      method: 'GET',
+      url: `${base}/system-status`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(forbidden.statusCode).toBe(403);
+    const invalid = await app.inject({
+      method: 'POST',
+      url: `${base}/system-backups`,
+      headers,
+      payload: {},
+    });
+    expect(invalid.statusCode).toBe(400);
+  });
+
+  it('publishes deterministic test runtime dates and the current household name', async () => {
+    const app = server();
+    const initial = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(initial.statusCode).toBe(200);
+    expect(initial.json()).toMatchObject({
+      mode: 'test',
+      household: { id: 'household_hearth_demo', name: 'Hearth Demo Home' },
+      timezone: 'Australia/Perth',
+      localDate: '2026-08-03',
+      weekStart: '2026-08-03',
+      currentMonth: '2026-08',
+      requiresSetup: false,
+    });
+
+    await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/households/household_hearth_demo/settings',
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: {
+        requestId: 'request_runtime_household_name',
+        name: 'Ramsay Home',
+        timezone: 'Australia/Perth',
+      },
+    });
+    const updated = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(updated.json().household.name).toBe('Ramsay Home');
+  });
+
+  it('uses the household timezone at the Perth date boundary and exposes honest first use', async () => {
+    const app = buildServer({
+      logger: false,
+      runtime: {
+        mode: 'private',
+        householdId: null,
+        clock: new FixedClock('2026-12-31T16:15:00.000Z'),
+      },
+    });
+    servers.push(app);
+    const runtime = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(runtime.json()).toMatchObject({
+      mode: 'private',
+      household: null,
+      localDate: '2027-01-01',
+      weekStart: '2026-12-28',
+      currentMonth: '2027-01',
+      requiresSetup: true,
+    });
+    const demoControl = await app.inject({
+      method: 'POST',
+      url: '/api/v1/demo/scenario',
+      payload: { scenario: 'healthy' },
+    });
+    expect(demoControl.statusCode).toBe(404);
+  });
+
+  it('keeps private household reads behind companion or paired-TV credentials', async () => {
+    const app = privateHouseholdServer();
+    const base = '/api/v1/households/household_hearth_demo';
+
+    const anonymousRuntime = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    expect(anonymousRuntime.statusCode).toBe(200);
+    expect(anonymousRuntime.json()).toMatchObject({
+      mode: 'private',
+      household: null,
+      requiresSetup: false,
+    });
+    expect(JSON.stringify(anonymousRuntime.json())).not.toContain('Hearth Demo Home');
+
+    const privateReadUrls = [
+      `${base}/today?date=2026-08-03`,
+      `${base}/week?start=2026-08-03`,
+      `${base}/month?month=2026-08`,
+      `${base}/photos`,
+      `${base}/members/member_maya/avatar`,
+      `${base}/chore-occurrences?date=2026-08-03`,
+      `${base}/home`,
+      `${base}/lists`,
+      `${base}/meal-plan?weekStart=2026-08-03`,
+      `${base}/pocket-money?weekStart=2026-08-03&asOf=2026-08-03`,
+      `${base}/events`,
+    ];
+    for (const url of privateReadUrls) {
+      const response = await app.inject({ method: 'GET', url });
+      expect(response.statusCode, url).toBe(401);
+      expect(response.json().error.code, url).toBe('UNAUTHENTICATED');
+    }
+
+    const companionCookie = { cookie: 'hearth_session=private-session' };
+    const signedInRuntime = await app.inject({
+      method: 'GET',
+      url: '/api/v1/runtime',
+      headers: companionCookie,
+    });
+    expect(signedInRuntime.statusCode).toBe(200);
+    expect(signedInRuntime.json()).toMatchObject({
+      household: { id: 'household_hearth_demo', name: 'Hearth Demo Home' },
+    });
+    const signedInToday = await app.inject({
+      method: 'GET',
+      url: `${base}/today?date=2026-08-03`,
+      headers: companionCookie,
+    });
+    expect(signedInToday.statusCode).toBe(200);
+
+    const wrongHousehold = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_other/today?date=2026-08-03',
+      headers: companionCookie,
+    });
+    expect(wrongHousehold.statusCode).toBe(403);
+    expect(wrongHousehold.json().error.code).toBe('FORBIDDEN');
+
+    const pairingSecret = 'private-tv-pairing-secret-0123456789abcdef0';
+    const pairing = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tv-pairing-sessions',
+      payload: {
+        requestId: 'request_private_tv_pairing',
+        deviceName: 'Living room TV',
+        pairingSecret,
+        applicationVersion: '0.1.0',
+      },
+    });
+    expect(pairing.statusCode).toBe(200);
+    const pairingBody = pairing.json();
+    const approval = await app.inject({
+      method: 'POST',
+      url: `${base}/pairing-approvals`,
+      headers: companionCookie,
+      payload: {
+        requestId: 'request_private_tv_approval',
+        code: pairingBody.pairing.code,
+      },
+    });
+    expect(approval.statusCode).toBe(200);
+    const exchange = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tv-pairing-sessions/${pairingBody.pairing.id}/credential-exchanges`,
+      payload: {
+        requestId: 'request_private_tv_exchange',
+        pairingSecret,
+      },
+    });
+    expect(exchange.statusCode).toBe(200);
+    expect(exchange.headers['set-cookie']).toMatch(
+      /^hearth_device=.*; Path=\/; HttpOnly; SameSite=Strict; Max-Age=31536000; Secure$/,
+    );
+    expect(exchange.headers['cache-control']).toBe('no-store');
+
+    const televisionRuntime = await app.inject({
+      method: 'GET',
+      url: '/api/v1/runtime',
+      headers: { cookie: `hearth_device=${pairingSecret}` },
+    });
+    expect(televisionRuntime.statusCode).toBe(200);
+    expect(televisionRuntime.json().household.id).toBe('household_hearth_demo');
+    const televisionToday = await app.inject({
+      method: 'GET',
+      url: `${base}/today?date=2026-08-03`,
+      headers: { cookie: `hearth_device=${pairingSecret}` },
+    });
+    expect(televisionToday.statusCode).toBe(200);
+  });
+
   it('returns schema-valid Today, Week, Month and Chores projections', async () => {
     const app = server();
     const [today, week, month, chores] = await Promise.all([
@@ -77,6 +427,99 @@ describe('Hearth v2 API', () => {
     expect(chores.json()).toMatchObject({ totalCount: 6, completedCount: 1 });
   });
 
+  it('creates and removes notices and applies Today section visibility through typed commands', async () => {
+    const app = server();
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers,
+      payload: {
+        requestId: 'request_notice_create',
+        message: 'Bring library books tomorrow',
+        priority: 'important',
+        startsAt: '2026-08-02T00:00:00.000Z',
+        expiresAt: '2026-08-04T00:00:00.000Z',
+      },
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toMatchObject({
+      replayed: false,
+      configuration: {
+        notices: expect.arrayContaining([expect.objectContaining({ priority: 'important' })]),
+      },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers,
+      payload: {
+        requestId: 'request_notice_create',
+        message: 'Bring library books tomorrow',
+        priority: 'important',
+        startsAt: '2026-08-02T00:00:00.000Z',
+        expiresAt: '2026-08-04T00:00:00.000Z',
+      },
+    });
+    expect(replay.json().replayed).toBe(true);
+
+    const sections = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/today-sections',
+      headers,
+      payload: {
+        requestId: 'request_sections_update',
+        dinner: false,
+        listSummary: true,
+        notice: true,
+        photo: false,
+      },
+    });
+    expect(sections.statusCode).toBe(200);
+    const today = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
+    });
+    expect(today.json()).toMatchObject({
+      notice: 'Bring library books tomorrow',
+      photo: null,
+      sections: { dinner: false, listSummary: true, notice: true, photo: false },
+    });
+  });
+
+  it('rejects invalid notice windows and non-administrator notice writes', async () => {
+    const app = server();
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: {
+        requestId: 'request_notice_invalid',
+        message: 'Invalid window',
+        priority: 'standard',
+        startsAt: '2026-08-04T00:00:00.000Z',
+        expiresAt: '2026-08-03T00:00:00.000Z',
+      },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+
+    const child = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/notices',
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: {
+        requestId: 'request_notice_child',
+        message: 'Child write',
+        priority: 'standard',
+        startsAt: '2026-08-02T00:00:00.000Z',
+        expiresAt: null,
+      },
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+  });
+
   it('returns a path-safe photo gallery with empty, cached-unavailable and retry states', async () => {
     const app = server();
     const url = '/api/v1/households/household_hearth_demo/photos';
@@ -132,11 +575,11 @@ describe('Hearth v2 API', () => {
   });
 
   it('keeps private Photos unconfigured until an approved source is selected', async () => {
-    const app = buildServer({ logger: false, demoMode: false });
-    servers.push(app);
+    const app = privateHouseholdServer();
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/households/household_hearth_demo/photos',
+      headers: { cookie: 'hearth_session=private-session' },
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
@@ -145,6 +588,139 @@ describe('Hearth v2 API', () => {
         source: { kind: 'synology-folder', status: 'unconfigured' },
       },
     });
+  });
+
+  it('reports and refreshes the photo index through an adult-only idempotent command', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo/photo-source';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const status = await app.inject({ method: 'GET', url: base, headers });
+    const first = await app.inject({
+      method: 'POST',
+      url: `${base}/refreshes`,
+      headers,
+      payload: { requestId: 'request_photo_scan_http' },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${base}/refreshes`,
+      headers,
+      payload: { requestId: 'request_photo_scan_http' },
+    });
+    const child = await app.inject({
+      method: 'POST',
+      url: `${base}/refreshes`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: { requestId: 'request_photo_scan_child' },
+    });
+    const missingDerivative = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/photo-assets/photo_missing/display',
+    });
+
+    expect(status.json()).toMatchObject({
+      visiblePhotoCount: 5,
+      scanInProgress: false,
+      collection: { source: { status: 'ready' } },
+    });
+    expect(first.json()).toMatchObject({
+      replayed: false,
+      audit: { action: 'photo.source.refresh', actorId: 'member_maya' },
+    });
+    expect(replay.json()).toMatchObject({
+      replayed: true,
+      audit: { id: first.json().audit.id },
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(missingDerivative.statusCode).toBe(404);
+    expect(missingDerivative.json().error.code).toBe('NOT_FOUND');
+  });
+
+  it('favourites, hides and restores photos through adult-only replay-safe commands', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const curationUrl = `${base}/photo-assets/photo_family_breakfast/curation-actions`;
+    const hidden = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_hide_http', action: 'hide' },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_hide_http', action: 'hide' },
+    });
+    const gallery = await app.inject({ method: 'GET', url: `${base}/photos` });
+    const today = await app.inject({
+      method: 'GET',
+      url: `${base}/today?date=2026-08-03`,
+    });
+    const child = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: { requestId: 'request_photo_hide_child', action: 'hide' },
+    });
+    const invalid = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_invalid', action: 'delete-original' },
+    });
+
+    expect(hidden.json()).toMatchObject({
+      replayed: false,
+      photo: { id: 'photo_family_breakfast', hidden: true },
+      status: { visiblePhotoCount: 4, hiddenPhotoCount: 1 },
+      audit: { action: 'photo.hide', actorId: 'member_maya' },
+    });
+    expect(replay.json()).toMatchObject({
+      replayed: true,
+      audit: { id: hidden.json().audit.id },
+    });
+    expect(gallery.json().photos).toHaveLength(4);
+    expect(
+      gallery.json().photos.some((photo: { id: string }) => photo.id === 'photo_family_breakfast'),
+    ).toBe(false);
+    expect(today.json().photo).toMatchObject({
+      url: '/demo/photos/coastal-picnic.webp',
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+
+    const restored = await app.inject({
+      method: 'POST',
+      url: curationUrl,
+      headers,
+      payload: { requestId: 'request_photo_restore_http', action: 'unhide' },
+    });
+    expect(restored.json()).toMatchObject({
+      photo: { hidden: false },
+      status: { visiblePhotoCount: 5, hiddenPhotoCount: 0 },
+      audit: { action: 'photo.unhide' },
+    });
+  });
+
+  it('serves only immutable same-origin photo derivatives with safe response headers', async () => {
+    const provider = new DerivativePhotoSourceProvider();
+    const app = buildServer({ logger: false, photoRepository: new PhotoService(provider) });
+    servers.push(app);
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/photo-assets/photo_family_breakfast/display',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('image/webp');
+    expect(response.headers['cache-control']).toBe('private, max-age=31536000, immutable');
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.rawPayload).toEqual(Buffer.from([82, 73, 70, 70]));
   });
 
   it('completes, replays and reverses through the HTTP contract', async () => {
@@ -192,7 +768,7 @@ describe('Hearth v2 API', () => {
       method: 'POST',
       url: `${root}/occurrence_laundry/skips`,
       headers: { 'x-hearth-demo-actor': 'member_maya', 'x-hearth-demo-source': 'companion' },
-      payload: { requestId: 'request_adult_http_skip' },
+      payload: { requestId: 'request_adult_http_skip', reason: 'Waiting for dry weather' },
     });
     const locked = buildServer({ logger: false, demoMode: false });
     servers.push(locked);
@@ -206,6 +782,66 @@ describe('Hearth v2 API', () => {
     expect(childOther).toMatchObject({ statusCode: 403 });
     expect(adultSkip.json()).toMatchObject({ occurrence: { state: 'skipped' }, replayed: false });
     expect(unauthenticated.json().error.code).toBe('UNAUTHENTICATED');
+  });
+
+  it('validates and replays adult chore exceptions, reassignment and history routes', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo/chore-occurrences';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const invalid = await app.inject({
+      method: 'POST',
+      url: `${root}/occurrence_laundry/excuses`,
+      headers,
+      payload: { requestId: 'request_excuse_invalid', reason: 'x' },
+    });
+    expect(invalid).toMatchObject({ statusCode: 400 });
+
+    const reassigned = await app.inject({
+      method: 'POST',
+      url: `${root}/occurrence_school_bag/reassignments`,
+      headers,
+      payload: {
+        requestId: 'request_http_reassign',
+        assigneeId: 'member_maya',
+        reason: 'Ezra and Maya swapped morning jobs',
+      },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${root}/occurrence_school_bag/reassignments`,
+      headers,
+      payload: {
+        requestId: 'request_http_reassign',
+        assigneeId: 'member_maya',
+        reason: 'Ezra and Maya swapped morning jobs',
+      },
+    });
+    expect(reassigned.json()).toMatchObject({
+      occurrence: { assignee: { id: 'member_maya' }, state: 'pending' },
+      replayed: false,
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `${root}/occurrence_school_bag`,
+      headers,
+    });
+    expect(detail.json()).toMatchObject({
+      occurrence: { dueTime: '07:30', assignee: { id: 'member_maya' } },
+      history: [
+        {
+          action: 'chore.reassign',
+          reason: 'Ezra and Maya swapped morning jobs',
+        },
+      ],
+    });
+    const childDetail = await app.inject({
+      method: 'GET',
+      url: `${root}/occurrence_school_bag`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(childDetail).toMatchObject({ statusCode: 403 });
   });
 
   it('returns stable family-safe validation, permission and retryable failure errors', async () => {
@@ -256,6 +892,12 @@ describe('Hearth v2 API', () => {
         'req.headers.cookie',
         '*.token',
         '*.password',
+        '*.appPassword',
+        '*.accessToken',
+        '*.dataBase64',
+        '*.setupCode',
+        '*.recoveryCode',
+        '*.pairingSecret',
       ]),
     );
     const app = server();
@@ -302,6 +944,260 @@ describe('Hearth v2 API', () => {
     expect(unauthenticated.json().error.code).toBe('UNAUTHENTICATED');
   });
 
+  it('tests, selects, replays and removes a credential-safe calendar connection', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const password = 'fictional-app-password';
+    const tested = await app.inject({
+      method: 'POST',
+      url: `${root}/calendar-connection-tests`,
+      headers,
+      payload: {
+        serverUrl: 'https://caldav.icloud.com',
+        username: 'fictional@example.com',
+        appPassword: password,
+      },
+    });
+    expect(tested.statusCode).toBe(200);
+    expect(tested.json().availableCalendars).toHaveLength(3);
+    expect(JSON.stringify(tested.json())).not.toContain(password);
+    const family = tested.json().availableCalendars[0] as { id: string };
+    const ezra = tested.json().availableCalendars[1] as { id: string };
+    const payload = {
+      requestId: 'request_calendar_http_save',
+      testId: tested.json().testId as string,
+      label: 'Family calendars',
+      calendars: [
+        { calendarId: family.id, ownerMemberId: null },
+        { calendarId: ezra.id, ownerMemberId: 'member_ezra' },
+      ],
+    };
+    const saved = await app.inject({
+      method: 'PUT',
+      url: `${root}/calendar-connection`,
+      headers,
+      payload,
+    });
+    const replay = await app.inject({
+      method: 'PUT',
+      url: `${root}/calendar-connection`,
+      headers,
+      payload,
+    });
+    const read = await app.inject({
+      method: 'GET',
+      url: `${root}/calendar-connection`,
+      headers,
+    });
+    const child = await app.inject({
+      method: 'GET',
+      url: `${root}/calendar-connection`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({
+      replayed: false,
+      connection: {
+        provider: 'caldav',
+        serverHost: 'caldav.icloud.com',
+        accountHint: 'f•••@example.com',
+        readOnly: true,
+        calendars: [
+          { displayName: 'Family', owner: null },
+          { displayName: 'Ezra', owner: { id: 'member_ezra' } },
+        ],
+      },
+      audit: { action: 'calendar.connection.save' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+    expect(read.json()).toMatchObject(saved.json().connection);
+    expect(JSON.stringify(read.json())).not.toContain(password);
+    expect(child.statusCode).toBe(403);
+
+    const removed = await app.inject({
+      method: 'POST',
+      url: `${root}/calendar-connection/removals`,
+      headers,
+      payload: { requestId: 'request_calendar_http_remove' },
+    });
+    const after = await app.inject({
+      method: 'GET',
+      url: `${root}/calendar-connection`,
+      headers,
+    });
+    expect(removed.json()).toMatchObject({
+      connection: null,
+      audit: { action: 'calendar.connection.remove', result: 'reversed' },
+    });
+    expect(after.json()).toBeNull();
+  });
+
+  it('returns stable calendar setup validation and sign-in errors', async () => {
+    const app = server();
+    const url = '/api/v1/households/household_hearth_demo/calendar-connection-tests';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const insecure = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'http://calendar.example.com',
+        username: 'fictional@example.com',
+        appPassword: 'demo-password',
+      },
+    });
+    const rejected = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'https://caldav.icloud.com',
+        username: 'fictional@example.com',
+        appPassword: 'wrong-password',
+      },
+    });
+    expect(insecure.statusCode).toBe(400);
+    expect(insecure.json().error.code).toBe('VALIDATION_ERROR');
+    expect(rejected.statusCode).toBe(503);
+    expect(rejected.json().error).toMatchObject({
+      code: 'INTEGRATION_UNAVAILABLE',
+      retryable: false,
+    });
+  });
+
+  it('tests, maps, replays and removes a credential-safe Home Assistant connection', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const accessToken = 'private-home-assistant-token';
+    const tested = await app.inject({
+      method: 'POST',
+      url: `${root}/home-assistant-connection-tests`,
+      headers,
+      payload: {
+        serverUrl: 'http://homeassistant.local:8123',
+        accessToken,
+      },
+    });
+    expect(tested.statusCode).toBe(200);
+    expect(tested.json()).toMatchObject({
+      provider: 'home-assistant',
+      serverHost: 'homeassistant.local',
+      instanceName: 'Hearth Demo Home',
+    });
+    expect(JSON.stringify(tested.json())).not.toContain(accessToken);
+    expect(JSON.stringify(tested.json())).not.toContain('binary_sensor.family_home');
+    const options = tested.json().options as Record<string, Array<{ id: string }>>;
+    const payload = {
+      requestId: 'request_home_assistant_http_save',
+      testId: tested.json().testId as string,
+      label: 'Living room',
+      mappings: {
+        occupancyId: requiredOptionId(options, 'occupancy'),
+        televisionPowerId: requiredOptionId(options, 'televisionPower'),
+        hearthForegroundId: requiredOptionId(options, 'hearthForeground'),
+        protectedMediaId: requiredOptionId(options, 'protectedMedia'),
+        eveningScriptId: requiredOptionId(options, 'scripts', 0),
+        goodnightScriptId: requiredOptionId(options, 'scripts', 1),
+        screenOffScriptId: requiredOptionId(options, 'scripts', 2),
+      },
+    };
+    const saved = await app.inject({
+      method: 'PUT',
+      url: `${root}/home-assistant-connection`,
+      headers,
+      payload,
+    });
+    const replay = await app.inject({
+      method: 'PUT',
+      url: `${root}/home-assistant-connection`,
+      headers,
+      payload,
+    });
+    const read = await app.inject({
+      method: 'GET',
+      url: `${root}/home-assistant-connection`,
+      headers,
+    });
+    const child = await app.inject({
+      method: 'GET',
+      url: `${root}/home-assistant-connection`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({
+      replayed: false,
+      connection: {
+        provider: 'home-assistant',
+        serverHost: 'homeassistant.local',
+        stateMappings: { occupancy: 'Family home' },
+        actionMappings: { screenOff: 'Screen off' },
+      },
+      audit: { action: 'home-assistant.connection.save' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+    expect(read.json()).toEqual(saved.json().connection);
+    expect(JSON.stringify(read.json())).not.toContain(accessToken);
+    expect(child.statusCode).toBe(403);
+
+    const removed = await app.inject({
+      method: 'POST',
+      url: `${root}/home-assistant-connection/removals`,
+      headers,
+      payload: { requestId: 'request_home_assistant_http_remove' },
+    });
+    const removeReplay = await app.inject({
+      method: 'POST',
+      url: `${root}/home-assistant-connection/removals`,
+      headers,
+      payload: { requestId: 'request_home_assistant_http_remove' },
+    });
+    const after = await app.inject({
+      method: 'GET',
+      url: `${root}/home-assistant-connection`,
+      headers,
+    });
+    expect(removed.json()).toMatchObject({
+      connection: null,
+      replayed: false,
+      audit: { action: 'home-assistant.connection.remove', result: 'reversed' },
+    });
+    expect(removeReplay.json()).toMatchObject({ connection: null, replayed: true });
+    expect(after.json()).toBeNull();
+  });
+
+  it('returns stable Home Assistant setup validation and authentication errors', async () => {
+    const app = server();
+    const url = '/api/v1/households/household_hearth_demo/home-assistant-connection-tests';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const insecure = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'http://home-assistant.example.com:8123',
+        accessToken: 'private-home-assistant-token',
+      },
+    });
+    const rejected = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: {
+        serverUrl: 'http://homeassistant.local:8123',
+        accessToken: 'wrong-home-assistant-token',
+      },
+    });
+    expect(insecure.statusCode).toBe(400);
+    expect(insecure.json().error.code).toBe('VALIDATION_ERROR');
+    expect(rejected.statusCode).toBe(503);
+    expect(rejected.json().error).toMatchObject({
+      code: 'INTEGRATION_UNAVAILABLE',
+      retryable: false,
+    });
+  });
+
   it('updates household and member setup with companion audit summaries', async () => {
     const app = server();
     const headers = { 'x-hearth-demo-actor': 'member_maya' };
@@ -332,6 +1228,21 @@ describe('Hearth v2 API', () => {
       url: '/api/v1/households/household_hearth_demo/admin',
       headers,
     });
+    const activity = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/activity?limit=1',
+      headers,
+    });
+    const childDenied = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/activity',
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    const invalidLimit = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/activity?limit=101',
+      headers,
+    });
     const today = await app.inject({
       method: 'GET',
       url: '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
@@ -351,6 +1262,91 @@ describe('Hearth v2 API', () => {
         expect.objectContaining({ action: 'member.create', source: 'companion' }),
       ]),
     );
+    expect(activity.statusCode).toBe(200);
+    expect(activity.json()).toMatchObject({
+      localOnly: true,
+      generatedAt: '2026-08-02T23:42:00.000Z',
+      entries: [expect.objectContaining({ action: 'member.create', actorId: 'member_maya' })],
+    });
+    expect(childDenied.statusCode).toBe(403);
+    expect(childDenied.json().error.code).toBe('FORBIDDEN');
+    expect(invalidLimit.statusCode).toBe(400);
+  });
+
+  it('stores, serves and restores a member profile photo through the typed command routes', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo/members/member_ezra/avatar';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const dataBase64 = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
+    const update = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers,
+      payload: {
+        requestId: 'request_avatar_http_update',
+        mimeType: 'image/jpeg',
+        dataBase64,
+      },
+    });
+    const replay = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers,
+      payload: {
+        requestId: 'request_avatar_http_update',
+        mimeType: 'image/jpeg',
+        dataBase64,
+      },
+    });
+    const image = await app.inject({ method: 'GET', url: root });
+    const childDenied = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: {
+        requestId: 'request_avatar_http_child',
+        mimeType: 'image/jpeg',
+        dataBase64,
+      },
+    });
+    const invalid = await app.inject({
+      method: 'PUT',
+      url: root,
+      headers,
+      payload: {
+        requestId: 'request_avatar_http_invalid',
+        mimeType: 'image/jpeg',
+        dataBase64: Buffer.from('not-a-jpeg').toString('base64'),
+      },
+    });
+    const reset = await app.inject({
+      method: 'POST',
+      url: `${root}-resets`,
+      headers,
+      payload: { requestId: 'request_avatar_http_reset' },
+    });
+    const removed = await app.inject({ method: 'GET', url: root });
+
+    expect(update).toMatchObject({ statusCode: 200 });
+    expect(update.json()).toMatchObject({
+      replayed: false,
+      member: { avatarUrl: expect.stringContaining('/member_ezra/avatar?v=') },
+      audit: { action: 'member.avatar.update' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+    expect(image.headers).toMatchObject({
+      'content-type': 'image/jpeg',
+      'x-content-type-options': 'nosniff',
+    });
+    expect(image.rawPayload).toEqual(Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+    expect(childDenied.statusCode).toBe(403);
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+    expect(reset.json()).toMatchObject({
+      member: { avatarUrl: '/demo/ezra.png' },
+      audit: { action: 'member.avatar.reset' },
+    });
+    expect(removed.statusCode).toBe(404);
   });
 
   it('pairs, observes and revokes a television through a short-lived code', async () => {
@@ -501,7 +1497,89 @@ describe('Hearth v2 API', () => {
     expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('plans meals and calculates an idempotent weekly pocket-money payment', async () => {
+  it('protects and serves typed list administration commands with stable failures', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const adultHeaders = { 'x-hearth-demo-actor': 'member_maya' };
+    const denied = await app.inject({ method: 'GET', url: `${base}/list-settings` });
+    const created = await app.inject({
+      method: 'POST',
+      url: `${base}/lists`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_create_001',
+        name: 'School camp',
+        type: 'packing',
+        color: '#6d5b8f',
+      },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url: `${base}/lists`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_create_001',
+        name: 'School camp',
+        type: 'packing',
+        color: '#6d5b8f',
+      },
+    });
+    const listId = created.json().audit.targetId as string;
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `${base}/lists/${listId}`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_update_001',
+        name: 'Year 8 camp',
+        type: 'packing',
+        color: '#1668b7',
+      },
+    });
+    const invalidOrder = await app.inject({
+      method: 'PUT',
+      url: `${base}/list-order`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_list_order_invalid',
+        orderedListIds: [listId, listId],
+      },
+    });
+    const archived = await app.inject({
+      method: 'POST',
+      url: `${base}/lists/${listId}/archives`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_list_archive_001' },
+    });
+    const restored = await app.inject({
+      method: 'POST',
+      url: `${base}/lists/${listId}/restorations`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_list_restore_001' },
+    });
+
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error.code).toBe('FORBIDDEN');
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toMatchObject({
+      replayed: false,
+      audit: { action: 'list.create' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true, audit: { targetId: listId } });
+    expect(updated.json().settings.activeLists).toContainEqual(
+      expect.objectContaining({ id: listId, name: 'Year 8 camp', color: '#1668b7' }),
+    );
+    expect(invalidOrder.statusCode).toBe(400);
+    expect(invalidOrder.json().error.code).toBe('VALIDATION_ERROR');
+    expect(archived.json().settings.archivedLists).toContainEqual(
+      expect.objectContaining({ id: listId }),
+    );
+    expect(restored.json().settings.activeLists).toContainEqual(
+      expect.objectContaining({ id: listId }),
+    );
+  });
+
+  it('plans meals and exposes idempotent partial payment and void commands', async () => {
     const app = server();
     const headers = { 'x-hearth-demo-actor': 'member_maya' };
     const meal = await app.inject({
@@ -547,6 +1625,32 @@ describe('Hearth v2 API', () => {
         memberId: 'member_ezra',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',
+        amountCents: 200,
+        note: 'Cash',
+      },
+    });
+    const overpayment = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_overpayment',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 301,
+      },
+    });
+    const zeroPayment = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_zero',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 0,
       },
     });
     const replay = await app.inject({
@@ -558,7 +1662,55 @@ describe('Hearth v2 API', () => {
         memberId: 'member_ezra',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',
+        amountCents: 200,
+        note: 'Cash',
       },
+    });
+    const remainder = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/pocket-money-payments',
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_http_002',
+        memberId: 'member_ezra',
+        weekStart: '2026-08-03',
+        asOfDate: '2026-08-03',
+        amountCents: 300,
+      },
+    });
+    const paymentVoid = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/household_hearth_demo/pocket-money-payments/${remainder.json().payment.id}/voids`,
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_void_http_001',
+        asOfDate: '2026-08-03',
+        reason: 'Wrong account',
+      },
+    });
+    const paymentVoidReplay = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/household_hearth_demo/pocket-money-payments/${remainder.json().payment.id}/voids`,
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_void_http_001',
+        asOfDate: '2026-08-03',
+        reason: 'Wrong account',
+      },
+    });
+    const secondPaymentVoid = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/household_hearth_demo/pocket-money-payments/${remainder.json().payment.id}/voids`,
+      headers,
+      payload: {
+        requestId: 'request_pocket_payment_void_http_002',
+        asOfDate: '2026-08-03',
+        reason: 'Another correction',
+      },
+    });
+    const afterVoid = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/pocket-money?weekStart=2026-08-03&asOf=2026-08-03',
     });
     const removedRewardsRoute = await app.inject({
       method: 'GET',
@@ -576,29 +1728,416 @@ describe('Hearth v2 API', () => {
       completionPercentage: 33,
       earnedAmountCents: 500,
     });
-    expect(payment.json()).toMatchObject({ payment: { amountCents: 500 }, replayed: false });
-    expect(replay.json()).toMatchObject({ payment: { amountCents: 500 }, replayed: true });
+    expect(payment.json()).toMatchObject({
+      payment: { amountCents: 200, note: 'Cash' },
+      child: { status: 'partially-paid', remainingAmountCents: 300 },
+      replayed: false,
+    });
+    expect(replay.json()).toMatchObject({ payment: { amountCents: 200 }, replayed: true });
+    expect(overpayment.statusCode).toBe(409);
+    expect(overpayment.json().error).toMatchObject({
+      code: 'CONFLICT',
+      message: 'Only $3.00 remains due for this week.',
+    });
+    expect(zeroPayment.statusCode).toBe(400);
+    expect(zeroPayment.json().error.code).toBe('VALIDATION_ERROR');
+    expect(remainder.json()).toMatchObject({ child: { status: 'paid' } });
+    expect(paymentVoid.json()).toMatchObject({
+      payment: { void: { reason: 'Wrong account' } },
+      child: { status: 'partially-paid', remainingAmountCents: 300 },
+      replayed: false,
+    });
+    expect(paymentVoidReplay.json()).toMatchObject({ replayed: true });
+    expect(secondPaymentVoid.statusCode).toBe(409);
+    expect(secondPaymentVoid.json().error.code).toBe('CONFLICT');
+    expect(afterVoid.json().children[0]).toMatchObject({
+      status: 'partially-paid',
+      paidAmountCents: 200,
+    });
+    expect(afterVoid.json().recentPayments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: remainder.json().payment.id,
+          void: expect.objectContaining({ reason: 'Wrong account' }),
+        }),
+      ]),
+    );
     expect(removedRewardsRoute.statusCode).toBe(404);
   });
 
-  it('keeps recurring chore administration adult-only at the HTTP boundary', async () => {
+  it('keeps meal-library and whole-week commands adult-only, validated and replay-safe', async () => {
+    const app = server();
+    const base = '/api/v1/households/household_hearth_demo';
+    const adultHeaders = { 'x-hearth-demo-actor': 'member_maya' };
+    const childHeaders = { 'x-hearth-demo-actor': 'member_ezra' };
+    const created = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_saved_meal_create',
+        name: 'Sesame noodles',
+        description: 'Fast school-night meal',
+        preparationMinutes: 20,
+        favourite: true,
+      },
+    });
+    const mealId = created.json().savedMeal.id as string;
+    const updated = await app.inject({
+      method: 'PUT',
+      url: `${base}/saved-meals/${mealId}`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_saved_meal_update',
+        name: 'Sesame noodle bowls',
+        description: 'Fast school-night meal',
+        preparationMinutes: 25,
+        favourite: false,
+      },
+    });
+    const childLibrary = await app.inject({
+      method: 'GET',
+      url: `${base}/saved-meal-library`,
+      headers: childHeaders,
+    });
+    const archived = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals/${mealId}/archives`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_saved_meal_archive' },
+    });
+    const archiveReplay = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals/${mealId}/archives`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_saved_meal_archive' },
+    });
+    const library = await app.inject({
+      method: 'GET',
+      url: `${base}/saved-meal-library`,
+      headers: adultHeaders,
+    });
+    const restored = await app.inject({
+      method: 'POST',
+      url: `${base}/saved-meals/${mealId}/restorations`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_saved_meal_restore' },
+    });
+    const invalidWeek = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_invalid',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-11',
+            slot: 'dinner',
+            mealName: 'Too late',
+            savedMealId: null,
+            note: null,
+          },
+        ],
+      },
+    });
+    const deniedWeek = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: childHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_denied',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: 'Not allowed',
+            savedMealId: null,
+            note: null,
+          },
+        ],
+      },
+    });
+    const emptyWeek = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_empty',
+        startDate: '2026-08-03',
+        entries: [],
+      },
+    });
+    const planned = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_save',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: 'Sesame noodle bowls',
+            savedMealId: mealId,
+            note: 'Chop vegetables first',
+          },
+        ],
+      },
+    });
+    const planReplay = await app.inject({
+      method: 'PUT',
+      url: `${base}/meal-plan-weeks`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_save',
+        startDate: '2026-08-03',
+        entries: [
+          {
+            localDate: '2026-08-03',
+            slot: 'dinner',
+            mealName: 'Sesame noodle bowls',
+            savedMealId: mealId,
+            note: 'Chop vegetables first',
+          },
+        ],
+      },
+    });
+    const copied = await app.inject({
+      method: 'POST',
+      url: `${base}/meal-plan-week-copies`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_copy',
+        sourceStartDate: '2026-08-03',
+        targetStartDate: '2026-08-10',
+        replaceExisting: false,
+      },
+    });
+    const copyConflict = await app.inject({
+      method: 'POST',
+      url: `${base}/meal-plan-week-copies`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_copy_conflict',
+        sourceStartDate: '2026-08-03',
+        targetStartDate: '2026-08-10',
+        replaceExisting: false,
+      },
+    });
+    const cleared = await app.inject({
+      method: 'POST',
+      url: `${base}/meal-plan-week-clears`,
+      headers: adultHeaders,
+      payload: {
+        requestId: 'request_http_meal_week_clear',
+        startDate: '2026-08-10',
+      },
+    });
+
+    expect(created).toMatchObject({ statusCode: 200 });
+    expect(updated.json()).toMatchObject({
+      savedMeal: { name: 'Sesame noodle bowls', preparationMinutes: 25, favourite: false },
+      audit: { action: 'saved-meal.update' },
+    });
+    expect(childLibrary.statusCode).toBe(403);
+    expect(childLibrary.json().error.code).toBe('FORBIDDEN');
+    expect(archived.json()).toMatchObject({
+      savedMeal: { archivedAt: expect.any(String) },
+      replayed: false,
+    });
+    expect(archiveReplay.json()).toMatchObject({ replayed: true });
+    expect(library.json().archivedMeals).toContainEqual(expect.objectContaining({ id: mealId }));
+    expect(restored.json().savedMeal.archivedAt).toBeNull();
+    expect(invalidWeek.statusCode).toBe(400);
+    expect(invalidWeek.json().error.code).toBe('VALIDATION_ERROR');
+    expect(emptyWeek.statusCode).toBe(400);
+    expect(emptyWeek.json().error.code).toBe('VALIDATION_ERROR');
+    expect(deniedWeek.statusCode).toBe(403);
+    expect(planned.json().audit).toMatchObject({ action: 'meal.week.update' });
+    expect(planned.json().plan.days[0].entries).toHaveLength(1);
+    expect(planReplay.json()).toMatchObject({ replayed: true });
+    expect(copied.json().plan.days[0].entries[0]).toMatchObject({ localDate: '2026-08-10' });
+    expect(copyConflict.statusCode).toBe(409);
+    expect(copyConflict.json().error.code).toBe('CONFIRMATION_REQUIRED');
+    expect(
+      cleared.json().plan.days.every((day: { entries: unknown[] }) => day.entries.length === 0),
+    ).toBe(true);
+  });
+
+  it('keeps chore scheduling adult-only and exposes replay-safe one-off lifecycle commands', async () => {
     const app = server();
     const url = '/api/v1/households/household_hearth_demo/chore-templates';
+    const adultHeaders = { 'x-hearth-demo-actor': 'member_maya' };
     const adult = await app.inject({
       method: 'GET',
       url,
-      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      headers: adultHeaders,
     });
     const child = await app.inject({
       method: 'GET',
       url,
       headers: { 'x-hearth-demo-actor': 'member_ezra' },
     });
+    const oneOffPayload = {
+      requestId: 'request_http_one_off_chore',
+      title: 'Bring bins in',
+      description: null,
+      assigneeIds: ['member_ezra', 'member_maya'],
+      routineLabel: 'Extra jobs',
+      availableFromTime: '15:45',
+      dueTime: '16:30',
+      repeat: 'once',
+      repeatDays: [],
+      activeFrom: '2026-08-04',
+    };
+    const created = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: oneOffPayload,
+    });
+    const createReplay = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: oneOffPayload,
+    });
+    const templateId = created.json().template.id as string;
+    const invalid = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: { ...oneOffPayload, requestId: 'request_invalid_weekly_chore', repeat: 'weekly' },
+    });
+    const noAssignee = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_invalid_empty_assignees',
+        assigneeIds: [],
+      },
+    });
+    const duplicateAssignee = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_invalid_duplicate_assignees',
+        assigneeIds: ['member_ezra', 'member_ezra'],
+      },
+    });
+    const missingAssignee = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_missing_chore_assignee',
+        assigneeIds: ['member_missing'],
+      },
+    });
+    const invalidWindow = await app.inject({
+      method: 'POST',
+      url,
+      headers: adultHeaders,
+      payload: {
+        ...oneOffPayload,
+        requestId: 'request_invalid_chore_window',
+        availableFromTime: '17:00',
+      },
+    });
+    const orderedTemplateIds = [
+      templateId,
+      ...adult.json().templates.map((template: { id: string }) => template.id),
+    ];
+    const reordered = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/chore-template-order',
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_reorder_chores', orderedTemplateIds },
+    });
+    const reorderReplay = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/chore-template-order',
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_reorder_chores', orderedTemplateIds },
+    });
+    const childReorder = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/households/household_hearth_demo/chore-template-order',
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: { requestId: 'request_child_reorder_chores', orderedTemplateIds },
+    });
+    const archiveUrl = `${url}/${templateId}/archivals`;
+    const archived = await app.inject({
+      method: 'POST',
+      url: archiveUrl,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_archive_chore' },
+    });
+    const archiveReplay = await app.inject({
+      method: 'POST',
+      url: archiveUrl,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_archive_chore' },
+    });
+    const restored = await app.inject({
+      method: 'POST',
+      url: `${url}/${templateId}/restorations`,
+      headers: adultHeaders,
+      payload: { requestId: 'request_http_restore_chore', resumeFrom: '2026-08-05' },
+    });
 
     expect(adult.statusCode).toBe(200);
     expect(adult.json().templates.length).toBeGreaterThan(0);
     expect(child.statusCode).toBe(403);
     expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(created.json()).toMatchObject({
+      template: {
+        assignees: [{ id: 'member_ezra' }, { id: 'member_maya' }],
+        repeat: 'once',
+        repeatDays: [],
+        availableFromTime: '15:45',
+        dueTime: '16:30',
+        activeFrom: '2026-08-04',
+        activeUntil: '2026-08-04',
+      },
+      replayed: false,
+    });
+    expect(createReplay.json()).toMatchObject({ replayed: true });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+    expect(noAssignee.statusCode).toBe(400);
+    expect(noAssignee.json().error.code).toBe('VALIDATION_ERROR');
+    expect(duplicateAssignee.statusCode).toBe(400);
+    expect(duplicateAssignee.json().error.code).toBe('VALIDATION_ERROR');
+    expect(missingAssignee.statusCode).toBe(404);
+    expect(missingAssignee.json().error.code).toBe('NOT_FOUND');
+    expect(invalidWindow.statusCode).toBe(400);
+    expect(invalidWindow.json().error.code).toBe('VALIDATION_ERROR');
+    expect(reordered.json()).toMatchObject({
+      audit: { action: 'chore-template.reorder' },
+      replayed: false,
+    });
+    expect(reordered.json().list.templates[0].id).toBe(templateId);
+    expect(reorderReplay.json().replayed).toBe(true);
+    expect(childReorder.statusCode).toBe(403);
+    expect(archived.json()).toMatchObject({
+      template: { archived: true },
+      audit: { action: 'chore-template.archive' },
+      replayed: false,
+    });
+    expect(archiveReplay.json()).toMatchObject({ replayed: true });
+    expect(restored.json()).toMatchObject({
+      template: { archived: false, activeFrom: '2026-08-05', activeUntil: '2026-08-05' },
+      audit: { action: 'chore-template.restore' },
+    });
   });
 
   it('serves curated Home Assistant state and idempotent allowlisted actions', async () => {
@@ -743,11 +2282,11 @@ describe('Hearth v2 API', () => {
   });
 
   it('fails closed for private Home/Assist commands without a configured service identity', async () => {
-    const app = buildServer({ logger: false, demoMode: false });
-    servers.push(app);
+    const app = privateHouseholdServer();
     const status = await app.inject({
       method: 'GET',
       url: '/api/v1/households/household_hearth_demo/home',
+      headers: { cookie: 'hearth_session=private-session' },
     });
     const action = await app.inject({
       method: 'POST',
@@ -771,3 +2310,13 @@ describe('Hearth v2 API', () => {
     expect(assist.json().error.code).toBe('UNAUTHENTICATED');
   });
 });
+
+function requiredOptionId(
+  options: Record<string, Array<{ id: string }>>,
+  group: string,
+  index = 0,
+): string {
+  const option = options[group]?.[index];
+  if (option === undefined) throw new Error(`Expected a ${group} Home Assistant option.`);
+  return option.id;
+}

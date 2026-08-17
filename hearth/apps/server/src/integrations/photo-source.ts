@@ -1,4 +1,9 @@
-import type { PhotoAsset, PhotoSourceSummary } from '@hearth/shared';
+import type {
+  PhotoAsset,
+  PhotoCurationAction,
+  PhotoCurationAsset,
+  PhotoSourceSummary,
+} from '@hearth/shared';
 
 export interface PhotoSourceSnapshot {
   collectionId: string;
@@ -7,10 +12,42 @@ export interface PhotoSourceSnapshot {
   source: PhotoSourceSummary;
   featuredPhotoId: string | null;
   photos: PhotoAsset[];
+  curation: PhotoCurationAsset[];
+  index: PhotoSourceIndexSnapshot;
+}
+
+export interface PhotoSourceIndexSnapshot {
+  scanInProgress: boolean;
+  indexedFileCount: number;
+  visiblePhotoCount: number;
+  hiddenPhotoCount: number;
+  unsupportedFileCount: number;
+  corruptFileCount: number;
+}
+
+export type PhotoDerivativeVariant = 'display' | 'thumbnail';
+
+export interface PhotoDerivativeAsset {
+  bytes: Uint8Array;
+  mimeType: 'image/webp';
+  cacheKey: string;
 }
 
 export interface PhotoSourceProvider {
   listApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
+  refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
+  curatePhoto(
+    householdId: string,
+    assetId: string,
+    action: PhotoCurationAction,
+  ): Promise<PhotoSourceSnapshot | null>;
+  getDerivative(
+    householdId: string,
+    assetId: string,
+    variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null>;
+  close(): Promise<void> | void;
+  reset?(): void;
 }
 
 const DEMO_PHOTOS: PhotoAsset[] = [
@@ -72,7 +109,11 @@ const DEMO_PHOTOS: PhotoAsset[] = [
 ];
 
 export class FakePhotoSourceProvider implements PhotoSourceProvider {
+  private readonly curation = new Map<string, Map<string, PhotoCurationAsset>>();
+
   async listApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot> {
+    const curation = this.curationFor(householdId);
+    const photos = curation.filter((photo) => !photo.hidden);
     return {
       collectionId: `photo_collection_${householdId}`,
       collectionName: 'Family favourites',
@@ -83,9 +124,57 @@ export class FakePhotoSourceProvider implements PhotoSourceProvider {
         status: 'ready',
         message: 'Fictional demo photos are ready on this Hearth.',
       },
-      featuredPhotoId: 'photo_family_breakfast',
-      photos: DEMO_PHOTOS.map((photo) => ({ ...photo })),
+      featuredPhotoId:
+        photos.find((photo) => photo.id === 'photo_family_breakfast')?.id ?? photos[0]?.id ?? null,
+      photos: photos.map(withoutHidden),
+      curation,
+      index: readyIndex(DEMO_PHOTOS.length, curation.length - photos.length),
     };
+  }
+
+  async refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot> {
+    return this.listApprovedPhotos(householdId);
+  }
+
+  async curatePhoto(
+    householdId: string,
+    assetId: string,
+    action: PhotoCurationAction,
+  ): Promise<PhotoSourceSnapshot | null> {
+    const original = DEMO_PHOTOS.find((photo) => photo.id === assetId);
+    if (original === undefined) return null;
+    const household = this.curation.get(householdId) ?? new Map<string, PhotoCurationAsset>();
+    const current = household.get(assetId) ?? { ...original, hidden: false };
+    household.set(assetId, applyCurationAction(current, action));
+    this.curation.set(householdId, household);
+    return this.listApprovedPhotos(householdId);
+  }
+
+  async getDerivative(
+    _householdId: string,
+    _assetId: string,
+    _variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null> {
+    return null;
+  }
+
+  close(): void {}
+
+  reset(): void {
+    this.curation.clear();
+  }
+
+  private curationFor(householdId: string): PhotoCurationAsset[] {
+    const household = this.curation.get(householdId);
+    return DEMO_PHOTOS.map((photo) => ({
+      ...photo,
+      hidden: household?.get(photo.id)?.hidden ?? false,
+      favourite: household?.get(photo.id)?.favourite ?? photo.favourite,
+    })).sort(
+      (left, right) =>
+        Number(left.hidden) - Number(right.hidden) ||
+        Number(right.favourite) - Number(left.favourite),
+    );
   }
 }
 
@@ -103,6 +192,52 @@ export class UnconfiguredPhotoSourceProvider implements PhotoSourceProvider {
       },
       featuredPhotoId: null,
       photos: [],
+      curation: [],
+      index: readyIndex(0),
     };
   }
+
+  async refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot> {
+    return this.listApprovedPhotos(householdId);
+  }
+
+  async curatePhoto(): Promise<null> {
+    return null;
+  }
+
+  async getDerivative(
+    _householdId: string,
+    _assetId: string,
+    _variant: PhotoDerivativeVariant,
+  ): Promise<PhotoDerivativeAsset | null> {
+    return null;
+  }
+
+  close(): void {}
+}
+
+function readyIndex(indexed: number, hidden = 0): PhotoSourceIndexSnapshot {
+  return {
+    scanInProgress: false,
+    indexedFileCount: indexed,
+    visiblePhotoCount: indexed - hidden,
+    hiddenPhotoCount: hidden,
+    unsupportedFileCount: 0,
+    corruptFileCount: 0,
+  };
+}
+
+function withoutHidden(photo: PhotoCurationAsset): PhotoAsset {
+  const { hidden: _hidden, ...visible } = photo;
+  return visible;
+}
+
+function applyCurationAction(
+  photo: PhotoCurationAsset,
+  action: PhotoCurationAction,
+): PhotoCurationAsset {
+  if (action === 'favourite') return { ...photo, favourite: true };
+  if (action === 'unfavourite') return { ...photo, favourite: false };
+  if (action === 'hide') return { ...photo, hidden: true };
+  return { ...photo, hidden: false };
 }

@@ -28,6 +28,13 @@ Google TV app connected directly to the Synology server. Any separately
 approved Home Assistant/Music Assistant voice-music flow targets the
 television's Google Cast player directly and does not expand this shell bridge.
 
+The APK has no Google Play Services dependency and its minimum Android API is 24, so it is also a
+sensible sideload candidate for current Fire TV hardware. Fire TV still exposes a 1920×1080
+application UI surface even when the HDMI output and native video decoder are running at 4K. Treat
+Fire TV as an alternate launcher/lifecycle host for the same logical Hearth canvas, not as a route
+to a native-4K web interface. Physical Fire OS pairing, remote, suspend/resume, WebView compatibility
+and revocation remain device acceptance checks before calling that target supported.
+
 ## Toolchain
 
 - Android Gradle Plugin 9.3.0

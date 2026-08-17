@@ -1,4 +1,6 @@
-import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 
 import { z } from 'zod';
 
@@ -10,7 +12,7 @@ import {
 } from './caldav-calendar-provider.js';
 import { UnconfiguredCalendarProvider, type CalendarProvider } from './calendar-provider.js';
 
-const CalDavRuntimeConfigSchema = z
+export const CalDavRuntimeConfigSchema = z
   .object({
     version: z.literal(1),
     provider: z.literal('caldav'),
@@ -50,6 +52,48 @@ export interface CalendarRuntime {
   ownerForCalendarExternalId: (externalId: string) => string | null;
 }
 
+export type CalDavRuntimeConfig = z.infer<typeof CalDavRuntimeConfigSchema>;
+
+class CalendarRuntimeReadError extends Error {
+  constructor(readonly missing: boolean) {
+    super('Hearth could not read the external calendar secret configuration.');
+  }
+}
+
+export class ManagedCalendarProvider implements CalendarProvider {
+  readonly providerType = 'caldav';
+  private runtime: CalendarRuntime = {
+    provider: new UnconfiguredCalendarProvider(),
+    ownerForCalendarExternalId: () => null,
+  };
+
+  configure(runtime: CalendarRuntime): void {
+    this.runtime = runtime;
+  }
+
+  disconnect(): void {
+    this.runtime = {
+      provider: new UnconfiguredCalendarProvider(),
+      ownerForCalendarExternalId: () => null,
+    };
+  }
+
+  ownerForCalendarExternalId = (externalId: string): string | null =>
+    this.runtime.ownerForCalendarExternalId(externalId);
+
+  listCalendars() {
+    return this.runtime.provider.listCalendars();
+  }
+
+  syncEvents(input: { startDate: string; endDate: string; cursor: string | null }) {
+    return this.runtime.provider.syncEvents(input);
+  }
+
+  getEvent(input: { calendarExternalId: string; eventExternalId: string }) {
+    return this.runtime.provider.getEvent(input);
+  }
+}
+
 export async function resolveCalendarRuntime(input: {
   demoMode: boolean;
   configPath: string | undefined;
@@ -61,22 +105,57 @@ export async function resolveCalendarRuntime(input: {
     return null;
   }
   if (input.configPath === undefined) {
-    return {
-      provider: new UnconfiguredCalendarProvider(),
-      ownerForCalendarExternalId: (_externalId) => null,
-    };
+    return unconfiguredCalendarRuntime();
   }
-  return loadCalendarRuntime(input.configPath);
+  try {
+    return await loadCalendarRuntime(input.configPath);
+  } catch (error) {
+    if (error instanceof CalendarRuntimeReadError && error.missing) {
+      return unconfiguredCalendarRuntime();
+    }
+    throw error;
+  }
 }
 
 export async function loadCalendarRuntime(configPath: string): Promise<CalendarRuntime> {
   let value: unknown;
   try {
     value = JSON.parse(await readFile(configPath, 'utf8')) as unknown;
-  } catch {
-    throw new Error('Hearth could not read the external calendar secret configuration.');
+  } catch (error) {
+    const missing =
+      typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+    throw new CalendarRuntimeReadError(missing);
   }
   return createCalendarRuntime(value);
+}
+
+function unconfiguredCalendarRuntime(): CalendarRuntime {
+  return {
+    provider: new UnconfiguredCalendarProvider(),
+    ownerForCalendarExternalId: (_externalId) => null,
+  };
+}
+
+export async function writeCalendarRuntimeConfig(
+  configPath: string,
+  value: CalDavRuntimeConfig,
+): Promise<void> {
+  const parsed = CalDavRuntimeConfigSchema.parse(value);
+  await mkdir(dirname(configPath), { recursive: true });
+  const temporaryPath = `${configPath}.tmp-${process.pid}-${randomUUID()}`;
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(parsed, null, 2)}\n`, { mode: 0o600 });
+    await chmod(temporaryPath, 0o600);
+    await rename(temporaryPath, configPath);
+    await chmod(configPath, 0o600);
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
+}
+
+export async function removeCalendarRuntimeConfig(configPath: string): Promise<void> {
+  await rm(configPath, { force: true });
 }
 
 export function createCalendarRuntime(

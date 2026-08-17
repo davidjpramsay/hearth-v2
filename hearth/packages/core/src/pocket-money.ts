@@ -1,4 +1,4 @@
-import type { ChoreOccurrence, Payday, PocketMoneyPayment } from '@hearth/shared';
+import type { ChoreOccurrence, Payday } from '@hearth/shared';
 
 const PAYDAY_OFFSET: Record<Payday, number> = {
   monday: 0,
@@ -15,7 +15,10 @@ export interface PocketMoneyProgress {
   completedCount: number;
   completionPercentage: number;
   earnedAmountCents: number | null;
-  status: 'not-configured' | 'building' | 'ready' | 'paid';
+  paidAmountCents: number;
+  remainingAmountCents: number | null;
+  paydayReached: boolean;
+  status: 'not-configured' | 'building' | 'ready' | 'partially-paid' | 'paid';
 }
 
 export function calculatePocketMoneyProgress(
@@ -23,7 +26,8 @@ export function calculatePocketMoneyProgress(
   weeklyAmountCents: number | null,
   payday: Payday | null,
   asOfOffset: number,
-  payment: PocketMoneyPayment | null,
+  activePaidAmountCents: number,
+  activePaymentCount: number,
 ): PocketMoneyProgress {
   const counted = occurrences.filter(
     (occurrence) => occurrence.state !== 'excused' && occurrence.state !== 'cancelled',
@@ -38,20 +42,28 @@ export function calculatePocketMoneyProgress(
       : scheduledCount === 0
         ? 0
         : Math.round((weeklyAmountCents * completedCount) / scheduledCount);
+  const paydayReached = payday === null ? false : asOfOffset >= PAYDAY_OFFSET[payday];
+  const remainingAmountCents =
+    earnedAmountCents === null ? null : Math.max(0, earnedAmountCents - activePaidAmountCents);
 
   return {
     scheduledCount,
     completedCount,
     completionPercentage,
     earnedAmountCents,
+    paidAmountCents: activePaidAmountCents,
+    remainingAmountCents,
+    paydayReached,
     status:
       weeklyAmountCents === null || payday === null
         ? 'not-configured'
-        : payment !== null
+        : activePaymentCount > 0 && remainingAmountCents === 0
           ? 'paid'
-          : asOfOffset >= PAYDAY_OFFSET[payday]
-            ? 'ready'
-            : 'building',
+          : activePaidAmountCents > 0
+            ? 'partially-paid'
+            : paydayReached && remainingAmountCents !== null && remainingAmountCents > 0
+              ? 'ready'
+              : 'building',
   };
 }
 

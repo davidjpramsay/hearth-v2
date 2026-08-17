@@ -5,7 +5,7 @@ test.beforeEach(async ({ page, request }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
 });
 
-test('remote-only Today → Week → Month → Chores → complete → undo → Back flow', async ({
+test('remote-only Today → Calendar views → Chores → complete → undo → Back flow', async ({
   page,
 }) => {
   await page.goto('/today');
@@ -19,16 +19,17 @@ test('remote-only Today → Week → Month → Chores → complete → undo → 
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
 
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowDown');
-  await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'August' })).toBeVisible();
-  await expect(page.locator('[data-focus-id="month-day-2026-08-04"]')).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="month-day-2026-08-04"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
@@ -36,7 +37,10 @@ test('remote-only Today → Week → Month → Chores → complete → undo → 
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
-  await expect(page.locator('[data-focus-id="nav-month"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
@@ -60,7 +64,7 @@ test('remote-only Today → Week → Month → Chores → complete → undo → 
   await expect(page.locator('[data-focus-id="nav-chores"]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
-  await expect(page.locator('[data-focus-id="nav-week"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
 });
 
 test('Month keeps faces in its key and names events in date cells', async ({ page }) => {
@@ -76,14 +80,17 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   await expect(page.locator('.month-legend__family')).toHaveText('H');
   await expect(page.getByLabel(/Monday 3 August, 4 plans/)).toBeVisible();
 
-  await expect(page.locator('[data-focus-id="month-day-2026-08-04"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="month-earlier"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="month-today"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'September' })).toBeVisible();
   await expect(page).toHaveURL(/month=2026-09/);
   await expect(page.locator('[data-focus-id="month-later"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'August' })).toBeVisible();
@@ -91,10 +98,12 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await expect(page.locator('.calendar-view-switch')).toBeVisible();
-  await expect(page.locator('[data-focus-id="phone-tab-week"]')).toHaveClass(/phone-tab--active/);
+  await expect(page.locator('[data-focus-id="phone-tab-calendar"]')).toHaveClass(
+    /phone-tab--active/,
+  );
   await expect(page.locator('.month-grid')).toBeVisible();
-  await expect(page.locator('.month-day-details')).toContainText('Library');
-  await expect(page.locator('.month-day-details')).toContainText('1 plan');
+  await expect(page.locator('.month-day-details')).toContainText('School drop-off');
+  await expect(page.locator('.month-day-details')).toContainText('4 plans');
   await page.locator('[data-focus-id="month-day-2026-08-03"]').focus();
   await expect(page.locator('.month-day-details')).toContainText('School drop-off');
 });
@@ -156,7 +165,9 @@ test('calendar sources remain identifiable and cached Week survives provider out
   const agenda = page.locator('.week-agenda');
   await expect(agenda).toBeVisible();
   await expect(agenda.locator('.week-day-forecast')).toHaveCount(7);
-  await expect(agenda.getByText('Maya').first()).toBeVisible();
+  const dentist = agenda.locator('.agenda-event').filter({ hasText: 'Dentist' });
+  await expect(dentist).toBeVisible();
+  await expect(dentist.locator('p')).not.toHaveText('Family');
 });
 
 test('three active assignees become three television columns with horizontal D-pad movement', async ({
@@ -189,6 +200,7 @@ test('three active assignees become three television columns with horizontal D-p
         description: null,
         assigneeId: member.id,
         routineLabel: 'After school',
+        dueTime: '16:00',
         repeat: 'weekly',
         repeatDays: ['MO'],
         activeFrom: '2026-08-03',
@@ -210,6 +222,65 @@ test('three active assignees become three television columns with horizontal D-p
   await expect(board.locator('.chore-group').nth(2).getByRole('button').first()).toBeFocused();
 });
 
+test('an open television Chores screen refreshes when the phone adds a child and due chore', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/chores');
+  await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Jordan' })).toHaveCount(0);
+
+  const headers = { 'x-hearth-demo-actor': 'member_maya' };
+  const memberResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/members',
+    {
+      headers,
+      data: {
+        requestId: 'request_realtime_child',
+        displayName: 'Jordan',
+        role: 'child',
+        color: '#557a70',
+        administrator: false,
+      },
+    },
+  );
+  expect(memberResponse.ok()).toBe(true);
+  const member = (await memberResponse.json()) as { id: string };
+
+  const templateResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/chore-templates',
+    {
+      headers,
+      data: {
+        requestId: 'request_realtime_chore',
+        title: 'Put shoes away',
+        description: null,
+        assigneeIds: [member.id],
+        routineLabel: 'After school',
+        availableFromTime: null,
+        dueTime: '16:30',
+        repeat: 'weekly',
+        repeatDays: ['MO'],
+        activeFrom: '2026-08-03',
+      },
+    },
+  );
+  expect(templateResponse.ok()).toBe(true);
+
+  await expect(page.getByRole('heading', { name: 'Jordan' })).toBeVisible();
+  await expect(page.getByText('Put shoes away')).toBeVisible();
+});
+
+test('a no-chore day keeps children and weekly progress visible without demo wording', async ({
+  page,
+}) => {
+  await page.goto('/chores?scenario=empty');
+  await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
+  await expect(page.getByText('No chores due today').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ezra' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show demo household' })).toHaveCount(0);
+});
+
 test('long chore navigation keeps the final row visible', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto('/chores');
@@ -219,6 +290,29 @@ test('long chore navigation keeps the final row visible', async ({ page }) => {
   await page.keyboard.press('ArrowDown');
   await expect(last).toBeFocused();
   await expect(last).toBeInViewport();
+});
+
+test('pocket-money summary matches its chore-row width on television and phone', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const viewport of [
+    { width: 3840, height: 2160 },
+    { width: 1920, height: 1080 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/chores');
+    const ezra = page.locator('.chore-group').filter({
+      has: page.getByRole('heading', { name: 'Ezra' }),
+    });
+    const summaryBox = await ezra.locator('.chore-pocket-summary').boundingBox();
+    const choreBox = await ezra.locator('.chore-row').first().boundingBox();
+    if (summaryBox === null || choreBox === null) throw new Error('Expected visible chore layout');
+
+    expect(Math.abs(summaryBox.x - choreBox.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(summaryBox.width - choreBox.width)).toBeLessThanOrEqual(1);
+  }
 });
 
 test('reduced motion removes meaningful focus transforms', async ({ page }) => {
@@ -233,7 +327,7 @@ test('phone presents agenda navigation and the same chore command', async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/today');
   await expect(page.locator('.phone-tabs')).toBeVisible();
-  await page.getByRole('link', { name: 'Week' }).click();
+  await page.getByRole('link', { name: 'Calendar' }).click();
   await expect(page.locator('.week-agenda')).toBeVisible();
   await page.getByRole('link', { name: 'Chores' }).click();
   const schoolBag = page.getByRole('button', { name: 'Complete Pack school bag' });

@@ -1,13 +1,15 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import './MealsScreen.css';
 
 import type { DemoScenario } from '@hearth/shared';
 
-import { createRequestId, DEMO_DATE, hearthApi, queryKeys } from '../api/client';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState } from '../components/Status';
-import { useMealPlanQuery } from '../hooks/useHearthQueries';
+import { useMealPlanQuery } from '../hooks/useMealQueries';
+import { useHearthRuntime } from '../runtime/context';
 
 export function MealsScreen({
   scenario: _scenario,
@@ -16,66 +18,31 @@ export function MealsScreen({
   scenario: DemoScenario | 'offline';
   preparing: boolean;
 }) {
-  const [startDate, setStartDate] = useState(DEMO_DATE);
-  const [selectedDate, setSelectedDate] = useState(DEMO_DATE);
-  const [tvMessage, setTvMessage] = useState<string | null>(null);
+  const { weekStart } = useHearthRuntime();
+  const [startDate, setStartDate] = useState(() => weekStart);
+  const [selectedDate, setSelectedDate] = useState(() => weekStart);
   const plan = useMealPlanQuery(startDate, !preparing);
-  const queryClient = useQueryClient();
-  const savePlan = useMutation({
-    mutationFn: hearthApi.upsertMealPlan,
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.meals(startDate) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-      ]);
-    },
-  });
-  const saveMeal = useMutation({
-    mutationFn: hearthApi.createSavedMeal,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.meals(startDate) }),
-  });
 
   if (preparing || plan.isPending) return <LoadingState />;
   if (plan.data === undefined) return <FailureState onRetry={() => void plan.refetch()} />;
   const selectedDay =
     plan.data.days.find((day) => day.localDate === selectedDate) ?? plan.data.days[0];
-  const selectedDinner = selectedDay?.entries.find((entry) => entry.slot === 'dinner') ?? null;
   const today = plan.data.days.find((day) => day.isToday) ?? plan.data.days[0];
   const tonight = today?.entries.find((entry) => entry.slot === 'dinner') ?? null;
-
-  function submitPlan(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (selectedDay === undefined) return;
-    const data = new FormData(event.currentTarget);
-    const mealName = String(data.get('mealName') ?? '').trim();
-    if (mealName.length === 0) return;
-    const savedMealId = String(data.get('savedMealId') ?? '');
-    savePlan.mutate({
-      requestId: createRequestId('meal_plan'),
-      localDate: selectedDay.localDate,
-      slot: 'dinner',
-      mealName,
-      savedMealId: savedMealId.length === 0 ? null : savedMealId,
-      note: String(data.get('note') ?? '').trim() || null,
-    });
-  }
-
-  function submitSavedMeal(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const name = String(new FormData(form).get('savedMealName') ?? '').trim();
-    if (name.length === 0) return;
-    saveMeal.mutate({
-      requestId: createRequestId('saved_meal'),
-      name,
-      description: null,
-    });
-    form.reset();
-  }
+  const favouriteCount = plan.data.savedMeals.filter((meal) => meal.favourite).length;
 
   return (
     <div className="screen meals-screen">
-      <ScreenHeader eyebrow="Dinner plan" title="Meals" meta={plan.data.displayRange} />
+      <ScreenHeader
+        actions={
+          <Link className="meals-manage-link" to="/admin/meals">
+            Manage meals
+          </Link>
+        }
+        eyebrow="Dinner plan"
+        title="Meals"
+        meta={plan.data.displayRange}
+      />
       <section className="tonight-band" aria-labelledby="tonight-heading">
         <Icon name="meal" />
         <div>
@@ -91,6 +58,7 @@ export function MealsScreen({
             <button
               aria-current={day.localDate === selectedDay?.localDate ? 'date' : undefined}
               className={`meal-day focusable${day.localDate === selectedDay?.localDate ? ' meal-day--selected' : ''}`}
+              data-focus-entry={day.isToday ? 'true' : undefined}
               data-focus-down="meal-saved"
               data-focus-id={`meal-day-${day.localDate}`}
               data-focus-left={
@@ -110,29 +78,25 @@ export function MealsScreen({
         })}
       </div>
       <div className="meal-actions">
-        <button
+        <Link
           className="meal-action focusable"
           data-focus-id="meal-saved"
           data-focus-left="nav-meals"
-          data-focus-up={`meal-day-${selectedDay?.localDate ?? DEMO_DATE}`}
-          onClick={() =>
-            setTvMessage(`${plan.data.savedMeals.length} family favourites are ready on the phone.`)
-          }
-          type="button"
+          data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
+          to="/admin/meals#saved-meals"
         >
           <Icon name="star" />
           <span>
             <strong>Saved family meals</strong>
-            <small>{plan.data.savedMeals.length} favourites</small>
+            <small>{favouriteCount} favourites</small>
           </span>
           <Icon name="chevron-right" />
-        </button>
-        <button
+        </Link>
+        <Link
           className="meal-action focusable"
           data-focus-id="meal-plan-phone"
-          data-focus-up={`meal-day-${selectedDay?.localDate ?? DEMO_DATE}`}
-          onClick={() => setTvMessage('Open Meals on your phone to change the family plan.')}
-          type="button"
+          data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
+          to="/admin/meals"
         >
           <Icon name="calendar" />
           <span>
@@ -140,16 +104,8 @@ export function MealsScreen({
             <small>Comfortable editing on phone</small>
           </span>
           <Icon name="chevron-right" />
-        </button>
+        </Link>
       </div>
-      {tvMessage === null ? null : (
-        <div className="meal-tv-message" role="status">
-          <span>{tvMessage}</span>
-          <button onClick={() => setTvMessage(null)} type="button">
-            Got it
-          </button>
-        </div>
-      )}
       <div className="meal-week-controls">
         <button
           className="focusable"
@@ -176,72 +132,6 @@ export function MealsScreen({
           Later week <Icon name="chevron-right" />
         </button>
       </div>
-      <section className="phone-meal-editor" aria-label="Edit dinner plan">
-        <h2>
-          {selectedDay?.dayLabel} {selectedDay?.dateLabel} dinner
-        </h2>
-        <form
-          key={`${selectedDay?.localDate}:${selectedDinner?.id ?? 'new'}`}
-          onSubmit={submitPlan}
-        >
-          <label>
-            Dinner
-            <input
-              defaultValue={selectedDinner?.mealName ?? ''}
-              maxLength={160}
-              name="mealName"
-              required
-            />
-          </label>
-          <label>
-            Saved family meal
-            <select defaultValue={selectedDinner?.savedMealId ?? ''} name="savedMealId">
-              <option value="">Custom meal</option>
-              {plan.data.savedMeals.map((meal) => (
-                <option key={meal.id} value={meal.id}>
-                  {meal.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Note
-            <input
-              defaultValue={selectedDinner?.note ?? ''}
-              maxLength={240}
-              name="note"
-              placeholder="e.g. Prep at 5:30"
-            />
-          </label>
-          {savePlan.isError ? (
-            <p className="admin-feedback admin-feedback--error" role="alert">
-              {savePlan.error.message}
-            </p>
-          ) : null}
-          {savePlan.isSuccess ? (
-            <p className="save-confirmation" role="status">
-              Dinner saved.
-            </p>
-          ) : null}
-          <button className="admin-submit" disabled={savePlan.isPending} type="submit">
-            {savePlan.isPending ? 'Saving…' : 'Save dinner'}
-          </button>
-        </form>
-        <form className="saved-meal-add" onSubmit={submitSavedMeal}>
-          <label>
-            Save another family meal
-            <input maxLength={140} name="savedMealName" placeholder="Meal name" required />
-          </label>
-          <button disabled={saveMeal.isPending} type="submit">
-            <Icon name="plus" /> Save meal
-          </button>
-        </form>
-        {saveMeal.isError ? (
-          <p className="admin-feedback admin-feedback--error" role="alert">
-            {saveMeal.error.message}
-          </p>
-        ) : null}
-      </section>
     </div>
   );
 }

@@ -118,28 +118,70 @@ summaries and stable family-safe API errors. The implemented routes are:
 - `GET /api/v1/households/:id/week?start=`
 - `GET /api/v1/households/:id/month?month=`
 - `GET /api/v1/households/:id/chore-occurrences?date=`
+- adult-only `GET /api/v1/households/:id/chore-occurrences/:occurrenceId` for the occurrence
+  description and family-readable immutable command history
 - `POST .../:occurrenceId/completions` with `{ requestId }`
 - `POST .../:occurrenceId/completion-reversals` with `{ requestId, completionId }`
-- `POST .../:occurrenceId/skips` with `{ requestId }`
+- adult-only `POST .../:occurrenceId/skips` with `{ requestId, reason }`
+- adult-only `POST .../:occurrenceId/excuses` with `{ requestId, reason }`
+- adult-only `POST .../:occurrenceId/reassignments` with
+  `{ requestId, reason, assigneeId }`
 - `GET /api/v1/households/:id/events` as a same-origin Server-Sent Events invalidation stream
 - `GET /api/v1/households/:id/admin` and typed household/member setup commands
+- adult-only `GET /api/v1/households/:id/activity?limit=` for the newest 1–100 safe audit
+  summaries; the companion currently requests 50 and presents family-readable filters without
+  rendering opaque target or request identifiers
+- `GET /api/v1/households/:id/members/:memberId/avatar` for the same-origin normalized profile derivative
+- `PUT /api/v1/households/:id/members/:memberId/avatar` with `{ requestId, mimeType: "image/jpeg", dataBase64 }`
+- `POST /api/v1/households/:id/members/:memberId/avatar-resets` with `{ requestId }`
 - one-time pairing request, approval/status and paired-device revocation commands
 - `GET /api/v1/households/:id/lists` plus typed item add, complete and reversal commands
+- adult-only `GET /api/v1/households/:id/list-settings` plus idempotent list
+  create/update/archive/restore/order and item update/archive/order/clear-checked commands
 - `POST /api/v1/households/:id/assist/list-items`, which resolves a named list without guessing and rejects active duplicates
-- `GET /api/v1/households/:id/meal-plan?start=` plus typed meal-plan and saved-meal commands
+- `GET /api/v1/households/:id/meal-plan?start=` for the family-readable week and active saved-meal
+  summaries
+- adult-only `GET /api/v1/households/:id/saved-meal-library` plus idempotent saved-meal
+  create/update/archive/restore commands
+- adult-only `PUT /api/v1/households/:id/meal-plan-weeks` and confirmed week clear/copy commands;
+  each whole-week mutation is one transaction, receipt and audit event
 - `GET /api/v1/households/:id/pocket-money?weekStart=&asOf=` for child weekly progress and amounts due
 - `PUT /api/v1/households/:id/members/:memberId/pocket-money-settings` for adult-only required weekly amount and payday changes
-- `POST /api/v1/households/:id/pocket-money-payments` for an adult-only, idempotent weekly payment snapshot
-- adult-only recurring chore-template query/create/update commands
+- `POST /api/v1/households/:id/pocket-money-payments` for an adult-only, idempotent full or partial weekly payment snapshot with an optional note
+- `POST /api/v1/households/:id/pocket-money-payments/:paymentId/voids` for an adult-only, idempotent, reasoned correction that preserves the original record
+- adult-only chore-template query/create/update commands, including explicit one-off schedules and
+  one-or-more `assigneeIds`. Responses expose the grouped `assignees`; the runtime expands each
+  template/date into one occurrence per selected person. Legacy singular `assigneeId` command
+  receipts remain readable during forward upgrades. Archive/restore use replay-safe lifecycle
+  commands (`POST .../:templateId/archivals` and
+  `POST .../:templateId/restorations` with a validated `resumeFrom` local date)
 - `GET /api/v1/households/:id/home` for curated presence, television power and power-safety state
 - `POST /api/v1/households/:id/home/actions/:actionId` for allowlisted, confirmed and audited Home Assistant scripts
+- adult-only `GET /api/v1/households/:id/home-assistant-connection`, separate connection-test and
+  save commands, and an idempotent removal command for the bounded Home Assistant mapping workflow
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist
 - `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
+- adult-only `GET /api/v1/households/:id/photo-source` and idempotent
+  `POST /api/v1/households/:id/photo-source/refreshes` for safe index status and manual rescans
+- adult-only, idempotent `POST /api/v1/households/:id/photo-assets/:assetId/curation-actions` for
+  favourite, unfavourite, hide and unhide commands with command receipts and audit events
+- `GET /api/v1/households/:id/photo-assets/:assetId/:variant` for immutable, opaque WebP display
+  and thumbnail derivatives; source paths and originals never cross this boundary
+- `GET /api/v1/auth/status`, first-use registration options/verification, discoverable-passkey
+  authentication options/verification, session and sign-out routes for the private companion
 
-Pocket-money settings and payment commands use the same server-side adult session, validation,
+Member-avatar commands use the adult Admin session, strict request-size and JPEG checks,
+idempotency receipts and explicit audit actions. The browser normalizes the selected original to a
+512×512 JPEG before sending it. SQLite stores at most one 1 MB derivative per member plus the
+original opaque avatar key needed for reset; responses and receipts never contain image bytes.
+The versioned same-origin URL prevents stale browser images without exposing a filesystem path.
+
+Pocket-money settings, partial-payment and void commands use the same server-side adult session, validation,
 idempotency receipt and audit path as other household writes. Chore completion and undo publish a
 `pocket-money.changed` invalidation; they do not create star/reward records. The forward-only
 `0009_pocket_money.sql` migration leaves the former reward tables dormant for upgrade safety.
+Migration `0014_pocket_money_payment_history.sql` adds payment notes, multiple immutable
+disbursements per child/week and one reasoned void per payment.
 
 `TodaySummary`, `WeekSchedule` and `MonthSchedule` expose read-only calendar sources and
 normalized events with opaque `calendarId`, inclusive household-local start/end
@@ -147,8 +189,11 @@ dates, provider version, recurrence-master identity and an explicit exception
 flag. `TodaySummary` may include one nullable same-origin photo derivative and
 family-readable alternative text. Phase 7 now selects that preview through the
 same injected photo-source adapter as the Photos gallery; demo mode returns
-fictional bundled derivatives and private mode remains unconfigured until one
-approved Synology source is selected. Each
+fictional bundled derivatives. Private mode constructs the read-only Synology-folder adapter only
+when its server-only source environment is configured; otherwise the source remains explicitly
+unconfigured. The adapter ignores symlinks, incrementally fingerprints source files, applies EXIF
+orientation, writes bounded WebP derivatives atomically and preserves the last safe index while the
+NAS is unavailable. Each
 `WeekSchedule` day also carries a nullable, presentation-safe daily forecast
 summary (condition code, family-readable label and Celsius temperature). The
 existing query routes read calendar values from the durable SQLite projection
@@ -162,10 +207,21 @@ accessible per-day summaries from that single typed response; it does not issue
 five or six sequential Week requests. On narrow companions, the same response
 also supplies the selected-date agenda beneath the compact grid.
 
+Today composition reads durable `today_section_preferences` and
+`announcements` through an injected content repository. Adult companion writes
+use validated, idempotent and audited commands; private runtime uses SQLite and
+demo/test runtime uses the same contract with isolated seed state. The server
+selects the one active notice by start/expiry window and priority, publishes a
+`today.changed` invalidation and returns explicit visibility flags in
+`TodaySummary`. This is bounded content configuration, not a layout DSL.
+
 The server selects its calendar implementation at composition time. Demo mode
-injects `FakeCalendarProvider`; private mode injects either the read-only
-`CalDavCalendarProvider` loaded from an external secret path or an
-`UnconfiguredCalendarProvider` that reports a distinct not-configured state.
+injects `FakeCalendarProvider`; private mode injects a stable managed provider
+that delegates either to the read-only `CalDavCalendarProvider` loaded from an
+external secret path or to an `UnconfiguredCalendarProvider` that reports a
+distinct not-configured state. The adult calendar-setup command can replace
+that delegate after atomically saving the same external secret format, so a
+server restart is not required to begin a read-only refresh.
 The CalDAV implementation uses the maintained `tsdav` transport for RFC 4791
 discovery/query and `ical.js` for normalized iCalendar components. Credentials
 remain captured inside the server transport factory and are not enumerable on
@@ -173,14 +229,58 @@ the provider object. Full bounded refreshes hide missing calendars and
 tombstone missing events in the same SQLite transaction as cursor/freshness
 updates.
 
+Calendar setup uses separate test/save/remove commands. Discovery credentials
+remain in a ten-minute in-process pending record; the browser receives only an
+opaque test ID and safe calendar descriptors. Save is idempotent and audited,
+writes the private credential file before persisting safe connection metadata,
+and publishes `calendar.changed`. Removal deletes the credential file and
+disconnects the managed provider. No browser contract returns a username,
+password, collection URL or event payload from discovery.
+
+Home Assistant setup follows the same two-step boundary. A test calls only the supported
+`/api/config` and `/api/states` REST endpoints, keeps the URL, token and raw discovered entity IDs
+inside a ten-minute in-process record, and returns opaque option IDs with friendly labels. Save
+resolves exactly four state mappings and three script mappings, atomically writes the raw values to
+the external mode-`0600` secret file, persists only hostname/instance/version/friendly labels in
+SQLite, activates the managed provider without restart and publishes `home.changed`. Removal
+deletes the external file and disconnects the provider. Demo/test use deterministic fictional
+discovery; the private browser contract never returns the token, root URL or raw entity IDs.
+
 Phase 4 uses the same command envelope, actor/source resolution, audit summaries,
 idempotency receipts and SSE invalidation path as chores. The television may
 check list items, but recurring-chore, meal and pocket-money editing stays in the
 responsive companion presentation.
 
+`PUT /api/v1/households/:householdId/chore-template-order` accepts one idempotent adult command with
+every active template ID exactly once. Template create/update commands carry optional
+`availableFromTime` and `dueTime` values; shared validation rejects a reversed window. The
+repository updates active order transactionally and occurrence generation snapshots both time
+boundaries and `sortOrder`, keeping previously generated days stable after later edits.
+
 Demo-only reset/scenario routes exist only when the server is started in demo
 mode. Demo actor/source headers exercise the server-side permission matrix and
 are rejected outside demo mode; they are not production authentication.
+
+The browser first requests `GET /api/v1/runtime`. Its typed response selects
+the configured household and carries the server-derived household-local date,
+Monday week start and current month. Household API paths, React Query keys,
+planning defaults and real-time event paths are derived only after that
+response succeeds. `demo` and `test` inject the fixed Perth clock used by
+retained evidence; `private` injects the system clock. A private database with
+no household returns `requiresSetup: true` and a null household, so the browser
+renders first use without issuing household queries. After the one-time local setup code and
+WebAuthn registration are verified, household/member/default-list creation and credential storage
+commit in one transaction; the runtime resolver observes the new household without a restart.
+Once a private household exists, an unauthenticated runtime response remains bootstrap-safe but
+redacts the household identifier and name (`household: null`, `requiresSetup: false`). The browser
+then offers passkey sign-in. A valid companion session or paired-TV credential reveals the runtime
+household and allows normal route construction.
+
+Repository construction follows the same mode boundary. Demo/test may seed the
+fictional household. Private construction runs migrations but does not insert
+fictional households, members, chores, lists, meals, pocket-money settings or
+device records. This separation is a composition concern rather than a second
+database schema.
 
 ## Persistence
 
@@ -195,12 +295,13 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0006` establish the household core, Admin/pairing state,
-chore runtime, calendar projection, household planning and Home Assistant
-projection. Migration `0007_tv_device_credentials.sql` adds the hashed native
-pairing credential, shell version and exchange timestamp. The live demo server
-uses the SQLite repository; its in-memory adapter remains only for isolated
-contract tests.
+Migrations `0001`–`0020` establish the household core, Admin/pairing state, chore runtime, calendar
+projection, household planning, Home Assistant projection, television credentials, photos, pocket
+money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
+history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
+management history, snapshotted chore windows/order, credential-free Home Assistant connection
+metadata, and named-adult passkey recovery. The live demo server uses the SQLite
+repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
 
@@ -217,6 +318,9 @@ Use one-time pairing:
 4. Android Keystore-backed AES-GCM storage retains the secret. Native code sets
    the scoped `HttpOnly` WebView cookie; browser JavaScript never receives it.
 
+Pairing codes remain exactly six uppercase alphanumeric characters across the bounded sequence;
+retained expired rows cannot make later pairing creation produce an invalid over-length code.
+
 Debug emulator HTTP is an intentionally non-secure browser context. Browser
 commands therefore generate idempotency IDs with `crypto.randomUUID()` when
 available and a `crypto.getRandomValues()` fallback otherwise; both paths retain
@@ -224,13 +328,32 @@ cryptographic randomness.
 
 ### Companion/admin
 
-The LAN-only release uses named adult household accounts with passkeys as the primary companion sign-in. A local recovery flow may issue a renewable recovery code only after adult confirmation on an already trusted surface; it must never place a shared admin token in a URL. Passkeys require a stable private hostname and HTTPS secure origin before real household data is entered.
+The LAN-only release uses named adult household accounts with passkeys as the primary companion
+sign-in. Private first use reads a high-entropy one-time code from an external secret file, rate
+limits invalid attempts, requires user verification and a discoverable passkey, then issues a
+30-day `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Only its SHA-256 digest is stored; sign-out
+revokes the database session. Registration and authentication challenges are single-use and expire
+after five minutes. WebAuthn credentials retain their public key, signature counter, transports,
+device type and backup state; successful authentication advances the counter.
+Authentication-option issuance is rate-limited per resolved client address, pending ceremonies are
+globally capped, and expired ceremonies/address windows are physically removed before new options
+are created. This keeps the unauthenticated passkey entry point memory-bounded.
+
+Adult access supports several named adult accounts and several independently revocable passkeys per
+adult. Adding a passkey or issuing a replacement recovery code requires a current administrator
+session; issuing the code additionally re-verifies the current passkey. The 128-bit recovery code
+is displayed once, expires after 180 days, and is stored only as a SHA-256 digest. Successful
+recovery consumes the code, creates a replacement passkey and revokes that adult's earlier passkeys
+and sessions. Hearth never places a shared admin token in a URL and does not permit the final
+passkey to be revoked before recovery exists. Passkeys still require a stable private hostname and
+HTTPS secure origin before real household data is entered.
 
 During the isolated demo, a server-resolved Maya administrator session exercises the same role/capability checks without pretending to be production authentication. This demo actor header is disabled outside demo mode. See D-014.
 
 ### Service integrations
 
-- Calendar credentials and Home Assistant tokens remain server-side.
+- Calendar credentials and Home Assistant URL/token/raw mappings remain in access-restricted,
+  external server files; SQLite, browser contracts and audit summaries retain only safe metadata.
 - Secrets enter containers through environment/secret files excluded from source control.
 - Tokens are scoped as narrowly as the provider allows.
 - Device and service credentials are independently revocable.
@@ -238,6 +361,12 @@ During the isolated demo, a server-resolved Maya administrator session exercises
 ### Permissions
 
 Model roles/capabilities rather than scattered UI checks. The server is authoritative. Hiding a button is not authorisation.
+
+Every `/api/v1/households/:householdId` route in private mode passes one central read boundary
+before its route handler. Companion sessions must belong to the requested household and resolve to
+an active member with `household.view`; television credentials must belong to the household and
+carry `household.read`. This includes photo derivatives and Server-Sent Events. Route-specific
+capability checks still apply to administration and mutations after this baseline read check.
 
 ## Home Assistant security boundary
 
@@ -253,10 +382,13 @@ Hearth is permitted to call only configured Home Assistant scripts/services thro
 Never expose an arbitrary service-call form to a child/guest surface or an LLM.
 
 The Phase 5 adapter accepts only `evening-mode`, `goodnight` and `screen-off`.
-Those IDs map server-side to fixed script targets; request payloads cannot name
-a Home Assistant domain, service or entity. The cached projection stores only
-presence, television power, whether Hearth is foreground and a generic
-protected-media boolean. It stores no current app, title, track or player.
+Those IDs map server-side to one of exactly three selected script entities and call only Home
+Assistant's `script.turn_on` service; request payloads cannot name a Home Assistant domain, service
+or entity. Runtime reads fetch only the four selected state endpoints. The cached projection stores
+only presence, television power, whether Hearth is foreground and a generic protected-media
+boolean. It stores no current app, title, track or player. The adult setup workflow exposes only
+opaque discovery choices and family-readable saved labels, so it does not become a general Home
+Assistant dashboard.
 
 Home Assistant is also the complete local-voice host. Voice Preview Edition or
 an iPhone sends speech to Assist; Assist calls Hearth's authenticated `/assist`
@@ -295,18 +427,35 @@ The intended production deployment is Docker Compose under a new Synology path s
 
 Initial containers:
 
-- `hearth-server`
-- `hearth-web` or a single server image that serves the built web assets
+- `server`: pinned Node LTS, Fastify and the sole owner of the local SQLite volume
+- `web`: pinned nginx stable, static React assets and the same-origin `/api` reverse proxy
 
-Prefer the simpler single-image deployment if it preserves clear source boundaries. Add a separate reverse proxy only if required by the LAN/Tailscale access model.
+`hearth/deploy/synology` implements this split with non-root processes, read-only root filesystems,
+dropped capabilities, bounded logs, readiness-gated startup and loopback-only HTTP ingress. DSM
+Reverse Proxy terminates the eventual private HTTPS origin and is the only intended route to the
+web container. No router port-forward or public DNS exposure is part of this deployment.
+
+The server image compiles its SQLite native binding inside the pinned Linux build image for the
+target CPU architecture, rather than trusting a prebuilt binary from a different glibc runtime.
+`GET /api/v1/health` reports process liveness; `GET /api/v1/readiness` verifies SQLite and the latest
+migration. The stable private hostname and trusted certificate remain commissioning inputs because
+adult passkeys bind to that origin. See D-031.
+
+The server is also the sole process allowed to create database recovery copies. In private mode it
+uses SQLite online backup into the restricted data volume, verifies and prunes those files, and
+serves only a typed aggregate status to authenticated adults. Restore is intentionally outside the
+HTTP application: the production image contains a CLI that verifies a retained copy and writes it
+to a new clean destination without overwriting an existing database. See D-043.
 
 ## Observability
 
 - Structured server logs with request ID and actor/device ID, excluding secrets and sensitive event bodies by default.
-- Health endpoints distinguish process health, database readiness and integration health.
+- Public health endpoints distinguish process liveness and database readiness. Authenticated adult
+  System Health adds safe migration, application-version and recovery-copy state.
 - Audit events are household records, not merely logs.
 - Home Assistant may monitor Hearth health and notify an adult after persistent failure.
-- Retention and backup behaviour must be documented before production use.
+- Retention and backup behaviour is configured and documented; actual Synology capacity/off-device
+  monitoring and the live restore drill remain required before production use.
 
 ## Performance strategy
 

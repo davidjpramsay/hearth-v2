@@ -7,18 +7,27 @@ import {
   addLocalDays,
   completeChore,
   createMonthGrid,
+  excuseChore,
   isChoreDueOnDate,
+  localDateInTimezone,
+  reassignChore,
   skipChore,
   sortByStart,
   undoChore,
 } from '@hearth/core';
 import {
   ChoreCommandResultSchema,
+  ChoreOccurrenceChangeResultSchema,
+  ChoreOccurrenceDetailSchema,
+  ChoreOccurrenceHistoryEntrySchema,
   ChoreOccurrenceSchema,
   ChoreSkipResultSchema,
   MemberSchema,
   type AuditSummary,
   type ChoreCommandResult,
+  type ChoreOccurrenceChangeResult,
+  type ChoreOccurrenceDetail,
+  type ChoreOccurrenceHistoryEntry,
   type ChoreList,
   type ChoreOccurrence,
   type ChoreSkipResult,
@@ -42,6 +51,7 @@ import {
 } from './demo/seed.js';
 import { FakeCalendarProvider, type CalendarProvider } from './integrations/calendar-provider.js';
 import { RepositoryError, type CommandActor, type HearthRepository } from './repository.js';
+import { FixedClock, type HearthClock } from './runtime-context.js';
 
 const TEMPLATE_RULES = new Map<string, string>([
   ['occurrence_school_bag', 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'],
@@ -52,19 +62,34 @@ const TEMPLATE_RULES = new Map<string, string>([
   ['occurrence_make_bed', 'FREQ=DAILY'],
 ]);
 
+const TEMPLATE_DESCRIPTIONS = new Map<string, string>([
+  ['occurrence_school_bag', 'Pack the lunchbox, water bottle and homework folder.'],
+  ['occurrence_feed_pepper', 'Fresh water first, then one measured scoop of food.'],
+  ['occurrence_dishes', 'Unload the clean dishes and put everything back in its usual place.'],
+  ['occurrence_laundry', 'Take the school clothes to the laundry and separate any wet items.'],
+  ['occurrence_herbs', 'Water the herb pots until the soil is damp, without flooding the tray.'],
+  ['occurrence_make_bed', 'Straighten the sheets, pull up the doona and place pillows at the top.'],
+]);
+
 export class SqliteHearthRepository implements HearthRepository {
   private scenario: DemoScenario = 'healthy';
   private readonly calendar: CalendarProjectionService;
   private readonly seedCalendarSnapshot: (() => void) | null;
+  private readonly demoSeedEnabled: boolean;
+  private readonly clock: HearthClock;
 
   constructor(
     private readonly database: InstanceType<typeof Database>,
     options: {
       calendarProvider?: CalendarProvider;
       ownerForCalendarExternalId?: (externalId: string) => string | null;
+      seedDemo?: boolean;
+      clock?: HearthClock;
     } = {},
   ) {
-    this.seedDemo();
+    this.demoSeedEnabled = options.seedDemo ?? true;
+    this.clock = options.clock ?? new FixedClock(DEMO_NOW);
+    if (this.demoSeedEnabled) this.seedDemo();
     const fixture = createDemoCalendarFixture();
     const demoProvider = new FakeCalendarProvider(fixture.calendars, fixture.events);
     const provider = options.calendarProvider ?? demoProvider;
@@ -77,7 +102,7 @@ export class SqliteHearthRepository implements HearthRepository {
       ownerForCalendarExternalId,
     );
     this.seedCalendarSnapshot =
-      options.calendarProvider === undefined
+      options.calendarProvider === undefined && this.demoSeedEnabled
         ? () => {
             this.calendar.seedSnapshot(DEMO_HOUSEHOLD_ID, {
               calendars: fixture.calendars,
@@ -113,13 +138,20 @@ export class SqliteHearthRepository implements HearthRepository {
     const isEmpty = this.scenario === 'empty';
     const chores = isEmpty ? [] : this.readOccurrences(householdId, localDate);
 
+    const household = this.readHousehold(householdId);
+    const now = this.clock.now();
     return {
-      household: this.readHousehold(householdId),
+      household,
       localDate,
-      generatedAt: DEMO_NOW,
-      displayTime: '7:42',
-      displayDate: displayDate(localDate),
-      weather: { temperatureCelsius: 16, condition: 'Clear' },
+      generatedAt: now.toISOString(),
+      displayTime: new Intl.DateTimeFormat(household.locale, {
+        timeZone: household.timezone,
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: false,
+      }).format(now),
+      displayDate: displayDate(localDate, household.locale),
+      weather: this.demoSeedEnabled ? { temperatureCelsius: 16, condition: 'Clear' } : null,
       freshness: projection.freshness,
       statusMessage: projection.statusMessage,
       calendars: projection.calendars,
@@ -127,13 +159,25 @@ export class SqliteHearthRepository implements HearthRepository {
         ? []
         : sortByStart(projection.events).filter((event) => event.id !== 'event_family_dinner_mon'),
       chores,
-      dinner: isEmpty ? null : 'Lemon chicken & roast vegetables',
-      listSummary: isEmpty ? null : { name: 'Groceries', remainingCount: 6 },
-      notice: isEmpty ? null : 'Bins go out tonight',
-      photo: isEmpty ? null : DEMO_TODAY_PHOTO,
-      integrations: seed.integrations.map((integration) =>
-        integration.kind === 'calendar' ? projection.integration : integration,
-      ),
+      dinner: isEmpty || !this.demoSeedEnabled ? null : 'Lemon chicken & roast vegetables',
+      listSummary:
+        isEmpty || !this.demoSeedEnabled ? null : { name: 'Groceries', remainingCount: 6 },
+      notice: isEmpty || !this.demoSeedEnabled ? null : 'Bins go out tonight',
+      photo: isEmpty || !this.demoSeedEnabled ? null : DEMO_TODAY_PHOTO,
+      sections: { dinner: true, listSummary: true, notice: true, photo: true },
+      integrations: this.demoSeedEnabled
+        ? seed.integrations.map((integration) =>
+            integration.kind === 'calendar' ? projection.integration : integration,
+          )
+        : [
+            projection.integration,
+            {
+              kind: 'home-assistant',
+              status: 'not-configured',
+              lastSuccessfulAt: null,
+              message: 'Home Assistant is not connected yet.',
+            },
+          ],
     };
   }
 
@@ -154,7 +198,7 @@ export class SqliteHearthRepository implements HearthRepository {
       displayRange: displayRange(startDate, endDate),
       freshness: projection.freshness,
       statusMessage: projection.statusMessage,
-      days: createWeekDays(startDate),
+      days: createWeekDays(startDate, this.currentLocalDate(householdId), this.demoSeedEnabled),
       calendars: projection.calendars,
       events: this.scenario === 'empty' ? [] : sortByStart(projection.events),
     };
@@ -163,7 +207,7 @@ export class SqliteHearthRepository implements HearthRepository {
   async getMonth(householdId: string, month: string): Promise<MonthSchedule> {
     this.assertHousehold(householdId);
     await this.applyLatency();
-    const grid = createMonthGrid(month, DEMO_LOCAL_DATE);
+    const grid = createMonthGrid(month, this.currentLocalDate(householdId));
     const projection = await this.calendar.projectRange(
       householdId,
       grid.startDate,
@@ -190,11 +234,12 @@ export class SqliteHearthRepository implements HearthRepository {
     await this.applyLatency();
     const occurrences =
       this.scenario === 'empty' ? [] : this.readOccurrences(householdId, localDate);
+    const household = this.readHousehold(householdId);
     const members = this.readMembers(householdId);
     return {
       householdId,
       localDate,
-      displayDate: displayDate(localDate),
+      displayDate: displayDate(localDate, household.locale),
       completedCount: occurrences.filter((item) => item.state === 'completed').length,
       totalCount: occurrences.length,
       groups: members.map((member) => ({
@@ -202,6 +247,28 @@ export class SqliteHearthRepository implements HearthRepository {
         occurrences: occurrences.filter((occurrence) => occurrence.assignee.id === member.id),
       })),
     };
+  }
+
+  async getChoreOccurrenceDetail(
+    householdId: string,
+    occurrenceId: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceDetail> {
+    this.assertHousehold(householdId);
+    this.authorizeAdult(householdId, actor);
+    const occurrence = this.readOccurrence(householdId, occurrenceId);
+    const row = this.database
+      .prepare(
+        `SELECT description_snapshot FROM chore_occurrences
+         WHERE id = ? AND household_id = ?`,
+      )
+      .get(occurrenceId, householdId) as { description_snapshot: string | null } | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That chore could not be found.');
+    return ChoreOccurrenceDetailSchema.parse({
+      occurrence,
+      description: row.description_snapshot,
+      history: this.readOccurrenceHistory(householdId, occurrenceId),
+    });
   }
 
   async complete(
@@ -283,6 +350,7 @@ export class SqliteHearthRepository implements HearthRepository {
     householdId: string,
     occurrenceId: string,
     requestId: string,
+    reason: string,
     actor: CommandActor,
   ): Promise<ChoreSkipResult> {
     this.assertHousehold(householdId);
@@ -295,7 +363,7 @@ export class SqliteHearthRepository implements HearthRepository {
       'skip',
       ChoreSkipResultSchema,
       (occurrence, context) => {
-        const result = skipChore(occurrence, context);
+        const result = skipChore(occurrence, reason, context);
         this.database
           .prepare(
             `UPDATE chore_occurrences
@@ -306,6 +374,89 @@ export class SqliteHearthRepository implements HearthRepository {
           .run(context.occurredAt, actor.id, context.occurredAt, occurrenceId);
         return { occurrence: result.occurrence, audit: result.audit, replayed: false };
       },
+      () => ({ reason }),
+    );
+  }
+
+  async excuse(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult> {
+    this.assertHousehold(householdId);
+    this.failNextIfRequested(householdId, occurrenceId, requestId, actor, 'chore.excuse');
+    return this.runCommand(
+      householdId,
+      occurrenceId,
+      requestId,
+      actor,
+      'excuse',
+      ChoreOccurrenceChangeResultSchema,
+      (occurrence, context) => {
+        const result = excuseChore(occurrence, reason, context);
+        this.database
+          .prepare(
+            `UPDATE chore_occurrences
+             SET state = 'excused', completion_id = NULL, completed_at = NULL,
+                 completed_by_actor_id = NULL, skipped_at = NULL, skipped_by_actor_id = NULL,
+                 updated_at = ? WHERE id = ?`,
+          )
+          .run(context.occurredAt, occurrenceId);
+        return { occurrence: result.occurrence, audit: result.audit, replayed: false };
+      },
+      () => ({ reason }),
+    );
+  }
+
+  async reassign(
+    householdId: string,
+    occurrenceId: string,
+    requestId: string,
+    assigneeId: string,
+    reason: string,
+    actor: CommandActor,
+  ): Promise<ChoreOccurrenceChangeResult> {
+    this.assertHousehold(householdId);
+    this.failNextIfRequested(householdId, occurrenceId, requestId, actor, 'chore.reassign');
+    const assignee = this.readMember(householdId, assigneeId);
+    return this.runCommand(
+      householdId,
+      occurrenceId,
+      requestId,
+      actor,
+      'reassign',
+      ChoreOccurrenceChangeResultSchema,
+      (occurrence, context) => {
+        const result = reassignChore(occurrence, assignee, reason, context);
+        try {
+          this.database
+            .prepare(
+              `UPDATE chore_occurrences
+               SET assignee_member_id = ?, state = 'pending', completion_id = NULL,
+                   completed_at = NULL, completed_by_actor_id = NULL, skipped_at = NULL,
+                   skipped_by_actor_id = NULL, updated_at = ? WHERE id = ?`,
+            )
+            .run(assignee.id, context.occurredAt, occurrenceId);
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            throw new RepositoryError(
+              'CONFLICT',
+              `${assignee.displayName} already has this chore for the day.`,
+            );
+          }
+          throw error;
+        }
+        return { occurrence: result.occurrence, audit: result.audit, replayed: false };
+      },
+      (occurrence) => ({
+        reason,
+        fromAssigneeId: occurrence.assignee.id,
+        fromAssigneeName: occurrence.assignee.displayName,
+        toAssigneeId: assignee.id,
+        toAssigneeName: assignee.displayName,
+      }),
     );
   }
 
@@ -319,25 +470,28 @@ export class SqliteHearthRepository implements HearthRepository {
        DELETE FROM chore_templates;`,
     );
     this.scenario = 'healthy';
-    this.seedDemo();
-    this.resetCalendarSnapshot();
+    if (this.demoSeedEnabled) {
+      this.seedDemo();
+      this.resetCalendarSnapshot();
+    }
   }
 
   setScenario(scenario: DemoScenario): void {
     this.scenario = scenario;
   }
 
-  private runCommand<T extends ChoreCommandResult | ChoreSkipResult>(
+  private runCommand<T extends ChoreCommandResult | ChoreOccurrenceChangeResult>(
     householdId: string,
     occurrenceId: string,
     requestId: string,
     actor: CommandActor,
-    commandType: 'complete' | 'undo' | 'skip',
+    commandType: 'complete' | 'undo' | 'skip' | 'excuse' | 'reassign',
     schema: { parse(value: unknown): T },
     mutate: (
       occurrence: ChoreOccurrence,
       context: ReturnType<SqliteHearthRepository['createContext']>,
     ) => T,
+    safeSummary: (occurrence: ChoreOccurrence, response: T) => Record<string, unknown> = () => ({}),
   ): T {
     const transaction = this.database.transaction(() => {
       const receipt = this.readReceipt(householdId, requestId, commandType, schema);
@@ -346,7 +500,13 @@ export class SqliteHearthRepository implements HearthRepository {
       const context = this.createContext(requestId, actor);
       this.authorize(householdId, actor, occurrence, commandType);
       const response = mutate(this.withScenarioPermission(occurrence), context);
-      this.writeAudit(householdId, response.audit, requestId);
+      this.writeAudit(
+        householdId,
+        response.audit,
+        requestId,
+        'chore_occurrence',
+        safeSummary(occurrence, response),
+      );
       this.database
         .prepare(
           `INSERT INTO command_receipts
@@ -379,11 +539,11 @@ export class SqliteHearthRepository implements HearthRepository {
     householdId: string,
     actor: CommandActor,
     occurrence: ChoreOccurrence,
-    action: 'complete' | 'undo' | 'skip',
+    action: 'complete' | 'undo' | 'skip' | 'excuse' | 'reassign',
   ): void {
     if (actor.type === 'device') {
-      if (actor.source !== 'tv' || action === 'skip') {
-        throw new RepositoryError('FORBIDDEN', 'Ask an adult to skip this.');
+      if (actor.source !== 'tv' || (action !== 'complete' && action !== 'undo')) {
+        throw new RepositoryError('FORBIDDEN', 'Ask an adult to change this.');
       }
       const row = this.database
         .prepare(
@@ -404,7 +564,7 @@ export class SqliteHearthRepository implements HearthRepository {
       if (
         !['automation', 'voice'].includes(actor.source) ||
         actor.id !== 'service_home_assistant' ||
-        action === 'skip'
+        (action !== 'complete' && action !== 'undo')
       ) {
         throw new RepositoryError('FORBIDDEN', 'That automation cannot change this chore.');
       }
@@ -427,14 +587,15 @@ export class SqliteHearthRepository implements HearthRepository {
       throw new RepositoryError('FORBIDDEN', 'You cannot change chores.');
     }
     if (row.role === 'adult') return;
-    if (action !== 'skip' && occurrence.assignee.id === actor.id) return;
+    if ((action === 'complete' || action === 'undo') && occurrence.assignee.id === actor.id) return;
     throw new RepositoryError('FORBIDDEN', 'Ask an adult to change this.');
   }
 
   private generateOccurrences(householdId: string, localDate: string): void {
     const rows = this.database
       .prepare(
-        `SELECT t.id, t.title, t.recurrence_rule, t.routine_label, t.active_from, t.active_until,
+        `SELECT t.id, t.title, t.description, t.recurrence_rule, t.routine_label,
+                t.available_from_time, t.due_time, t.sort_order, t.active_from, t.active_until,
                 a.member_id
          FROM chore_templates t
          JOIN chore_template_assignees a ON a.template_id = t.id
@@ -445,9 +606,10 @@ export class SqliteHearthRepository implements HearthRepository {
     const insert = this.database.prepare(
       `INSERT OR IGNORE INTO chore_occurrences
         (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
-         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         description_snapshot, routine_label_snapshot, due_time_snapshot, assignee_member_id,
+         available_from_time_snapshot, sort_order_snapshot, state, completion_id, completed_at,
          completed_by_actor_id, created_at, updated_at, skipped_at, skipped_by_actor_id)
-       VALUES (?, ?, ?, ?, 'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+       VALUES (?, ?, ?, ?, 'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
     );
     const demoByTitleAndMember = new Map(
       createDemoSeed().chores.map((chore) => [`${chore.title}:${chore.assignee.id}`, chore]),
@@ -470,8 +632,12 @@ export class SqliteHearthRepository implements HearthRepository {
           row.id,
           localDate,
           row.title,
+          row.description,
           row.routine_label,
+          row.due_time,
           row.member_id,
+          row.available_from_time,
+          row.sort_order,
           isSeedCompletion ? 'completed' : 'pending',
           isSeedCompletion ? demoOccurrence.completionId : null,
           isSeedCompletion ? demoOccurrence.completedAt : null,
@@ -491,9 +657,8 @@ export class SqliteHearthRepository implements HearthRepository {
         `SELECT o.*, m.display_name, m.colour, m.avatar_key, m.role, m.capabilities_json
          FROM chore_occurrences o
          JOIN members m ON m.id = o.assignee_member_id
-         JOIN chore_templates t ON t.id = o.template_id
          WHERE o.household_id = ? AND o.scheduled_local_date = ?
-         ORDER BY t.created_at, o.id`,
+         ORDER BY o.sort_order_snapshot, o.id`,
       )
       .all(householdId, localDate) as OccurrenceRow[];
     return rows.map((row) => this.occurrenceFromRow(row));
@@ -517,13 +682,87 @@ export class SqliteHearthRepository implements HearthRepository {
       title: row.title_snapshot,
       assignee: memberFromOccurrenceRow(row),
       routineLabel: row.routine_label_snapshot,
+      availableFromTime: row.available_from_time_snapshot,
+      dueTime: row.due_time_snapshot,
+      sortOrder: row.sort_order_snapshot,
       localDate: row.scheduled_local_date,
       state: row.state,
       completionId: row.completion_id,
       completedAt: row.completed_at,
-      completedLabel: row.completed_at === null ? null : completedLabel(row.completed_at),
+      completedLabel:
+        row.completed_at === null
+          ? null
+          : completedLabel(row.completed_at, this.readHousehold(row.household_id).timezone),
       locked: this.scenario === 'permission' && row.id === 'occurrence_school_bag',
     });
+  }
+
+  private readOccurrenceHistory(
+    householdId: string,
+    occurrenceIdValue: string,
+  ): ChoreOccurrenceHistoryEntry[] {
+    const rows = this.database
+      .prepare(
+        `SELECT a.id, a.action_type, a.occurred_at, a.actor_type, a.safe_summary_json,
+                m.display_name AS actor_display_name
+         FROM audit_events a
+         LEFT JOIN members m ON m.id = a.actor_id AND m.household_id = a.household_id
+         WHERE a.household_id = ? AND a.target_type = 'chore_occurrence' AND a.target_id = ?
+           AND a.result IN ('succeeded', 'reversed')
+           AND a.action_type IN
+             ('chore.complete', 'chore.undo', 'chore.skip', 'chore.excuse', 'chore.reassign')
+         ORDER BY a.rowid DESC`,
+      )
+      .all(householdId, occurrenceIdValue) as OccurrenceHistoryRow[];
+    return rows.map((row) => {
+      const summary = safeSummaryFromJson(row.safe_summary_json);
+      const action = row.action_type;
+      const label =
+        action === 'chore.complete'
+          ? 'Marked done'
+          : action === 'chore.undo'
+            ? 'Completion undone'
+            : action === 'chore.skip'
+              ? 'Skipped'
+              : action === 'chore.excuse'
+                ? 'Excused'
+                : `Reassigned from ${safeName(summary.fromAssigneeName)} to ${safeName(summary.toAssigneeName)}`;
+      return ChoreOccurrenceHistoryEntrySchema.parse({
+        id: row.id,
+        action,
+        label,
+        actorLabel:
+          row.actor_display_name ??
+          (row.actor_type === 'device'
+            ? 'Television'
+            : row.actor_type === 'service'
+              ? 'Home Assistant'
+              : 'Hearth'),
+        occurredAt: row.occurred_at,
+        reason: typeof summary.reason === 'string' ? summary.reason : null,
+      });
+    });
+  }
+
+  private readMember(householdId: string, memberId: string): Member {
+    const row = this.database
+      .prepare(
+        `SELECT id, display_name, colour, avatar_key, role, capabilities_json
+         FROM members WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+      )
+      .get(memberId, householdId) as MemberRow | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That person was not found.');
+    return memberFromRow(row);
+  }
+
+  private authorizeAdult(householdId: string, actor: CommandActor): void {
+    if (actor.type !== 'member' || actor.source !== 'companion') {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult can manage this chore.');
+    }
+    const member = this.readMember(householdId, actor.id);
+    if (member.role !== 'adult' || !member.capabilities.includes('chores.complete')) {
+      throw new RepositoryError('FORBIDDEN', 'Only an adult can manage this chore.');
+    }
   }
 
   private readReceipt<T>(
@@ -546,13 +785,14 @@ export class SqliteHearthRepository implements HearthRepository {
     audit: AuditSummary,
     requestId: string,
     targetType = 'chore_occurrence',
+    safeSummary: Record<string, unknown> = {},
   ): void {
     this.database
       .prepare(
         `INSERT INTO audit_events
           (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
            target_type, target_id, request_id, result, safe_summary_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         audit.id,
@@ -566,6 +806,7 @@ export class SqliteHearthRepository implements HearthRepository {
         audit.targetId,
         requestId,
         audit.result,
+        JSON.stringify(safeSummary),
       );
   }
 
@@ -574,7 +815,7 @@ export class SqliteHearthRepository implements HearthRepository {
     occurrenceIdValue: string,
     requestId: string,
     actor: CommandActor,
-    commandType: 'complete' | 'undo' | 'skip',
+    commandType: 'complete' | 'undo' | 'skip' | 'excuse' | 'reassign',
     error: RepositoryError,
   ): void {
     this.database
@@ -586,7 +827,7 @@ export class SqliteHearthRepository implements HearthRepository {
       )
       .run(
         id('audit_rejected'),
-        new Date().toISOString(),
+        this.clock.now().toISOString(),
         householdId,
         actor.type,
         actor.id,
@@ -607,7 +848,7 @@ export class SqliteHearthRepository implements HearthRepository {
   ): void {
     if (this.scenario !== 'fail-next') return;
     this.scenario = 'healthy';
-    const now = new Date().toISOString();
+    const now = this.clock.now().toISOString();
     this.writeAudit(
       householdId,
       {
@@ -622,7 +863,11 @@ export class SqliteHearthRepository implements HearthRepository {
       },
       requestId,
     );
-    throw new RepositoryError('COMMAND_FAILED', 'Couldn’t mark this done.', true);
+    throw new RepositoryError(
+      'COMMAND_FAILED',
+      action === 'chore.complete' ? 'Couldn’t mark this done.' : 'That chore change did not save.',
+      true,
+    );
   }
 
   private createContext(requestId: string, actor: CommandActor) {
@@ -631,7 +876,7 @@ export class SqliteHearthRepository implements HearthRepository {
       actorType: actor.type,
       source: actor.source,
       requestId,
-      occurredAt: new Date().toISOString(),
+      occurredAt: this.clock.now().toISOString(),
       completionId: id('completion'),
       auditId: id('audit_chore'),
     };
@@ -664,6 +909,11 @@ export class SqliteHearthRepository implements HearthRepository {
       throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
   }
 
+  private currentLocalDate(householdId: string): string {
+    const household = this.readHousehold(householdId);
+    return localDateInTimezone(this.clock.now().toISOString(), household.timezone);
+  }
+
   private readHousehold(householdId: string) {
     const row = this.database.prepare('SELECT * FROM households WHERE id = ?').get(householdId) as
       { id: string; name: string; timezone: string; locale: string } | undefined;
@@ -674,7 +924,7 @@ export class SqliteHearthRepository implements HearthRepository {
       name: row.name,
       timezone: row.timezone,
       locale: row.locale,
-      mode: 'Morning',
+      mode: dayPeriod(this.clock.now(), row.timezone),
       members: this.readMembers(householdId),
     };
   }
@@ -683,7 +933,8 @@ export class SqliteHearthRepository implements HearthRepository {
     const rows = this.database
       .prepare(
         `SELECT id, display_name, colour, avatar_key, role, capabilities_json
-         FROM members WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at, id`,
+         FROM members WHERE household_id = ? AND archived_at IS NULL
+         ORDER BY datetime(created_at), rowid`,
       )
       .all(householdId) as MemberRow[];
     return rows.map(memberFromRow);
@@ -726,9 +977,10 @@ export class SqliteHearthRepository implements HearthRepository {
     }
     const insertTemplate = this.database.prepare(
       `INSERT OR IGNORE INTO chore_templates
-        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
-         points_value, active_from, active_until, archived_at, created_at, updated_at)
-       VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, ?, NULL, NULL, ?, ?)`,
+        (id, household_id, title, description, recurrence_rule, routine_label,
+         available_from_time, due_time, sort_order, points_value, active_from, active_until,
+         archived_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
     );
     const insertAssignee = this.database.prepare(
       'INSERT OR IGNORE INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)',
@@ -740,8 +992,12 @@ export class SqliteHearthRepository implements HearthRepository {
         templateId,
         seed.household.id,
         chore.title,
+        TEMPLATE_DESCRIPTIONS.get(chore.id) ?? null,
         TEMPLATE_RULES.get(chore.id) ?? 'FREQ=DAILY',
         chore.routineLabel,
+        chore.availableFromTime,
+        chore.dueTime,
+        index,
         0,
         DEMO_LOCAL_DATE,
         createdAt,
@@ -756,8 +1012,12 @@ export class SqliteHearthRepository implements HearthRepository {
 interface TemplateRow {
   id: string;
   title: string;
+  description: string | null;
   recurrence_rule: string;
   routine_label: string;
+  available_from_time: string | null;
+  due_time: string | null;
+  sort_order: number;
   active_from: string;
   active_until: string | null;
   member_id: string;
@@ -774,9 +1034,14 @@ interface MemberRow {
 
 interface OccurrenceRow {
   id: string;
+  household_id: string;
   assignee_member_id: string;
   title_snapshot: string;
+  description_snapshot: string | null;
   routine_label_snapshot: string;
+  available_from_time_snapshot: string | null;
+  due_time_snapshot: string | null;
+  sort_order_snapshot: number;
   scheduled_local_date: string;
   state: 'pending' | 'completed' | 'skipped' | 'excused' | 'cancelled';
   completion_id: string | null;
@@ -786,6 +1051,15 @@ interface OccurrenceRow {
   avatar_key: string | null;
   role: 'adult' | 'child';
   capabilities_json: string;
+}
+
+interface OccurrenceHistoryRow {
+  id: string;
+  action_type: ChoreOccurrenceHistoryEntry['action'];
+  occurred_at: string;
+  actor_type: AuditSummary['actorType'];
+  actor_display_name: string | null;
+  safe_summary_json: string;
 }
 
 function memberFromRow(row: MemberRow): Member {
@@ -816,6 +1090,25 @@ function translateError(error: unknown): unknown {
   return error;
 }
 
+function safeSummaryFromJson(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function safeName(value: unknown): string {
+  return typeof value === 'string' && value.length > 0 ? value : 'another person';
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('UNIQUE constraint failed');
+}
+
 function id(prefix: string): string {
   return `${prefix}_${randomUUID().replaceAll('-', '_')}`;
 }
@@ -824,13 +1117,13 @@ function occurrenceId(templateId: string, memberId: string, localDate: string): 
   return `${templateId.replace('template_', 'occurrence_')}_${memberId.replace('member_', '')}_${localDate.replaceAll('-', '')}`;
 }
 
-function displayDate(localDate: string): string {
-  return new Intl.DateTimeFormat('en-AU', {
-    timeZone: 'Australia/Perth',
+function displayDate(localDate: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: 'UTC',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(new Date(`${localDate}T12:00:00+08:00`));
+  }).format(new Date(`${localDate}T12:00:00.000Z`));
 }
 
 function monthName(month: string): string {
@@ -839,7 +1132,11 @@ function monthName(month: string): string {
   );
 }
 
-function createWeekDays(startDate: string): WeekDay[] {
+function createWeekDays(
+  startDate: string,
+  currentLocalDate: string,
+  includeDemoForecast: boolean,
+): WeekDay[] {
   return Array.from({ length: 7 }, (_, index) => {
     const localDate = addLocalDays(startDate, index);
     const date = new Date(`${localDate}T12:00:00.000Z`);
@@ -853,8 +1150,8 @@ function createWeekDays(startDate: string): WeekDay[] {
         month: 'short',
         timeZone: 'UTC',
       }).format(date),
-      isToday: localDate === DEMO_LOCAL_DATE,
-      forecast: demoForecastForDay(index),
+      isToday: localDate === currentLocalDate,
+      forecast: includeDemoForecast ? demoForecastForDay(index) : null,
     };
   });
 }
@@ -875,9 +1172,22 @@ function displayRange(startDate: string, endDate: string): string {
     : `${startDay} ${startMonth}–${endDay} ${endMonth}`;
 }
 
-function completedLabel(timestamp: string): string {
+function dayPeriod(now: Date, timezone: string): string {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-AU', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(now),
+  );
+  if (hour < 12) return 'Morning';
+  if (hour < 17) return 'Afternoon';
+  return 'Evening';
+}
+
+function completedLabel(timestamp: string, timezone: string): string {
   const time = new Intl.DateTimeFormat('en-AU', {
-    timeZone: 'Australia/Perth',
+    timeZone: timezone,
     hour: 'numeric',
     minute: '2-digit',
     hour12: false,

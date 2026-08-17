@@ -8,7 +8,7 @@ export function AdminPage({
   subtitle,
   children,
   backTo = '/admin',
-  backLabel = 'Back to Home settings',
+  backLabel = 'Back to Hearth settings',
 }: {
   title: string;
   subtitle: string;
@@ -40,7 +40,7 @@ export function AdminPage({
 export function AdminLoading() {
   return (
     <div aria-live="polite" className="admin-feedback" role="status">
-      Loading home settings…
+      Loading Hearth settings…
     </div>
   );
 }

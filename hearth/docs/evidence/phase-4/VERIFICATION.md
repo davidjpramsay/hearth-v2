@@ -1,5 +1,107 @@
 # Phase 4 household-planning verification
 
+## 2026-08-10 daily chore-management polish addendum
+
+Hearth now separates future schedule editing from one-day adult decisions. Routine administration
+accepts an optional due time. The new phone-first **Today’s chores** destination shows the
+occurrence’s snapshotted description/due time and requires a short reason before Skip, Excuse or
+Reassign. Skip stays incomplete in the child’s pocket-money denominator, Excuse removes the job,
+and Reassign moves awaiting responsibility and resets it to pending. Each mutation, safe reason
+summary, receipt and audit event commits together; adult-only history remains available after a
+SQLite restart. Television rows show the due time quietly while retaining completion/undo as their
+only ordinary action.
+
+Passed from `hearth/`:
+
+- `pnpm install --frozen-lockfile` — the pnpm 10.33.2 lockfile was current across all five projects.
+- `pnpm verify` — formatting, lint, strict type checks, 100 unit tests, 73 server integration tests,
+  16 migration tests, web/server production builds and all 174 Playwright tests passed.
+- The browser cases cover the phone occurrence-detail flow, description/due-time rendering,
+  reason validation, skip → excuse pocket-money transitions, adult reassignment, same-request
+  failure/retry, newest-first history, phone axe analysis, 390×844 and 844×390 companion renders and
+  the compact 1920×1080 television result. Existing D-pad, offline, dark-mode and reduced-motion
+  coverage also remained green.
+- `git diff --check` and added-line secret/private-URL scans passed. Application/package/test source
+  contains no old-Hearth path or Skylight reference.
+
+The production Chore Day Admin chunk is 6.15 kB JavaScript (2.28 kB gzip). The main entry is
+463.52 kB JavaScript (134.64 kB gzip), and the stylesheet is 136.86 kB (24.50 kB gzip). The server
+build copied all 17 forward migrations. The installed Playwright Chromium remained the rendering
+fallback because the Browser/IAB controller was not available.
+
+Fresh phone portrait, phone landscape and 1080p television counterparts were inspected with
+`view_image`. The phone keeps one expanded decision in context; the television remains a calm
+two-column family board with the pocket-money bar aligned to its chore rows. The first complete gate
+passed 171/174: three old browser assertions assumed an untouched seed adult name or used a broad
+`Chore` label match. They were made configuration-safe/exact, all three targeted reruns passed and
+the second complete gate passed 174/174. No live calendar, Home Assistant, Synology or household
+deployment was changed.
+
+## 2026-08-09 meal-planning polish addendum
+
+The Meals slice now has one real adult companion destination for compact whole-week dinner
+planning and reusable meal management. All seven dinner fields remain visible together; saved-meal
+and note details expand per night. The TV's two broad meal actions link to that route. Whole-week
+save, confirmed copy/clear and saved-meal create/update/archive/restore commands are typed,
+adult-authorised, receipt-idempotent, audited and persisted through the SQLite repository. Migration
+0016 adds bounded preparation minutes and active/favourite ordering without rewriting prior plans.
+
+Passed from `hearth/`:
+
+- `pnpm install --frozen-lockfile` — the pnpm 10.33.2 lockfile was current across all five projects.
+- `pnpm verify` — formatting, lint, strict type checks, 96 unit tests, 70 server integration tests,
+  15 migration tests, web/server production builds and all 169 Playwright tests passed.
+- The 169 browser cases include remote/Back restoration, multi-night save, same-request failure
+  retry, adult/child authorization, invalid/empty/out-of-week input, copy conflict, confirmed clear,
+  saved-meal search/favourite/edit/archive/restore, SQLite restart, all required TV/phone viewports,
+  dark mode and axe accessibility checks.
+- `git diff --check` — passed after final documentation formatting.
+
+The production Meals Admin chunk is 14.18 kB JavaScript (4.29 kB gzip). The main entry is
+460.75 kB JavaScript (134.02 kB gzip), and the stylesheet is 130.69 kB (23.69 kB gzip). The server
+build copied all 16 forward migrations. The installed Playwright Chromium remained the rendering
+fallback because no Browser/IAB controller was available.
+
+The accepted Meals concept and fresh 4K, 1080p, 1366, phone portrait, phone landscape, light Admin
+and dark Admin counterparts were inspected with `view_image`. That inspection found and fixed three
+material polish issues: seven fully expanded three-field phone rows were collapsed to a compact
+dinner-first editor; short phone landscape was tightened so the meal cards finish above the fixed
+tabs; and the dark shared submit background was split from the light plum text token after axe
+measured only 2.1:1 contrast. The settled dark action colour measures 7.87:1 against white. The
+first combined browser gate also exposed an ambiguous non-exact Today test locator; making the page
+heading exact removed the test defect, and the complete 169-case gate then passed.
+
+## 2026-08-09 list-management polish addendum
+
+The current Phase 4 list slice now includes phone-first adult administration:
+create, rename, type, colour, order, archive and restore lists; add, edit,
+order and remove items; confirmed clear-checked soft archive; and the existing
+TV check/undo path. The original migration 0005 already contained the required
+archive and ordering columns, so no redundant migration was added.
+
+Passed from `hearth/`:
+
+- `pnpm install --frozen-lockfile` — lockfile current across all five projects.
+- `pnpm verify` — formatting, lint, strict type checks, 96 unit tests, 69 server
+  integration tests, 14 migration tests, web/server production builds and 164
+  Playwright tests all passed.
+- `git diff --check` — passed.
+- Playwright covered same-request retry, adult authorization, invalid order,
+  final-list protection, create/edit/order/archive/restore/clear flows, Back,
+  TV control isolation, quantity display and axe checks.
+
+The production list-admin chunk is 14.18 kB JavaScript (4.07 kB gzip). The
+main entry is 461.16 kB JavaScript (134.10 kB gzip), and the stylesheet is
+121.91 kB (22.40 kB gzip). The installed Playwright Chromium remained the
+rendering fallback because no Browser/IAB controller was available. Fresh 4K,
+1080p, 1366, phone portrait, phone landscape, Admin and list-state evidence was
+retained and inspected against the accepted Phase 4 concepts. The inspection
+also found and fixed initial focus clipping the short phone-landscape header.
+
+> Historical 2026-08-03 checkpoint. Its reward-ledger counts describe the then-current migration-5
+> implementation, not the active product. D-027/D-035 and the pocket-money evidence supersede those
+> runtime claims; the old tables remain only for forward-only database upgrades.
+
 Verified on 2026-08-03 in Australia/Perth with Node 25.9.0, pnpm 10.33.2 and
 Playwright Chromium 1.62.1.
 

@@ -279,6 +279,14 @@ class MainActivity : ComponentActivity() {
             setBackgroundColor(getColor(R.color.hearth_canvas))
             isFocusable = true
             isFocusableInTouchMode = true
+            val metrics = resources.displayMetrics
+            setInitialScale(
+                tvInitialScalePercent(
+                    widthPixels = metrics.widthPixels,
+                    heightPixels = metrics.heightPixels,
+                    density = metrics.density,
+                ),
+            )
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true

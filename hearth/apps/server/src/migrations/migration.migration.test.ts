@@ -10,6 +10,30 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
+const PRE_PAYMENT_HISTORY_MIGRATIONS = [
+  '0001_household_core.sql',
+  '0002_admin_and_pairing.sql',
+  '0003_chore_runtime.sql',
+  '0004_calendar_projection.sql',
+  '0005_household_planning.sql',
+  '0006_home_assistant_projection.sql',
+  '0007_tv_device_credentials.sql',
+  '0008_photo_library.sql',
+  '0009_pocket_money.sql',
+  '0010_member_avatars.sql',
+  '0011_calendar_connection_setup.sql',
+  '0012_passkey_authentication.sql',
+  '0013_notices_and_today_sections.sql',
+] as const;
+const PRE_ADULT_ACCESS_MIGRATIONS = [
+  ...PRE_PAYMENT_HISTORY_MIGRATIONS,
+  '0014_pocket_money_payment_history.sql',
+  '0015_synology_photo_index.sql',
+  '0016_meal_planning_polish.sql',
+  '0017_chore_occurrence_management.sql',
+  '0018_chore_windows_and_order.sql',
+  '0019_home_assistant_connection_setup.sql',
+] as const;
 
 afterEach(async () => {
   await Promise.all(
@@ -91,9 +115,20 @@ describe('0001 household core migration', () => {
     database.exec(`
       INSERT INTO households VALUES ('household_chore', 'Chore', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
       INSERT INTO members VALUES ('member_chore', 'household_chore', 'Tester', '#000000', NULL, 'adult', NULL, 'now', 'now', '["chores.complete"]');
-      INSERT INTO chore_templates VALUES ('template_chore', 'household_chore', 'Test chore', NULL, 'FREQ=DAILY', 'Morning', NULL, 0, '2026-08-03', NULL, NULL, 'now', 'now');
+      INSERT INTO chore_templates
+        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
+         points_value, active_from, active_until, archived_at, created_at, updated_at)
+      VALUES ('template_chore', 'household_chore', 'Test chore', NULL, 'FREQ=DAILY',
+              'Morning', NULL, 0, '2026-08-03', NULL, NULL, 'now', 'now');
       INSERT INTO chore_template_assignees VALUES ('template_chore', 'member_chore');
-      INSERT INTO chore_occurrences VALUES ('occurrence_chore', 'household_chore', 'template_chore', '2026-08-03', 'default', 'Test chore', 'Morning', 'member_chore', 'skipped', NULL, NULL, NULL, 'now', 'now', 'now', 'member_chore');
+      INSERT INTO chore_occurrences
+        (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
+         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at, skipped_at, skipped_by_actor_id)
+      VALUES
+        ('occurrence_chore', 'household_chore', 'template_chore', '2026-08-03', 'default',
+         'Test chore', 'Morning', 'member_chore', 'skipped', NULL, NULL, NULL, 'now', 'now',
+         'now', 'member_chore');
     `);
     expect(
       database
@@ -247,6 +282,9 @@ describe('0001 household core migration', () => {
     expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 8').get()).toEqual({
       name: 'photo_library',
     });
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 15').get()).toEqual(
+      { name: 'synology_photo_index' },
+    );
     database.exec(`
       INSERT INTO households VALUES ('household_photo', 'Photo', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
       INSERT INTO photo_sources VALUES (
@@ -255,14 +293,14 @@ describe('0001 household core migration', () => {
       );
       INSERT INTO photo_assets VALUES (
         'asset_photo', 'source_photo', 'opaque:1', 'derivative:1', 'thumbnail:1',
-        'A family photo.', 1600, 1067, 'landscape', NULL, 1, 0, 'ready', NULL, 'now'
+        'A family photo.', 1600, 1067, 'landscape', NULL, 1, 0, 'ready', NULL, 'now', 'fingerprint:1'
       );
     `);
     expect(() =>
       database.exec(`
         INSERT INTO photo_assets VALUES (
           'asset_duplicate', 'source_photo', 'opaque:1', 'derivative:2', 'thumbnail:2',
-          'Duplicate.', 1600, 1067, 'landscape', NULL, 0, 0, 'ready', NULL, 'now'
+          'Duplicate.', 1600, 1067, 'landscape', NULL, 0, 0, 'ready', NULL, 'now', 'fingerprint:2'
         );
       `),
     ).toThrow(/UNIQUE/);
@@ -270,7 +308,7 @@ describe('0001 household core migration', () => {
       database.exec(`
         INSERT INTO photo_assets VALUES (
           'asset_bad', 'source_photo', 'opaque:bad', 'derivative:bad', 'thumbnail:bad',
-          'Bad.', 0, 1067, 'upside-down', NULL, 0, 0, 'ready', NULL, 'now'
+          'Bad.', 0, 1067, 'upside-down', NULL, 0, 0, 'ready', NULL, 'now', 'fingerprint:bad'
         );
       `),
     ).toThrow(/CHECK/);
@@ -278,12 +316,17 @@ describe('0001 household core migration', () => {
       name: string;
     }>;
     expect(columns.map((column) => column.name)).not.toContain('filesystem_path');
+    expect(columns.map((column) => column.name)).toContain('source_fingerprint');
+    const indexes = database.prepare('PRAGMA index_list(photo_assets)').all() as Array<{
+      name: string;
+    }>;
+    expect(indexes.map((index) => index.name)).toContain('photo_assets_source_status_idx');
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
 
-  it('adds required child pocket-money settings and one payment snapshot per week', async () => {
+  it('adds required child settings plus immutable partial payments and one void per payment', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
     temporaryDirectories.push(directory);
     const database = new Database(join(directory, 'hearth.sqlite'));
@@ -292,14 +335,32 @@ describe('0001 household core migration', () => {
     expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 9').get()).toEqual({
       name: 'pocket_money',
     });
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 14').get()).toEqual(
+      {
+        name: 'pocket_money_payment_history',
+      },
+    );
     database.exec(`
       INSERT INTO households VALUES ('household_money', 'Money', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
       INSERT INTO members VALUES ('member_child', 'household_money', 'Child', '#000000', NULL, 'child', NULL, 'now', 'now', '["pocket-money.view"]');
       INSERT INTO members VALUES ('member_adult', 'household_money', 'Adult', '#111111', NULL, 'adult', NULL, 'now', 'now', '["household.admin"]');
       INSERT INTO pocket_money_settings VALUES ('household_money', 'member_child', 1200, 'AUD', 'friday', 'now', 'now');
-      INSERT INTO pocket_money_payments VALUES (
+      INSERT INTO pocket_money_payments
+        (id, household_id, member_id, week_start, week_end, scheduled_count, completed_count,
+         completion_percentage, amount_cents, note, paid_at, paid_by_actor_id, source_channel)
+      VALUES (
         'payment_one', 'household_money', 'member_child', '2026-08-03', '2026-08-09',
-        6, 4, 67, 800, 'now', 'member_adult', 'companion'
+        6, 4, 67, 400, 'First half', 'now', 'member_adult', 'companion'
+      );
+      INSERT INTO pocket_money_payments
+        (id, household_id, member_id, week_start, week_end, scheduled_count, completed_count,
+         completion_percentage, amount_cents, note, paid_at, paid_by_actor_id, source_channel)
+      VALUES (
+        'payment_two', 'household_money', 'member_child', '2026-08-03', '2026-08-09',
+        6, 4, 67, 400, NULL, 'later', 'member_adult', 'companion'
+      );
+      INSERT INTO pocket_money_payment_voids VALUES (
+        'void_one', 'payment_one', 'Recorded twice', 'later', 'member_adult', 'companion'
       );
     `);
     expect(() =>
@@ -307,16 +368,556 @@ describe('0001 household core migration', () => {
         "INSERT INTO pocket_money_settings VALUES ('household_money', 'member_adult', 1000, 'AUD', 'friday', 'now', 'now');",
       ),
     ).toThrow(/active child/);
+    expect(
+      database
+        .prepare(
+          'SELECT COUNT(*) AS count FROM pocket_money_payments WHERE household_id = ? AND week_start = ?',
+        )
+        .get('household_money', '2026-08-03'),
+    ).toEqual({ count: 2 });
     expect(() =>
       database.exec(
-        "INSERT INTO pocket_money_payments VALUES ('payment_two', 'household_money', 'member_child', '2026-08-03', '2026-08-09', 6, 4, 67, 800, 'later', 'member_adult', 'companion');",
+        "INSERT INTO pocket_money_payment_voids VALUES ('void_two', 'payment_one', 'Another reason', 'later', 'member_adult', 'companion');",
       ),
     ).toThrow(/UNIQUE/);
+    expect(() =>
+      database.exec(
+        "INSERT INTO pocket_money_payment_voids VALUES ('void_short', 'payment_two', 'x', 'later', 'member_adult', 'companion');",
+      ),
+    ).toThrow(/CHECK/);
     expect(() =>
       database.exec(
         "INSERT INTO pocket_money_settings VALUES ('household_money', 'member_child', 0, 'AUD', 'friday', 'now', 'now');",
       ),
     ).toThrow();
+    database.close();
+  });
+
+  it('preserves existing weekly payment snapshots while upgrading to payment history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    for (const filename of PRE_PAYMENT_HISTORY_MIGRATIONS) {
+      const path = fileURLToPath(new URL(filename, import.meta.url));
+      database.exec(readFileSync(path, 'utf8'));
+    }
+    database.exec(`
+      INSERT INTO households VALUES ('household_upgrade', 'Upgrade', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_upgrade_child', 'household_upgrade', 'Child', '#000000', NULL, 'child', NULL, 'now', 'now', '["pocket-money.view"]');
+      INSERT INTO members VALUES ('member_upgrade_adult', 'household_upgrade', 'Adult', '#111111', NULL, 'adult', NULL, 'now', 'now', '["household.admin"]');
+      INSERT INTO pocket_money_settings VALUES ('household_upgrade', 'member_upgrade_child', 1200, 'AUD', 'friday', 'now', 'now');
+      INSERT INTO pocket_money_payments VALUES (
+        'payment_upgrade', 'household_upgrade', 'member_upgrade_child', '2026-08-03', '2026-08-09',
+        6, 4, 67, 800, 'now', 'member_upgrade_adult', 'companion'
+      );
+    `);
+    const migrationPath = fileURLToPath(
+      new URL('0014_pocket_money_payment_history.sql', import.meta.url),
+    );
+    database.exec(readFileSync(migrationPath, 'utf8'));
+
+    expect(
+      database
+        .prepare('SELECT id, amount_cents, note FROM pocket_money_payments WHERE id = ?')
+        .get('payment_upgrade'),
+    ).toEqual({ id: 'payment_upgrade', amount_cents: 800, note: null });
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds bounded local member avatars with household integrity', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 10').get()).toEqual(
+      {
+        name: 'member_avatars',
+      },
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_avatar', 'Avatar', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO households VALUES ('household_other', 'Other', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_avatar', 'household_avatar', 'Person', '#000000', '/original.jpg', 'adult', NULL, 'now', 'now', '["household.admin"]');
+    `);
+    database
+      .prepare(
+        `INSERT INTO member_avatars
+          (household_id, member_id, mime_type, image_bytes, version_key, original_avatar_key,
+           created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'household_avatar',
+        'member_avatar',
+        'image/jpeg',
+        Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+        '123456789abc',
+        '/original.jpg',
+        'now',
+        'now',
+      );
+    expect(
+      database.prepare('SELECT length(image_bytes) AS size FROM member_avatars').get(),
+    ).toEqual({ size: 4 });
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO member_avatars
+            (household_id, member_id, mime_type, image_bytes, version_key, original_avatar_key,
+             created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          'household_other',
+          'member_avatar',
+          'image/jpeg',
+          Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+          'abcdef123456',
+          '/original.jpg',
+          'now',
+          'now',
+        ),
+    ).toThrow(/household mismatch/);
+    database.close();
+  });
+
+  it('adds credential-free calendar setup metadata with strict selected-calendar JSON', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 11').get()).toEqual(
+      { name: 'calendar_connection_setup' },
+    );
+    const columns = database
+      .prepare('PRAGMA table_info(calendar_connection_settings)')
+      .all() as Array<{
+      name: string;
+    }>;
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['server_host', 'account_hint', 'selected_calendars_json']),
+    );
+    expect(columns.map((column) => column.name)).not.toEqual(
+      expect.arrayContaining(['password', 'username', 'server_url', 'credential']),
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_calendar_setup', 'Calendar', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO calendar_connection_settings VALUES (
+        'household_calendar_setup', 'calendar_setup_test', 'caldav', 'Family calendars',
+        'caldav.icloud.com', 'f•••@example.com', 'ready',
+        '[{"displayName":"Family","color":"#2f766d","ownerMemberId":null}]',
+        'now', 'now', NULL, 'now', 'now'
+      );
+    `);
+    expect(() =>
+      database.exec(`
+        UPDATE calendar_connection_settings
+        SET selected_calendars_json = 'not-json'
+        WHERE household_id = 'household_calendar_setup';
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds public-key passkeys and hash-only companion sessions', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 12').get()).toEqual(
+      { name: 'passkey_authentication' },
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_auth', 'Auth home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES (
+        'member_auth', 'household_auth', 'Adult', '#2f766d', NULL, 'adult', NULL,
+        'now', 'now', '["household.admin"]'
+      );
+    `);
+    database
+      .prepare(
+        `INSERT INTO passkey_credentials
+          (id, credential_id, household_id, member_id, webauthn_user_id, public_key, counter,
+           device_type, backed_up, transports_json, label, created_at, last_used_at, revoked_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 'multiDevice', 1, ?, ?, ?, NULL, NULL)`,
+      )
+      .run(
+        'passkey_auth',
+        'credential_auth',
+        'household_auth',
+        'member_auth',
+        'webauthn_user_auth',
+        Buffer.from([1, 2, 3]),
+        '["internal"]',
+        'iPhone',
+        'now',
+      );
+    database
+      .prepare(
+        `INSERT INTO companion_sessions
+          (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at)
+         VALUES (?, ?, ?, 'now', 'now', 'later', NULL)`,
+      )
+      .run('a'.repeat(64), 'household_auth', 'member_auth');
+    expect(
+      database.prepare('SELECT length(public_key) AS bytes FROM passkey_credentials').get(),
+    ).toEqual({ bytes: 3 });
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO companion_sessions
+            (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at)
+           VALUES ('plain-token', 'household_auth', 'member_auth', 'now', 'now', 'later', NULL)`,
+        )
+        .run(),
+    ).toThrow(/CHECK/);
+    database.close();
+  });
+
+  it('adds constrained notices and one Today preference row per household', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 13').get()).toEqual(
+      { name: 'notices_and_today_sections' },
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_notice', 'Notice home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO today_section_preferences VALUES ('household_notice', 1, 0, 1, 0, 'now');
+      INSERT INTO announcements VALUES (
+        'notice_test', 'household_notice', 'Bins tonight', 'important',
+        '2026-08-03T00:00:00.000Z', '2026-08-04T00:00:00.000Z', NULL, 'now', 'now'
+      );
+    `);
+    expect(() =>
+      database.exec(
+        "INSERT INTO today_section_preferences VALUES ('household_notice', 2, 1, 1, 1, 'now');",
+      ),
+    ).toThrow(/UNIQUE|CHECK/);
+    expect(() =>
+      database.exec(`
+        INSERT INTO announcements VALUES (
+          'notice_bad', 'household_notice', 'Bad', 'urgent',
+          '2026-08-04T00:00:00.000Z', '2026-08-03T00:00:00.000Z', NULL, 'now', 'now'
+        );
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds bounded preparation time to saved meals without rewriting planning history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 16').get()).toEqual(
+      { name: 'meal_planning_polish' },
+    );
+    const columns = database.prepare('PRAGMA table_info(saved_meals)').all() as Array<{
+      name: string;
+    }>;
+    expect(columns.map((column) => column.name)).toContain('preparation_minutes');
+    database.exec(`
+      INSERT INTO households VALUES ('household_meals', 'Meal home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO saved_meals
+        (id, household_id, name, description, favourite, archived_at, created_at, updated_at, preparation_minutes)
+      VALUES ('saved_meal_test', 'household_meals', 'Tacos', NULL, 1, NULL, 'now', 'now', 25);
+    `);
+    expect(
+      database
+        .prepare('SELECT preparation_minutes FROM saved_meals WHERE id = ?')
+        .get('saved_meal_test'),
+    ).toEqual({ preparation_minutes: 25 });
+    expect(() =>
+      database.exec(`
+        INSERT INTO saved_meals
+          (id, household_id, name, description, favourite, archived_at, created_at, updated_at, preparation_minutes)
+        VALUES ('saved_meal_invalid', 'household_meals', 'Impossible', NULL, 0, NULL, 'now', 'now', 0);
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds durable chore detail snapshots and an indexed occurrence audit history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 17').get()).toEqual(
+      { name: 'chore_occurrence_management' },
+    );
+    const columns = database.prepare('PRAGMA table_info(chore_occurrences)').all() as Array<{
+      name: string;
+    }>;
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['description_snapshot', 'due_time_snapshot']),
+    );
+    const indexes = database.prepare('PRAGMA index_list(audit_events)').all() as Array<{
+      name: string;
+    }>;
+    expect(indexes.map((index) => index.name)).toContain('audit_events_target_history_idx');
+    database.exec(`
+      INSERT INTO households VALUES ('household_chore_detail', 'Chore home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_chore_detail', 'household_chore_detail', 'Child', '#1668b7', NULL, 'child', NULL, 'now', 'now', '["chores.complete"]');
+      INSERT INTO chore_templates
+        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
+         points_value, active_from, active_until, archived_at, created_at, updated_at)
+      VALUES
+        ('template_chore_detail', 'household_chore_detail', 'Pack bag', 'Put lunch inside',
+         'FREQ=DAILY', 'Morning', '07:30', 0, '2026-08-10', NULL, NULL, 'now', 'now');
+      INSERT INTO chore_occurrences
+        (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
+         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at, skipped_at, skipped_by_actor_id,
+         description_snapshot, due_time_snapshot)
+      VALUES
+        ('occurrence_chore_detail', 'household_chore_detail', 'template_chore_detail',
+         '2026-08-10', 'default', 'Pack bag', 'Morning', 'member_chore_detail', 'pending',
+         NULL, NULL, NULL, 'now', 'now', NULL, NULL, 'Put lunch inside', '07:30');
+    `);
+    expect(
+      database
+        .prepare(
+          'SELECT description_snapshot, due_time_snapshot FROM chore_occurrences WHERE id = ?',
+        )
+        .get('occurrence_chore_detail'),
+    ).toEqual({ description_snapshot: 'Put lunch inside', due_time_snapshot: '07:30' });
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('migrates chore windows and stable household order without rewriting occurrences', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    const beforeOrder = [
+      '0001_household_core.sql',
+      '0002_admin_and_pairing.sql',
+      '0003_chore_runtime.sql',
+      '0004_calendar_projection.sql',
+      '0005_household_planning.sql',
+      '0006_home_assistant_projection.sql',
+      '0007_tv_device_credentials.sql',
+      '0008_photo_library.sql',
+      '0009_pocket_money.sql',
+      '0010_member_avatars.sql',
+      '0011_calendar_connection_setup.sql',
+      '0012_passkey_authentication.sql',
+      '0013_notices_and_today_sections.sql',
+      '0014_pocket_money_payment_history.sql',
+      '0015_synology_photo_index.sql',
+      '0016_meal_planning_polish.sql',
+      '0017_chore_occurrence_management.sql',
+    ];
+    for (const file of beforeOrder) {
+      database.exec(readFileSync(fileURLToPath(new URL(`./${file}`, import.meta.url)), 'utf8'));
+    }
+    database.exec(`
+      INSERT INTO households VALUES ('household_order', 'Order home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES ('member_order', 'household_order', 'Child', '#1668b7', NULL, 'child', NULL, 'now', 'now', '["chores.complete"]');
+      INSERT INTO chore_templates
+        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
+         points_value, active_from, active_until, archived_at, created_at, updated_at)
+      VALUES
+        ('template_later', 'household_order', 'Later', NULL, 'FREQ=DAILY', 'Morning', '08:00', 0, '2026-08-10', NULL, NULL, '2026-08-10T08:00:00Z', 'now'),
+        ('template_earlier', 'household_order', 'Earlier', NULL, 'FREQ=DAILY', 'Morning', '07:30', 0, '2026-08-10', NULL, NULL, '2026-08-10T07:00:00Z', 'now');
+      INSERT INTO chore_template_assignees VALUES ('template_later', 'member_order');
+      INSERT INTO chore_template_assignees VALUES ('template_earlier', 'member_order');
+      INSERT INTO chore_occurrences
+        (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
+         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at, description_snapshot, due_time_snapshot)
+      VALUES
+        ('occurrence_later', 'household_order', 'template_later', '2026-08-10', 'default',
+         'Later', 'Morning', 'member_order', 'pending', NULL, NULL, NULL, 'now', 'now', NULL, '08:00'),
+        ('occurrence_earlier', 'household_order', 'template_earlier', '2026-08-10', 'default',
+         'Earlier', 'Morning', 'member_order', 'pending', NULL, NULL, NULL, 'now', 'now', NULL, '07:30');
+    `);
+    database.exec(
+      readFileSync(
+        fileURLToPath(new URL('./0018_chore_windows_and_order.sql', import.meta.url)),
+        'utf8',
+      ),
+    );
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 18').get()).toEqual(
+      { name: 'chore_windows_and_order' },
+    );
+    expect(
+      database.prepare('SELECT id, sort_order FROM chore_templates ORDER BY sort_order').all(),
+    ).toEqual([
+      { id: 'template_earlier', sort_order: 0 },
+      { id: 'template_later', sort_order: 1 },
+    ]);
+    expect(
+      database
+        .prepare(
+          'SELECT id, sort_order_snapshot FROM chore_occurrences ORDER BY sort_order_snapshot',
+        )
+        .all(),
+    ).toEqual([
+      { id: 'occurrence_earlier', sort_order_snapshot: 0 },
+      { id: 'occurrence_later', sort_order_snapshot: 1 },
+    ]);
+    const templateColumns = database.prepare('PRAGMA table_info(chore_templates)').all() as Array<{
+      name: string;
+    }>;
+    const occurrenceColumns = database
+      .prepare('PRAGMA table_info(chore_occurrences)')
+      .all() as Array<{ name: string }>;
+    expect(templateColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['available_from_time', 'sort_order']),
+    );
+    expect(occurrenceColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['available_from_time_snapshot', 'sort_order_snapshot']),
+    );
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds credential-free Home Assistant setup metadata with strict mapping JSON', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 19').get()).toEqual(
+      { name: 'home_assistant_connection_setup' },
+    );
+    const columns = database
+      .prepare('PRAGMA table_info(home_assistant_connection_settings)')
+      .all() as Array<{ name: string }>;
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        'server_host',
+        'instance_name',
+        'state_mappings_json',
+        'action_mappings_json',
+      ]),
+    );
+    expect(columns.map((column) => column.name)).not.toEqual(
+      expect.arrayContaining(['token', 'server_url', 'entity_id', 'credential']),
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_ha_setup', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO home_assistant_connection_settings VALUES (
+        'household_ha_setup', 'home_assistant_setup_test', 'home-assistant', 'Living room',
+        'homeassistant.local', 'Ramsay Home', '2026.8.1', 'ready',
+        '{"occupancy":"Family home","televisionPower":"Living room television","hearthForeground":"Hearth app active","protectedMedia":"Protected playback active"}',
+        '{"evening":"Evening","goodnight":"Goodnight","screenOff":"Screen off"}',
+        'now', 'now', NULL, 'now', 'now'
+      );
+    `);
+    expect(() =>
+      database.exec(`
+        UPDATE home_assistant_connection_settings
+        SET action_mappings_json = 'not-json'
+        WHERE household_id = 'household_ha_setup';
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds adult recovery codes and links sessions to revocable passkeys', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    for (const migration of PRE_ADULT_ACCESS_MIGRATIONS) {
+      database.exec(readFileSync(fileURLToPath(new URL(migration, import.meta.url)), 'utf8'));
+    }
+    database.exec(`
+      INSERT INTO households
+        (id, name, timezone, locale, week_starts_on, created_at, updated_at)
+      VALUES ('household_existing', 'Existing', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members
+        (id, household_id, display_name, colour, avatar_key, role, archived_at, created_at,
+         updated_at, capabilities_json)
+      VALUES ('member_existing', 'household_existing', 'Existing adult', '#2f766d', NULL,
+              'adult', NULL, 'now', 'now', '["household.admin","household.view"]');
+      INSERT INTO passkey_credentials
+        (id, credential_id, household_id, member_id, webauthn_user_id, public_key, counter,
+         device_type, backed_up, transports_json, label, created_at, last_used_at, revoked_at)
+      VALUES ('passkey_existing', 'credential_existing', 'household_existing', 'member_existing',
+              'user_existing', X'0102', 0, 'singleDevice', 0, '[]', 'Existing iPhone', 'now',
+              NULL, NULL);
+      INSERT INTO companion_sessions
+        (token_hash, household_id, member_id, created_at, last_seen_at, expires_at, revoked_at)
+      VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+              'household_existing', 'member_existing', 'now', 'now', 'later', NULL);
+    `);
+    database.exec(
+      readFileSync(
+        fileURLToPath(new URL('./0020_adult_access_recovery.sql', import.meta.url)),
+        'utf8',
+      ),
+    );
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 20').get()).toEqual(
+      { name: 'adult_access_recovery' },
+    );
+    const sessionColumns = database
+      .prepare('PRAGMA table_info(companion_sessions)')
+      .all() as Array<{ name: string }>;
+    expect(sessionColumns.map((column) => column.name)).toContain('credential_id');
+    expect(
+      database
+        .prepare(
+          `SELECT credential_id FROM companion_sessions
+           WHERE household_id = 'household_existing'`,
+        )
+        .get(),
+    ).toEqual({ credential_id: 'credential_existing' });
+    database.exec(`
+      INSERT INTO households VALUES ('household_access', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members VALUES (
+        'member_access', 'household_access', 'Adult', '#2f766d', NULL, 'adult', NULL,
+        'now', 'now', '["household.admin","household.view"]'
+      );
+      INSERT INTO companion_recovery_codes VALUES (
+        'recovery_one', 'household_access', 'member_access',
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'member_access', '2026-08-15T00:00:00.000Z', '2027-02-11T00:00:00.000Z', NULL, NULL
+      );
+    `);
+    expect(() =>
+      database.exec(`
+        INSERT INTO companion_recovery_codes VALUES (
+          'recovery_two', 'household_access', 'member_access',
+          'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          'member_access', '2026-08-15T00:00:00.000Z', '2027-02-11T00:00:00.000Z', NULL, NULL
+        );
+      `),
+    ).toThrow(/UNIQUE/);
+    database.exec(`
+      UPDATE companion_recovery_codes SET revoked_at = '2026-08-15T00:01:00.000Z'
+      WHERE id = 'recovery_one';
+      INSERT INTO companion_recovery_codes VALUES (
+        'recovery_two', 'household_access', 'member_access',
+        'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        'member_access', '2026-08-15T00:02:00.000Z', '2027-02-11T00:00:00.000Z', NULL, NULL
+      );
+    `);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
 });

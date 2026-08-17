@@ -7,59 +7,69 @@ import {
   assertNoActiveListDuplicate,
   choreRecurrenceRule,
   choreRepeatFromRule,
+  localDateInTimezone,
   normaliseListItemText,
   PlanningDomainError,
-  reverseRewardEntry,
-  rewardBalances,
 } from '@hearth/core';
 import {
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
+  ChoreTemplateOrderCommandResultSchema,
   ChoreTemplateSchema,
+  HouseholdListSettingsSchema,
   HouseholdListSchema,
   HouseholdListsSchema,
   ListItemCommandResultSchema,
   ListItemSchema,
+  ListSettingsCommandResultSchema,
   MealCommandResultSchema,
   MealPlanEntrySchema,
   MealPlanSchema,
+  MealPlanWeekCommandResultSchema,
   MemberSchema,
-  RewardCommandResultSchema,
-  RewardDefinitionCommandResultSchema,
-  RewardDefinitionSchema,
-  RewardLedgerEntrySchema,
-  RewardsOverviewSchema,
   SavedMealCommandResultSchema,
+  SavedMealLibrarySchema,
   SavedMealSchema,
   type AddListItemRequest,
-  type AdjustRewardRequest,
   type AuditSummary,
   type ChoreTemplate,
   type ChoreTemplateCommandResult,
   type ChoreTemplateList,
+  type ChoreTemplateOrderCommandResult,
+  type CreateHouseholdListRequest,
   type CreateChoreTemplateRequest,
-  type CreateRewardDefinitionRequest,
   type CreateSavedMealRequest,
+  type ClearMealPlanWeekRequest,
+  type CopyMealPlanWeekRequest,
   type DemoScenario,
   type HouseholdList,
+  type HouseholdListSettings,
   type HouseholdLists,
   type ListItem,
   type ListItemCommandResult,
+  type ListSettingsCommandResult,
   type MealCommandResult,
   type MealPlan,
+  type MealPlanWeekCommandResult,
   type Member,
-  type RewardCommandResult,
-  type RewardDefinitionCommandResult,
-  type RewardLedgerEntry,
-  type RewardsOverview,
   type SavedMeal,
   type SavedMealCommandResult,
+  type SavedMealLibrary,
   type UpdateChoreTemplateRequest,
+  type UpdateHouseholdListRequest,
+  type UpdateListItemRequest,
+  type ReorderHouseholdListsRequest,
+  type ReorderChoreTemplatesRequest,
+  type ReorderListItemsRequest,
+  type RestoreChoreTemplateRequest,
   type UpsertMealPlanRequest,
+  type UpdateMealPlanWeekRequest,
+  type UpdateSavedMealRequest,
 } from '@hearth/shared';
 
 import { createDemoSeed, DEMO_HOUSEHOLD_ID, DEMO_LOCAL_DATE, DEMO_NOW } from './demo/seed.js';
 import { type CommandActor, RepositoryError } from './repository.js';
+import { FixedClock, type HearthClock } from './runtime-context.js';
 
 interface AuditedResult {
   audit: AuditSummary;
@@ -68,6 +78,59 @@ interface AuditedResult {
 
 export interface PlanningRepository {
   getLists(householdId: string): Promise<HouseholdLists>;
+  getListSettings(householdId: string, actor: CommandActor): Promise<HouseholdListSettings>;
+  createList(
+    householdId: string,
+    input: CreateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  updateList(
+    householdId: string,
+    listId: string,
+    input: UpdateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  archiveList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  restoreList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  reorderLists(
+    householdId: string,
+    input: ReorderHouseholdListsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  updateListItem(
+    householdId: string,
+    itemId: string,
+    input: UpdateListItemRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  archiveListItem(
+    householdId: string,
+    itemId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  reorderListItems(
+    householdId: string,
+    listId: string,
+    input: ReorderListItemsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
+  clearCheckedListItems(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult>;
   addListItem(
     householdId: string,
     listId: string,
@@ -97,23 +160,40 @@ export interface PlanningRepository {
     input: CreateSavedMealRequest,
     actor: CommandActor,
   ): Promise<SavedMealCommandResult>;
-  getRewards(householdId: string): Promise<RewardsOverview>;
-  createRewardDefinition(
+  getSavedMealLibrary(householdId: string, actor: CommandActor): Promise<SavedMealLibrary>;
+  updateSavedMeal(
     householdId: string,
-    input: CreateRewardDefinitionRequest,
+    mealId: string,
+    input: UpdateSavedMealRequest,
     actor: CommandActor,
-  ): Promise<RewardDefinitionCommandResult>;
-  adjustReward(
+  ): Promise<SavedMealCommandResult>;
+  archiveSavedMeal(
     householdId: string,
-    input: AdjustRewardRequest,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult>;
-  reverseReward(
-    householdId: string,
-    entryId: string,
+    mealId: string,
     requestId: string,
     actor: CommandActor,
-  ): Promise<RewardCommandResult>;
+  ): Promise<SavedMealCommandResult>;
+  restoreSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult>;
+  updateMealPlanWeek(
+    householdId: string,
+    input: UpdateMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult>;
+  clearMealPlanWeek(
+    householdId: string,
+    input: ClearMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult>;
+  copyMealPlanWeek(
+    householdId: string,
+    input: CopyMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult>;
   getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList>;
   createChoreTemplate(
     householdId: string,
@@ -126,6 +206,23 @@ export interface PlanningRepository {
     input: UpdateChoreTemplateRequest,
     actor: CommandActor,
   ): Promise<ChoreTemplateCommandResult>;
+  reorderChoreTemplates(
+    householdId: string,
+    input: ReorderChoreTemplatesRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateOrderCommandResult>;
+  archiveChoreTemplate(
+    householdId: string,
+    templateId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult>;
+  restoreChoreTemplate(
+    householdId: string,
+    templateId: string,
+    input: RestoreChoreTemplateRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult>;
   reset(): void;
   setScenario(scenario: DemoScenario): void;
   close(): void;
@@ -133,14 +230,16 @@ export interface PlanningRepository {
 
 export class InMemoryPlanningRepository implements PlanningRepository {
   private lists = demoLists();
+  private archivedLists: Array<{ list: HouseholdList; archivedAt: string }> = [];
   private savedMeals = demoSavedMeals();
+  private archivedSavedMeals: SavedMeal[] = [];
   private mealEntries = demoMealEntries();
-  private definitions = demoRewardDefinitions();
-  private ledger = demoRewardLedger();
   private templates = demoChoreTemplates();
   private readonly receipts = new Map<string, AuditedResult>();
   private sequence = 100;
   private scenario: DemoScenario = 'healthy';
+
+  constructor(private readonly clock: HearthClock = new FixedClock(DEMO_NOW)) {}
 
   async getLists(householdId: string): Promise<HouseholdLists> {
     this.assertHousehold(householdId);
@@ -148,6 +247,200 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       householdId,
       lists: this.scenario === 'empty' ? [] : this.lists,
     });
+  }
+
+  async getListSettings(householdId: string, actor: CommandActor): Promise<HouseholdListSettings> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.listSettings(householdId);
+  }
+
+  async createList(
+    householdId: string,
+    input: CreateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-create', input.requestId, ListSettingsCommandResultSchema, () => {
+      this.assertUniqueListName(input.name);
+      const created = list(this.id('list'), input.name, input.type, input.color, []);
+      this.lists.push(created);
+      return this.settingsResult(householdId, 'list.create', created.id, actor);
+    });
+  }
+
+  async updateList(
+    householdId: string,
+    listId: string,
+    input: UpdateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-update', input.requestId, ListSettingsCommandResultSchema, () => {
+      const current = this.list(listId);
+      this.assertUniqueListName(input.name, listId);
+      current.name = input.name;
+      current.type = input.type;
+      current.color = input.color;
+      return this.settingsResult(householdId, 'list.update', listId, actor);
+    });
+  }
+
+  async archiveList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-archive', requestId, ListSettingsCommandResultSchema, () => {
+      if (this.lists.length <= 1) {
+        throw new RepositoryError('CONFLICT', 'Keep at least one household list active.');
+      }
+      const index = this.lists.findIndex((candidate) => candidate.id === listId);
+      if (index < 0) throw new RepositoryError('NOT_FOUND', 'That list was not found.');
+      const [removed] = this.lists.splice(index, 1);
+      if (removed === undefined) throw new RepositoryError('NOT_FOUND', 'That list was not found.');
+      this.archivedLists.push({ list: removed, archivedAt: this.now() });
+      return this.settingsResult(householdId, 'list.archive', listId, actor);
+    });
+  }
+
+  async restoreList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-restore', requestId, ListSettingsCommandResultSchema, () => {
+      const index = this.archivedLists.findIndex((candidate) => candidate.list.id === listId);
+      if (index < 0) throw new RepositoryError('NOT_FOUND', 'That archived list was not found.');
+      const [restored] = this.archivedLists.splice(index, 1);
+      if (restored === undefined)
+        throw new RepositoryError('NOT_FOUND', 'That archived list was not found.');
+      this.lists.push(restored.list);
+      return this.settingsResult(householdId, 'list.restore', listId, actor, 'reversed');
+    });
+  }
+
+  async reorderLists(
+    householdId: string,
+    input: ReorderHouseholdListsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-reorder',
+      input.requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        assertExactOrder(
+          this.lists.map((candidate) => candidate.id),
+          input.orderedListIds,
+          'List order must include every active list exactly once.',
+        );
+        const byId = new Map(this.lists.map((candidate) => [candidate.id, candidate]));
+        this.lists = input.orderedListIds.map((idValue) => byId.get(idValue)!);
+        return this.settingsResult(householdId, 'list.reorder', householdId, actor);
+      },
+    );
+  }
+
+  async updateListItem(
+    householdId: string,
+    itemId: string,
+    input: UpdateListItemRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-item-update',
+      input.requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        const owner = this.listContainingItem(itemId);
+        assertNoActiveListDuplicate(
+          owner.list.items.filter((candidate) => candidate.id !== itemId),
+          input.text,
+        );
+        owner.item.text = input.text;
+        owner.item.quantity = input.quantity;
+        return this.settingsResult(householdId, 'list.item.update', itemId, actor);
+      },
+    );
+  }
+
+  async archiveListItem(
+    householdId: string,
+    itemId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun('list-item-archive', requestId, ListSettingsCommandResultSchema, () => {
+      const owner = this.listContainingItem(itemId);
+      owner.list.items.splice(owner.list.items.indexOf(owner.item), 1);
+      refreshListCounts(owner.list);
+      return this.settingsResult(householdId, 'list.item.archive', itemId, actor);
+    });
+  }
+
+  async reorderListItems(
+    householdId: string,
+    listId: string,
+    input: ReorderListItemsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-item-reorder',
+      input.requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        const current = this.list(listId);
+        assertExactOrder(
+          current.items.map((candidate) => candidate.id),
+          input.orderedItemIds,
+          'Item order must include every item exactly once.',
+        );
+        const byId = new Map(current.items.map((candidate) => [candidate.id, candidate]));
+        current.items = input.orderedItemIds.map((idValue) => byId.get(idValue)!);
+        return this.settingsResult(householdId, 'list.item.reorder', listId, actor);
+      },
+    );
+  }
+
+  async clearCheckedListItems(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'list-item-clear-checked',
+      requestId,
+      ListSettingsCommandResultSchema,
+      () => {
+        const current = this.list(listId);
+        if (!current.items.some((itemValue) => itemValue.checked)) {
+          throw new RepositoryError('CONFLICT', 'There are no checked items to clear.');
+        }
+        current.items = current.items.filter((itemValue) => !itemValue.checked);
+        refreshListCounts(current);
+        return this.settingsResult(householdId, 'list.item.clear-checked', listId, actor);
+      },
+    );
   }
 
   async addListItem(
@@ -216,6 +509,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     this.assertHousehold(householdId);
     this.assertAdmin(actor);
     return this.replayOrRun('meal-plan', input.requestId, MealCommandResultSchema, () => {
+      this.assertSavedMealReferences([input.savedMealId]);
       const entry = MealPlanEntrySchema.parse({
         id:
           this.mealEntries.find(
@@ -251,14 +545,19 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       input.requestId,
       SavedMealCommandResultSchema,
       () => {
-        if (this.savedMeals.some((meal) => sameText(meal.name, input.name))) {
+        if (
+          this.savedMeals.some((meal) => sameText(meal.name, input.name)) ||
+          this.archivedSavedMeals.some((meal) => sameText(meal.name, input.name))
+        ) {
           throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
         }
         const savedMeal = SavedMealSchema.parse({
           id: this.id('saved_meal'),
           name: input.name,
           description: input.description,
-          favourite: true,
+          preparationMinutes: input.preparationMinutes,
+          favourite: input.favourite,
+          archivedAt: null,
         });
         this.savedMeals.push(savedMeal);
         return {
@@ -270,107 +569,204 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     );
   }
 
-  async getRewards(householdId: string): Promise<RewardsOverview> {
+  async getSavedMealLibrary(householdId: string, actor: CommandActor): Promise<SavedMealLibrary> {
     this.assertHousehold(householdId);
-    return rewardsOverview(
+    this.assertAdmin(actor);
+    return SavedMealLibrarySchema.parse({
       householdId,
-      this.scenario === 'empty' ? [] : this.definitions,
-      this.scenario === 'empty' ? [] : this.ledger,
-    );
+      activeMeals: this.scenario === 'empty' ? [] : sortSavedMeals(this.savedMeals),
+      archivedMeals: this.scenario === 'empty' ? [] : sortSavedMeals(this.archivedSavedMeals),
+    });
   }
 
-  async createRewardDefinition(
+  async updateSavedMeal(
     householdId: string,
-    input: CreateRewardDefinitionRequest,
+    mealId: string,
+    input: UpdateSavedMealRequest,
     actor: CommandActor,
-  ): Promise<RewardDefinitionCommandResult> {
+  ): Promise<SavedMealCommandResult> {
     this.assertHousehold(householdId);
     this.assertAdmin(actor);
     return this.replayOrRun(
-      'reward-definition-create',
+      'saved-meal-update',
       input.requestId,
-      RewardDefinitionCommandResultSchema,
+      SavedMealCommandResultSchema,
       () => {
-        const definition = RewardDefinitionSchema.parse({
-          id: this.id('reward'),
+        const index = this.savedMeals.findIndex((meal) => meal.id === mealId);
+        if (index < 0) throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+        if (
+          this.savedMeals.some((meal) => meal.id !== mealId && sameText(meal.name, input.name)) ||
+          this.archivedSavedMeals.some((meal) => sameText(meal.name, input.name))
+        ) {
+          throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
+        }
+        const savedMeal = SavedMealSchema.parse({
+          id: mealId,
           name: input.name,
           description: input.description,
-          cost: input.cost,
-          approvalRequired: input.approvalRequired,
-          archived: false,
+          preparationMinutes: input.preparationMinutes,
+          favourite: input.favourite,
+          archivedAt: null,
         });
-        this.definitions.push(definition);
+        this.savedMeals[index] = savedMeal;
         return {
-          definition,
-          audit: this.audit('reward.definition.create', definition.id, actor),
+          savedMeal,
+          audit: this.audit('saved-meal.update', mealId, actor),
           replayed: false,
         };
       },
     );
   }
 
-  async adjustReward(
+  async archiveSavedMeal(
     householdId: string,
-    input: AdjustRewardRequest,
+    mealId: string,
+    requestId: string,
     actor: CommandActor,
-  ): Promise<RewardCommandResult> {
+  ): Promise<SavedMealCommandResult> {
     this.assertHousehold(householdId);
     this.assertAdmin(actor);
-    return this.replayOrRun('reward-adjust', input.requestId, RewardCommandResultSchema, () => {
-      const member = demoMember(input.memberId);
-      const entry = RewardLedgerEntrySchema.parse({
-        id: this.id('reward_entry'),
-        member,
-        delta: input.delta,
-        reason: input.reason,
-        rewardId: input.rewardId,
-        relatedChoreOccurrenceId: null,
-        reversalOfEntryId: null,
-        occurredAt: new Date().toISOString(),
-        actorId: actor.id,
-        source: actor.source,
-      });
-      this.ledger.unshift(entry);
+    return this.replayOrRun('saved-meal-archive', requestId, SavedMealCommandResultSchema, () => {
+      const index = this.savedMeals.findIndex((meal) => meal.id === mealId);
+      const current = this.savedMeals[index];
+      if (current === undefined)
+        throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+      const savedMeal = SavedMealSchema.parse({ ...current, archivedAt: this.now() });
+      this.savedMeals.splice(index, 1);
+      this.archivedSavedMeals.push(savedMeal);
       return {
-        entry,
-        balances: rewardsOverview(householdId, this.definitions, this.ledger).balances,
-        audit: this.audit('reward.adjust', entry.id, actor),
+        savedMeal,
+        audit: this.audit('saved-meal.archive', mealId, actor),
         replayed: false,
       };
     });
   }
 
-  async reverseReward(
+  async restoreSavedMeal(
     householdId: string,
-    entryId: string,
+    mealId: string,
     requestId: string,
     actor: CommandActor,
-  ): Promise<RewardCommandResult> {
+  ): Promise<SavedMealCommandResult> {
     this.assertHousehold(householdId);
     this.assertAdmin(actor);
-    return this.replayOrRun('reward-reverse', requestId, RewardCommandResultSchema, () => {
-      const original = this.ledger.find((entry) => entry.id === entryId);
-      if (original === undefined)
-        throw new RepositoryError('NOT_FOUND', 'That reward entry was not found.');
-      if (this.ledger.some((entry) => entry.reversalOfEntryId === original.id)) {
-        throw new RepositoryError('CONFLICT', 'That reward change has already been reversed.');
-      }
-      const reversed = reverseRewardEntry(original, {
-        entryId: this.id('reward_entry'),
-        auditId: this.id('audit'),
-        actorId: actor.id,
-        actorType: actor.type,
-        source: actor.source,
-        occurredAt: new Date().toISOString(),
-      });
-      this.ledger.unshift(reversed.entry);
+    return this.replayOrRun('saved-meal-restore', requestId, SavedMealCommandResultSchema, () => {
+      const index = this.archivedSavedMeals.findIndex((meal) => meal.id === mealId);
+      const current = this.archivedSavedMeals[index];
+      if (current === undefined)
+        throw new RepositoryError('NOT_FOUND', 'That archived meal was not found.');
+      const savedMeal = SavedMealSchema.parse({ ...current, archivedAt: null });
+      this.archivedSavedMeals.splice(index, 1);
+      this.savedMeals.push(savedMeal);
       return {
-        entry: reversed.entry,
-        balances: rewardsOverview(householdId, this.definitions, this.ledger).balances,
-        audit: reversed.audit,
+        savedMeal,
+        audit: this.audit('saved-meal.restore', mealId, actor, 'reversed'),
         replayed: false,
       };
     });
+  }
+
+  async updateMealPlanWeek(
+    householdId: string,
+    input: UpdateMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'meal-week-update',
+      input.requestId,
+      MealPlanWeekCommandResultSchema,
+      () => {
+        this.assertSavedMealReferences(input.entries.map((entry) => entry.savedMealId));
+        this.mealEntries = this.mealEntries.filter(
+          (entry) => !localDateInWeek(entry.localDate, input.startDate),
+        );
+        this.mealEntries.push(
+          ...input.entries.map((entry) =>
+            MealPlanEntrySchema.parse({ ...entry, id: this.id('meal_plan') }),
+          ),
+        );
+        return this.weekResult(householdId, input.startDate, 'meal.week.update', actor);
+      },
+    );
+  }
+
+  async clearMealPlanWeek(
+    householdId: string,
+    input: ClearMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'meal-week-clear',
+      input.requestId,
+      MealPlanWeekCommandResultSchema,
+      () => {
+        const retained = this.mealEntries.filter(
+          (entry) => !localDateInWeek(entry.localDate, input.startDate),
+        );
+        if (retained.length === this.mealEntries.length) {
+          throw new RepositoryError('CONFLICT', 'There are no planned meals to clear.');
+        }
+        this.mealEntries = retained;
+        return this.weekResult(householdId, input.startDate, 'meal.week.clear', actor);
+      },
+    );
+  }
+
+  async copyMealPlanWeek(
+    householdId: string,
+    input: CopyMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'meal-week-copy',
+      input.requestId,
+      MealPlanWeekCommandResultSchema,
+      () => {
+        if (input.sourceStartDate === input.targetStartDate) {
+          throw new RepositoryError('CONFLICT', 'Choose a different week to copy.');
+        }
+        const source = this.mealEntries.filter((entry) =>
+          localDateInWeek(entry.localDate, input.sourceStartDate),
+        );
+        if (source.length === 0) {
+          throw new RepositoryError('CONFLICT', 'The earlier week has no meals to copy.');
+        }
+        const target = this.mealEntries.filter((entry) =>
+          localDateInWeek(entry.localDate, input.targetStartDate),
+        );
+        if (target.length > 0 && !input.replaceExisting) {
+          throw new RepositoryError('CONFIRMATION_REQUIRED', 'Confirm replacing this week first.');
+        }
+        this.mealEntries = this.mealEntries.filter(
+          (entry) => !localDateInWeek(entry.localDate, input.targetStartDate),
+        );
+        this.mealEntries.push(
+          ...source.map((entry) =>
+            MealPlanEntrySchema.parse({
+              ...entry,
+              id: this.id('meal_plan'),
+              savedMealId:
+                entry.savedMealId !== null &&
+                this.savedMeals.some((meal) => meal.id === entry.savedMealId)
+                  ? entry.savedMealId
+                  : null,
+              localDate: shiftLocalDateBetweenWeeks(
+                entry.localDate,
+                input.sourceStartDate,
+                input.targetStartDate,
+              ),
+            }),
+          ),
+        );
+        return this.weekResult(householdId, input.targetStartDate, 'meal.week.copy', actor);
+      },
+    );
   }
 
   async getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList> {
@@ -378,7 +774,15 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     this.assertAdmin(actor);
     return ChoreTemplateListSchema.parse({
       householdId,
-      templates: this.scenario === 'empty' ? [] : this.templates,
+      templates:
+        this.scenario === 'empty'
+          ? []
+          : [...this.templates].sort(
+              (left, right) =>
+                Number(left.archived) - Number(right.archived) ||
+                left.sortOrder - right.sortOrder ||
+                left.id.localeCompare(right.id),
+            ),
     });
   }
 
@@ -394,7 +798,9 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       input.requestId,
       ChoreTemplateCommandResultSchema,
       () => {
-        const template = templateFromInput(this.id('template'), input);
+        const nextSortOrder =
+          Math.max(-1, ...this.templates.map((template) => template.sortOrder)) + 1;
+        const template = templateFromInput(this.id('template'), input, false, nextSortOrder);
         this.templates.push(template);
         return {
           template,
@@ -419,9 +825,10 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       ChoreTemplateCommandResultSchema,
       () => {
         const index = this.templates.findIndex((template) => template.id === templateId);
-        if (index < 0)
+        const current = this.templates[index];
+        if (current === undefined)
           throw new RepositoryError('NOT_FOUND', 'That recurring chore was not found.');
-        const template = templateFromInput(templateId, input);
+        const template = templateFromInput(templateId, input, current.archived, current.sortOrder);
         this.templates[index] = template;
         return {
           template,
@@ -432,12 +839,123 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     );
   }
 
+  async reorderChoreTemplates(
+    householdId: string,
+    input: ReorderChoreTemplatesRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateOrderCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'chore-template-reorder',
+      input.requestId,
+      ChoreTemplateOrderCommandResultSchema,
+      () => {
+        const active = this.templates.filter((template) => !template.archived);
+        assertExactOrder(
+          active.map((template) => template.id),
+          input.orderedTemplateIds,
+          'Chore order must include every active schedule exactly once.',
+        );
+        const positions = new Map(
+          input.orderedTemplateIds.map((templateId, index) => [templateId, index]),
+        );
+        this.templates = this.templates.map((template) =>
+          template.archived
+            ? template
+            : ChoreTemplateSchema.parse({
+                ...template,
+                sortOrder: positions.get(template.id),
+              }),
+        );
+        return {
+          list: ChoreTemplateListSchema.parse({
+            householdId,
+            templates: [...this.templates].sort(
+              (left, right) =>
+                Number(left.archived) - Number(right.archived) ||
+                left.sortOrder - right.sortOrder ||
+                left.id.localeCompare(right.id),
+            ),
+          }),
+          audit: this.audit('chore-template.reorder', householdId, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async archiveChoreTemplate(
+    householdId: string,
+    templateId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'chore-template-archive',
+      requestId,
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const index = this.templates.findIndex((template) => template.id === templateId);
+        const current = this.templates[index];
+        if (current === undefined)
+          throw new RepositoryError('NOT_FOUND', 'That chore was not found.');
+        if (current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already archived.');
+        const template = ChoreTemplateSchema.parse({ ...current, archived: true });
+        this.templates[index] = template;
+        return {
+          template,
+          audit: this.audit('chore-template.archive', template.id, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async restoreChoreTemplate(
+    householdId: string,
+    templateId: string,
+    input: RestoreChoreTemplateRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertHousehold(householdId);
+    this.assertAdmin(actor);
+    return this.replayOrRun(
+      'chore-template-restore',
+      input.requestId,
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const index = this.templates.findIndex((template) => template.id === templateId);
+        const current = this.templates[index];
+        if (current === undefined)
+          throw new RepositoryError('NOT_FOUND', 'That chore was not found.');
+        if (!current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already active.');
+        const template = ChoreTemplateSchema.parse({
+          ...current,
+          archived: false,
+          activeFrom: input.resumeFrom,
+          activeUntil: current.repeat === 'once' ? input.resumeFrom : null,
+        });
+        this.templates[index] = template;
+        return {
+          template,
+          audit: this.audit('chore-template.restore', template.id, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
   reset(): void {
     this.lists = demoLists();
+    this.archivedLists = [];
     this.savedMeals = demoSavedMeals();
+    this.archivedSavedMeals = [];
     this.mealEntries = demoMealEntries();
-    this.definitions = demoRewardDefinitions();
-    this.ledger = demoRewardLedger();
     this.templates = demoChoreTemplates();
     this.receipts.clear();
     this.sequence = 100;
@@ -477,7 +995,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       const changed = ListItemSchema.parse({
         ...item,
         checked,
-        checkedAt: checked ? new Date().toISOString() : null,
+        checkedAt: checked ? this.now() : null,
         checkedByActorId: checked ? actor.id : null,
       });
       list.items[list.items.indexOf(item)] = changed;
@@ -534,6 +1052,79 @@ export class InMemoryPlanningRepository implements PlanningRepository {
     return list;
   }
 
+  private listContainingItem(itemId: string): { list: HouseholdList; item: ListItem } {
+    const owner = this.lists.find((candidate) =>
+      candidate.items.some((itemValue) => itemValue.id === itemId),
+    );
+    const itemValue = owner?.items.find((candidate) => candidate.id === itemId);
+    if (owner === undefined || itemValue === undefined) {
+      throw new RepositoryError('NOT_FOUND', 'That list item was not found.');
+    }
+    return { list: owner, item: itemValue };
+  }
+
+  private assertSavedMealReferences(savedMealIds: readonly (string | null)[]): void {
+    const activeIds = new Set(this.savedMeals.map((meal) => meal.id));
+    if (savedMealIds.some((mealId) => mealId !== null && !activeIds.has(mealId))) {
+      throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+    }
+  }
+
+  private weekResult(
+    householdId: string,
+    startDate: string,
+    action: AuditSummary['action'],
+    actor: CommandActor,
+  ): MealPlanWeekCommandResult {
+    return {
+      plan: mealPlan(householdId, startDate, this.mealEntries, sortSavedMeals(this.savedMeals)),
+      audit: this.audit(action, mealWeekTargetId(startDate), actor),
+      replayed: false,
+    };
+  }
+
+  private assertUniqueListName(name: string, excludingId?: string): void {
+    const exists = [...this.lists, ...this.archivedLists.map((entry) => entry.list)].some(
+      (candidate) => candidate.id !== excludingId && sameText(candidate.name, name),
+    );
+    if (exists) throw new RepositoryError('CONFLICT', 'A list with that name already exists.');
+  }
+
+  private listSettings(householdId: string): HouseholdListSettings {
+    return HouseholdListSettingsSchema.parse({
+      householdId,
+      activeLists: this.scenario === 'empty' ? [] : this.lists,
+      archivedLists:
+        this.scenario === 'empty'
+          ? []
+          : this.archivedLists.map(({ list: archived, archivedAt }) => ({
+              id: archived.id,
+              name: archived.name,
+              type: archived.type,
+              color: archived.color,
+              archivedAt,
+            })),
+    });
+  }
+
+  private settingsResult(
+    householdId: string,
+    action: AuditSummary['action'],
+    targetId: string,
+    actor: CommandActor,
+    result: AuditSummary['result'] = 'succeeded',
+  ): ListSettingsCommandResult {
+    return {
+      settings: this.listSettings(householdId),
+      audit: this.audit(action, targetId, actor, result),
+      replayed: false,
+    };
+  }
+
+  private now(): string {
+    return this.clock.now().toISOString();
+  }
+
   private assertHousehold(householdId: string): void {
     if (householdId !== DEMO_HOUSEHOLD_ID) {
       throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
@@ -566,7 +1157,7 @@ export class InMemoryPlanningRepository implements PlanningRepository {
       source: actor.source,
       action,
       targetId,
-      occurredAt: new Date().toISOString(),
+      occurredAt: this.now(),
       result,
     };
   }
@@ -579,9 +1170,16 @@ export class InMemoryPlanningRepository implements PlanningRepository {
 
 export class SqlitePlanningRepository implements PlanningRepository {
   private scenario: DemoScenario = 'healthy';
+  private readonly demoSeedEnabled: boolean;
+  private readonly clock: HearthClock;
 
-  constructor(private readonly database: InstanceType<typeof Database>) {
-    this.seedDemo();
+  constructor(
+    private readonly database: InstanceType<typeof Database>,
+    options: { seedDemo?: boolean; clock?: HearthClock } = {},
+  ) {
+    this.demoSeedEnabled = options.seedDemo ?? true;
+    this.clock = options.clock ?? new FixedClock(DEMO_NOW);
+    if (this.demoSeedEnabled) this.seedDemo();
   }
 
   async getLists(householdId: string): Promise<HouseholdLists> {
@@ -596,6 +1194,292 @@ export class SqlitePlanningRepository implements PlanningRepository {
       householdId,
       lists: this.scenario === 'empty' ? [] : rows.map((row) => this.readList(row.id)),
     });
+  }
+
+  async getListSettings(householdId: string, actor: CommandActor): Promise<HouseholdListSettings> {
+    this.assertAdmin(householdId, actor);
+    return this.readListSettings(householdId);
+  }
+
+  async createList(
+    householdId: string,
+    input: CreateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-create',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        this.assertUniqueListName(householdId, input.name);
+        const listId = id('list');
+        const now = this.now();
+        const sortOrder = this.nextListSortOrder(householdId);
+        this.database
+          .prepare(
+            `INSERT INTO household_lists
+              (id, household_id, name, list_type, colour, sort_order, archived_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+          )
+          .run(listId, householdId, input.name, input.type, input.color, sortOrder, now, now);
+        return this.settingsResult(householdId, 'list.create', listId, actor);
+      },
+    );
+  }
+
+  async updateList(
+    householdId: string,
+    listId: string,
+    input: UpdateHouseholdListRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-update',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        this.assertUniqueListName(householdId, input.name, listId);
+        this.database
+          .prepare(
+            `UPDATE household_lists
+             SET name = ?, list_type = ?, colour = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+          )
+          .run(input.name, input.type, input.color, this.now(), listId, householdId);
+        return this.settingsResult(householdId, 'list.update', listId, actor);
+      },
+    );
+  }
+
+  async archiveList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      requestId,
+      'list-archive',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        const activeCount = (
+          this.database
+            .prepare(
+              'SELECT COUNT(*) AS count FROM household_lists WHERE household_id = ? AND archived_at IS NULL',
+            )
+            .get(householdId) as { count: number }
+        ).count;
+        if (activeCount <= 1) {
+          throw new RepositoryError('CONFLICT', 'Keep at least one household list active.');
+        }
+        const now = this.now();
+        this.database
+          .prepare(
+            `UPDATE household_lists SET archived_at = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+          )
+          .run(now, now, listId, householdId);
+        return this.settingsResult(householdId, 'list.archive', listId, actor);
+      },
+    );
+  }
+
+  async restoreList(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    const archived = this.database
+      .prepare(
+        'SELECT id FROM household_lists WHERE id = ? AND household_id = ? AND archived_at IS NOT NULL',
+      )
+      .get(listId, householdId);
+    if (archived === undefined)
+      throw new RepositoryError('NOT_FOUND', 'That archived list was not found.');
+    return this.execute(
+      householdId,
+      requestId,
+      'list-restore',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        this.database
+          .prepare(
+            `UPDATE household_lists
+             SET archived_at = NULL, sort_order = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NOT NULL`,
+          )
+          .run(this.nextListSortOrder(householdId), this.now(), listId, householdId);
+        return this.settingsResult(householdId, 'list.restore', listId, actor, 'reversed');
+      },
+    );
+  }
+
+  async reorderLists(
+    householdId: string,
+    input: ReorderHouseholdListsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-reorder',
+      'household_list',
+      ListSettingsCommandResultSchema,
+      () => {
+        const activeIds = (
+          this.database
+            .prepare(
+              `SELECT id FROM household_lists
+               WHERE household_id = ? AND archived_at IS NULL ORDER BY sort_order, id`,
+            )
+            .all(householdId) as Array<{ id: string }>
+        ).map((row) => row.id);
+        assertExactOrder(
+          activeIds,
+          input.orderedListIds,
+          'List order must include every active list exactly once.',
+        );
+        const update = this.database.prepare(
+          'UPDATE household_lists SET sort_order = ?, updated_at = ? WHERE id = ? AND household_id = ?',
+        );
+        const now = this.now();
+        input.orderedListIds.forEach((idValue, index) =>
+          update.run(index, now, idValue, householdId),
+        );
+        return this.settingsResult(householdId, 'list.reorder', householdId, actor);
+      },
+    );
+  }
+
+  async updateListItem(
+    householdId: string,
+    itemId: string,
+    input: UpdateListItemRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    const owner = this.readItemOwner(householdId, itemId);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-item-update',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        const current = this.readList(owner.listId);
+        assertNoActiveListDuplicate(
+          current.items.filter((candidate) => candidate.id !== itemId),
+          input.text,
+        );
+        this.database
+          .prepare(
+            `UPDATE list_items
+             SET text = ?, normalised_text = ?, quantity = ?, updated_at = ?
+             WHERE id = ? AND archived_at IS NULL`,
+          )
+          .run(input.text, normaliseListItemText(input.text), input.quantity, this.now(), itemId);
+        return this.settingsResult(householdId, 'list.item.update', itemId, actor);
+      },
+    );
+  }
+
+  async archiveListItem(
+    householdId: string,
+    itemId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readItemOwner(householdId, itemId);
+    return this.execute(
+      householdId,
+      requestId,
+      'list-item-archive',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        const now = this.now();
+        this.database
+          .prepare('UPDATE list_items SET archived_at = ?, updated_at = ? WHERE id = ?')
+          .run(now, now, itemId);
+        return this.settingsResult(householdId, 'list.item.archive', itemId, actor);
+      },
+    );
+  }
+
+  async reorderListItems(
+    householdId: string,
+    listId: string,
+    input: ReorderListItemsRequest,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    const current = this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'list-item-reorder',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        assertExactOrder(
+          current.items.map((candidate) => candidate.id),
+          input.orderedItemIds,
+          'Item order must include every item exactly once.',
+        );
+        const update = this.database.prepare(
+          'UPDATE list_items SET position = ?, updated_at = ? WHERE id = ? AND list_id = ?',
+        );
+        const now = this.now();
+        input.orderedItemIds.forEach((idValue, index) => update.run(index, now, idValue, listId));
+        return this.settingsResult(householdId, 'list.item.reorder', listId, actor);
+      },
+    );
+  }
+
+  async clearCheckedListItems(
+    householdId: string,
+    listId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ListSettingsCommandResult> {
+    this.assertAdmin(householdId, actor);
+    this.readListForHousehold(householdId, listId);
+    return this.execute(
+      householdId,
+      requestId,
+      'list-item-clear-checked',
+      'list_item',
+      ListSettingsCommandResultSchema,
+      () => {
+        const now = this.now();
+        const result = this.database
+          .prepare(
+            `UPDATE list_items SET archived_at = ?, updated_at = ?
+             WHERE list_id = ? AND archived_at IS NULL AND checked_at IS NOT NULL`,
+          )
+          .run(now, now, listId);
+        if (result.changes === 0) {
+          throw new RepositoryError('CONFLICT', 'There are no checked items to clear.');
+        }
+        return this.settingsResult(householdId, 'list.item.clear-checked', listId, actor);
+      },
+    );
   }
 
   async addListItem(
@@ -615,7 +1499,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
       () => {
         const list = this.readListForHousehold(householdId, listId);
         assertNoActiveListDuplicate(list.items, input.text);
-        const now = new Date().toISOString();
+        const now = this.now();
         const itemId = id('list_item');
         const position = (
           this.database
@@ -645,7 +1529,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
         return {
           list: this.readList(listId),
           item,
-          audit: audit('list.item.add', itemId, actor),
+          audit: audit('list.item.add', itemId, actor, 'succeeded', now),
           replayed: false,
         };
       },
@@ -672,19 +1556,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
 
   async getMealPlan(householdId: string, startDate: string): Promise<MealPlan> {
     this.assertHousehold(householdId);
-    const endDate = addLocalDays(startDate, 6);
-    const entries = this.database
-      .prepare(
-        `SELECT * FROM meal_plan_entries
-         WHERE household_id = ? AND local_date BETWEEN ? AND ? ORDER BY local_date, meal_slot`,
-      )
-      .all(householdId, startDate, endDate) as MealRow[];
-    return mealPlan(
-      householdId,
-      startDate,
-      this.scenario === 'empty' ? [] : entries.map(mealFromRow),
-      this.scenario === 'empty' ? [] : this.readSavedMeals(householdId),
-    );
+    return this.readMealPlan(householdId, startDate);
   }
 
   async upsertMealPlan(
@@ -707,7 +1579,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
           )
           .get(householdId, input.localDate, input.slot) as { id: string } | undefined;
         const entryId = existing?.id ?? id('meal_plan');
-        const now = new Date().toISOString();
+        const now = this.now();
         this.database
           .prepare(
             `INSERT INTO meal_plan_entries
@@ -757,15 +1629,26 @@ export class SqlitePlanningRepository implements PlanningRepository {
       SavedMealCommandResultSchema,
       () => {
         const mealId = id('saved_meal');
-        const now = new Date().toISOString();
+        const now = this.now();
+        this.assertUniqueSavedMealName(householdId, input.name);
         try {
           this.database
             .prepare(
               `INSERT INTO saved_meals
-                (id, household_id, name, description, favourite, archived_at, created_at, updated_at)
-               VALUES (?, ?, ?, ?, 1, NULL, ?, ?)`,
+                (id, household_id, name, description, preparation_minutes, favourite,
+                 archived_at, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
             )
-            .run(mealId, householdId, input.name, input.description, now, now);
+            .run(
+              mealId,
+              householdId,
+              input.name,
+              input.description,
+              input.preparationMinutes,
+              input.favourite ? 1 : 0,
+              now,
+              now,
+            );
         } catch (error) {
           if (isUniqueError(error))
             throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
@@ -780,171 +1663,222 @@ export class SqlitePlanningRepository implements PlanningRepository {
     );
   }
 
-  async getRewards(householdId: string): Promise<RewardsOverview> {
-    this.assertHousehold(householdId);
-    const definitions = this.database
-      .prepare(
-        `SELECT * FROM reward_definitions
-         WHERE household_id = ? ORDER BY archived_at IS NOT NULL, cost, name`,
-      )
-      .all(householdId) as RewardDefinitionRow[];
-    const ledger = this.readRewardLedger(householdId);
-    return rewardsOverview(
-      householdId,
-      this.scenario === 'empty' ? [] : definitions.map(rewardDefinitionFromRow),
-      this.scenario === 'empty' ? [] : ledger,
-      this.readMembers(householdId),
-    );
+  async getSavedMealLibrary(householdId: string, actor: CommandActor): Promise<SavedMealLibrary> {
+    this.assertAdmin(householdId, actor);
+    return this.readSavedMealLibrary(householdId);
   }
 
-  async createRewardDefinition(
+  async updateSavedMeal(
     householdId: string,
-    input: CreateRewardDefinitionRequest,
+    mealId: string,
+    input: UpdateSavedMealRequest,
     actor: CommandActor,
-  ): Promise<RewardDefinitionCommandResult> {
+  ): Promise<SavedMealCommandResult> {
     this.assertAdmin(householdId, actor);
     return this.execute(
       householdId,
       input.requestId,
-      'reward-definition-create',
-      'reward_definition',
-      RewardDefinitionCommandResultSchema,
+      'saved-meal-update',
+      'saved_meal',
+      SavedMealCommandResultSchema,
       () => {
-        const definitionId = id('reward');
-        const now = new Date().toISOString();
-        this.database
-          .prepare(
-            `INSERT INTO reward_definitions
-              (id, household_id, name, description, cost, approval_required, archived_at,
-               created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-          )
-          .run(
-            definitionId,
-            householdId,
-            input.name,
-            input.description,
-            input.cost,
-            input.approvalRequired ? 1 : 0,
-            now,
-            now,
-          );
+        this.readSavedMeal(householdId, mealId);
+        this.assertUniqueSavedMealName(householdId, input.name, mealId);
+        try {
+          this.database
+            .prepare(
+              `UPDATE saved_meals
+               SET name = ?, description = ?, preparation_minutes = ?, favourite = ?, updated_at = ?
+               WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+            )
+            .run(
+              input.name,
+              input.description,
+              input.preparationMinutes,
+              input.favourite ? 1 : 0,
+              this.now(),
+              mealId,
+              householdId,
+            );
+        } catch (error) {
+          if (isUniqueError(error))
+            throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
+          throw error;
+        }
         return {
-          definition: this.readRewardDefinition(householdId, definitionId),
-          audit: audit('reward.definition.create', definitionId, actor),
+          savedMeal: this.readSavedMeal(householdId, mealId),
+          audit: audit('saved-meal.update', mealId, actor, 'succeeded', this.now()),
           replayed: false,
         };
       },
     );
   }
 
-  async adjustReward(
+  async archiveSavedMeal(
     householdId: string,
-    input: AdjustRewardRequest,
-    actor: CommandActor,
-  ): Promise<RewardCommandResult> {
-    this.assertAdmin(householdId, actor);
-    this.readMember(householdId, input.memberId);
-    if (input.rewardId !== null) this.readRewardDefinition(householdId, input.rewardId);
-    return this.execute(
-      householdId,
-      input.requestId,
-      'reward-adjust',
-      'reward_ledger_entry',
-      RewardCommandResultSchema,
-      () => {
-        const entryId = id('reward_entry');
-        this.insertRewardEntry({
-          id: entryId,
-          householdId,
-          memberId: input.memberId,
-          delta: input.delta,
-          reason: input.reason,
-          rewardId: input.rewardId,
-          relatedChoreOccurrenceId: null,
-          reversalOfEntryId: null,
-          actorId: actor.id,
-          source: actor.source,
-          occurredAt: new Date().toISOString(),
-        });
-        return {
-          entry: this.readRewardEntry(householdId, entryId),
-          balances: this.getRewardsSync(householdId).balances,
-          audit: audit('reward.adjust', entryId, actor),
-          replayed: false,
-        };
-      },
-    );
-  }
-
-  async reverseReward(
-    householdId: string,
-    entryId: string,
+    mealId: string,
     requestId: string,
     actor: CommandActor,
-  ): Promise<RewardCommandResult> {
+  ): Promise<SavedMealCommandResult> {
     this.assertAdmin(householdId, actor);
     return this.execute(
       householdId,
       requestId,
-      'reward-reverse',
-      'reward_ledger_entry',
-      RewardCommandResultSchema,
+      'saved-meal-archive',
+      'saved_meal',
+      SavedMealCommandResultSchema,
       () => {
-        const original = this.readRewardEntry(householdId, entryId);
-        const existing = this.database
-          .prepare('SELECT 1 FROM reward_ledger_entries WHERE reversal_of_entry_id = ?')
-          .get(entryId);
-        if (existing !== undefined) {
-          throw new RepositoryError('CONFLICT', 'That reward change has already been reversed.');
-        }
-        const reversed = reverseRewardEntry(original, {
-          entryId: id('reward_entry'),
-          auditId: id('audit_reward'),
-          actorId: actor.id,
-          actorType: actor.type,
-          source: actor.source,
-          occurredAt: new Date().toISOString(),
-        });
-        this.insertRewardEntry({
-          id: reversed.entry.id,
-          householdId,
-          memberId: reversed.entry.member.id,
-          delta: reversed.entry.delta,
-          reason: reversed.entry.reason,
-          rewardId: reversed.entry.rewardId,
-          relatedChoreOccurrenceId: null,
-          reversalOfEntryId: reversed.entry.reversalOfEntryId,
-          actorId: reversed.entry.actorId,
-          source: reversed.entry.source,
-          occurredAt: reversed.entry.occurredAt,
-        });
+        this.readSavedMeal(householdId, mealId);
+        const now = this.now();
+        this.database
+          .prepare(
+            `UPDATE saved_meals SET archived_at = ?, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+          )
+          .run(now, now, mealId, householdId);
         return {
-          entry: this.readRewardEntry(householdId, reversed.entry.id),
-          balances: this.getRewardsSync(householdId).balances,
-          audit: reversed.audit,
+          savedMeal: this.readSavedMeal(householdId, mealId, 'archived'),
+          audit: audit('saved-meal.archive', mealId, actor, 'succeeded', now),
           replayed: false,
         };
+      },
+    );
+  }
+
+  async restoreSavedMeal(
+    householdId: string,
+    mealId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<SavedMealCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      requestId,
+      'saved-meal-restore',
+      'saved_meal',
+      SavedMealCommandResultSchema,
+      () => {
+        this.readSavedMeal(householdId, mealId, 'archived');
+        const now = this.now();
+        this.database
+          .prepare(
+            `UPDATE saved_meals SET archived_at = NULL, updated_at = ?
+             WHERE id = ? AND household_id = ? AND archived_at IS NOT NULL`,
+          )
+          .run(now, mealId, householdId);
+        return {
+          savedMeal: this.readSavedMeal(householdId, mealId),
+          audit: audit('saved-meal.restore', mealId, actor, 'reversed', now),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async updateMealPlanWeek(
+    householdId: string,
+    input: UpdateMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'meal-week-update',
+      'meal_plan_week',
+      MealPlanWeekCommandResultSchema,
+      () => {
+        for (const entry of input.entries) {
+          if (entry.savedMealId !== null) this.readSavedMeal(householdId, entry.savedMealId);
+        }
+        this.deleteMealPlanWeek(householdId, input.startDate);
+        for (const entry of input.entries) this.insertMealPlanEntry(householdId, entry, actor.id);
+        return this.weekResult(householdId, input.startDate, 'meal.week.update', actor);
+      },
+    );
+  }
+
+  async clearMealPlanWeek(
+    householdId: string,
+    input: ClearMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'meal-week-clear',
+      'meal_plan_week',
+      MealPlanWeekCommandResultSchema,
+      () => {
+        const changes = this.deleteMealPlanWeek(householdId, input.startDate);
+        if (changes === 0) {
+          throw new RepositoryError('CONFLICT', 'There are no planned meals to clear.');
+        }
+        return this.weekResult(householdId, input.startDate, 'meal.week.clear', actor);
+      },
+    );
+  }
+
+  async copyMealPlanWeek(
+    householdId: string,
+    input: CopyMealPlanWeekRequest,
+    actor: CommandActor,
+  ): Promise<MealPlanWeekCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'meal-week-copy',
+      'meal_plan_week',
+      MealPlanWeekCommandResultSchema,
+      () => {
+        if (input.sourceStartDate === input.targetStartDate) {
+          throw new RepositoryError('CONFLICT', 'Choose a different week to copy.');
+        }
+        const source = this.readMealRows(householdId, input.sourceStartDate);
+        if (source.length === 0) {
+          throw new RepositoryError('CONFLICT', 'The earlier week has no meals to copy.');
+        }
+        const target = this.readMealRows(householdId, input.targetStartDate);
+        if (target.length > 0 && !input.replaceExisting) {
+          throw new RepositoryError('CONFIRMATION_REQUIRED', 'Confirm replacing this week first.');
+        }
+        const activeSavedMealIds = new Set(this.readSavedMeals(householdId).map((meal) => meal.id));
+        this.deleteMealPlanWeek(householdId, input.targetStartDate);
+        for (const sourceRow of source) {
+          const entry = mealFromRow(sourceRow);
+          this.insertMealPlanEntry(
+            householdId,
+            {
+              localDate: shiftLocalDateBetweenWeeks(
+                entry.localDate,
+                input.sourceStartDate,
+                input.targetStartDate,
+              ),
+              slot: entry.slot,
+              mealName: entry.mealName,
+              savedMealId:
+                entry.savedMealId !== null && activeSavedMealIds.has(entry.savedMealId)
+                  ? entry.savedMealId
+                  : null,
+              note: entry.note,
+            },
+            actor.id,
+          );
+        }
+        return this.weekResult(householdId, input.targetStartDate, 'meal.week.copy', actor);
       },
     );
   }
 
   async getChoreTemplates(householdId: string, actor: CommandActor): Promise<ChoreTemplateList> {
     this.assertAdmin(householdId, actor);
-    const rows = this.database
-      .prepare(
-        `SELECT t.*, a.member_id, m.display_name, m.colour, m.avatar_key, m.role,
-                m.capabilities_json
-         FROM chore_templates t
-         JOIN chore_template_assignees a ON a.template_id = t.id
-         JOIN members m ON m.id = a.member_id
-         WHERE t.household_id = ? ORDER BY t.archived_at IS NOT NULL, t.created_at, t.id`,
-      )
-      .all(householdId) as ChoreTemplateRow[];
-    return ChoreTemplateListSchema.parse({
-      householdId,
-      templates: this.scenario === 'empty' ? [] : rows.map(choreTemplateFromRow),
-    });
+    const list = this.readChoreTemplateList(householdId);
+    return this.scenario === 'empty'
+      ? ChoreTemplateListSchema.parse({ householdId, templates: [] })
+      : list;
   }
 
   async createChoreTemplate(
@@ -953,7 +1887,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
     actor: CommandActor,
   ): Promise<ChoreTemplateCommandResult> {
     this.assertAdmin(householdId, actor);
-    this.readMember(householdId, input.assigneeId);
+    for (const assigneeId of input.assigneeIds) this.readMember(householdId, assigneeId);
     return this.execute(
       householdId,
       input.requestId,
@@ -963,12 +1897,14 @@ export class SqlitePlanningRepository implements PlanningRepository {
       () => {
         const templateId = id('template');
         const now = new Date().toISOString();
+        const sortOrder = this.nextChoreSortOrder(householdId);
         this.database
           .prepare(
             `INSERT INTO chore_templates
-              (id, household_id, title, description, recurrence_rule, routine_label, due_time,
-               points_value, active_from, active_until, archived_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, NULL, NULL, ?, ?)`,
+              (id, household_id, title, description, recurrence_rule, routine_label,
+               available_from_time, due_time, sort_order, points_value, active_from, active_until,
+               archived_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
           )
           .run(
             templateId,
@@ -977,14 +1913,19 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
+            input.availableFromTime,
+            input.dueTime,
+            sortOrder,
             0,
             input.activeFrom,
+            input.repeat === 'once' ? input.activeFrom : null,
             now,
             now,
           );
-        this.database
-          .prepare('INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)')
-          .run(templateId, input.assigneeId);
+        const insertAssignee = this.database.prepare(
+          'INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)',
+        );
+        for (const assigneeId of input.assigneeIds) insertAssignee.run(templateId, assigneeId);
         return {
           template: this.readChoreTemplate(householdId, templateId),
           audit: audit('chore-template.create', templateId, actor),
@@ -1002,7 +1943,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
   ): Promise<ChoreTemplateCommandResult> {
     this.assertAdmin(householdId, actor);
     this.readChoreTemplate(householdId, templateId);
-    this.readMember(householdId, input.assigneeId);
+    for (const assigneeId of input.assigneeIds) this.readMember(householdId, assigneeId);
     return this.execute(
       householdId,
       input.requestId,
@@ -1014,7 +1955,8 @@ export class SqlitePlanningRepository implements PlanningRepository {
           .prepare(
             `UPDATE chore_templates
              SET title = ?, description = ?, recurrence_rule = ?, routine_label = ?,
-                 points_value = ?, active_from = ?, updated_at = ?
+                 available_from_time = ?, due_time = ?, points_value = ?, active_from = ?,
+                 active_until = ?, updated_at = ?
              WHERE id = ? AND household_id = ?`,
           )
           .run(
@@ -1022,8 +1964,11 @@ export class SqlitePlanningRepository implements PlanningRepository {
             input.description,
             choreRecurrenceRule(input.repeat, input.repeatDays),
             input.routineLabel,
+            input.availableFromTime,
+            input.dueTime,
             0,
             input.activeFrom,
+            input.repeat === 'once' ? input.activeFrom : null,
             new Date().toISOString(),
             templateId,
             householdId,
@@ -1031,12 +1976,125 @@ export class SqlitePlanningRepository implements PlanningRepository {
         this.database
           .prepare('DELETE FROM chore_template_assignees WHERE template_id = ?')
           .run(templateId);
-        this.database
-          .prepare('INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)')
-          .run(templateId, input.assigneeId);
+        const insertAssignee = this.database.prepare(
+          'INSERT INTO chore_template_assignees (template_id, member_id) VALUES (?, ?)',
+        );
+        for (const assigneeId of input.assigneeIds) insertAssignee.run(templateId, assigneeId);
         return {
           template: this.readChoreTemplate(householdId, templateId),
           audit: audit('chore-template.update', templateId, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async reorderChoreTemplates(
+    householdId: string,
+    input: ReorderChoreTemplatesRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateOrderCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'chore-template-reorder',
+      'chore_template',
+      ChoreTemplateOrderCommandResultSchema,
+      () => {
+        const activeIds = (
+          this.database
+            .prepare(
+              `SELECT id FROM chore_templates
+               WHERE household_id = ? AND archived_at IS NULL ORDER BY sort_order, id`,
+            )
+            .all(householdId) as Array<{ id: string }>
+        ).map((row) => row.id);
+        assertExactOrder(
+          activeIds,
+          input.orderedTemplateIds,
+          'Chore order must include every active schedule exactly once.',
+        );
+        const update = this.database.prepare(
+          `UPDATE chore_templates SET sort_order = ?, updated_at = ?
+           WHERE id = ? AND household_id = ? AND archived_at IS NULL`,
+        );
+        const now = this.now();
+        input.orderedTemplateIds.forEach((templateId, index) =>
+          update.run(index, now, templateId, householdId),
+        );
+        return {
+          list: this.readChoreTemplateList(householdId),
+          audit: audit('chore-template.reorder', householdId, actor, 'succeeded', now),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async archiveChoreTemplate(
+    householdId: string,
+    templateId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      requestId,
+      'chore-template-archive',
+      'chore_template',
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const current = this.readChoreTemplate(householdId, templateId);
+        if (current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already archived.');
+        const now = new Date().toISOString();
+        this.database
+          .prepare(
+            `UPDATE chore_templates SET archived_at = ?, updated_at = ?
+             WHERE id = ? AND household_id = ?`,
+          )
+          .run(now, now, templateId, householdId);
+        return {
+          template: this.readChoreTemplate(householdId, templateId),
+          audit: audit('chore-template.archive', templateId, actor),
+          replayed: false,
+        };
+      },
+    );
+  }
+
+  async restoreChoreTemplate(
+    householdId: string,
+    templateId: string,
+    input: RestoreChoreTemplateRequest,
+    actor: CommandActor,
+  ): Promise<ChoreTemplateCommandResult> {
+    this.assertAdmin(householdId, actor);
+    return this.execute(
+      householdId,
+      input.requestId,
+      'chore-template-restore',
+      'chore_template',
+      ChoreTemplateCommandResultSchema,
+      () => {
+        const current = this.readChoreTemplate(householdId, templateId);
+        if (!current.archived)
+          throw new RepositoryError('CONFLICT', 'That chore is already active.');
+        const now = new Date().toISOString();
+        this.database
+          .prepare(
+            `UPDATE chore_templates
+             SET archived_at = NULL, active_from = ?,
+                 active_until = CASE WHEN recurrence_rule = 'FREQ=ONCE' THEN ? ELSE NULL END,
+                 updated_at = ?
+             WHERE id = ? AND household_id = ?`,
+          )
+          .run(input.resumeFrom, input.resumeFrom, now, templateId, householdId);
+        return {
+          template: this.readChoreTemplate(householdId, templateId),
+          audit: audit('chore-template.restore', templateId, actor),
           replayed: false,
         };
       },
@@ -1050,7 +2108,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
        DELETE FROM list_items;
        DELETE FROM household_lists;`,
     );
-    this.seedDemo();
+    if (this.demoSeedEnabled) this.seedDemo();
     this.scenario = 'healthy';
   }
 
@@ -1106,6 +2164,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
             itemId,
             actor,
             checked ? 'succeeded' : 'reversed',
+            now,
           ),
           replayed: false,
         };
@@ -1181,6 +2240,87 @@ export class SqlitePlanningRepository implements PlanningRepository {
     return this.readList(listId);
   }
 
+  private readListSettings(householdId: string): HouseholdListSettings {
+    this.assertHousehold(householdId);
+    const activeRows = this.database
+      .prepare(
+        `SELECT * FROM household_lists
+         WHERE household_id = ? AND archived_at IS NULL ORDER BY sort_order, id`,
+      )
+      .all(householdId) as ListRow[];
+    const archivedRows = this.database
+      .prepare(
+        `SELECT * FROM household_lists
+         WHERE household_id = ? AND archived_at IS NOT NULL ORDER BY archived_at DESC, name`,
+      )
+      .all(householdId) as ListRow[];
+    return HouseholdListSettingsSchema.parse({
+      householdId,
+      activeLists: this.scenario === 'empty' ? [] : activeRows.map((row) => this.readList(row.id)),
+      archivedLists:
+        this.scenario === 'empty'
+          ? []
+          : archivedRows.map((row) => ({
+              id: row.id,
+              name: row.name,
+              type: row.list_type,
+              color: row.colour,
+              archivedAt: row.archived_at,
+            })),
+    });
+  }
+
+  private readItemOwner(householdId: string, itemId: string): { listId: string } {
+    const row = this.database
+      .prepare(
+        `SELECT i.list_id FROM list_items i
+         JOIN household_lists l ON l.id = i.list_id
+         WHERE i.id = ? AND i.archived_at IS NULL
+           AND l.household_id = ? AND l.archived_at IS NULL`,
+      )
+      .get(itemId, householdId) as { list_id: string } | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That list item was not found.');
+    return { listId: row.list_id };
+  }
+
+  private assertUniqueListName(householdId: string, name: string, excludingId?: string): void {
+    const rows = this.database
+      .prepare('SELECT id, name FROM household_lists WHERE household_id = ?')
+      .all(householdId) as Array<{ id: string; name: string }>;
+    if (rows.some((row) => row.id !== excludingId && sameText(row.name, name))) {
+      throw new RepositoryError('CONFLICT', 'A list with that name already exists.');
+    }
+  }
+
+  private nextListSortOrder(householdId: string): number {
+    return (
+      this.database
+        .prepare(
+          `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next
+           FROM household_lists WHERE household_id = ? AND archived_at IS NULL`,
+        )
+        .get(householdId) as { next: number }
+    ).next;
+  }
+
+  private settingsResult(
+    householdId: string,
+    action: AuditSummary['action'],
+    targetId: string,
+    actor: CommandActor,
+    result: AuditSummary['result'] = 'succeeded',
+  ): ListSettingsCommandResult {
+    return {
+      settings: this.readListSettings(householdId),
+      audit: audit(action, targetId, actor, result, this.now()),
+      replayed: false,
+    };
+  }
+
+  private now(): string {
+    return this.clock.now().toISOString();
+  }
+
   private readList(listId: string): HouseholdList {
     const row = this.database
       .prepare('SELECT * FROM household_lists WHERE id = ? AND archived_at IS NULL')
@@ -1212,14 +2352,117 @@ export class SqlitePlanningRepository implements PlanningRepository {
     return rows.map(savedMealFromRow);
   }
 
-  private readSavedMeal(householdId: string, mealId: string): SavedMeal {
+  private readSavedMealLibrary(householdId: string): SavedMealLibrary {
+    this.assertHousehold(householdId);
+    const rows = this.database
+      .prepare(
+        `SELECT * FROM saved_meals WHERE household_id = ?
+         ORDER BY archived_at IS NOT NULL, favourite DESC, name`,
+      )
+      .all(householdId) as SavedMealRow[];
+    return SavedMealLibrarySchema.parse({
+      householdId,
+      activeMeals: rows.filter((row) => row.archived_at === null).map(savedMealFromRow),
+      archivedMeals: rows.filter((row) => row.archived_at !== null).map(savedMealFromRow),
+    });
+  }
+
+  private assertUniqueSavedMealName(householdId: string, name: string, excludingId?: string): void {
+    const rows = this.database
+      .prepare('SELECT id, name FROM saved_meals WHERE household_id = ?')
+      .all(householdId) as Array<{ id: string; name: string }>;
+    if (rows.some((row) => row.id !== excludingId && sameText(row.name, name))) {
+      throw new RepositoryError('CONFLICT', 'That saved meal already exists.');
+    }
+  }
+
+  private readSavedMeal(
+    householdId: string,
+    mealId: string,
+    state: 'active' | 'archived' = 'active',
+  ): SavedMeal {
     const row = this.database
       .prepare(
-        'SELECT * FROM saved_meals WHERE id = ? AND household_id = ? AND archived_at IS NULL',
+        `SELECT * FROM saved_meals WHERE id = ? AND household_id = ? AND archived_at IS ${
+          state === 'active' ? 'NULL' : 'NOT NULL'
+        }`,
       )
       .get(mealId, householdId) as SavedMealRow | undefined;
-    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That saved meal was not found.');
+    if (row === undefined) {
+      throw new RepositoryError(
+        'NOT_FOUND',
+        state === 'active' ? 'That saved meal was not found.' : 'That archived meal was not found.',
+      );
+    }
     return savedMealFromRow(row);
+  }
+
+  private readMealRows(householdId: string, startDate: string): MealRow[] {
+    return this.database
+      .prepare(
+        `SELECT * FROM meal_plan_entries
+         WHERE household_id = ? AND local_date BETWEEN ? AND ? ORDER BY local_date, meal_slot`,
+      )
+      .all(householdId, startDate, addLocalDays(startDate, 6)) as MealRow[];
+  }
+
+  private readMealPlan(householdId: string, startDate: string): MealPlan {
+    return mealPlan(
+      householdId,
+      startDate,
+      this.scenario === 'empty' ? [] : this.readMealRows(householdId, startDate).map(mealFromRow),
+      this.scenario === 'empty' ? [] : this.readSavedMeals(householdId),
+      this.currentLocalDate(householdId),
+    );
+  }
+
+  private deleteMealPlanWeek(householdId: string, startDate: string): number {
+    return this.database
+      .prepare(
+        `DELETE FROM meal_plan_entries
+         WHERE household_id = ? AND local_date BETWEEN ? AND ?`,
+      )
+      .run(householdId, startDate, addLocalDays(startDate, 6)).changes;
+  }
+
+  private insertMealPlanEntry(
+    householdId: string,
+    entry: Omit<UpsertMealPlanRequest, 'requestId'>,
+    actorId: string,
+  ): void {
+    const now = this.now();
+    this.database
+      .prepare(
+        `INSERT INTO meal_plan_entries
+          (id, household_id, local_date, meal_slot, saved_meal_id, meal_name_snapshot,
+           note, planned_by_actor_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id('meal_plan'),
+        householdId,
+        entry.localDate,
+        entry.slot,
+        entry.savedMealId,
+        entry.mealName,
+        entry.note,
+        actorId,
+        now,
+        now,
+      );
+  }
+
+  private weekResult(
+    householdId: string,
+    startDate: string,
+    action: AuditSummary['action'],
+    actor: CommandActor,
+  ): MealPlanWeekCommandResult {
+    return {
+      plan: this.readMealPlan(householdId, startDate),
+      audit: audit(action, mealWeekTargetId(startDate), actor, 'succeeded', this.now()),
+      replayed: false,
+    };
   }
 
   private readMealEntry(entryId: string) {
@@ -1230,97 +2473,51 @@ export class SqlitePlanningRepository implements PlanningRepository {
     return mealFromRow(row);
   }
 
-  private readRewardDefinition(householdId: string, definitionId: string) {
-    const row = this.database
-      .prepare('SELECT * FROM reward_definitions WHERE id = ? AND household_id = ?')
-      .get(definitionId, householdId) as RewardDefinitionRow | undefined;
-    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That reward was not found.');
-    return rewardDefinitionFromRow(row);
-  }
-
-  private readRewardLedger(householdId: string): RewardLedgerEntry[] {
-    const rows = this.database
-      .prepare(
-        `SELECT e.*, m.display_name, m.colour, m.avatar_key, m.role, m.capabilities_json
-         FROM reward_ledger_entries e JOIN members m ON m.id = e.member_id
-         WHERE e.household_id = ? ORDER BY e.occurred_at DESC, e.id DESC`,
-      )
-      .all(householdId) as RewardLedgerRow[];
-    return rows.map(rewardLedgerFromRow);
-  }
-
-  private readRewardEntry(householdId: string, entryId: string): RewardLedgerEntry {
-    const row = this.database
-      .prepare(
-        `SELECT e.*, m.display_name, m.colour, m.avatar_key, m.role, m.capabilities_json
-         FROM reward_ledger_entries e JOIN members m ON m.id = e.member_id
-         WHERE e.id = ? AND e.household_id = ?`,
-      )
-      .get(entryId, householdId) as RewardLedgerRow | undefined;
-    if (row === undefined)
-      throw new RepositoryError('NOT_FOUND', 'That reward entry was not found.');
-    return rewardLedgerFromRow(row);
-  }
-
-  private getRewardsSync(householdId: string): RewardsOverview {
-    const definitions = this.database
-      .prepare('SELECT * FROM reward_definitions WHERE household_id = ? ORDER BY cost, name')
-      .all(householdId) as RewardDefinitionRow[];
-    return rewardsOverview(
-      householdId,
-      definitions.map(rewardDefinitionFromRow),
-      this.readRewardLedger(householdId),
-      this.readMembers(householdId),
-    );
-  }
-
-  private insertRewardEntry(input: RewardEntryInsert): void {
-    this.database
-      .prepare(
-        `INSERT INTO reward_ledger_entries
-          (id, household_id, member_id, delta, reason, reward_id, related_chore_occurrence_id,
-           reversal_of_entry_id, actor_id, source_channel, occurred_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        input.id,
-        input.householdId,
-        input.memberId,
-        input.delta,
-        input.reason,
-        input.rewardId,
-        input.relatedChoreOccurrenceId,
-        input.reversalOfEntryId,
-        input.actorId,
-        input.source,
-        input.occurredAt,
-      );
-  }
-
   private readChoreTemplate(householdId: string, templateId: string): ChoreTemplate {
-    const row = this.database
+    const rows = this.database
       .prepare(
         `SELECT t.*, a.member_id, m.display_name, m.colour, m.avatar_key, m.role,
                 m.capabilities_json
          FROM chore_templates t
          JOIN chore_template_assignees a ON a.template_id = t.id
          JOIN members m ON m.id = a.member_id
-         WHERE t.id = ? AND t.household_id = ?`,
+         WHERE t.id = ? AND t.household_id = ?
+         ORDER BY datetime(m.created_at), m.rowid`,
       )
-      .get(templateId, householdId) as ChoreTemplateRow | undefined;
-    if (row === undefined)
+      .all(templateId, householdId) as ChoreTemplateRow[];
+    if (rows.length === 0)
       throw new RepositoryError('NOT_FOUND', 'That recurring chore was not found.');
-    return choreTemplateFromRow(row);
+    return choreTemplateFromRows(rows);
   }
 
-  private readMembers(householdId: string): Member[] {
+  private readChoreTemplateList(householdId: string): ChoreTemplateList {
     const rows = this.database
       .prepare(
-        `SELECT id, display_name, colour, avatar_key, role, capabilities_json
-         FROM members WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at, id`,
+        `SELECT t.*, a.member_id, m.display_name, m.colour, m.avatar_key, m.role,
+                m.capabilities_json
+         FROM chore_templates t
+         JOIN chore_template_assignees a ON a.template_id = t.id
+         JOIN members m ON m.id = a.member_id
+         WHERE t.household_id = ?
+         ORDER BY t.archived_at IS NOT NULL, t.sort_order, t.id,
+                  datetime(m.created_at), m.rowid`,
       )
-      .all(householdId) as MemberRow[];
-    return rows.map(memberFromRow);
+      .all(householdId) as ChoreTemplateRow[];
+    return ChoreTemplateListSchema.parse({
+      householdId,
+      templates: choreTemplatesFromRows(rows),
+    });
+  }
+
+  private nextChoreSortOrder(householdId: string): number {
+    return (
+      this.database
+        .prepare(
+          `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next
+           FROM chore_templates WHERE household_id = ? AND archived_at IS NULL`,
+        )
+        .get(householdId) as { next: number }
+    ).next;
   }
 
   private readMember(householdId: string, memberId: string): Member {
@@ -1447,8 +2644,9 @@ export class SqlitePlanningRepository implements PlanningRepository {
 
     const insertSavedMeal = this.database.prepare(
       `INSERT OR IGNORE INTO saved_meals
-        (id, household_id, name, description, favourite, archived_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 1, NULL, ?, ?)`,
+        (id, household_id, name, description, preparation_minutes, favourite,
+         archived_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
     );
     for (const meal of demoSavedMeals()) {
       insertSavedMeal.run(
@@ -1456,6 +2654,8 @@ export class SqlitePlanningRepository implements PlanningRepository {
         DEMO_HOUSEHOLD_ID,
         meal.name,
         meal.description,
+        meal.preparationMinutes,
+        meal.favourite ? 1 : 0,
         DEMO_NOW,
         DEMO_NOW,
       );
@@ -1497,6 +2697,14 @@ export class SqlitePlanningRepository implements PlanningRepository {
         .prepare('UPDATE paired_devices SET scopes_json = ? WHERE id = ?')
         .run(JSON.stringify([...scopes]), 'device_living_room_tv');
     }
+  }
+
+  private currentLocalDate(householdId: string): string {
+    const row = this.database
+      .prepare('SELECT timezone FROM households WHERE id = ?')
+      .get(householdId) as { timezone: string } | undefined;
+    if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That household was not found.');
+    return localDateInTimezone(this.clock.now().toISOString(), row.timezone);
   }
 }
 
@@ -1540,8 +2748,10 @@ function demoSavedMeals(): SavedMeal[] {
     SavedMealSchema.parse({
       id: `saved_meal_demo_${index + 1}`,
       name,
-      description: index === 0 ? 'Prep at 5:30' : null,
-      favourite: true,
+      description: index === 0 ? 'Good for a school night' : null,
+      preparationMinutes: index === 0 ? 45 : index < 5 ? 30 : null,
+      favourite: index < 7,
+      archivedAt: null,
     }),
   );
 }
@@ -1568,56 +2778,6 @@ function demoMealEntries() {
   );
 }
 
-function demoRewardDefinitions() {
-  return [
-    RewardDefinitionSchema.parse({
-      id: 'reward_friday_movie',
-      name: 'Choose Friday movie',
-      description: 'Pick the family film for Friday night.',
-      cost: 20,
-      approvalRequired: true,
-      archived: false,
-    }),
-    RewardDefinitionSchema.parse({
-      id: 'reward_pick_dessert',
-      name: 'Pick dessert',
-      description: 'Choose dessert for a family dinner.',
-      cost: 12,
-      approvalRequired: true,
-      archived: false,
-    }),
-  ];
-}
-
-function demoRewardLedger(): RewardLedgerEntry[] {
-  const ezra = demoMember('member_ezra');
-  const maya = demoMember('member_maya');
-  return [
-    ledger('reward_entry_ezra_welcome', ezra, 13, 'Starting stars', '2026-08-01T08:00:00+08:00'),
-    ledger('reward_entry_maya_welcome', maya, 16, 'Starting stars', '2026-08-01T08:01:00+08:00'),
-    ledger('reward_entry_bag', ezra, 2, 'Pack school bag', '2026-08-03T07:15:00+08:00'),
-    ledger('reward_entry_pepper', ezra, 3, 'Feed Pepper', '2026-08-03T07:05:00+08:00'),
-    ledger(
-      'reward_entry_dessert',
-      maya,
-      -12,
-      'Pick dessert',
-      '2026-08-02T18:30:00+08:00',
-      'reward_pick_dessert',
-    ),
-    {
-      ...ledger(
-        'reward_entry_dessert_reversal',
-        maya,
-        12,
-        'Pick dessert · reversed',
-        '2026-08-02T19:10:00+08:00',
-      ),
-      reversalOfEntryId: 'reward_entry_dessert',
-    },
-  ];
-}
-
 function demoChoreTemplates(): ChoreTemplate[] {
   const seed = createDemoSeed();
   const rules = new Map([
@@ -1628,16 +2788,31 @@ function demoChoreTemplates(): ChoreTemplate[] {
     ['occurrence_herbs', 'FREQ=DAILY'],
     ['occurrence_make_bed', 'FREQ=DAILY'],
   ]);
-  return seed.chores.map((occurrence) => {
+  const descriptions = new Map([
+    ['occurrence_school_bag', 'Pack the lunchbox, water bottle and homework folder.'],
+    ['occurrence_feed_pepper', 'Fresh water first, then one measured scoop of food.'],
+    ['occurrence_dishes', 'Unload the clean dishes and put everything back in its usual place.'],
+    ['occurrence_laundry', 'Take the school clothes to the laundry and separate any wet items.'],
+    ['occurrence_herbs', 'Water the herb pots until the soil is damp, without flooding the tray.'],
+    [
+      'occurrence_make_bed',
+      'Straighten the sheets, pull up the doona and place pillows at the top.',
+    ],
+  ]);
+  return seed.chores.map((occurrence, index) => {
     const parsed = choreRepeatFromRule(rules.get(occurrence.id) ?? 'FREQ=DAILY');
     return ChoreTemplateSchema.parse({
       id: `template_${occurrence.id.replace('occurrence_', '')}`,
       title: occurrence.title,
-      description: null,
-      assignee: occurrence.assignee,
+      description: descriptions.get(occurrence.id) ?? null,
+      assignees: [occurrence.assignee],
       routineLabel: occurrence.routineLabel,
+      availableFromTime: occurrence.availableFromTime,
+      dueTime: occurrence.dueTime,
+      sortOrder: index,
       ...parsed,
       activeFrom: DEMO_LOCAL_DATE,
+      activeUntil: null,
       archived: false,
     });
   });
@@ -1648,6 +2823,7 @@ function mealPlan(
   startDate: string,
   entries: readonly ReturnType<typeof mealFromRow>[],
   savedMeals: readonly SavedMeal[],
+  today = DEMO_LOCAL_DATE,
 ): MealPlan {
   const endDate = addLocalDays(startDate, 6);
   const start = new Date(`${startDate}T12:00:00Z`);
@@ -1673,7 +2849,7 @@ function mealPlan(
           day: 'numeric',
           timeZone: 'UTC',
         }).format(date),
-        isToday: localDate === DEMO_LOCAL_DATE,
+        isToday: localDate === today,
         entries: entries.filter((entry) => entry.localDate === localDate),
       };
     }),
@@ -1681,35 +2857,26 @@ function mealPlan(
   });
 }
 
-function rewardsOverview(
-  householdId: string,
-  definitions: readonly ReturnType<typeof rewardDefinitionFromRow>[],
-  ledgerEntries: readonly RewardLedgerEntry[],
-  members: readonly Member[] = createDemoSeed().household.members,
-): RewardsOverview {
-  const balances = rewardBalances(ledgerEntries);
-  return RewardsOverviewSchema.parse({
-    householdId,
-    balances: members.map((member) => ({ member, balance: balances.get(member.id) ?? 0 })),
-    definitions,
-    ledger: ledgerEntries,
-  });
-}
-
 function templateFromInput(
   idValue: string,
   input: CreateChoreTemplateRequest | UpdateChoreTemplateRequest,
+  archived = false,
+  sortOrder = 0,
 ): ChoreTemplate {
   return ChoreTemplateSchema.parse({
     id: idValue,
     title: input.title,
     description: input.description,
-    assignee: demoMember(input.assigneeId),
+    assignees: input.assigneeIds.map(demoMember),
     routineLabel: input.routineLabel,
+    availableFromTime: input.availableFromTime,
+    dueTime: input.dueTime,
+    sortOrder,
     repeat: input.repeat,
     repeatDays: input.repeatDays,
     activeFrom: input.activeFrom,
-    archived: false,
+    activeUntil: input.repeat === 'once' ? input.activeFrom : null,
+    archived,
   });
 }
 
@@ -1753,30 +2920,49 @@ function refreshListCounts(listValue: HouseholdList): void {
   listValue.totalCount = listValue.items.length;
 }
 
-function ledger(
-  idValue: string,
-  member: Member,
-  delta: number,
-  reason: string,
-  occurredAt: string,
-  rewardId: string | null = null,
-): RewardLedgerEntry {
-  return RewardLedgerEntrySchema.parse({
-    id: idValue,
-    member,
-    delta,
-    reason,
-    rewardId,
-    relatedChoreOccurrenceId: null,
-    reversalOfEntryId: null,
-    occurredAt,
-    actorId: 'member_maya',
-    source: 'companion',
-  });
-}
-
 function sameText(left: string, right: string): boolean {
   return normaliseListItemText(left) === normaliseListItemText(right);
+}
+
+function assertExactOrder(
+  currentIds: readonly string[],
+  orderedIds: readonly string[],
+  message: string,
+) {
+  if (
+    currentIds.length !== orderedIds.length ||
+    currentIds.some((idValue) => !orderedIds.includes(idValue)) ||
+    new Set(orderedIds).size !== orderedIds.length
+  ) {
+    throw new RepositoryError('CONFLICT', message);
+  }
+}
+
+function sortSavedMeals(meals: readonly SavedMeal[]): SavedMeal[] {
+  return meals.toSorted(
+    (first, second) =>
+      Number(second.favourite) - Number(first.favourite) || first.name.localeCompare(second.name),
+  );
+}
+
+function localDateInWeek(localDate: string, startDate: string): boolean {
+  return localDate >= startDate && localDate <= addLocalDays(startDate, 6);
+}
+
+function shiftLocalDateBetweenWeeks(
+  localDate: string,
+  sourceStartDate: string,
+  targetStartDate: string,
+): string {
+  const offset = Math.round(
+    (Date.parse(`${localDate}T12:00:00Z`) - Date.parse(`${sourceStartDate}T12:00:00Z`)) /
+      86_400_000,
+  );
+  return addLocalDays(targetStartDate, offset);
+}
+
+function mealWeekTargetId(startDate: string): string {
+  return `meal_week_${startDate.replaceAll('-', '_')}`;
 }
 
 function audit(
@@ -1784,6 +2970,7 @@ function audit(
   targetId: string,
   actor: CommandActor,
   result: AuditSummary['result'] = 'succeeded',
+  occurredAt = new Date().toISOString(),
 ): AuditSummary {
   return {
     id: id('audit'),
@@ -1792,7 +2979,7 @@ function audit(
     source: actor.source,
     action,
     targetId,
-    occurredAt: new Date().toISOString(),
+    occurredAt,
     result,
   };
 }
@@ -1829,7 +3016,9 @@ function savedMealFromRow(row: SavedMealRow): SavedMeal {
     id: row.id,
     name: row.name,
     description: row.description,
+    preparationMinutes: row.preparation_minutes,
     favourite: row.favourite === 1,
+    archivedAt: row.archived_at,
   });
 }
 
@@ -1844,41 +3033,31 @@ function mealFromRow(row: MealRow) {
   });
 }
 
-function rewardDefinitionFromRow(row: RewardDefinitionRow) {
-  return RewardDefinitionSchema.parse({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    cost: row.cost,
-    approvalRequired: row.approval_required === 1,
-    archived: row.archived_at !== null,
-  });
+function choreTemplatesFromRows(rows: ChoreTemplateRow[]): ChoreTemplate[] {
+  const grouped = new Map<string, ChoreTemplateRow[]>();
+  for (const row of rows) {
+    const templateRows = grouped.get(row.id);
+    if (templateRows === undefined) grouped.set(row.id, [row]);
+    else templateRows.push(row);
+  }
+  return [...grouped.values()].map(choreTemplateFromRows);
 }
 
-function rewardLedgerFromRow(row: RewardLedgerRow): RewardLedgerEntry {
-  return RewardLedgerEntrySchema.parse({
-    id: row.id,
-    member: memberFromRow(row),
-    delta: row.delta,
-    reason: row.reason,
-    rewardId: row.reward_id,
-    relatedChoreOccurrenceId: row.related_chore_occurrence_id,
-    reversalOfEntryId: row.reversal_of_entry_id,
-    occurredAt: row.occurred_at,
-    actorId: row.actor_id,
-    source: row.source_channel,
-  });
-}
-
-function choreTemplateFromRow(row: ChoreTemplateRow): ChoreTemplate {
+function choreTemplateFromRows(rows: ChoreTemplateRow[]): ChoreTemplate {
+  const row = rows[0];
+  if (row === undefined) throw new RepositoryError('NOT_FOUND', 'That chore was not found.');
   return ChoreTemplateSchema.parse({
     id: row.id,
     title: row.title,
     description: row.description,
-    assignee: memberFromRow(row),
+    assignees: rows.map(memberFromRow),
     routineLabel: row.routine_label,
+    availableFromTime: row.available_from_time,
+    dueTime: row.due_time,
+    sortOrder: row.sort_order,
     ...choreRepeatFromRule(row.recurrence_rule),
     activeFrom: row.active_from,
+    activeUntil: row.active_until,
     archived: row.archived_at !== null,
   });
 }
@@ -1903,6 +3082,7 @@ interface ListRow {
   name: string;
   list_type: HouseholdList['type'];
   colour: string;
+  archived_at: string | null;
 }
 
 interface ListItemRow {
@@ -1917,7 +3097,9 @@ interface SavedMealRow {
   id: string;
   name: string;
   description: string | null;
+  preparation_minutes: number | null;
   favourite: 0 | 1;
+  archived_at: string | null;
 }
 
 interface MealRow {
@@ -1927,15 +3109,6 @@ interface MealRow {
   meal_name_snapshot: string;
   saved_meal_id: string | null;
   note: string | null;
-}
-
-interface RewardDefinitionRow {
-  id: string;
-  name: string;
-  description: string | null;
-  cost: number;
-  approval_required: 0 | 1;
-  archived_at: string | null;
 }
 
 interface MemberRow {
@@ -1948,39 +3121,17 @@ interface MemberRow {
   capabilities_json: string;
 }
 
-interface RewardLedgerRow extends MemberRow {
-  id: string;
-  delta: number;
-  reason: string;
-  reward_id: string | null;
-  related_chore_occurrence_id: string | null;
-  reversal_of_entry_id: string | null;
-  occurred_at: string;
-  actor_id: string;
-  source_channel: RewardLedgerEntry['source'];
-}
-
 interface ChoreTemplateRow extends MemberRow {
   id: string;
   title: string;
   description: string | null;
   recurrence_rule: string;
   routine_label: string;
+  available_from_time: string | null;
+  due_time: string | null;
+  sort_order: number;
   points_value: number;
   active_from: string;
+  active_until: string | null;
   archived_at: string | null;
-}
-
-interface RewardEntryInsert {
-  id: string;
-  householdId: string;
-  memberId: string;
-  delta: number;
-  reason: string;
-  rewardId: string | null;
-  relatedChoreOccurrenceId: string | null;
-  reversalOfEntryId: string | null;
-  actorId: string;
-  source: RewardLedgerEntry['source'];
-  occurredAt: string;
 }

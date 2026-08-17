@@ -1,0 +1,250 @@
+import { useState } from 'react';
+
+import type { TodaySectionVisibility } from '@hearth/shared';
+
+import { Icon, type IconName } from './Icon';
+import type { PreviewPerson, TodayPreviewData } from './todayPreviewData';
+import './TodayConfigurationPreview.css';
+
+type PreviewMode = 'television' | 'phone';
+type PreviewStatus = 'loading' | 'ready' | 'unavailable';
+
+export function TodayConfigurationPreview({
+  data,
+  sections,
+  status = 'ready',
+}: {
+  data: TodayPreviewData;
+  sections: TodaySectionVisibility;
+  status?: PreviewStatus;
+}) {
+  const [mode, setMode] = useState<PreviewMode>('television');
+  const summaryBands = previewSummaryBands(data, sections);
+  const showPhoto = sections.photo;
+  const enabledNames = [
+    sections.dinner ? 'Dinner' : null,
+    sections.listSummary ? 'List summary' : null,
+    sections.notice ? 'Notice' : null,
+    sections.photo ? 'Family photo' : null,
+  ].filter((name): name is string => name !== null);
+  const modeLabel = mode === 'television' ? 'TV' : 'phone';
+  const previewLabel =
+    status === 'loading'
+      ? `${modeLabel} Today preview is loading.`
+      : status === 'unavailable'
+        ? `${modeLabel} Today preview is temporarily unavailable.`
+        : `${modeLabel} Today preview. ${
+            enabledNames.length === 0
+              ? 'Only plans and chores are shown.'
+              : `Optional sections shown: ${enabledNames.join(', ')}.`
+          }`;
+
+  return (
+    <div className="today-preview-block">
+      <div className="today-preview-block__heading">
+        <div>
+          <h3>Preview</h3>
+          <p>See how these choices rebalance Today</p>
+        </div>
+        <div aria-label="Preview size" className="today-preview-modes" role="group">
+          <button
+            aria-pressed={mode === 'television'}
+            className="focusable"
+            data-focus-id="today-preview-television"
+            data-focus-right="today-preview-phone"
+            onClick={() => setMode('television')}
+            type="button"
+          >
+            TV
+          </button>
+          <button
+            aria-pressed={mode === 'phone'}
+            className="focusable"
+            data-focus-id="today-preview-phone"
+            data-focus-left="today-preview-television"
+            onClick={() => setMode('phone')}
+            type="button"
+          >
+            Phone
+          </button>
+        </div>
+      </div>
+      <div
+        aria-busy={status === 'loading'}
+        aria-label={previewLabel}
+        className={`today-configuration-preview today-configuration-preview--${mode}`}
+        role="img"
+      >
+        {status === 'ready' ? (
+          <div aria-hidden="true" className="today-configuration-preview__canvas">
+            <PreviewHeader data={data} />
+            <div className="today-configuration-preview__core">
+              <PreviewEvents events={data.events} />
+              <PreviewChores chores={data.chores} />
+            </div>
+            {summaryBands.length === 0 && !showPhoto ? null : (
+              <div
+                className={`today-configuration-preview__summary${showPhoto ? '' : ' today-configuration-preview__summary--without-photo'}`}
+              >
+                {summaryBands.length === 0 ? null : (
+                  <div
+                    className={`today-configuration-preview__bands today-configuration-preview__bands--count-${summaryBands.length}`}
+                  >
+                    {summaryBands.map((band) => (
+                      <div
+                        className={`today-configuration-preview__band today-configuration-preview__band--${band.key}`}
+                        key={band.key}
+                      >
+                        <Icon name={band.icon} />
+                        <span>
+                          <strong>{band.label}</strong>
+                          <small>{band.value}</small>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showPhoto ? <PreviewPhoto photo={data.photo} /> : null}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div aria-hidden="true" className="today-configuration-preview__state">
+            <Icon name={status === 'loading' ? 'refresh' : 'warning'} />
+            <strong>{status === 'loading' ? 'Loading preview…' : 'Preview unavailable'}</strong>
+            <span>
+              {status === 'loading'
+                ? 'Getting the latest household overview'
+                : 'Your visibility choices can still be saved'}
+            </span>
+          </div>
+        )}
+      </div>
+      <p aria-live="polite" className="sr-only">
+        {previewLabel}
+      </p>
+    </div>
+  );
+}
+
+function PreviewHeader({ data }: { data: TodayPreviewData }) {
+  return (
+    <header className="today-configuration-preview__header">
+      <span className="today-configuration-preview__brand">
+        <Icon name="leaf" />
+        Hearth
+      </span>
+      <span className="today-configuration-preview__date">
+        <strong>{data.displayTime}</strong>
+        <span>{data.displayDate}</span>
+      </span>
+      <span className="today-configuration-preview__weather">
+        <Icon name={data.weather === null ? 'cloud' : 'sun'} />
+        <strong>{data.weather?.temperature ?? '—'}</strong>
+        <span>{data.weather?.condition ?? 'Forecast'}</span>
+      </span>
+    </header>
+  );
+}
+
+function PreviewEvents({ events }: { events: TodayPreviewData['events'] }) {
+  return (
+    <section className="today-configuration-preview__section">
+      <h4>Upcoming</h4>
+      <div className="today-configuration-preview__rows">
+        {events.length === 0 ? (
+          <PreviewEmptyRow label="No plans yet" />
+        ) : (
+          events.map((event) => (
+            <div className="today-configuration-preview__event" key={event.id}>
+              <time>{event.time}</time>
+              <i style={{ background: event.color }} />
+              <strong>{event.title}</strong>
+              <PreviewPerson person={event.person} />
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PreviewChores({ chores }: { chores: TodayPreviewData['chores'] }) {
+  return (
+    <section className="today-configuration-preview__section">
+      <h4>Due now &amp; today</h4>
+      <div className="today-configuration-preview__rows">
+        {chores.length === 0 ? (
+          <PreviewEmptyRow label="No chores due" />
+        ) : (
+          chores.map((chore) => (
+            <div className="today-configuration-preview__chore" key={chore.id}>
+              <PreviewPerson person={chore.person} />
+              <strong>{chore.title}</strong>
+              <span className="today-configuration-preview__check" />
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PreviewEmptyRow({ label }: { label: string }) {
+  return <div className="today-configuration-preview__empty">{label}</div>;
+}
+
+function PreviewPerson({ person }: { person: PreviewPerson }) {
+  return person.avatarUrl.length === 0 ? (
+    <span className="today-configuration-preview__person">{person.initial}</span>
+  ) : (
+    <img
+      alt=""
+      className="today-configuration-preview__person"
+      loading="lazy"
+      src={person.avatarUrl}
+    />
+  );
+}
+
+function PreviewPhoto({ photo }: { photo: TodayPreviewData['photo'] }) {
+  return photo === null ? (
+    <div className="today-configuration-preview__photo today-configuration-preview__photo--empty">
+      <Icon name="image" />
+      <span>Family photo</span>
+    </div>
+  ) : (
+    <img alt="" className="today-configuration-preview__photo" loading="lazy" src={photo.url} />
+  );
+}
+
+function previewSummaryBands(data: TodayPreviewData, sections: TodaySectionVisibility) {
+  const bands: Array<{
+    key: 'dinner' | 'list' | 'notice';
+    icon: IconName;
+    label: string;
+    value: string;
+  }> = [];
+  if (sections.dinner)
+    bands.push({
+      key: 'dinner',
+      icon: 'meal',
+      label: 'Dinner',
+      value: data.dinner ?? 'Not planned',
+    });
+  if (sections.listSummary)
+    bands.push({
+      key: 'list',
+      icon: 'list',
+      label: 'List summary',
+      value: data.listSummary ?? 'No active list',
+    });
+  if (sections.notice)
+    bands.push({
+      key: 'notice',
+      icon: 'home',
+      label: 'Notice',
+      value: data.notice ?? 'No active notice',
+    });
+  return bands;
+}

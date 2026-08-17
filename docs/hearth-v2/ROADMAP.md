@@ -46,7 +46,37 @@ The roadmap is deliberately vertical. Each phase must leave a coherent, testable
 
 Implementation note (2026-08-03): Phase 2 is implemented. The phone Admin area manages the household, people/roles, paired televisions and connection readiness. WAL-mode SQLite now persists setup, chore templates, generated occurrence snapshots, completion/undo/skip state, idempotent command receipts and audit events. One-time television pairing is independently revocable. Server-Sent Events invalidate open Today/Chores clients after commands. Restart, closed-database backup/restore, historical-template, duplicate-request and TV/adult/child/voice/automation permission tests cover the completion criteria.
 
+Hardening note (2026-08-09): the runtime now distinguishes `demo`, `test` and
+`private`, injects household/clock context, and publishes household-local today,
+week and month values through `/api/v1/runtime`. Browser API paths and query
+keys no longer embed the fictional household/date. Private repository
+construction applies migrations without seeding Ezra, Maya or planning data and
+shows an explicit setup-required state. The authenticated adult first-use action now verifies a
+one-time external setup code and a user-verified passkey before transactionally creating the named
+household, first adult and default lists. Private Admin uses the resulting revocable, hash-only
+companion session; real enrolment remains blocked until the stable private HTTPS origin is approved.
+Private household reads now share one server-side access boundary: runtime bootstrap redacts the
+configured household until sign-in or pairing, companion sessions require `household.view`, paired
+televisions require `household.read`, and the same protection covers photos and event streams.
+Pairing-code generation remains fixed-width beyond 99 retained requests, while passkey option
+issuance now combines per-client throttling, a global pending cap and physical expiry pruning.
+
 Recurring chore editing remains intentionally out of the Admin UI until the denser phone-oriented administration work in Phase 4. Phase 2 establishes and tests its server/domain persistence contract without putting dense editing on the television.
+
+Implementation extension (2026-08-08): People now changes profile photos through a phone-sized
+square crop flow with direct drag and pinch/scroll zoom plus a keyboard fallback. Portrait and
+landscape originals are normalized in the browser to a bounded 512×512 JPEG; typed adult-only
+update/reset commands persist one derivative in SQLite with idempotency receipts and audit events.
+Replace, restart persistence, restore-original, permission, malformed-image, migration-integrity
+and rendered companion flows are covered without coupling member identity photos to the Phase 7
+Synology gallery.
+
+Polish extension (2026-08-10): System Health and More now open an adult-only Recent activity
+projection over the existing audit table. It groups the newest changes into family-readable rows,
+supports Family/Planning/Connections/System filters and keeps target/request identifiers and
+secret-bearing fields out of visible copy. SQLite integration coverage proves cross-repository
+events share the same feed; browser coverage exercises child denial, empty/unavailable states,
+D-pad filtering, Back focus restoration, accessibility and light/dark phone layouts.
 
 ### Work
 
@@ -103,13 +133,59 @@ overflow, an avatar/colour source key, deterministic D-pad navigation and a
 responsive Week/Month phone switch with a selected-date agenda. No calendar
 credential, write scope or migration was added.
 
+Implementation extension (2026-08-08): the missing companion calendar setup
+workflow is implemented. Adult-only typed routes test an HTTPS CalDAV account,
+return safe discovered calendar descriptors, persist exact selections/owner
+mappings, replay duplicate saves, audit save/removal and expose connected state
+without returning credentials. Private mode atomically updates the configured
+external secret path and activates the managed read-only provider; demo mode is
+fully fake and inert. Migration `0011_calendar_connection_setup.sql` persists
+safe setup metadata only. A real iCloud credentialed read remains an explicitly
+owner-controlled deployment validation action and has not been performed.
+
+Implementation extension (2026-08-09): Calendar is now one primary television
+and phone destination with Week, Month and a dedicated responsive Agenda view.
+All three views share an explicit D-pad/keyboard switch and a direct source
+setup link; legacy `/week` and `/month` bookmarks preserve query parameters
+through redirects. Week and Month now have functional earlier/current/later
+navigation, event selection opens a family-readable detail surface and Back
+restores the exact event focus. Event time and timeline placement use the
+runtime household timezone rather than a browser-side Perth constant. Phone
+More now exposes family modules before grouped setup links, Home precedes Photos
+on television, and duplicate pairing/settings wording has been removed.
+
+Implementation extension (2026-08-09): **Today & notices** now provides
+phone-first adult creation, editing and removal of expiring Standard/Important
+household notices plus independent Dinner, List summary, Notice and Family
+photo visibility. Migration `0013_notices_and_today_sections.sql` persists the
+state; authenticated commands are validated, idempotent, audited and broadcast
+through `today.changed`. Today rebalances its remaining bands without exposing
+a layout editor. Demo reset isolation, SQLite restart, phone accessibility and
+customised 1080p rendering are automated; live household copy remains a pilot
+tuning decision.
+
+Implementation extension (2026-08-10): Today now caps its calm television
+columns at three event and three chore rows while exposing exact, focusable
+overflow counts into Calendar Agenda and Chores. Event rows open calendar
+details; Dinner, List summary and Family photo link to their real modules; and
+Notice opens the full announcement in a Back-safe dialog. Automated remote-only
+TV and phone flows prove focus restoration, responsive composition, accessibility
+and clean console behaviour.
+
+Implementation extension (2026-08-10): **Today & notices** now previews the
+resulting TV and Phone compositions using current household content before an
+adult leaves settings. Visibility switches update the preview optimistically
+and execute serially, closing a rapid-toggle race that could previously restore
+an older switch value. Loading/unavailable preview data stays honest without
+blocking the independently persisted settings.
+
 ## Phase 4 — Lists, meals and pocket money
 
 Status: complete and locally verified with deterministic demo household data.
 
 ### Work
 
-- Lists and item completion/addition.
+- Lists, item completion/addition and phone-first adult list administration.
 - Meal plan and saved meals.
 - Required weekly pocket-money amount and payday for each child.
 - Week-to-date chore proportion, amount due and immutable payment snapshots.
@@ -119,28 +195,49 @@ Status: complete and locally verified with deterministic demo household data.
 ### Completion criteria
 
 - Ordinary list and meal operations work from TV and phone where appropriate.
-- Pocket-money payment retries are idempotent and a child/week cannot be paid twice.
+- Pocket-money payment and correction retries are idempotent. A child/week may receive multiple immutable partial disbursements, but the non-voided total cannot exceed the calculated amount due.
 - Voice retries do not duplicate list items or chore completions.
 - Dense editing remains out of the TV's primary interaction path.
 
-Implementation note (updated 2026-08-06): Lists and Meals have D-pad television
+Implementation note (updated 2026-08-10): Lists and Meals have D-pad television
 surfaces and responsive phone presentations. The phone Family Planning area
-edits future recurring chores, dinners/saved meals, child weekly amounts,
-paydays and payment snapshots. Chores shows the current weekly completion
+creates, renames, colours, orders, archives and restores lists; edits, orders
+and removes list items; and explicitly clears checked history. Meal administration now edits all
+seven dinner names together, expands saved-meal/note details only when needed, copies or clears a
+week with confirmation, and creates, searches, favourites, updates, archives and restores reusable
+meals with optional preparation time and notes. Chore administration now creates explicit one-off
+or recurring schedules, keeps the everyday list compact, confirms archive, restores from today's
+local date and retains previously generated occurrence history through idempotent audited commands.
+It also edits future recurring chores, optional available/due windows and their stable
+top-to-bottom display order. A separate phone-first daily management surface
+supports reasoned skip, excuse and adult reassignment, exposes snapshotted descriptions and
+newest-first immutable history, and preserves the documented pocket-money denominator rules.
+The schedule editor now accepts one or more people through a phone-friendly visual picker. The
+existing template-assignee join table is returned as one grouped template and expands to one
+independently completable occurrence per selected person, with legacy singular receipts normalized
+at the contract boundary.
+Television rows show compact window metadata in the saved order without exposing adult management
+controls. It also manages child weekly amounts,
+paydays, partial payment snapshots, history, week navigation and reasoned void corrections. Chores shows the current weekly completion
 proportion and proportional amount due. Typed voice list commands resolve
 the target without guessing, normalize exact duplicates and use persisted
-idempotency receipts. Migration `0009_pocket_money.sql` supersedes the active
+idempotency receipts. Migration `0017_chore_occurrence_management.sql` adds the forward-only
+description/due-time snapshots and targeted audit-history index; migration
+`0018_chore_windows_and_order.sql` adds available-from time, deterministic template order and
+historical occurrence snapshots. Migration `0009_pocket_money.sql` supersedes the active
 reward implementation while retaining the old migration tables as dormant
-history; chore completion/undo no longer writes star awards. Unit,
+history; active reward source contracts and runtime seeds are removed and chore completion/undo no longer writes star awards. Migration
+`0014_pocket_money_payment_history.sql` adds optional payment notes, multiple
+immutable disbursements and one audited void per payment. Unit,
 Fastify/SQLite integration, migration, accessibility, remote,
 offline, failure/retry and rendered-viewport tests cover the completion
 criteria.
 
 ## Phase 5 — Home Assistant integration and Assist command API
 
-Status: complete and locally verified with a fake Home Assistant adapter. Live
-Home Assistant credentials, entity mapping and hardware presence/IR tuning are
-deployment validation work and were not performed.
+Status: complete and locally verified with fake and private REST adapter contracts plus the adult
+connection/mapping workflow. Live credentials, actual entity selection, Assist/Piper hardware and
+presence/IR tuning are deployment validation work and were not performed.
 
 ### Work
 
@@ -166,6 +263,16 @@ day-summary, list-item and chore-completion routes are structured entry points
 for Home Assistant; Hearth contains no listening or speaking UI. Browser,
 Fastify, SQLite, migration, focus/Back, accessibility and protected-playback
 tests cover the completion criteria using the fake adapter.
+
+Connection extension (2026-08-10): responsive **Connections > Home Assistant** administration now
+tests `/api/config` and `/api/states`, presents only opaque friendly discovery choices, maps exactly
+four safety states and three scripts, and can save/remove the connection without restart. The raw
+URL, token and entity IDs are atomically stored only in an external mode-`0600` file; migration
+`0019_home_assistant_connection_setup.sql` stores safe labels/status only. The live adapter reads
+only the mapped state endpoints and calls only mapped scripts through `script.turn_on`. Shared,
+runtime, repository, Fastify, migration, secret-redaction, phone, keyboard-Back and accessibility
+tests cover this local boundary. Actual household commissioning still requires an approved current
+Home Assistant backup and remains deliberately unperformed.
 
 ## Phase 6 — Android TV shell
 
@@ -196,6 +303,14 @@ sleep/wake, server recovery and revocation. Phase 6 remains in progress until
 the selected TCL television passes the same checks, including a visible launcher
 tile, actual network disconnect and overnight standby/resume. No media-launch or
 Home Assistant bridge was added.
+
+Browser-display extension (2026-08-16): Samsung M7 testing demonstrated that Tizen Browser exposes
+WebAuthn but rejects resident credentials and an empty `allowCredentials` list. Private signed-out
+Hearth now offers the same adult-approved short-code pairing outcome for non-Android television
+browsers. The display generates the 256-bit secret with Web Crypto, keeps it only in volatile page
+memory during approval, and receives a restricted persistent `HttpOnly` device cookie. The Android
+shell remains the preferred Google TV installation because it additionally provides Keystore,
+launcher, lifecycle and recovery guarantees.
 
 ## Parallel deployment workstream — Home Assistant voice and music
 
@@ -244,13 +359,32 @@ new Hearth application phase.
 
 ## Phase 7 — Photos, ambient mode and production operations
 
-Status as of 2026-08-05: in progress. The browser/server Photos slice is
+Status as of 2026-08-10: in progress. The browser/server Photos slice is
 implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
-responsive gallery, ambient slideshow, immediate remote exit, cached-source
-states and corrupt-image fallback. Live Synology selection/indexing,
-Home Assistant presence/quiet-hours coordination, production deployment,
+responsive full-screen collage templates with no skinny leftover strips, calm
+45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
+slideshow, immediate remote exit, cached-source states and corrupt-image fallback. The private
+server now includes the concrete read-only Synology-folder indexer, incremental fingerprinting,
+orientation-correct display/thumbnail WebPs, opaque immutable asset routes, adult-only audited
+manual scans, aggregate Admin status and persistent favourite/hide/restore curation. Hidden assets
+remain indexed but are excluded from Today, gallery and ambient projections. A production-oriented two-container Synology
+scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
+with same-origin proxying, non-root/read-only processes, readiness gating,
+forward migrations and clean shutdown verified locally. A three-job GitHub Actions gate mirrors
+the complete web/server/browser suite, Android TV shell and production container image builds and
+has passed on the release-checkpoint branch. Live Synology
+commissioning, hostname/TLS and real-device passkey enrolment/recovery validation, approved live photo-folder
+selection/mount and scan evidence,
+Home Assistant presence/quiet-hours coordination,
 restore evidence and the household pilot remain open; Phase 7 is not complete.
+
+Adult-access extension (2026-08-15): private Admin now manages named adults with multiple passkeys,
+independent credential revocation and a passkey-confirmed, 128-bit one-time recovery code. Recovery
+creates a replacement passkey and revokes that adult's earlier credentials and sessions. Migration
+`0020_adult_access_recovery.sql`, schema/route/repository tests and virtual-WebAuthn browser coverage
+exercise the local contract; stable-hostname real-device enrolment and code recovery remain a live
+commissioning gate rather than an unimplemented software flow.
 
 Cross-cutting appearance extension (2026-08-05): Light, Dark and Automatic are
 implemented as per-display browser/WebView preferences, with Automatic following
@@ -262,10 +396,11 @@ checks pass; physical-TCL comfort assessment remains part of the household pilot
 
 ### Work
 
-- Add approved Synology photo source, indexing and derivatives.
+- Commission the implemented Synology photo source against one explicitly approved read-only folder.
 - Add ambient slideshow and screen/presence coordination.
-- Create production Docker images and Synology Compose deployment.
-- Implement health monitoring, backup, restore and update procedures.
+- Commission the verified Docker/Compose scaffold on the approved private Synology HTTPS origin.
+- Commission the implemented System Health and online-backup service, configure Synology's
+  encrypted off-device copy, and perform the documented clean-location restore drill on the NAS.
 - Conduct a household pilot and tune television readability/presence rules.
 
 ### Completion criteria

@@ -1,60 +1,123 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IconName } from '../components/Icon';
 import { Link } from 'react-router-dom';
 
+import { runtimeApi as hearthApi } from '../api/runtime';
+import { authStatusQueryKey } from '../auth/queryKeys';
 import { AdminError, AdminLoading } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useAdminQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
+import { useHearthRuntime } from '../runtime/context';
 
-const settings: {
+interface Setting {
   title: string;
-  description: (members: number, televisions: number, householdName: string) => string;
+  description: (
+    members: number,
+    televisions: number,
+    householdName: string,
+    timezone: string,
+  ) => string;
   icon: IconName;
   path: string;
-}[] = [
+}
+
+const settingGroups: Array<{ title: string; settings: Setting[] }> = [
   {
     title: 'Household',
-    description: (_members, _televisions, householdName) => `${householdName} · Perth`,
-    icon: 'home',
-    path: '/admin/household',
+    settings: [
+      {
+        title: 'Household',
+        description: (_members, _televisions, householdName, timezone) =>
+          `${householdName} · ${timezoneLabel(timezone)}`,
+        icon: 'home',
+        path: '/admin/household',
+      },
+      {
+        title: 'People',
+        description: (members) => `${members} members · Roles and permissions`,
+        icon: 'users',
+        path: '/admin/people',
+      },
+      {
+        title: 'Adult access',
+        description: () => 'Passkeys, trusted devices and recovery',
+        icon: 'shield',
+        path: '/admin/access',
+      },
+    ],
   },
   {
-    title: 'People',
-    description: (members) => `${members} members · Roles and permissions`,
-    icon: 'users',
-    path: '/admin/people',
-  },
-  {
-    title: 'Appearance',
-    description: () => 'Light, dark and evening comfort',
-    icon: 'moon',
-    path: '/admin/appearance',
-  },
-  {
-    title: 'Family planning',
-    description: () => 'Routines, meals, lists and pocket money',
-    icon: 'wallet',
-    path: '/admin/planning',
-  },
-  {
-    title: 'Paired televisions',
-    description: (_members, televisions) =>
-      `${televisions} connected · Approve or revoke a television`,
-    icon: 'television',
-    path: '/admin/televisions',
+    title: 'Family setup',
+    settings: [
+      {
+        title: 'Today & notices',
+        description: () => 'Overview sections and household notices',
+        icon: 'today',
+        path: '/admin/today',
+      },
+      {
+        title: 'Family planning',
+        description: () => 'Routines, meals, lists and pocket money',
+        icon: 'wallet',
+        path: '/admin/planning',
+      },
+    ],
   },
   {
     title: 'Connections',
-    description: () => 'Calendar and Home Assistant',
-    icon: 'link',
-    path: '/admin/connections',
+    settings: [
+      {
+        title: 'Connections',
+        description: () => 'Calendar and Home Assistant',
+        icon: 'link',
+        path: '/admin/connections',
+      },
+    ],
   },
   {
-    title: 'Photos',
-    description: () => 'Approved album and source',
-    icon: 'image',
-    path: '/admin/photos',
+    title: 'Displays',
+    settings: [
+      {
+        title: 'Photos',
+        description: () => 'Approved album and source',
+        icon: 'image',
+        path: '/admin/photos',
+      },
+      {
+        title: 'Paired televisions',
+        description: (_members, televisions) =>
+          `${televisions} connected · Approve, pair or revoke a television`,
+        icon: 'television',
+        path: '/admin/televisions',
+      },
+      {
+        title: 'Appearance',
+        description: () => 'Light, dark and evening comfort',
+        icon: 'moon',
+        path: '/admin/appearance',
+      },
+    ],
+  },
+  {
+    title: 'System',
+    settings: [
+      {
+        title: 'System health',
+        description: () => 'Backups, storage and version',
+        icon: 'shield',
+        path: '/admin/system',
+      },
+      {
+        title: 'Recent activity',
+        description: () => 'Private household change history',
+        icon: 'list',
+        path: '/admin/activity',
+      },
+    ],
   },
 ];
+
+const settings = settingGroups.flatMap((group) => group.settings);
 
 function settingFocusId(title: string): string {
   return `admin-${title.toLowerCase().split(' ')[0]}`;
@@ -66,7 +129,15 @@ function adjacentSettingFocusId(index: number, fallback: string): string {
 }
 
 export function AdminScreen() {
+  const runtime = useHearthRuntime();
+  const queryClient = useQueryClient();
   const admin = useAdminQuery();
+  const signOut = useMutation({
+    mutationFn: hearthApi.signOut,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: authStatusQueryKey });
+    },
+  });
   if (admin.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;
 
@@ -77,14 +148,29 @@ export function AdminScreen() {
     <section className="admin-home">
       <header className="admin-home__topbar">
         <img alt="" src="/brand/hearth-mark.png" />
-        <div className="admin-actor" aria-label={`${admin.data.actor.displayName}, administrator`}>
-          <span aria-hidden="true">{admin.data.actor.displayName.slice(0, 1)}</span>
-          <strong>{admin.data.actor.displayName}</strong>
-          <small>Administrator</small>
+        <div className="admin-session-controls">
+          <div
+            className="admin-actor"
+            aria-label={`${admin.data.actor.displayName}, administrator`}
+          >
+            <span aria-hidden="true">{admin.data.actor.displayName.slice(0, 1)}</span>
+            <strong>{admin.data.actor.displayName}</strong>
+            <small>Administrator</small>
+          </div>
+          {runtime.mode === 'private' ? (
+            <button
+              className="button button--quiet"
+              type="button"
+              disabled={signOut.isPending}
+              onClick={() => signOut.mutate()}
+            >
+              {signOut.isPending ? 'Signing out…' : 'Sign out'}
+            </button>
+          ) : null}
         </div>
       </header>
       <div className="admin-home__title">
-        <h1>Home settings</h1>
+        <h1>Hearth settings</h1>
         <p>{admin.data.household.name}</p>
       </div>
       <div className="local-status" role="status">
@@ -96,51 +182,59 @@ export function AdminScreen() {
           <span>Private to this home and its Tailscale network</span>
         </div>
       </div>
-      <div className="admin-setting-list">
-        {settings.map((setting, index) => (
-          <Link
-            className="admin-setting-row focusable"
-            data-focus-down={adjacentSettingFocusId(index + 1, 'admin-pair-television')}
-            data-focus-id={settingFocusId(setting.title)}
-            data-focus-left={settingFocusId(setting.title)}
-            data-focus-right={settingFocusId(setting.title)}
-            data-focus-up={adjacentSettingFocusId(index - 1, settingFocusId(setting.title))}
-            to={setting.path}
-            key={setting.title}
-          >
-            <span className="admin-setting-row__icon">
-              <Icon name={setting.icon} />
-            </span>
-            <span className="admin-setting-row__copy">
-              <strong>{setting.title}</strong>
-              <small>
-                {setting.description(
-                  admin.data.household.members.length,
-                  connected,
-                  admin.data.household.name,
-                )}
-              </small>
-            </span>
-            <Icon name="chevron-right" />
-          </Link>
+      <div className="admin-setting-groups">
+        {settingGroups.map((group) => (
+          <section className="admin-setting-group" key={group.title}>
+            <h2>{group.title}</h2>
+            <div className="admin-setting-list">
+              {group.settings.map((setting) => {
+                const index = settings.indexOf(setting);
+                return (
+                  <Link
+                    className="admin-setting-row focusable"
+                    data-focus-entry={index === 0 ? 'true' : undefined}
+                    data-focus-down={adjacentSettingFocusId(
+                      index + 1,
+                      settingFocusId(setting.title),
+                    )}
+                    data-focus-id={settingFocusId(setting.title)}
+                    data-focus-left={settingFocusId(setting.title)}
+                    data-focus-right={settingFocusId(setting.title)}
+                    data-focus-up={adjacentSettingFocusId(index - 1, settingFocusId(setting.title))}
+                    to={setting.path}
+                    key={setting.title}
+                  >
+                    <span className="admin-setting-row__icon">
+                      <Icon name={setting.icon} />
+                    </span>
+                    <span className="admin-setting-row__copy">
+                      <strong>{setting.title}</strong>
+                      <small>
+                        {setting.description(
+                          admin.data.household.members.length,
+                          connected,
+                          admin.data.household.name,
+                          admin.data.household.timezone,
+                        )}
+                      </small>
+                    </span>
+                    <Icon name="chevron-right" />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
         ))}
       </div>
-      <Link
-        className="admin-primary-action focusable"
-        data-focus-down="admin-pair-television"
-        data-focus-id="admin-pair-television"
-        data-focus-left="admin-pair-television"
-        data-focus-right="admin-pair-television"
-        data-focus-up={settingFocusId(settings.at(-1)?.title ?? 'Photos')}
-        to="/admin/televisions"
-      >
-        <Icon name="television" />
-        Pair a television
-      </Link>
-      <p className="demo-session-note">
-        Demo adult session · Real passkey sign-in starts after the private HTTPS hostname is
-        configured.
-      </p>
+      {runtime.mode === 'private' ? null : (
+        <p className="demo-session-note">
+          Demo adult session · Private deployment uses passkey sign-in.
+        </p>
+      )}
     </section>
   );
+}
+
+function timezoneLabel(timezone: string): string {
+  return timezone.split('/').at(-1)?.replaceAll('_', ' ') ?? timezone;
 }

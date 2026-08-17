@@ -1,17 +1,31 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { DemoScenario, PhotoAsset } from '@hearth/shared';
+import './PhotosScreen.css';
 
-import { hearthApi } from '../api/client';
+import type { DemoScenario } from '@hearth/shared';
+
+import { demoApi as hearthApi } from '../api/demo';
 import { Icon } from '../components/Icon';
 import { PhotoAssetImage } from '../components/PhotoAssetImage';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
-import { usePhotosQuery } from '../hooks/useHearthQueries';
+import { usePhotosQuery } from '../hooks/usePhotoQueries';
+import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import {
+  arrangePhotoCollage,
+  PHOTO_COLLAGE_SIZE,
+  nextPhotoId,
+  PHOTO_COLLAGE_ROTATION_MS,
+  photoCollageFeatureSide,
+  photoCollageMode,
+  type PhotoCollageItem,
+  type PhotoCollageFeatureSide,
+  type PhotoCollageSlot,
+} from './photoCollage';
 
 export function PhotosScreen({
   scenario,
@@ -25,28 +39,99 @@ export function PhotosScreen({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [manualSelectionRevision, setManualSelectionRevision] = useState(0);
   const [ambient, setAmbient] = useState(false);
+  const [rotationPaused, setRotationPaused] = useState(false);
+  const [pageVisible, setPageVisible] = useState(() => document.visibilityState === 'visible');
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  const [compactLandscape, setCompactLandscape] = useState(
+    () => window.matchMedia('(max-width: 900px) and (orientation: landscape)').matches,
+  );
   const wasAmbient = useRef(false);
+  const householdTime = useHouseholdClock();
 
   const gallery = query.data;
+  const favouriteCount = gallery?.photos.reduce(
+    (count, photo) => count + Number(photo.favourite),
+    0,
+  );
   const selected =
     gallery?.photos.find((photo) => photo.id === selectedId) ??
     gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ??
     gallery?.photos[0] ??
     null;
+  const collageItems = arrangePhotoCollage(gallery?.photos ?? [], selected?.id ?? null);
+  const collageMode =
+    collageItems[0] === undefined ? 'landscape' : photoCollageMode(collageItems[0].photo);
+  const collageFeatureSide = photoCollageFeatureSide(
+    gallery?.photos ?? [],
+    collageItems[0]?.photo.id ?? null,
+    gallery?.featuredPhotoId ?? gallery?.photos[0]?.id ?? null,
+  );
+  const visibleCollageItems = compactLandscape ? collageItems.slice(0, 3) : collageItems;
 
   useEffect(() => {
-    if (!ambient || gallery === undefined || gallery.photos.length < 2) return;
-    const timer = window.setInterval(() => {
-      setSelectedId((current) => {
-        const index = gallery.photos.findIndex((photo) => photo.id === current);
-        return (
-          gallery.photos[(index + 1 + gallery.photos.length) % gallery.photos.length]?.id ?? null
-        );
-      });
-    }, 10_000);
-    return () => window.clearInterval(timer);
-  }, [ambient, gallery]);
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px) and (orientation: landscape)');
+    const onChange = (event: MediaQueryListEvent) => setCompactLandscape(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setPageVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    if (gallery === undefined || selected === null || gallery.photos.length < 2) return;
+    const upcomingId = nextPhotoId(gallery.photos, selected.id);
+    const upcoming = gallery.photos.find((photo) => photo.id === upcomingId);
+    if (upcoming === undefined) return;
+    const preload = new Image();
+    preload.decoding = 'async';
+    preload.src = upcoming.displayUrl;
+    return () => {
+      preload.src = '';
+    };
+  }, [gallery, selected]);
+
+  useEffect(() => {
+    if (
+      prefersReducedMotion ||
+      rotationPaused ||
+      !pageVisible ||
+      gallery === undefined ||
+      gallery.photos.length < 2
+    )
+      return;
+    const timer = window.setTimeout(() => {
+      setSelectedId((current) =>
+        nextPhotoId(
+          gallery.photos,
+          current ?? gallery.featuredPhotoId ?? gallery.photos[0]?.id ?? null,
+        ),
+      );
+    }, PHOTO_COLLAGE_ROTATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [
+    ambient,
+    gallery,
+    manualSelectionRevision,
+    pageVisible,
+    prefersReducedMotion,
+    rotationPaused,
+    selectedId,
+  ]);
 
   useEffect(() => {
     if (!ambient) return;
@@ -74,6 +159,17 @@ export function PhotosScreen({
     await hearthApi.resetDemo();
     await queryClient.invalidateQueries();
     navigate('/photos', { replace: true });
+  }
+
+  function selectPhoto(photoId: string) {
+    setSelectedId(photoId);
+    setManualSelectionRevision((current) => current + 1);
+    requestAnimationFrame(() => focusById(`photos-thumb-${photoId}`));
+  }
+
+  function toggleRotation() {
+    setRotationPaused((paused) => !paused);
+    setManualSelectionRevision((current) => current + 1);
   }
 
   if (gallery.photos.length === 0) {
@@ -105,19 +201,49 @@ export function PhotosScreen({
       <ScreenHeader
         eyebrow="Family photos"
         title="Photos"
-        meta={`${gallery.collection.photoCount} favourites · ${gallery.collection.source.label}`}
+        meta={galleryMeta(
+          gallery.collection.photoCount,
+          favouriteCount ?? 0,
+          gallery.collection.source.label,
+        )}
         actions={
-          <button
-            className="photos-ambient-action focusable"
-            data-focus-down={`photos-thumb-${selected?.id ?? gallery.photos[0]?.id}`}
-            data-focus-id="photos-start-ambient"
-            data-focus-left="nav-photos"
-            onClick={() => setAmbient(true)}
-            type="button"
-          >
-            <Icon name="image" />
-            Start ambient
-          </button>
+          <div className="photos-header-actions">
+            {!prefersReducedMotion && gallery.photos.length > 1 ? (
+              <button
+                aria-label={
+                  rotationPaused
+                    ? 'Resume automatic photo rotation'
+                    : 'Pause automatic photo rotation'
+                }
+                aria-pressed={rotationPaused}
+                className="photos-rotation-action focusable"
+                data-focus-down={`photos-thumb-${selected?.id ?? gallery.photos[0]?.id}`}
+                data-focus-id="photos-toggle-rotation"
+                data-focus-left="nav-photos"
+                data-focus-right="photos-start-ambient"
+                onClick={toggleRotation}
+                type="button"
+              >
+                <Icon name={rotationPaused ? 'play' : 'pause'} />
+                {rotationPaused ? 'Resume' : 'Pause'}
+              </button>
+            ) : null}
+            <button
+              className="photos-ambient-action focusable"
+              data-focus-down={`photos-thumb-${selected?.id ?? gallery.photos[0]?.id}`}
+              data-focus-id="photos-start-ambient"
+              data-focus-left={
+                !prefersReducedMotion && gallery.photos.length > 1
+                  ? 'photos-toggle-rotation'
+                  : 'nav-photos'
+              }
+              onClick={() => setAmbient(true)}
+              type="button"
+            >
+              <Icon name="image" />
+              Start ambient
+            </button>
+          </div>
         }
       />
       {!online ? (
@@ -133,28 +259,44 @@ export function PhotosScreen({
         <strong>{gallery.collection.name}</strong>
         <span>·</span>
         <span>{gallery.collection.source.message}</span>
+        {!prefersReducedMotion && gallery.photos.length > 1 ? (
+          <span className="photos-rotation-note">
+            <Icon name="refresh" />
+            <span>
+              {rotationPaused ? 'Automatic rotation paused' : 'Automatic · every 45 seconds'}
+            </span>
+            {!rotationPaused ? (
+              <span
+                aria-hidden="true"
+                className="photos-rotation-progress"
+                key={`${selected?.id ?? 'first'}-${manualSelectionRevision}`}
+              >
+                <span
+                  className="photos-rotation-progress__fill"
+                  style={
+                    {
+                      '--photo-rotation-duration': `${PHOTO_COLLAGE_ROTATION_MS}ms`,
+                    } as CSSProperties
+                  }
+                />
+              </span>
+            ) : null}
+          </span>
+        ) : null}
       </div>
       <div className="photos-layout">
-        <figure className={`photos-hero photos-hero--${selected?.orientation ?? 'landscape'}`}>
-          {selected === null ? null : (
-            <PhotoAssetImage
-              alt={selected.alt}
-              className="photos-hero__image"
-              key={selected.id}
-              loading="eager"
-              src={selected.displayUrl}
-            />
-          )}
-        </figure>
-        <div className="photos-grid" aria-label="Family favourites">
-          {gallery.photos.map((photo, index, photos) => (
+        <div
+          aria-label="Family photos. The featured photo and collage arrangement change about once every 45 seconds."
+          className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--feature-${collageFeatureSide} photos-collage--count-${visibleCollageItems.length}`}
+        >
+          {visibleCollageItems.map((item) => (
             <PhotoThumbnail
-              index={index}
-              key={photo.id}
-              onSelect={() => setSelectedId(photo.id)}
-              photo={photo}
-              photos={photos}
-              selected={photo.id === selected?.id}
+              item={item}
+              items={visibleCollageItems}
+              key={item.slot}
+              onSelect={() => selectPhoto(item.photo.id)}
+              selected={item.photo.id === selected?.id}
+              featureSide={collageFeatureSide}
             />
           ))}
         </div>
@@ -169,11 +311,12 @@ export function PhotosScreen({
           <PhotoAssetImage
             alt={selected.alt}
             className="photo-ambient__image"
+            fetchPriority="high"
             loading="eager"
             src={selected.displayUrl}
           />
           <div className="photo-ambient__overlay">
-            <strong>7:42</strong>
+            <strong>{householdTime}</strong>
             <span>Press any button to return</span>
           </div>
           <button
@@ -190,43 +333,106 @@ export function PhotosScreen({
   );
 }
 
+function galleryMeta(photoCount: number, favouriteCount: number, sourceLabel: string): string {
+  const favourites = `${favouriteCount} ${favouriteCount === 1 ? 'favourite' : 'favourites'}`;
+  if (favouriteCount === photoCount) return `${favourites} · ${sourceLabel}`;
+  return `${favourites} · ${photoCount} in rotation · ${sourceLabel}`;
+}
+
 function PhotoThumbnail({
-  index,
+  item,
+  items,
   onSelect,
-  photo,
-  photos,
   selected,
+  featureSide,
 }: {
-  index: number;
+  item: PhotoCollageItem;
+  items: PhotoCollageItem[];
   onSelect: () => void;
-  photo: PhotoAsset;
-  photos: PhotoAsset[];
   selected: boolean;
+  featureSide: PhotoCollageFeatureSide;
 }) {
-  const column = index % 2;
-  const up = index < 2 ? undefined : photos[index - 2];
-  const down = photos[index + 2];
-  const horizontal = photos[column === 0 ? index + 1 : index - 1];
+  const { photo, slot } = item;
+  const links = collageFocusLinks(slot, items, featureSide);
+  const featured = slot === 'feature';
   return (
     <button
       aria-label={`Show photo: ${photo.alt}`}
       aria-pressed={selected}
-      className={`photo-thumbnail photo-thumbnail--${photo.orientation} focusable${selected ? ' photo-thumbnail--selected' : ''}`}
-      data-focus-down={`photos-thumb-${down?.id ?? photo.id}`}
+      className={`photo-thumbnail photo-thumbnail--${photo.orientation} photo-collage__tile photo-collage__tile--${slot} focusable${featured ? ` photos-hero photos-hero--${photo.orientation}` : ''}${selected ? ' photo-thumbnail--selected' : ''}`}
+      data-focus-entry={featured ? 'true' : undefined}
+      data-focus-down={links.down}
       data-focus-id={`photos-thumb-${photo.id}`}
-      data-focus-left={column === 0 ? 'nav-photos' : `photos-thumb-${horizontal?.id ?? photo.id}`}
-      data-focus-right={`photos-thumb-${column === 0 ? (horizontal?.id ?? photo.id) : photo.id}`}
-      data-focus-up={up === undefined ? 'photos-start-ambient' : `photos-thumb-${up.id}`}
+      data-focus-left={links.left}
+      data-focus-right={links.right}
+      data-focus-up={links.up}
+      data-photo-id={photo.id}
       onClick={onSelect}
-      style={
-        photo.orientation === 'portrait'
-          ? { aspectRatio: `${photo.width} / ${photo.height}` }
-          : undefined
-      }
       type="button"
     >
-      <PhotoAssetImage alt="" className="photo-thumbnail__image" src={photo.thumbnailUrl} />
+      <PhotoAssetImage
+        alt={featured ? photo.alt : ''}
+        className={
+          featured ? 'photo-thumbnail__image photos-hero__image' : 'photo-thumbnail__image'
+        }
+        fetchPriority={featured ? 'high' : 'low'}
+        key={`${photo.id}-${slot}`}
+        loading={featured ? 'eager' : 'lazy'}
+        src={featured ? photo.displayUrl : photo.thumbnailUrl}
+      />
       <span className="sr-only">{photo.orientation} photo</span>
     </button>
   );
+}
+
+function collageFocusLinks(
+  slot: PhotoCollageSlot,
+  items: PhotoCollageItem[],
+  featureSide: PhotoCollageFeatureSide,
+): { up: string; down: string; left: string; right: string } {
+  const bySlot = new Map(items.map((item) => [item.slot, `photos-thumb-${item.photo.id}`]));
+  const feature = bySlot.get('feature') ?? 'photos-start-ambient';
+  const support1 = bySlot.get('support-1') ?? feature;
+  const support2 = bySlot.get('support-2') ?? support1;
+  const support3 = bySlot.get('support-3') ?? support2;
+  const support4 = bySlot.get('support-4') ?? support3;
+
+  const featureAtStart = {
+    feature: { up: 'photos-start-ambient', down: feature, left: 'nav-photos', right: support1 },
+    'support-1': {
+      up: 'photos-start-ambient',
+      down: support3,
+      left: feature,
+      right: support2,
+    },
+    'support-2': {
+      up: 'photos-start-ambient',
+      down: support4,
+      left: support1,
+      right: support2,
+    },
+    'support-3': { up: support1, down: support3, left: feature, right: support4 },
+    'support-4': { up: support2, down: support4, left: support3, right: support4 },
+  } satisfies Record<PhotoCollageSlot, { up: string; down: string; left: string; right: string }>;
+
+  if (featureSide === 'start' || items.length < PHOTO_COLLAGE_SIZE) return featureAtStart[slot];
+
+  const featureAtEnd = {
+    feature: { up: 'photos-start-ambient', down: feature, left: support1, right: feature },
+    'support-1': {
+      up: 'photos-start-ambient',
+      down: support3,
+      left: support2,
+      right: feature,
+    },
+    'support-2': {
+      up: 'photos-start-ambient',
+      down: support4,
+      left: 'nav-photos',
+      right: support1,
+    },
+    'support-3': { up: support1, down: support3, left: support4, right: feature },
+    'support-4': { up: support2, down: support4, left: 'nav-photos', right: support3 },
+  } satisfies Record<PhotoCollageSlot, { up: string; down: string; left: string; right: string }>;
+  return featureAtEnd[slot];
 }

@@ -12,15 +12,22 @@ const planningAreas: Array<{
 }> = [
   {
     title: 'Routines and chores',
-    description: 'Repeat patterns and assignees',
+    description: 'Schedules, assignees and due times',
     path: '/admin/routines',
     icon: 'chores',
     focusId: 'planning-routines',
   },
   {
+    title: 'Today’s chores',
+    description: 'Reassign, skip, excuse and review history',
+    path: '/admin/chore-day',
+    icon: 'chores',
+    focusId: 'planning-chore-day',
+  },
+  {
     title: 'Meals',
     description: 'Plan dinners and keep family favourites',
-    path: '/meals',
+    path: '/admin/meals',
     icon: 'meal',
     focusId: 'planning-meals',
   },
@@ -34,7 +41,7 @@ const planningAreas: Array<{
   {
     title: 'Household lists',
     description: 'Groceries, packing and shared reminders',
-    path: '/lists',
+    path: '/admin/lists',
     icon: 'list',
     focusId: 'planning-lists',
   },
@@ -51,9 +58,10 @@ export function PlanningSettingsScreen() {
         </div>
       </div>
       <div className="planning-area-list">
-        {planningAreas.map((area) => (
+        {planningAreas.map((area, index) => (
           <Link
             className="planning-area-card"
+            data-focus-entry={index === 0 ? 'true' : undefined}
             data-focus-id={area.focusId}
             key={area.title}
             to={area.path}

@@ -65,7 +65,12 @@ Can understand the current household state and use clearly exposed room controls
 - Chore templates assigned to one or more people.
 - One-off, daily, weekly and rule-based recurrence.
 - Concrete daily occurrences so historical completion never changes when a template is edited.
-- Complete, undo, skip and reassign with permission checks.
+- Optional household-local due time, snapshotted onto each occurrence with its title, description,
+  routine and assignee.
+- Complete and undo from the family surface. Adult skip, excuse and reassignment commands require a
+  short reason, permission checks, idempotency and immutable occurrence history.
+- Skipping leaves the chore due and incomplete; excusing removes it from the pocket-money
+  denominator; reassignment moves an awaiting occurrence to the selected household member.
 - Optional evidence/note support later; never required for ordinary chores.
 - Morning, after-school, evening and bedtime routine grouping.
 - Streaks and progress that encourage rather than shame.
@@ -75,7 +80,9 @@ Can understand the current household state and use clearly exposed room controls
 - Every participating child has a required weekly amount in Australian dollars and a household-selected payday.
 - Week-to-date progress is the number of completed chore occurrences divided by all non-excused, non-cancelled occurrences due so far in the Monday–Sunday week.
 - The amount due is the same proportion of the weekly amount, rounded to the nearest cent. Skipped chores remain due and therefore reduce the proportion.
-- A parent can record the amount paid. The payment stores a dated snapshot of the counts, percentage and amount so later chore/template edits do not rewrite payment history.
+- A parent can record one or more partial disbursements, each with an optional note. Every payment stores a dated snapshot of the counts, percentage and amount so later chore/template edits do not rewrite payment history; active payments for a week may never exceed the amount currently due.
+- Mistakes are corrected with a separate adult-authenticated void record and reason. Hearth never silently edits or deletes a payment, and paid, partially paid and unpaid states remain visible by child and week.
+- Recording before the selected payday is allowed with an explicit warning rather than silently blocked.
 - Only an adult administrator can change weekly amounts/paydays or record a payment. Chore completion uses the normal actor and permission rules.
 - Hearth does not expose star balances, reward choices, redemptions or per-chore point values.
 
@@ -90,17 +97,42 @@ Can understand the current household state and use clearly exposed room controls
 ### 5. Meal planning
 
 - Weekly breakfast/lunch/dinner plan, with dinner prioritised visually.
-- Saved family meals and notes.
+- The television presents tonight and a calm seven-night dinner strip; dense editing belongs in
+  the authenticated phone companion.
+- The companion can edit all seven dinners in one save, copy the previous week or explicitly clear
+  a week. Saved-meal and note controls remain optional details rather than slowing the primary
+  dinner-name path.
+- Saved family meals support search, favourites, optional preparation time and notes, recoverable
+  archive and restore.
+- Meal-plan and saved-meal writes use the same validated, idempotent and audited command path as
+  other household-owned data.
+- Breakfast and lunch remain valid contract slots but do not receive a dedicated first-release UI
+  until a real household need justifies the extra density.
 - Link meal ingredients to the grocery list later.
 - Do not require recipe management in the first implementation.
 
 ### 6. Photos and ambient display
 
 - Rotate approved family photos from a designated Synology source.
+- Let an authenticated adult favourite, unfavourite, hide and restore indexed photos from companion
+  administration. Favourites appear first; hidden photos remain indexed but never appear on Today,
+  in the gallery or in ambient mode.
 - Preserve aspect ratio and use tasteful cropping/background treatment.
+- Present the browsable Photos screen as a full-screen orientation-aware collage with no duplicate
+  image and no narrow leftover strips. Choose the composition from the visible photo orientations:
+  a portrait anchors a mixed five-photo set beside a 2×2 landscape grid, while an all-landscape set
+  uses a balanced large-feature mosaic. Cycle occupants and selection calmly about every 45
+  seconds without replacing a suitable portrait anchor with a skinny column; pause automatic
+  changes when the display requests reduced motion. On a phone held sideways, show three
+  substantial rotating occupants instead of compressing all five into shallow strips.
 - Overlay only minimal next-event or household information in ambient mode.
 - Exit immediately on remote input, voice request or important alert.
 - Never leave a static dashboard on overnight; allow Home Assistant to turn the panel off.
+
+Member profile photos are separate from the ambient family-photo collection. An adult administrator
+can choose a portrait or landscape image in People, directly drag and pinch/scroll a square crop,
+replace it later or restore the member's original avatar. Hearth keeps only a bounded local
+derivative; it does not retain or expose the selected original file.
 
 ### 7. Notices and household summary
 
@@ -161,6 +193,10 @@ The default Today screen should include, in order of prominence:
 7. One optional, orientation-safe preview from the approved family photo source. It should be large enough to appreciate from the sofa while remaining secondary to plans and chores; Today does not become a slideshow or replace ambient mode.
 
 It must not become a grid of tiny widgets. Information can be prioritised and paged rather than simultaneously exposed.
+When a television column contains more plans or chores than its calm visible limit, Today shows an
+honest `+N more` action into the full Calendar agenda or Chores module instead of silently dropping
+items. Visible event rows open their real details; Dinner, List summary, Notice and Family photo
+lead to their corresponding useful destination or full notice text.
 
 ## Initial release scope
 

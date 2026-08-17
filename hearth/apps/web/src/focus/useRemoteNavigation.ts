@@ -1,7 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { FocusMemory, focusById, nextFocusId, type FocusDirection } from './focusGraph';
+import {
+  FocusMemory,
+  focusById,
+  focusIsWithin,
+  nextFocusId,
+  type FocusDirection,
+} from './focusGraph';
 import { isNativeBackMessage, requestNativeExit } from '../native/nativeBridge';
 
 const arrowDirection: Partial<Record<string, FocusDirection>> = {
@@ -16,20 +22,28 @@ export function useRemoteNavigation(defaultFocusId: string): void {
   const location = useLocation();
   const focusMemory = useRef(new FocusMemory());
   const previousPath = useRef(location.pathname);
+  const activePath = useRef(location.pathname);
+  const remoteMoved = useRef(false);
+
+  useLayoutEffect(() => {
+    activePath.current = location.pathname;
+  }, [location.pathname]);
 
   useEffect(() => {
     const rememberFocusedControl = (event: FocusEvent) => {
       if (event.target instanceof HTMLElement && event.target.dataset.focusId !== undefined) {
-        focusMemory.current.remember(location.pathname, event.target.dataset.focusId);
+        focusMemory.current.remember(activePath.current, event.target.dataset.focusId);
       }
     };
     document.addEventListener('focusin', rememberFocusedControl);
     return () => document.removeEventListener('focusin', rememberFocusedControl);
-  }, [location.pathname]);
+  }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const priorPath = previousPath.current;
-    if (priorPath !== location.pathname) {
+    const routeChanged = priorPath !== location.pathname;
+    if (routeChanged) {
+      remoteMoved.current = false;
       const active = document.activeElement;
       if (active instanceof HTMLElement && active.dataset.focusId !== undefined) {
         focusMemory.current.remember(priorPath, active.dataset.focusId);
@@ -38,20 +52,38 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     }
     const fallbackId = `nav-${location.pathname.slice(1) || 'today'}`;
     const target = focusMemory.current.recall(location.pathname, defaultFocusId);
+    const scrollOnEntry = routeChanged || window.innerWidth > 900;
+    // Route content has committed by the time this layout effect runs. Move focus
+    // before paint so a fast follow-up D-pad key cannot act on the old rail item.
+    if (routeChanged) focusById(target);
     const animationFrame = requestAnimationFrame(() => {
-      if (!focusById(target) && !focusById(defaultFocusId)) {
-        focusById(fallbackId);
-      }
-    });
-    const observer = new MutationObserver(() => {
+      const content = document.querySelector('#main-content');
       const activeFocusId =
         document.activeElement instanceof HTMLElement
           ? document.activeElement.dataset.focusId
           : undefined;
+      // A remote key, tap or form-field focus can arrive before this first frame.
+      // Never steal that explicit interaction during initial screen entry.
       if (
-        (activeFocusId === undefined || activeFocusId === fallbackId) &&
-        (focusById(target) || focusById(defaultFocusId))
+        remoteMoved.current ||
+        focusIsWithin(content) ||
+        (!routeChanged && activeFocusId !== undefined)
+      )
+        return;
+      if (
+        !focusById(target, { scroll: scrollOnEntry }) &&
+        target !== defaultFocusId &&
+        !focusById(defaultFocusId, { scroll: scrollOnEntry })
       ) {
+        focusById(fallbackId, { scroll: scrollOnEntry });
+      }
+    });
+    const observer = new MutationObserver(() => {
+      if (remoteMoved.current || focusIsWithin(content)) {
+        observer.disconnect();
+        return;
+      }
+      if (focusById(target, { scroll: scrollOnEntry })) {
         observer.disconnect();
       }
     });
@@ -83,7 +115,10 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       if (direction !== undefined) {
         if (!(active instanceof HTMLElement)) return;
         const nextId = nextFocusId(active, direction);
-        if (focusById(nextId)) event.preventDefault();
+        if (focusById(nextId)) {
+          remoteMoved.current = true;
+          event.preventDefault();
+        }
         return;
       }
       if (['Escape', 'BrowserBack', 'GoBack'].includes(event.key)) {

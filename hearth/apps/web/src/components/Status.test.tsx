@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { EmptyState, FailureState, InlineError, LoadingState, StatusBanner } from './Status';
+
+afterEach(cleanup);
 
 describe('intentional application states', () => {
   it('renders a family-readable loading state', () => {
@@ -14,6 +16,18 @@ describe('intentional application states', () => {
     render(<EmptyState onBootstrap={bootstrap} />);
     fireEvent.click(screen.getByRole('button', { name: 'Show demo household' }));
     expect(bootstrap).toHaveBeenCalledOnce();
+  });
+
+  it('supports a specific empty state without exposing demo controls', () => {
+    render(
+      <EmptyState
+        title="No chores due today"
+        description="Repeating chores appear on their scheduled days."
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'No chores due today' })).toBeVisible();
+    expect(screen.getByText('Repeating chores appear on their scheduled days.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Show demo household' })).not.toBeInTheDocument();
   });
 
   it('renders stale and offline status without provider jargon', () => {

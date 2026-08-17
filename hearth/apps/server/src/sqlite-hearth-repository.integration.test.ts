@@ -142,7 +142,13 @@ describe('SQLite Hearth repository', () => {
     await expect(
       repository.complete(DEMO_HOUSEHOLD_ID, 'occurrence_laundry', 'request_child_other', child),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' } satisfies Partial<RepositoryError>);
-    await repository.skip(DEMO_HOUSEHOLD_ID, 'occurrence_laundry', 'request_adult_skip', adult);
+    await repository.skip(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_laundry',
+      'request_adult_skip',
+      'Waiting for dry weather',
+      adult,
+    );
     await repository.complete(
       DEMO_HOUSEHOLD_ID,
       'occurrence_herbs',
@@ -185,5 +191,110 @@ describe('SQLite Hearth repository', () => {
         expect.objectContaining({ actor_type: 'member', source_channel: 'voice' }),
       ]),
     );
+  });
+
+  it('persists reasoned skip, excuse, reassignment and adult-readable occurrence history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-chore-management-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'hearth.sqlite');
+    const first = await repositoryAt(path);
+
+    const initial = await first.repository.getChoreOccurrenceDetail(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_laundry',
+      adult,
+    );
+    expect(initial).toMatchObject({
+      occurrence: { state: 'pending', dueTime: '07:20' },
+      history: [],
+    });
+    await expect(
+      first.repository.getChoreOccurrenceDetail(DEMO_HOUSEHOLD_ID, 'occurrence_laundry', child),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' } satisfies Partial<RepositoryError>);
+
+    const skipped = await first.repository.skip(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_laundry',
+      'request_reasoned_skip',
+      'Waiting for dry weather',
+      adult,
+    );
+    const skipReplay = await first.repository.skip(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_laundry',
+      'request_reasoned_skip',
+      'Waiting for dry weather',
+      adult,
+    );
+    expect(skipped).toMatchObject({ occurrence: { state: 'skipped' }, replayed: false });
+    expect(skipReplay).toMatchObject({ occurrence: { state: 'skipped' }, replayed: true });
+
+    const excused = await first.repository.excuse(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_laundry',
+      'request_reasoned_excuse',
+      'Maya is away at school camp',
+      adult,
+    );
+    expect(excused.occurrence.state).toBe('excused');
+
+    const reassigned = await first.repository.reassign(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_school_bag',
+      'request_reasoned_reassign',
+      'member_maya',
+      'Ezra and Maya swapped morning jobs',
+      adult,
+    );
+    const reassignReplay = await first.repository.reassign(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_school_bag',
+      'request_reasoned_reassign',
+      'member_maya',
+      'Ezra and Maya swapped morning jobs',
+      adult,
+    );
+    expect(reassigned).toMatchObject({
+      occurrence: { state: 'pending', assignee: { id: 'member_maya' } },
+      replayed: false,
+    });
+    expect(reassignReplay.replayed).toBe(true);
+
+    first.database.close();
+    openDatabases.splice(openDatabases.indexOf(first.database), 1);
+    const restarted = await repositoryAt(path);
+    const excuseHistory = await restarted.repository.getChoreOccurrenceDetail(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_laundry',
+      adult,
+    );
+    expect(excuseHistory.history).toMatchObject([
+      { action: 'chore.excuse', reason: 'Maya is away at school camp' },
+      { action: 'chore.skip', reason: 'Waiting for dry weather' },
+    ]);
+    const reassignHistory = await restarted.repository.getChoreOccurrenceDetail(
+      DEMO_HOUSEHOLD_ID,
+      'occurrence_school_bag',
+      adult,
+    );
+    expect(reassignHistory).toMatchObject({
+      occurrence: { assignee: { id: 'member_maya' } },
+      history: [
+        {
+          action: 'chore.reassign',
+          label: 'Reassigned from Ezra to Maya',
+          reason: 'Ezra and Maya swapped morning jobs',
+        },
+      ],
+    });
+    expect(
+      restarted.database
+        .prepare(
+          `SELECT COUNT(*) AS count FROM audit_events
+           WHERE action_type IN ('chore.skip', 'chore.excuse', 'chore.reassign')
+             AND result = 'succeeded'`,
+        )
+        .get(),
+    ).toEqual({ count: 3 });
   });
 });

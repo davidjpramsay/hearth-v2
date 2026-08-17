@@ -2,10 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
-import { createRequestId, hearthApi, queryKeys } from '../api/client';
+import { adminApi as hearthApi } from '../api/admin';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { useAdminQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
 
 export function TelevisionsSettingsScreen() {
   const admin = useAdminQuery();

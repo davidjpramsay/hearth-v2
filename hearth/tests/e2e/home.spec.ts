@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { captureEvidence } from './visualEvidence';
+
 const evidence = resolve('docs/evidence/phase-5/screenshots');
 
 test.beforeAll(async () => {
@@ -17,8 +19,9 @@ test.beforeEach(async ({ request }) => {
 test('remote-only Home navigation, confirmation, action and Back restoration', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
+  await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.locator('[data-focus-id="nav-today"]').focus();
-  for (let step = 0; step < 7; step += 1) await page.keyboard.press('ArrowDown');
+  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-home"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
@@ -136,7 +139,7 @@ for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/home');
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `home-${viewport.name}.png`),
       animations: 'disabled',
     });
@@ -147,11 +150,16 @@ for (const state of ['unavailable', 'protected-media', 'fail-next'] as const) {
   test(`@visual Home ${state} state`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(`/home?scenario=${state}`);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     if (state === 'fail-next') {
       await page.locator('[data-focus-id="home-action-evening-mode"]').press('Enter');
       await expect(page.getByRole('alert')).toBeVisible();
+    } else if (state === 'unavailable') {
+      await expect(page.getByRole('status').first()).toContainText('last known room state');
+    } else {
+      await expect(page.getByText('Playback is protected')).toBeVisible();
     }
-    await page.screenshot({
+    await captureEvidence(page, {
       path: resolve(evidence, `home-state-${state}.png`),
       animations: 'disabled',
     });
@@ -163,7 +171,7 @@ test('@visual Home confirmation state', async ({ page }) => {
   await page.goto('/home');
   await page.locator('[data-focus-id="home-action-goodnight"]').press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.screenshot({
+  await captureEvidence(page, {
     path: resolve(evidence, 'home-state-confirmation.png'),
     animations: 'disabled',
   });

@@ -1,19 +1,31 @@
 import type { CalendarEvent } from '@hearth/shared';
 
 import { Avatar } from './Avatar';
+import { useHearthRuntime } from '../runtime/context';
 import { formatEventTime } from '../utils/date';
 
-export function EventRow({ event, focus }: { event: CalendarEvent; focus?: FocusProps }) {
+export function EventRow({
+  event,
+  focus,
+  onSelect,
+}: {
+  event: CalendarEvent;
+  focus?: FocusProps;
+  onSelect: (event: CalendarEvent) => void;
+}) {
+  const { timezone } = useHearthRuntime();
+  const timeLabel = formatEventTime(event, timezone);
   return (
     <button
-      aria-label={`${formatEventTime(event)}, ${event.title}, ${event.owner?.displayName ?? event.sourceLabel}`}
+      aria-label={`${timeLabel}, ${event.title}, ${event.owner?.displayName ?? event.sourceLabel}`}
       className="event-row focusable"
+      onClick={() => onSelect(event)}
       style={{ '--event-color': event.color } as React.CSSProperties}
       type="button"
       {...focus}
     >
       <time className="event-row__time" dateTime={event.start}>
-        {formatEventTime(event)}
+        {timeLabel}
       </time>
       <span className="event-row__rule" />
       <div className="event-row__body">

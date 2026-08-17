@@ -1,0 +1,371 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
+
+import type { CalendarConnectionTestResult } from '@hearth/shared';
+
+import { connectionsApi as hearthApi } from '../api/connections';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
+import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { Icon } from '../components/Icon';
+import { useAdminQuery } from '../hooks/useAdminQueries';
+import { useCalendarConnectionQuery } from '../hooks/useConnectionQueries';
+
+type OwnerByCalendar = Record<string, string>;
+
+export function CalendarConnectionSettingsScreen() {
+  const admin = useAdminQuery();
+  const connection = useCalendarConnectionQuery();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [testResult, setTestResult] = useState<CalendarConnectionTestResult | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [owners, setOwners] = useState<OwnerByCalendar>({});
+  const [appPassword, setAppPassword] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
+
+  const testConnection = useMutation({
+    mutationFn: hearthApi.testCalendarConnection,
+    onSuccess: (result) => {
+      setTestResult(result);
+      setSelected(result.availableCalendars.map((calendar) => calendar.id));
+      const householdMembers = admin.data?.household.members ?? [];
+      setOwners(
+        Object.fromEntries(
+          result.availableCalendars.map((calendar) => {
+            const owner = householdMembers.find(
+              (member) => member.displayName.toLowerCase() === calendar.displayName.toLowerCase(),
+            );
+            return [calendar.id, owner?.id ?? ''];
+          }),
+        ),
+      );
+      setAppPassword('');
+      setConfirmation('Connection worked. Choose the calendars Hearth may show.');
+    },
+  });
+  const save = useMutation({
+    mutationFn: hearthApi.saveCalendarConnection,
+    onSuccess: (result) => {
+      queryClient.setQueryData(queryKeys.calendarConnection, result.connection);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin });
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      setEditing(false);
+      setTestResult(null);
+      setConfirmation('Calendar connection saved.');
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () => hearthApi.removeCalendarConnection(createRequestId('calendar_remove')),
+    onSuccess: () => {
+      queryClient.setQueryData(queryKeys.calendarConnection, null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin });
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      setConfirmRemove(false);
+      setEditing(false);
+      setTestResult(null);
+      setConfirmation('Calendar connection removed. Saved event copies will age out safely.');
+    },
+  });
+
+  if (admin.isPending || connection.isPending) return <AdminLoading />;
+  if (admin.isError) return <AdminError message={admin.error.message} />;
+  if (connection.isError) return <AdminError message={connection.error.message} />;
+
+  const showForm = connection.data === null || editing;
+  const mutationError = testConnection.error ?? save.error ?? remove.error;
+
+  function submitTest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setConfirmation(null);
+    setTestResult(null);
+    const data = new FormData(event.currentTarget);
+    testConnection.mutate({
+      serverUrl: String(data.get('serverUrl') ?? ''),
+      username: String(data.get('username') ?? ''),
+      appPassword,
+    });
+  }
+
+  function saveSelection() {
+    if (testResult === null || selected.length === 0) return;
+    save.mutate({
+      requestId: createRequestId('calendar_save'),
+      testId: testResult.testId,
+      label: 'Family calendars',
+      calendars: selected.map((calendarId) => ({
+        calendarId,
+        ownerMemberId: owners[calendarId] || null,
+      })),
+    });
+  }
+
+  return (
+    <AdminPage
+      backLabel="Back to Connections"
+      backTo="/admin/connections"
+      title="Calendar"
+      subtitle="Connect iCloud or another CalDAV account"
+    >
+      <div className="calendar-privacy-note">
+        <Icon name="shield" />
+        <div>
+          <strong>Read-only by design</strong>
+          <p>
+            Hearth stores the account password only in its private server secret file. It never
+            sends the password back to the phone or TV and cannot change calendar events.
+          </p>
+        </div>
+      </div>
+
+      {confirmation === null ? null : (
+        <p className="save-confirmation" role="status">
+          {confirmation}
+        </p>
+      )}
+      {mutationError === null ? null : <AdminError message={mutationError.message} />}
+
+      {!showForm && connection.data !== null ? (
+        <section className="calendar-connection-summary">
+          <header>
+            <span className="admin-setting-row__icon">
+              <Icon name="calendar" />
+            </span>
+            <div>
+              <h2>{connection.data.label}</h2>
+              <p>
+                {connection.data.serverHost} · {connection.data.accountHint}
+              </p>
+            </div>
+            <span className="connection-badge connection-badge--healthy">Read-only</span>
+          </header>
+          <p className="calendar-connection-message">{connection.data.message}</p>
+          <div className="calendar-selected-list">
+            {connection.data.calendars.map((calendar) => (
+              <div className="calendar-selected-row" key={calendar.displayName}>
+                <span style={{ background: calendar.color }} />
+                <strong>{calendar.displayName}</strong>
+                <small>{calendar.owner?.displayName ?? 'Whole family'}</small>
+              </div>
+            ))}
+          </div>
+          <p className="field-help">
+            Last checked {formatCheckedAt(connection.data.lastCheckedAt)}
+          </p>
+          <div className="calendar-connection-actions">
+            <button
+              className="admin-secondary focusable"
+              data-focus-id="calendar-replace"
+              onClick={() => {
+                setEditing(true);
+                setConfirmation(null);
+              }}
+              type="button"
+            >
+              Replace connection
+            </button>
+            {confirmRemove ? (
+              <div
+                className="calendar-remove-confirmation"
+                role="group"
+                aria-label="Remove calendar connection"
+              >
+                <strong>Remove this connection?</strong>
+                <span>Hearth will stop refreshing these calendars.</span>
+                <button
+                  className="admin-danger"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate()}
+                  type="button"
+                >
+                  {remove.isPending ? 'Removing…' : 'Yes, remove'}
+                </button>
+                <button
+                  className="admin-secondary"
+                  onClick={() => setConfirmRemove(false)}
+                  type="button"
+                >
+                  Keep it
+                </button>
+              </div>
+            ) : (
+              <button className="admin-danger" onClick={() => setConfirmRemove(true)} type="button">
+                Remove connection
+              </button>
+            )}
+          </div>
+        </section>
+      ) : (
+        <>
+          {testResult === null ? (
+            <form className="admin-form calendar-connection-form" onSubmit={submitTest}>
+              <div className="calendar-demo-note">
+                <strong>Local demo:</strong> this screen uses a fake calendar account and does not
+                contact iCloud. Use fictional sign-in details while testing the interface.
+              </div>
+              <label>
+                Calendar server address
+                <input
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  data-focus-entry="true"
+                  data-focus-id="calendar-server-url"
+                  defaultValue="https://caldav.icloud.com"
+                  inputMode="url"
+                  maxLength={500}
+                  name="serverUrl"
+                  required
+                  spellCheck={false}
+                  type="url"
+                />
+              </label>
+              <p className="field-help">
+                For Apple Calendar, use the iCloud CalDAV address above—not a public shared-calendar
+                link.
+              </p>
+              <label>
+                Apple ID or account name
+                <input
+                  autoCapitalize="none"
+                  autoComplete="username"
+                  maxLength={320}
+                  name="username"
+                  placeholder="name@example.com"
+                  required
+                  spellCheck={false}
+                />
+              </label>
+              <label>
+                App-specific password
+                <input
+                  autoComplete="current-password"
+                  maxLength={512}
+                  minLength={4}
+                  name="appPassword"
+                  onChange={(event) => setAppPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={appPassword}
+                />
+              </label>
+              <p className="field-help">
+                Use an app-specific password, never the main password for the account.
+              </p>
+              <button className="admin-submit" disabled={testConnection.isPending} type="submit">
+                {testConnection.isPending ? 'Testing securely…' : 'Test connection'}
+              </button>
+              {editing ? (
+                <button
+                  className="admin-secondary calendar-cancel"
+                  onClick={() => setEditing(false)}
+                  type="button"
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </form>
+          ) : (
+            <div className="calendar-tested-account">
+              <span className="admin-setting-row__icon">
+                <Icon name="check" />
+              </span>
+              <div>
+                <strong>Connection tested</strong>
+                <span>
+                  {testResult.serverHost} · {testResult.accountHint}
+                </span>
+              </div>
+              <button
+                className="admin-secondary"
+                onClick={() => {
+                  setTestResult(null);
+                  setSelected([]);
+                  setOwners({});
+                  setConfirmation(null);
+                }}
+                type="button"
+              >
+                Test another account
+              </button>
+            </div>
+          )}
+
+          {testResult === null ? null : (
+            <section className="calendar-picker" aria-labelledby="calendar-picker-title">
+              <header>
+                <div>
+                  <h2 id="calendar-picker-title">Choose calendars</h2>
+                  <p>Only selected calendars will be read by Hearth.</p>
+                </div>
+                <span className="connection-badge connection-badge--healthy">Connection works</span>
+              </header>
+              <div className="calendar-picker__list">
+                {testResult.availableCalendars.map((calendar) => {
+                  const checked = selected.includes(calendar.id);
+                  return (
+                    <div className="calendar-picker__row" key={calendar.id}>
+                      <label className="calendar-picker__choice">
+                        <input
+                          checked={checked}
+                          onChange={(event) =>
+                            setSelected((current) =>
+                              event.target.checked
+                                ? [...current, calendar.id]
+                                : current.filter((id) => id !== calendar.id),
+                            )
+                          }
+                          type="checkbox"
+                        />
+                        <span style={{ background: calendar.color }} />
+                        <strong>{calendar.displayName}</strong>
+                      </label>
+                      <label>
+                        Show as
+                        <select
+                          aria-label={`Person for ${calendar.displayName}`}
+                          disabled={!checked}
+                          onChange={(event) =>
+                            setOwners((current) => ({
+                              ...current,
+                              [calendar.id]: event.target.value,
+                            }))
+                          }
+                          value={owners[calendar.id] ?? ''}
+                        >
+                          <option value="">Whole family</option>
+                          {admin.data.household.members.map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.displayName}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                className="admin-submit"
+                disabled={selected.length === 0 || save.isPending}
+                onClick={saveSelection}
+                type="button"
+              >
+                {save.isPending
+                  ? 'Saving…'
+                  : `Save ${selected.length} calendar${selected.length === 1 ? '' : 's'}`}
+              </button>
+            </section>
+          )}
+        </>
+      )}
+    </AdminPage>
+  );
+}
+
+function formatCheckedAt(value: string): string {
+  return new Intl.DateTimeFormat('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}

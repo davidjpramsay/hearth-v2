@@ -1,0 +1,319 @@
+.adult-access-intro,
+.adult-access-section,
+.adult-access-add,
+.adult-recovery {
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.adult-access-intro {
+  padding: 17px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-color: #b7c9b9;
+  background: var(--sage-soft);
+}
+
+.adult-access-intro > span,
+.adult-passkey-row__icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--eucalyptus);
+  background: var(--surface);
+}
+
+.adult-access-intro h2,
+.adult-access-intro p,
+.adult-access-section h2,
+.adult-access-section p,
+.adult-access-account h3,
+.adult-access-account p,
+.adult-access-add h2,
+.adult-access-add p,
+.adult-recovery h2,
+.adult-recovery p {
+  margin: 0;
+}
+
+.adult-access-intro h2,
+.adult-access-section h2,
+.adult-access-add h2,
+.adult-recovery h2 {
+  font-size: 21px;
+}
+
+.adult-access-intro p,
+.adult-access-section header p,
+.adult-access-add > div p,
+.adult-recovery > div p {
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.adult-access-section,
+.adult-access-add,
+.adult-recovery {
+  margin-top: 14px;
+  padding: 17px;
+}
+
+.adult-access-accounts {
+  margin-top: 14px;
+  display: grid;
+  gap: 11px;
+}
+
+.adult-access-account {
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+
+.adult-access-account > header {
+  min-height: 72px;
+  padding: 11px 13px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+}
+
+.adult-access-account > header img {
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--hairline);
+}
+
+.adult-access-account h3 {
+  font-size: 19px;
+}
+
+.adult-access-account header p,
+.adult-passkey-row small {
+  margin-top: 2px;
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.access-ready,
+.access-attention {
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.access-ready {
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+}
+
+.access-attention {
+  color: #76572d;
+  background: var(--ochre-soft);
+}
+
+.adult-passkey-list {
+  border-top: 1px solid var(--hairline);
+}
+
+.adult-passkey-row {
+  min-height: 69px;
+  padding: 9px 12px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+}
+
+.adult-passkey-row + .adult-passkey-row {
+  border-top: 1px solid var(--hairline);
+}
+
+.adult-passkey-row__icon {
+  width: 42px;
+  height: 42px;
+  background: var(--eucalyptus-soft);
+}
+
+.adult-passkey-row__icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.adult-passkey-row > .admin-danger,
+.adult-passkey-confirm button {
+  min-height: 38px;
+  padding: 0 11px;
+}
+
+.adult-passkey-confirm {
+  display: flex;
+  gap: 7px;
+}
+
+.adult-access-empty {
+  padding: 13px;
+  border-top: 1px solid var(--hairline);
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.adult-access-add {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.65fr) minmax(170px, 0.8fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.adult-access-add label {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.adult-access-add input,
+.adult-access-add select {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 6px;
+  padding: 0 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--input-surface);
+  font: inherit;
+}
+
+.adult-access-add .admin-submit {
+  min-height: 46px;
+}
+
+.adult-access-add .form-message {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.adult-recovery-create {
+  min-height: 44px;
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adult-recovery-create svg {
+  width: 19px;
+  height: 19px;
+}
+
+.adult-recovery-reveal {
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid #b7c9b9;
+  border-radius: 15px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  background: var(--sage-soft);
+}
+
+.adult-recovery-reveal strong,
+.adult-recovery-reveal code,
+.adult-recovery-reveal span {
+  grid-column: 1;
+}
+
+.adult-recovery-reveal code {
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(14px, 2.4vw, 19px);
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.adult-recovery-reveal span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.adult-recovery-reveal .adult-recovery-copy-error {
+  color: var(--brick);
+  font-weight: 700;
+}
+
+.adult-recovery-reveal button {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+
+@media (max-width: 900px) {
+  .adult-access-add {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .adult-access-account > header {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .adult-access-account > header > span {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .adult-passkey-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .adult-passkey-row > .admin-danger,
+  .adult-passkey-confirm {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .adult-recovery-reveal {
+    grid-template-columns: 1fr;
+  }
+
+  .adult-recovery-reveal button {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+}
+
+:root[data-theme='dark'] .adult-access-intro,
+:root[data-theme='dark'] .adult-recovery-reveal {
+  border-color: #48604f;
+}
+
+:root[data-theme='dark'] .adult-access-section,
+:root[data-theme='dark'] .adult-access-add,
+:root[data-theme='dark'] .adult-recovery,
+:root[data-theme='dark'] .adult-passkey-row {
+  background: var(--surface-glass);
+}
+
+:root[data-theme='dark'] .adult-access-account {
+  background: var(--surface-raised);
+}
+
+:root[data-theme='dark'] .access-attention {
+  color: #f2d8aa;
+}

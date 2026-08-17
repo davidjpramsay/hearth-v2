@@ -51,22 +51,54 @@ live read has been attempted. Apple documents app-specific passwords for
 third-party calendar access; a credential must be created and supplied by the
 owner only when live validation is approved.
 
+The responsive Connections > Calendar workflow now creates that configuration
+without exposing it to browser storage or SQLite. An adult supplies an HTTPS
+CalDAV server address, account identifier and app-specific password; the server
+tests discovery and returns only opaque option IDs, names and colours. The
+adult then approves exact calendars and optional household-owner mappings. A
+successful private-mode save atomically writes the external JSON secret with
+owner-only file permissions and activates the read-only provider. SQLite keeps
+only the server hostname, masked account hint, selected names/colours/mappings,
+status and timestamps. The password and full server URL are held only in the
+short-lived in-process test result until save, then discarded. Demo mode uses a
+deterministic fake verifier and never contacts iCloud.
+
 Do not scrape calendar web interfaces or ingest private ICS links into client code.
 
 ## Home Assistant
 
-Hearth talks to Home Assistant from the server, using its supported REST/WebSocket APIs as appropriate. The television/web client never receives the Home Assistant long-lived token.
+Hearth talks to Home Assistant from the server through its supported REST API. The television/web
+client never receives the Home Assistant long-lived token, root URL or raw entity IDs.
+
+The responsive **Connections > Home Assistant** workflow implements a two-step test/save boundary.
+An authenticated adult supplies the private root address and a long-lived token. The server checks
+`GET /api/config` and `GET /api/states`, retains the secret discovery result only in process for ten
+minutes and returns opaque option IDs plus friendly labels/kinds. Save resolves those opaque IDs,
+atomically writes the URL, token and raw mappings to the external
+`HEARTH_HOME_ASSISTANT_CONFIG_PATH` file with mode `0600`, and activates the managed adapter without
+a restart. SQLite stores only hostname, instance/version, friendly mapping labels, readiness and
+timestamps. Save/remove use normal adult authorisation, idempotency receipts, audits and
+`home.changed` invalidation. Demo/test mode uses deterministic fictional discovery and never contacts
+Home Assistant.
+
+Home Assistant documents Bearer authentication, `GET /api/config`, state reads and service calls in
+its [REST API](https://developers.home-assistant.io/docs/api/rest/); its
+[authentication documentation](https://developers.home-assistant.io/docs/auth_api/) describes
+creating long-lived tokens from a user profile. Live token creation and connection remain an
+owner-approved commissioning step after a current Home Assistant backup is verified.
 
 ### Read path
 
-Expose a curated projection of selected states:
+The first adapter reads exactly four mapped states in parallel:
 
-- television power and a generic protected-media-active state for safe automation
-- room presence
-- selected climate/weather/door state
-- availability of Hearth scenes/scripts
+- household occupancy
+- living-room television power
+- whether Hearth is the foreground television app
+- one generic protected-media-active state covering native and Cast playback
 
 Translate entity IDs and raw states into family-readable Hearth models.
+Weather, climate and door sensors are not part of this first allowlist; weather remains a separate
+provider decision rather than an excuse to expose a general Home Assistant dashboard.
 
 ### Command path
 
@@ -76,7 +108,9 @@ Commands resolve a Hearth action ID through a server-side allowlist. Initial act
 - `goodnight`
 - `screen-off`
 
-Each definition includes argument validation, allowed roles and confirmation level. Reject arbitrary domain/service/entity input from clients.
+Each definition includes argument validation, allowed roles and confirmation level. The REST
+adapter calls only `POST /api/services/script/turn_on` with the server-mapped script for that action.
+Reject arbitrary domain/service/entity input from clients.
 
 ### Home Assistant to Hearth
 
@@ -101,9 +135,11 @@ Home Assistant Assist is the voice orchestrator. The initial fully local pipelin
 
 Hearth supplies neither the microphone nor a speech pipeline. It exposes
 narrowly scoped, authenticated `/assist` endpoints and returns deterministic
-text for Home Assistant/Piper to speak. The Phase 5 fake adapter exercises this
-contract without a Home Assistant credential; live token provisioning and
-entity mapping are deployment work and remain outside the browser bundle.
+text for Home Assistant/Piper to speak. Phase 5 tests exercise this contract with
+the fake provider, while the private REST adapter and adult mapping workflow now
+prepare the live connection without placing a token or entity ID in the browser
+bundle. Actual Home Assistant/Piper sentence and hardware testing remains
+deployment work.
 
 This section governs household commands that call Hearth. Voice-requested
 music follows the separate Music Assistant flow below and never calls a Hearth
@@ -257,9 +293,13 @@ are wanted in Hearth, export or sync them into the one approved Synology source,
 or add a separately reviewed future iPhone PhotoKit upload flow.
 
 The current Phase 7 product slice provides the typed source boundary, safe demo
-display/thumbnail derivatives, gallery, cached-source states and ambient exit.
-Selecting and indexing the live Synology folder remains an owner-approved
-deployment step and must not broaden beyond the configured collection.
+display/thumbnail derivatives, gallery, cached-source states and ambient exit. Private mode now
+provides a concrete read-only folder adapter: it ignores symbolic links, bounds file count/depth/
+size, fingerprints files for incremental rescans, corrects orientation and creates atomic WebP
+display/thumbnail derivatives. The browser receives opaque, versioned asset routes and aggregate
+scan counts only. An adult companion may request an idempotent, audited rescan; an automatic quiet
+rescan runs after the configured interval. Selecting and mounting the live Synology folder remains
+an owner-approved deployment step and must not broaden beyond the configured collection.
 
 ## Presence and IR
 

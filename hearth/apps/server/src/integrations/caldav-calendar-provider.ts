@@ -47,6 +47,63 @@ interface DecodedExternalId {
 
 type CalDavClient = Pick<DAVClient, 'login' | 'fetchCalendars' | 'fetchCalendarObjects'>;
 
+export async function discoverCalDavCalendars(
+  input: Pick<CalDavCalendarProviderOptions, 'serverUrl' | 'username' | 'appPassword'>,
+  clientFactory?: () => Pick<DAVClient, 'login' | 'fetchCalendars'>,
+): Promise<CalendarDescriptor[]> {
+  assertSecureUrl(input.serverUrl, 'CalDAV server');
+  if (input.username.trim().length === 0 || input.appPassword.length === 0) {
+    throw new CalendarProviderError(
+      'CONFIGURATION_REQUIRED',
+      'Calendar sign-in details are not configured.',
+    );
+  }
+  try {
+    const client =
+      clientFactory?.() ??
+      new DAVClient({
+        serverUrl: input.serverUrl,
+        credentials: { username: input.username, password: input.appPassword },
+        authMethod: 'Basic',
+        defaultAccountType: 'caldav',
+        fetch: timeoutFetch,
+      });
+    await client.login({ loadCollections: false, loadObjects: false });
+    const available = (await client.fetchCalendars()).filter(
+      (calendar) => calendar.components?.includes('VEVENT') ?? true,
+    );
+    const named = available
+      .map((calendar) => ({ calendar, displayName: calendarDisplayName(calendar) }))
+      .filter(({ displayName }) => displayName.length > 0);
+    const names = named.map(({ displayName }) => displayName);
+    if (new Set(names).size !== names.length) {
+      throw new CalendarProviderError(
+        'CONFIGURATION_REQUIRED',
+        'Two calendars have the same name. Rename one before connecting Hearth.',
+      );
+    }
+    const calendars = named.map(({ calendar, displayName }) => {
+      assertSecureUrl(calendar.url, 'calendar collection');
+      return {
+        externalId: calendar.url,
+        displayName: truncate(displayName, 80),
+        color: normalizeColor(calendar.calendarColor, calendar.url),
+        capabilities: { read: true, write: false } as const,
+      };
+    });
+    if (calendars.length === 0) {
+      throw new CalendarProviderError(
+        'CONFIGURATION_REQUIRED',
+        'No event calendars were found for this account.',
+      );
+    }
+    return calendars;
+  } catch (error) {
+    if (error instanceof CalendarProviderError) throw error;
+    throw translateProviderError(error);
+  }
+}
+
 /**
  * Read-only RFC 4791 adapter. It intentionally performs a bounded full query on
  * every sync. CalendarProjectionService reconciles that bounded snapshot into

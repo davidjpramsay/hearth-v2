@@ -15,7 +15,46 @@ const migrations = [
   { version: 7, url: new URL('./migrations/0007_tv_device_credentials.sql', import.meta.url) },
   { version: 8, url: new URL('./migrations/0008_photo_library.sql', import.meta.url) },
   { version: 9, url: new URL('./migrations/0009_pocket_money.sql', import.meta.url) },
+  { version: 10, url: new URL('./migrations/0010_member_avatars.sql', import.meta.url) },
+  { version: 11, url: new URL('./migrations/0011_calendar_connection_setup.sql', import.meta.url) },
+  { version: 12, url: new URL('./migrations/0012_passkey_authentication.sql', import.meta.url) },
+  {
+    version: 13,
+    url: new URL('./migrations/0013_notices_and_today_sections.sql', import.meta.url),
+  },
+  {
+    version: 14,
+    url: new URL('./migrations/0014_pocket_money_payment_history.sql', import.meta.url),
+  },
+  {
+    version: 15,
+    url: new URL('./migrations/0015_synology_photo_index.sql', import.meta.url),
+  },
+  {
+    version: 16,
+    url: new URL('./migrations/0016_meal_planning_polish.sql', import.meta.url),
+  },
+  {
+    version: 17,
+    url: new URL('./migrations/0017_chore_occurrence_management.sql', import.meta.url),
+  },
+  {
+    version: 18,
+    url: new URL('./migrations/0018_chore_windows_and_order.sql', import.meta.url),
+  },
+  {
+    version: 19,
+    url: new URL('./migrations/0019_home_assistant_connection_setup.sql', import.meta.url),
+  },
+  {
+    version: 20,
+    url: new URL('./migrations/0020_adult_access_recovery.sql', import.meta.url),
+  },
 ] as const;
+
+const latestMigration = migrations.at(-1);
+if (latestMigration === undefined) throw new Error('Hearth requires at least one migration.');
+export const LATEST_MIGRATION_VERSION = latestMigration.version;
 
 export async function openHearthDatabase(path: string): Promise<InstanceType<typeof Database>> {
   await mkdir(dirname(path), { recursive: true });

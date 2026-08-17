@@ -1,0 +1,93 @@
+name: hearth-v2
+
+services:
+  server:
+    image: hearth-v2-server:${HEARTH_VERSION:?Set HEARTH_VERSION to an immutable release or commit}
+    build:
+      context: ../..
+      dockerfile: deploy/synology/Dockerfile
+      target: server
+    environment:
+      HEARTH_MODE: private
+      HEARTH_HOST: 0.0.0.0
+      HEARTH_PORT: 4310
+      HEARTH_LOG_LEVEL: ${HEARTH_LOG_LEVEL:-info}
+      HEARTH_VERSION: ${HEARTH_VERSION}
+      HEARTH_TRUST_PROXY_HOPS: 2
+      HEARTH_DATABASE_PATH: /data/hearth.sqlite
+      HEARTH_CALENDAR_CONFIG_PATH: /run/hearth-secrets/calendar.json
+      HEARTH_HOME_ASSISTANT_CONFIG_PATH: /run/hearth-secrets/home-assistant.json
+      HEARTH_PHOTO_SOURCE_DIR: ${HEARTH_PHOTO_SOURCE_DIR:-}
+      HEARTH_PHOTO_DERIVATIVE_DIR: /data/photo-derivatives
+      HEARTH_PHOTO_COLLECTION_NAME: ${HEARTH_PHOTO_COLLECTION_NAME:-Family photos}
+      HEARTH_PHOTO_SCAN_MINUTES: ${HEARTH_PHOTO_SCAN_MINUTES:-15}
+      HEARTH_BACKUP_DIR: /data/backups
+      HEARTH_BACKUP_RETENTION: ${HEARTH_BACKUP_RETENTION:-14}
+      HEARTH_BACKUP_INTERVAL_HOURS: ${HEARTH_BACKUP_INTERVAL_HOURS:-24}
+      HEARTH_AUTH_RP_ID: ${HEARTH_AUTH_RP_ID:?Set the permanent private Hearth hostname}
+      HEARTH_AUTH_ORIGIN: ${HEARTH_AUTH_ORIGIN:?Set the matching private HTTPS origin}
+      HEARTH_FIRST_USE_CODE_PATH: /run/hearth-secrets/first-use-code
+    user: '${HEARTH_UID:?Set HEARTH_UID}:${HEARTH_GID:?Set HEARTH_GID}'
+    init: true
+    read_only: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - ${HEARTH_DATA_DIR:?Set HEARTH_DATA_DIR}:/data
+      - ${HEARTH_SECRETS_DIR:?Set HEARTH_SECRETS_DIR}:/run/hearth-secrets
+      # Add only after an adult approves the exact source folder:
+      # - ${HEARTH_PHOTO_HOST_DIR:?Set the approved photo folder}:/photos-source:ro
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4310/api/v1/readiness').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  web:
+    image: hearth-v2-web:${HEARTH_VERSION:?Set HEARTH_VERSION to an immutable release or commit}
+    build:
+      context: ../..
+      dockerfile: deploy/synology/Dockerfile
+      target: web
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:${HEARTH_HTTP_PORT:-8432}:8080'
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--spider', 'http://127.0.0.1:8080/healthz']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'

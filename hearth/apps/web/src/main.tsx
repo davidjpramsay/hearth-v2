@@ -9,6 +9,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import { initializeAppearance } from './appearance/appearance';
 import { App } from './App';
+import { HearthRuntimeBootstrap } from './runtime/HearthRuntime';
 
 initializeAppearance();
 
@@ -34,9 +35,11 @@ if (root === null) throw new Error('Hearth root element was not found.');
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <HearthRuntimeBootstrap>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </HearthRuntimeBootstrap>
     </QueryClientProvider>
   </StrictMode>,
 );

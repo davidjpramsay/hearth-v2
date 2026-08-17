@@ -24,17 +24,35 @@ A change is complete only when:
 - Every primary screen is reachable with D-pad and Back.
 - Focus never disappears, becomes trapped or lands behind an overlay.
 - Resuming Hearth after normal Google TV app switching restores the previous Hearth screen or a documented safe default.
+- Demo/test dates are deterministic, while private mode derives today, Monday
+  week start and current month from the configured household timezone.
+- A new private database contains no fictional household or planning records,
+  exposes an explicit setup-required launch state and does not enable demo
+  reset/scenario commands.
 
 ### Calendar
 
 - Events from multiple enabled calendars retain correct owner/source cues.
 - Month fits one television viewport, shows readable colour-coded event titles plus deterministic overflow inside date cells, and identifies each colour through a separate avatar/label key. On phone, focusing or selecting a date exposes every title in a companion agenda beneath the compact grid.
 - Month is reachable below Week with D-pad navigation; Back restores Week and the prior rail focus, while the phone exposes a Week/Month switch.
+- Week, Month and Agenda are views beneath one Calendar primary destination on
+  television and phone. Every view is reachable with D-pad/keyboard-only input;
+  legacy Week/Month links redirect without losing scenario/date query state.
+- Earlier, current-period and later controls issue the requested week/month
+  query, and Calendar source setup is directly discoverable without searching
+  the general settings list.
+- Selecting an Agenda/Week event exposes its available time, source/person and
+  location in a family-readable detail surface; Back closes it and restores the
+  exact event focus.
 - All-day events appear on the correct Perth local dates.
 - Events created in a daylight-saving region display at the correct Perth time.
 - Recurrence exceptions and cancellations do not resurrect.
 - An unavailable provider leaves cached events visible and clearly marked stale.
 - A write conflict is explained and never silently overwrites the provider.
+- An adult can test a private HTTPS CalDAV account, select exact calendars,
+  assign optional people, save, reload and remove the connection from the phone
+  companion. Passwords and raw collection URLs never appear in responses,
+  SQLite, screenshots or logs; child and unauthenticated setup are rejected.
 
 Phase 3 evidence as of 2026-08-03: the first five read/degraded-mode scenarios
 are automated against the fake adapter, SQLite cache and rendered Today/Week/Month
@@ -46,26 +64,134 @@ until the owner supplies an external app-specific credential and calendar
 allowlist. Write-conflict behaviour remains intentionally untested because no
 write scope or write implementation has been approved.
 
+Calendar-setup evidence as of 2026-08-08 adds shared-schema, Fastify,
+SQLite-restart/idempotency, migration, permission, secret-scan, responsive
+Playwright and accessibility coverage using the fake verifier. It does not
+constitute live iCloud validation.
+
+Calendar-navigation evidence as of 2026-08-09 adds 1366×768 and 1920×1080
+television, 390×844 and 844×390 phone, D-pad/Back, route compatibility,
+date-navigation, event-detail focus restoration and automated accessibility
+coverage. Browser-plugin control was unavailable, so the installed Playwright
+Chromium fallback produced the retained evidence.
+
+### Household people
+
+- An adult administrator can choose either a portrait or landscape profile photo, position its
+  square crop, save it, replace it and restore the original member avatar.
+- The normalized profile photo survives server restart, remains below the size limit and is served
+  from a same-origin opaque URL without exposing a source path or original image.
+- Child/guest mutation is rejected; retrying the same command is idempotent; audit summaries and
+  logs do not include base64 image data.
+- The phone-sized crop dialog supports direct drag plus two-finger pinch zoom without visible
+  position sliders. The crop surface remains keyboard-accessible with arrow, plus/minus and reset
+  controls, and failures stay family-readable and inline.
+
 ### Chores and pocket money
 
 - One remote Select completes one pending occurrence and offers undo.
 - A retried voice/automation request does not create a second completion.
 - Editing a recurring chore does not rewrite past completions.
+- An adult can select one or more people on a chore schedule. A multi-person schedule is returned as
+  one grouped template but generates one distinct occurrence per selected person; completing one
+  occurrence leaves every other person's copy pending and preserves independent pocket-money totals.
+- An adult can create a one-off chore for a household-local date, archive any active chore only
+  after confirmation and restore it from today. Command retries replay safely, past occurrences
+  remain visible and the archived interval does not produce retroactive jobs.
+- An adult can add an optional available-from time, due time or valid two-ended window to future
+  schedules. Reversed windows are rejected with a stable validation error.
+- An adult can move active schedules earlier or later from the phone. The saved order includes every
+  active template exactly once, appends newly created schedules and survives restart/retry.
+- Generated occurrences retain their snapshotted window and order after a later template edit or
+  reorder; future ungenerated days use the new values.
+- An adult can then reasonedly skip, excuse or
+  reassign a pending occurrence from the phone. The occurrence detail shows its snapshotted
+  description, time window and newest-first immutable history after restart.
+- Skip remains incomplete and eligible for pocket money, excuse is excluded, and reassignment moves
+  responsibility. Retrying the same request cannot apply the change or create history twice.
+- The television renders compact available/due metadata in the saved order but keeps
+  completion/undo as the only ordinary chore actions; ordering, exception and history controls
+  remain phone-first.
 - An adult can reverse an accidental completion with an audit trail.
 - A child cannot modify another person's history or household rules without permission.
 - Every participating child has a required weekly amount and payday in phone administration.
 - Chores shows each child's week-to-date completed/total count, percentage and proportional amount due without requiring scroll on the primary television layout.
+- On a day with no due occurrence, each child remains visible with weekly pocket-money progress and explicit unscheduled-day wording; private households never expose a demo-bootstrap action.
 - Completing and undoing a chore updates that running total through the same typed chore contract.
 - Excused and cancelled occurrences do not reduce the percentage; skipped occurrences remain incomplete.
-- A recorded payment snapshots the counts, percentage and amount, is idempotent on retry and cannot be duplicated for the same child/week.
+- Pocket-money administration can move to the previous, current or next Monday–Sunday week and exposes an immutable recent payment history.
+- A payment snapshots the counts, percentage and amount, supports an optional note and is idempotent on retry. Multiple partial disbursements are allowed, but their non-voided total cannot exceed the amount due.
+- Paid, partially paid and unpaid/building states are explicit. A missing weekly amount/payday produces a named setup warning for each affected child.
+- An adult can correct a mistaken payment only by recording a reasoned, audited void. The original payment and void remain visible after restart, and retrying the same void request does not create another correction.
+- Before payday, the payment control clearly warns that early recording is allowed.
 - Star balances, per-chore points, reward choices and redemptions are absent from the active UI and API.
 
 ### Lists and meals
 
 - Items can be checked with one obvious action.
 - Voice addition handles exact duplicates and ambiguous list names safely.
+- An authenticated adult can create, rename, type, colour, order, archive and
+  restore a list from the phone, while the final active list is protected.
+- An authenticated adult can edit an item's text and quantity, reorder or
+  remove it, and clear checked items only through an explicit confirmation.
+  These commands are idempotent, audited and survive restart.
+- The television list surface does not expose dense administration controls.
 - Today's meal is visible without entering the Meals module.
-- Long-form editing is comfortable from the phone companion.
+- The TV's meal actions reach real companion management destinations while keeping dense editing
+  out of the television path.
+- An authenticated adult can edit multiple dinners and optional notes in one phone-friendly weekly
+  form; one save updates the displayed week atomically and survives restart.
+- An adult can copy the previous week or clear the current week only through an explicit
+  confirmation. Retrying the same request ID replays the original result without duplicate entries
+  or audit events.
+- Saved family meals can be created, searched, favourited, updated, archived and restored with
+  optional preparation time and notes. Archived meals remain understandable in historical plans.
+- Permission, invalid-week, copy-conflict and fail-next/retry paths return stable family-readable
+  errors and leave the plan consistent.
+- Long-form editing is comfortable from the phone companion; the primary seven dinner fields stay
+  visible together while saved-meal and note controls expand only when needed.
+
+### Notices and Today composition
+
+- An authenticated adult can publish, edit and remove a notice with Standard or
+  Important priority and a valid start/expiry window.
+- Duplicate command request IDs replay the original result and do not create a
+  second notice; each accepted write has an audit record.
+- The server, not the browser, selects the eligible Important/most-recent notice
+  shown on Today, and expiry/removal reveals the next eligible notice.
+- Dinner, List summary, Notice and Family photo can be independently shown or
+  hidden from the companion without hiding plans or chores or creating a layout
+  editor.
+- The TV summary rebalances cleanly for one, two or three bands, with or without
+  a photo; phone administration remains accessible and usable at 390×844.
+- Today & notices offers distinct TV and Phone previews using current household
+  content. Switching optional sections updates the preview without navigating
+  away, and two rapid changes cannot overwrite one another.
+- A failed secondary preview read is family-readable and does not prevent an
+  adult from changing or saving section visibility.
+- Today displays no more than three event and three chore rows on television and
+  exposes the exact hidden count through focusable links to Calendar Agenda and
+  Chores; no returned item is silently concealed.
+- A visible event opens family-readable details, Dinner/List/Photo open their
+  real modules, an active Notice opens its full text, and Back restores the exact
+  originating control using only remote-equivalent input.
+
+Status as of 2026-08-09: fake/in-memory and durable SQLite command paths,
+idempotency, permission/validation rejection, reset isolation, restart state,
+realtime invalidation, accessibility and retained 390×844/1920×1080 renders are
+implemented. Real household wording and expiry preferences remain pilot tuning,
+not a deployment blocker.
+
+Extension evidence as of 2026-08-10: overflow counts, event and notice details,
+summary destinations, deterministic focus/Back restoration, TV and phone
+responsive renders, automated accessibility checks and console-clean remote
+flows are covered by `tests/e2e/today-polish.spec.ts`.
+
+The same date's companion extension adds data-backed TV/Phone composition
+previews and serialised optimistic visibility changes. Unit coverage exercises
+both preview compositions, no-optional-section and unavailable states;
+`tests/e2e/today-settings.spec.ts` covers the rapid-toggle race, responsive
+renders and automated accessibility checks.
 
 ### Home Assistant and voice
 
@@ -74,6 +200,17 @@ write scope or write implementation has been approved.
 - Ambiguous commands ask for clarification rather than guessing.
 - Unlisted Home Assistant entities/services cannot be invoked through Hearth.
 - A Home Assistant outage does not prevent reading local Hearth data.
+- An adult can test, map, replace and remove one Home Assistant connection without returning its
+  token, root URL or raw entity IDs to the browser, SQLite, receipts, audits or logs.
+- The connection maps exactly four safety states and Evening, Goodnight and Screen off; the runtime
+  reads only those states and invokes only the selected scripts through `script.turn_on`.
+
+Local status as of 2026-08-10: fake and REST adapter contracts, external mode-`0600` secret writes,
+safe SQLite metadata, adult/idempotency/audit enforcement, malformed/authentication/network errors,
+managed activation/removal, responsive phone mapping, keyboard Back and serious/critical
+accessibility checks pass. No real token was created and no live Home Assistant, Assist/Piper,
+presence, television or IR test was run. Those live/hardware bullets therefore remain incomplete
+until the approved commissioning and backup check.
 
 ### Native television coexistence
 
@@ -119,15 +256,37 @@ live-system commissioning tasks requiring owner approval.
 ### Photos and ambient mode
 
 - Approved photos rotate without visible distortion, incorrect orientation or filesystem exposure.
+- Automatic collage rotation can be paused and resumed using only the remote or touch, does not
+  advance while the document is hidden, and remains still when reduced motion is requested.
+- The normal gallery shows each visible photo once, fills its available screen region and chooses a
+  stable composition from the featured photo's orientation. In a mixed five-photo set each automatic
+  advance visibly changes the feature: a featured portrait becomes a useful tall anchor and a
+  featured landscape becomes a wide anchor. Portrait support tiles remain substantial, with no
+  skinny portrait column, shallow landscape ribbon or horizontal overflow. Rotation occurs every
+  45 seconds, exposes subtle visible progress to the next composition and remains static under
+  reduced motion. Phone landscape shows three
+  substantial rotating occupants rather than five compressed strips.
 - Remote/voice input exits ambient mode immediately.
 - The same static dashboard is not left illuminated overnight.
 - Missing/corrupt photos fail gracefully.
+- An authenticated adult can favourite, unfavourite, hide and restore an indexed photo using touch
+  or D-pad only. Commands are validated, idempotent and audited; a hidden photo disappears from
+  Today, the gallery and ambient mode without deleting its index or original.
+- Favourite and hidden state survives incremental Synology rescans. Hidden photos remain available
+  in adult administration with a safe derivative preview, while private filesystem paths never
+  reach any response or log.
 
-Status as of 2026-08-05: the local browser/server slice passes mixed landscape
-and portrait rendering, path-safe typed responses, D-pad gallery selection,
+Status as of 2026-08-10: the local browser/server slice passes a unique-image,
+orientation-selected full-screen collage with bounded tile geometry, visible 45-second occupant
+rotation and a reduced-motion pause, mixed landscape and portrait rendering, path-safe typed
+responses, D-pad gallery selection,
 immediate keyboard/Back-equivalent ambient exit, real offline cached content,
 empty/unavailable/failure-retry states and a corrupt-derivative fallback at TV
-and phone viewports. Live Synology indexing, voice exit, physical-TCL rendering
+and phone viewports. The private folder adapter additionally passes local mixed-orientation,
+unsupported/corrupt/symlink, incremental-change, opaque-route and cached-unavailable tests, with an
+adult-only audited manual scan contract. Adult favourite, unfavourite, hide and restore commands
+additionally pass role rejection, validation, duplicate-request replay, audit projection, rescan
+persistence, hidden-photo projection and D-pad/focus-restoration checks. Live Synology folder selection/mount/scan, voice exit, physical-TCL rendering
 and Home Assistant presence/quiet-hours coordination are not run, so this
 acceptance section and Phase 7 remain incomplete.
 
@@ -150,11 +309,46 @@ theme reporting remain untested until the physical-TV pilot.
 ### Security and privacy
 
 - Television pairing can be revoked.
+- A private non-Android television browser can replace unsupported passkey sign-in with a
+  short-code pairing approved by an authenticated adult. The raw device secret is absent from the
+  URL, rendered UI, local/session storage, response bodies and logs; after exchange it exists only
+  in a `Secure`, `HttpOnly`, `SameSite=Strict` device cookie and grants television rather than Admin
+  scope.
 - Server-side secrets are absent from built JS and APK artefacts.
 - Child/guest roles cannot access admin configuration.
+- In private mode, an adult can create the first household only with the external one-time setup
+  code and a user-verified passkey; Admin then requires a valid revocable `HttpOnly` companion
+  session. The database stores public-key material and session hashes, never the setup code or raw
+  session token.
+- A signed-in administrator can enrol additional independently named passkeys for any active adult
+  and revoke a lost credential. Hearth blocks removal of an adult's final passkey until recovery is
+  configured. Recovery-code creation re-verifies the current passkey, displays a 128-bit code once,
+  stores only its digest and expires it after 180 days. Successful one-time recovery creates a
+  replacement passkey, consumes the code and revokes that adult's earlier credentials and sessions.
+- After private first use, an unauthenticated browser cannot discover the household identifier or
+  name through runtime bootstrap and receives `UNAUTHENTICATED` from household JSON, photo and
+  event-stream routes. A same-household companion with `household.view` and a paired television
+  with `household.read` can load the same routes; cross-household credentials fail closed.
+- Television pairing still creates unique schema-valid six-character codes after more than 99
+  retained requests. Passkey authentication options enforce per-client and global pending limits,
+  and expired attempts are pruned so unauthenticated requests cannot grow memory without bound.
 - Mutation audit records include actor, channel, target, time and result.
-- Logs do not include tokens or full sensitive calendar content by default.
+- A household administrator can review the latest family, planning, connection and system changes
+  in a family-readable Recent activity screen. A child receives `FORBIDDEN`; the screen does not
+  render opaque audit/request/target identifiers or provider secrets, and its filter, Back/focus
+  restoration, empty, unavailable, phone landscape/portrait and dark presentations work without
+  touch.
+- Logs do not include tokens or full sensitive calendar content by default; calendar and Home
+  Assistant connection tests explicitly redact their credential fields.
 - Public internet exposure is absent unless separately reviewed and approved.
+
+Adult-access evidence as of 2026-08-15: shared-schema, Fastify route, SQLite repository, migration
+backfill, idempotent revocation and virtual-WebAuthn browser tests cover additional named-adult
+passkeys, current-passkey confirmation, digest-only code rotation, one-time recovery and previous
+session/credential revocation. The responsive Admin and signed-out recovery surfaces pass focused
+390×844 and 844×390 renders, serious/critical accessibility checks and the complete 206-test
+Playwright suite. Stable-hostname enrolment and recovery on the actual adult phones remain a live
+commissioning acceptance gate.
 
 Phase 6 source/build evidence as of 2026-08-04: the release manifest requires
 Leanback, marks touch optional, declares only network access plus the protected
@@ -176,6 +370,16 @@ not yet complete.
 - A current Hearth backup is restored into a clean test location successfully.
 - A Home Assistant backup to Synology is restored successfully.
 - The application has visible but calm health reporting for adults.
+
+Local deployment evidence as of 2026-08-09: the production server/web images build and become
+healthy together in private mode on native ARM64 and emulated DS920+ `linux/amd64`; the same-origin
+readiness route, 20-migration database startup, unseeded first-use runtime, non-root/read-only
+security settings and clean `SIGTERM` shutdown pass. These checks validate the scaffold only. The
+online backup service now also creates mode-restricted, integrity-checked SQLite copies with
+bounded retention; an automated clean-location restore reads the household successfully, and a
+phone System Health surface reports database/version/backup state without exposing paths. The five
+operations bullets above still require the actual Synology, Pi, TV, router and live restore drill,
+so production acceptance remains incomplete.
 
 ## Release evidence
 

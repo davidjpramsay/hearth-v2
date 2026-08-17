@@ -10,11 +10,15 @@ planning slice:
 - `concepts/admin-phone.png` — phone-first routine, meal and reward administration
 - `concepts/lists-phone.png` — single-column list completion and item addition
 
-They extend the existing Hearth visual system with eucalyptus list actions,
-warm dinner surfaces and ochre stars. They are reference material only. React
-and CSS render the product; no concept screenshot is embedded in the interface.
+They extend the existing Hearth visual system with eucalyptus list actions and
+warm dinner surfaces. The star panel is historical and has been replaced by
+the proportional pocket-money implementation. They are reference material
+only. React and CSS render the product; no concept screenshot is embedded in
+the interface.
 
-The implementation deliberately keeps clear-checked deletion out of this
-slice, uses the established shared phone header/navigation rather than
-simulated iOS chrome, and splits the dense three-panel Admin concept into
-scrollable Family Planning routes.
+The implementation uses the established shared phone header/navigation rather
+than simulated iOS chrome and splits dense administration into scrollable
+Family Planning routes. Checked-list clearing is now an adult-only confirmed
+soft archive; list and item management remains off the television. Meal planning extends the
+accepted phone language with a compact seven-night editor: dinner names remain visible together,
+while saved-meal selection and notes expand per night only when needed.

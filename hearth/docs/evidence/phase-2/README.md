@@ -2,7 +2,7 @@
 
 Retained Playwright Chromium captures:
 
-- `screenshots/admin-phone-portrait.png` — 390×844 Admin home
+- `screenshots/admin-phone-portrait.png` — 390×844 grouped Hearth settings home
 - `screenshots/admin-phone-landscape.png` — 844×390 companion reflow/scroll entry
 - `screenshots/pairing-tv-1080.png` — 1920×1080 television pairing
 - `../phase-1/screenshots/state-skipped-chore.png` — persisted skip presentation

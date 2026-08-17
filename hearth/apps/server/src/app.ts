@@ -11,7 +11,10 @@ import {
 
 import {
   AddListItemRequestSchema,
+  AdditionalPasskeyOptionsRequestSchema,
+  ActivityFeedSchema,
   AdminOverviewSchema,
+  AdultAccessSummarySchema,
   ApiErrorSchema,
   AssistAddListItemRequestSchema,
   AssistChoreCompletionRequestSchema,
@@ -20,29 +23,52 @@ import {
   AssistDaySummaryResultSchema,
   ApprovePairingRequestSchema,
   ArchiveMemberRequestSchema,
+  ArchiveHouseholdNoticeRequestSchema,
+  CalendarConnectionCommandResultSchema,
+  CalendarConnectionSettingsSchema,
+  CalendarConnectionTestRequestSchema,
+  CalendarConnectionTestResultSchema,
   ChoreCommandResultSchema,
+  ChoreExceptionRequestSchema,
   ChoreListSchema,
+  ChoreOccurrenceChangeResultSchema,
+  ChoreOccurrenceDetailSchema,
+  ChoreReassignmentRequestSchema,
   ChoreSkipResultSchema,
   ChoreTemplateCommandResultSchema,
   ChoreTemplateListSchema,
+  ChoreTemplateOrderCommandResultSchema,
   CommandRequestSchema,
   CompletionReversalRequestSchema,
+  CopyMealPlanWeekRequestSchema,
   CreateMemberRequestSchema,
+  CreateHouseholdNoticeRequestSchema,
   CreatePairingRequestSchema,
   CreateTvPairingSessionRequestSchema,
   CreateChoreTemplateRequestSchema,
+  CreateHouseholdListRequestSchema,
   CreateSavedMealRequestSchema,
   DemoScenarioRequestSchema,
   ExecuteHomeActionRequestSchema,
   ExchangeTvPairingRequestSchema,
+  FirstUsePasskeyOptionsRequestSchema,
   HouseholdListsSchema,
+  HouseholdListSettingsSchema,
   HomeActionIdSchema,
   HomeActionResultSchema,
+  HomeAssistantConnectionCommandResultSchema,
+  HomeAssistantConnectionSettingsSchema,
+  HomeAssistantConnectionTestRequestSchema,
+  HomeAssistantConnectionTestResultSchema,
   HomeStatusSchema,
   ListItemCommandResultSchema,
+  ListSettingsCommandResultSchema,
   LocalDateSchema,
+  ClearMealPlanWeekRequestSchema,
   MealCommandResultSchema,
   MealPlanSchema,
+  MealPlanWeekCommandResultSchema,
+  MemberAvatarCommandResultSchema,
   type Member,
   MemberSchema,
   MonthKeySchema,
@@ -50,21 +76,61 @@ import {
   OpaqueIdSchema,
   PairedDeviceSchema,
   PairingRequestSchema,
+  PasskeyAuthStatusSchema,
+  PasskeyCeremonyOptionsSchema,
+  PasskeyCeremonyVerificationRequestSchema,
+  PasskeyRegistrationResultSchema,
+  PasskeyRevocationResultSchema,
+  PasskeySessionSchema,
+  PasskeySignOutResultSchema,
+  PhotoCurationCommandResultSchema,
   PhotoGallerySchema,
+  PhotoSourceIndexStatusSchema,
+  PhotoSourceRefreshResultSchema,
+  RefreshPhotoSourceRequestSchema,
+  RestoreChoreTemplateRequestSchema,
+  ReorderHouseholdListsRequestSchema,
+  ReorderChoreTemplatesRequestSchema,
+  ReorderListItemsRequestSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentCommandResultSchema,
+  PocketMoneyPaymentVoidCommandResultSchema,
   PocketMoneySettingsCommandResultSchema,
   RealtimeEventSchema,
+  RecoveryCodeConfirmationRequestSchema,
+  RecoveryCodeRevealSchema,
+  RecoveryPasskeyOptionsRequestSchema,
   RecordPocketMoneyPaymentRequestSchema,
+  RemoveCalendarConnectionRequestSchema,
+  RemoveHomeAssistantConnectionRequestSchema,
+  ResetMemberAvatarRequestSchema,
   RevokeDeviceRequestSchema,
+  RevokePasskeyRequestSchema,
+  RuntimeContextSchema,
   SavedMealCommandResultSchema,
+  SavedMealLibrarySchema,
+  SaveCalendarConnectionRequestSchema,
+  SaveHomeAssistantConnectionRequestSchema,
+  SystemBackupCommandResultSchema,
+  SystemStatusSchema,
   TodaySummarySchema,
+  TodayConfigurationCommandResultSchema,
+  TodayConfigurationSchema,
   TvDeviceSessionSchema,
   TvPairingSessionSchema,
   UpdateHouseholdRequestSchema,
+  UpdateHouseholdNoticeRequestSchema,
   UpdateChoreTemplateRequestSchema,
+  UpdateHouseholdListRequestSchema,
+  UpdateListItemRequestSchema,
   UpdateMemberRequestSchema,
+  UpdateMemberAvatarRequestSchema,
+  UpdateMealPlanWeekRequestSchema,
+  UpdatePhotoCurationRequestSchema,
   UpdatePocketMoneySettingsRequestSchema,
+  UpdateSavedMealRequestSchema,
+  UpdateTodaySectionsRequestSchema,
+  VoidPocketMoneyPaymentRequestSchema,
   WeekScheduleSchema,
   UpsertMealPlanRequestSchema,
 } from '@hearth/shared';
@@ -75,6 +141,17 @@ import {
   credentialHash,
   type AdminRepository,
 } from './admin-repository.js';
+import {
+  CalendarConnectionService,
+  FakeCalendarConnectionVerifier,
+  type CalendarConnectionRepository,
+} from './calendar-connection-repository.js';
+import { HEARTH_COMPANION_COOKIE, type CompanionAuthRepository } from './companion-auth.js';
+import {
+  FakeHomeAssistantConnectionVerifier,
+  HomeAssistantConnectionService,
+  type HomeAssistantConnectionRepository,
+} from './home-assistant-connection-repository.js';
 import { RealtimeHub } from './realtime.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
@@ -82,6 +159,9 @@ import { UnconfiguredPhotoSourceProvider } from './integrations/photo-source.js'
 import { PhotoService, type PhotoRepository } from './photo-repository.js';
 import { InMemoryPlanningRepository, type PlanningRepository } from './planning-repository.js';
 import { PocketMoneyService, type PocketMoneyRepository } from './pocket-money-repository.js';
+import { TodayContentService, type TodayContentRepository } from './today-content-repository.js';
+import { InMemorySystemOperations, type SystemOperationsRepository } from './system-operations.js';
+import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import {
   DEMO_TV_ACTOR,
   InMemoryHearthRepository,
@@ -89,6 +169,12 @@ import {
   type CommandActor,
   type HearthRepository,
 } from './repository.js';
+import {
+  FixedClock,
+  SystemClock,
+  resolveRuntimeContext,
+  type RuntimeConfiguration,
+} from './runtime-context.js';
 
 const HouseholdParamsSchema = z.object({ householdId: OpaqueIdSchema });
 const ChoreParamsSchema = HouseholdParamsSchema.extend({ occurrenceId: OpaqueIdSchema });
@@ -97,7 +183,16 @@ const MemberParamsSchema = HouseholdParamsSchema.extend({ memberId: OpaqueIdSche
 const DeviceParamsSchema = HouseholdParamsSchema.extend({ deviceId: OpaqueIdSchema });
 const ListParamsSchema = HouseholdParamsSchema.extend({ listId: OpaqueIdSchema });
 const ListItemParamsSchema = HouseholdParamsSchema.extend({ itemId: OpaqueIdSchema });
+const SavedMealParamsSchema = HouseholdParamsSchema.extend({ mealId: OpaqueIdSchema });
 const ChoreTemplateParamsSchema = HouseholdParamsSchema.extend({ templateId: OpaqueIdSchema });
+const NoticeParamsSchema = HouseholdParamsSchema.extend({ noticeId: OpaqueIdSchema });
+const PocketMoneyPaymentParamsSchema = HouseholdParamsSchema.extend({ paymentId: OpaqueIdSchema });
+const PhotoCurationParamsSchema = HouseholdParamsSchema.extend({ assetId: OpaqueIdSchema });
+const PasskeyParamsSchema = HouseholdParamsSchema.extend({ passkeyId: OpaqueIdSchema });
+const PhotoAssetParamsSchema = HouseholdParamsSchema.extend({
+  assetId: OpaqueIdSchema,
+  variant: z.enum(['display', 'thumbnail']),
+});
 const PairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
 const TodayQuerySchema = z.object({ date: LocalDateSchema });
 const WeekQuerySchema = z.object({ start: LocalDateSchema });
@@ -106,6 +201,9 @@ const PocketMoneyQuerySchema = z.object({
   weekStart: LocalDateSchema,
   asOf: LocalDateSchema,
 });
+const ActivityQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
 
 export const LOGGER_REDACT_PATHS = [
   'req.headers.authorization',
@@ -113,10 +211,16 @@ export const LOGGER_REDACT_PATHS = [
   'request.headers.authorization',
   '*.token',
   '*.password',
+  '*.dataBase64',
   '*.appPassword',
+  '*.accessToken',
+  '*.setupCode',
+  '*.recoveryCode',
+  '*.pairingSecret',
 ] as const;
 
 export const HEARTH_DEVICE_COOKIE = 'hearth_device';
+const DEVICE_SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
 
 export interface BuildServerOptions {
   repository?: HearthRepository;
@@ -128,12 +232,34 @@ export interface BuildServerOptions {
   homeRepository?: HomeRepository;
   photoRepository?: PhotoRepository;
   pocketMoneyRepository?: PocketMoneyRepository;
+  calendarConnectionRepository?: CalendarConnectionRepository;
+  homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
+  systemOperations?: SystemOperationsRepository;
+  companionAuth?: CompanionAuthRepository;
+  todayContentRepository?: TodayContentRepository;
+  runtime?: RuntimeConfiguration;
+  trustProxyHops?: number;
+  readiness?: () => Promise<void> | void;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
-  const demoMode = options.demoMode ?? true;
+  const runtime =
+    options.runtime ??
+    (options.demoMode === false
+      ? {
+          mode: 'private' as const,
+          householdId: null,
+          clock: new SystemClock(),
+        }
+      : {
+          mode: 'test' as const,
+          householdId: DEMO_HOUSEHOLD_ID,
+          clock: new FixedClock(DEMO_NOW),
+        });
+  const demoMode = runtime.mode !== 'private';
   const repository = options.repository ?? new InMemoryHearthRepository();
-  const adminRepository = options.adminRepository ?? new InMemoryAdminRepository();
+  const adminRepository =
+    options.adminRepository ?? new InMemoryAdminRepository(() => runtime.clock.now());
   const realtime = options.realtimeHub ?? new RealtimeHub();
   const planningRepository = options.planningRepository ?? new InMemoryPlanningRepository();
   const homeRepository =
@@ -143,8 +269,55 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     options.photoRepository ??
     (demoMode ? new PhotoService() : new PhotoService(new UnconfiguredPhotoSourceProvider()));
   const pocketMoneyRepository =
-    options.pocketMoneyRepository ?? new PocketMoneyService(repository, adminRepository);
+    options.pocketMoneyRepository ??
+    new PocketMoneyService(repository, adminRepository, undefined, {
+      seedDemo: demoMode,
+      clock: runtime.clock,
+    });
+  const todayContentRepository = options.todayContentRepository ?? new TodayContentService();
+  const calendarConnectionRepository =
+    options.calendarConnectionRepository ??
+    new CalendarConnectionService(
+      adminRepository,
+      new FakeCalendarConnectionVerifier(),
+      demoMode
+        ? {}
+        : {
+            credentialStore: {
+              save: async () => {
+                throw new Error('Private calendar secret storage is not configured.');
+              },
+              remove: async () => undefined,
+            },
+          },
+    );
+  const homeAssistantConnectionRepository =
+    options.homeAssistantConnectionRepository ??
+    new HomeAssistantConnectionService(
+      adminRepository,
+      new FakeHomeAssistantConnectionVerifier(),
+      demoMode
+        ? { now: () => runtime.clock.now() }
+        : {
+            now: () => runtime.clock.now(),
+            credentialStore: {
+              save: async () => {
+                throw new Error('Private Home Assistant secret storage is not configured.');
+              },
+              remove: async () => undefined,
+            },
+          },
+    );
+  const systemOperations =
+    options.systemOperations ??
+    new InMemorySystemOperations(adminRepository, {
+      version: process.env.HEARTH_VERSION ?? 'development',
+      mode: runtime.mode,
+      clock: runtime.clock,
+    });
   const server = Fastify({
+    bodyLimit: 1_500_000,
+    trustProxy: options.trustProxyHops ?? false,
     logger:
       options.logger === false
         ? false
@@ -155,13 +328,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   const readToday = async (householdId: string, localDate: string) => {
-    const [today, household, lists, meals, gallery] = await Promise.all([
-      repository.getToday(householdId, localDate),
-      adminRepository.getHousehold(householdId),
-      planningRepository.getLists(householdId),
-      planningRepository.getMealPlan(householdId, localDate),
-      photoRepository.getGallery(householdId).catch(() => null),
-    ]);
+    const [today, household, lists, meals, gallery, todayConfiguration, activeNotice] =
+      await Promise.all([
+        repository.getToday(householdId, localDate),
+        adminRepository.getHousehold(householdId),
+        planningRepository.getLists(householdId),
+        planningRepository.getMealPlan(householdId, localDate),
+        photoRepository.getGallery(householdId).catch(() => null),
+        todayContentRepository.getConfiguration(householdId),
+        todayContentRepository.getActiveNotice(householdId),
+      ]);
     const members = memberLookup(household.members);
     const primaryList = lists.lists[0];
     const dinner = meals.days[0]?.entries.find((entry) => entry.slot === 'dinner');
@@ -169,14 +345,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ?? null;
     return TodaySummarySchema.parse({
       ...today,
-      household,
-      dinner: today.dinner === null ? null : (dinner?.mealName ?? today.dinner),
+      household: { ...household, mode: today.household.mode },
+      dinner: dinner?.mealName ?? today.dinner,
       listSummary:
-        today.listSummary === null || primaryList === undefined
-          ? null
+        primaryList === undefined
+          ? today.listSummary
           : { name: primaryList.name, remainingCount: primaryList.remainingCount },
-      photo:
-        gallery === null
+      notice: activeNotice?.message ?? null,
+      sections: todayConfiguration.sections,
+      photo: !todayConfiguration.sections.photo
+        ? null
+        : gallery === null
           ? today.photo
           : featuredPhoto === null
             ? null
@@ -196,12 +375,163 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   };
 
+  server.addHook('preHandler', async (request, reply) => {
+    const routeUrl = request.routeOptions.url;
+    if (
+      runtime.mode !== 'private' ||
+      routeUrl === undefined ||
+      !routeUrl.startsWith('/api/v1/households/:householdId')
+    ) {
+      return;
+    }
+    const params = HouseholdParamsSchema.safeParse(request.params);
+    if (!params.success) return;
+    return run(reply, async () => {
+      await authorizePrivateHouseholdRead(
+        request.headers,
+        params.data.householdId,
+        options,
+        adminRepository,
+      );
+    });
+  });
+
+  server.get('/api/v1/runtime', async (request, reply) => {
+    const context = RuntimeContextSchema.parse(
+      await resolveRuntimeContext(runtime, adminRepository),
+    );
+    if (runtime.mode !== 'private' || context.household === null) return context;
+
+    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+    const authorized = await hasPrivateHouseholdReadAccess(
+      request.headers,
+      context.household.id,
+      options,
+      adminRepository,
+    );
+    return RuntimeContextSchema.parse(
+      authorized ? context : { ...context, household: null, requiresSetup: false },
+    );
+  });
+
+  server.get('/api/v1/auth/status', async (request, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    if (options.companionAuth === undefined) {
+      return PasskeyAuthStatusSchema.parse({
+        mode: runtime.mode,
+        configured: false,
+        secureOrigin: false,
+        requiresSetup: runtime.mode === 'private',
+        authenticated: false,
+        actor: null,
+      });
+    }
+    return options.companionAuth.status(optionalCompanionCredential(request.headers));
+  });
+
+  server.post('/api/v1/auth/first-use/registration-options', async (request, reply) => {
+    const body = parse(FirstUsePasskeyOptionsRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () =>
+      PasskeyCeremonyOptionsSchema.parse(
+        await companionAuth(options).firstUseRegistrationOptions(body, request.ip),
+      ),
+    );
+  });
+
+  server.post('/api/v1/auth/first-use/registration-verifications', async (request, reply) => {
+    const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const auth = companionAuth(options);
+      const result = await auth.verifyFirstUseRegistration(body.ceremonyId, body.response);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', auth.sessionCookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    });
+  });
+
+  server.post('/api/v1/auth/authentication-options', async (request, reply) =>
+    run(reply, async () =>
+      PasskeyCeremonyOptionsSchema.parse(
+        await companionAuth(options).authenticationOptions(request.ip),
+      ),
+    ),
+  );
+
+  server.post('/api/v1/auth/authentication-verifications', async (request, reply) => {
+    const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const auth = companionAuth(options);
+      const result = await auth.verifyAuthentication(body.ceremonyId, body.response);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', auth.sessionCookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    });
+  });
+
+  server.get('/api/v1/auth/session', async (request, reply) =>
+    run(reply, async () => {
+      reply.header('Cache-Control', 'no-store');
+      return PasskeySessionSchema.parse(
+        companionAuth(options).session(companionCredential(request.headers)),
+      );
+    }),
+  );
+
+  server.post('/api/v1/auth/sign-outs', async (request, reply) => {
+    const auth = companionAuth(options);
+    const token = optionalCompanionCredential(request.headers);
+    if (token !== null) auth.signOut(token);
+    reply.header('Cache-Control', 'no-store').header('Set-Cookie', auth.clearSessionCookie());
+    return PasskeySignOutResultSchema.parse({ signedOut: true });
+  });
+
+  server.post('/api/v1/auth/recovery/registration-options', async (request, reply) => {
+    const body = parse(RecoveryPasskeyOptionsRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () =>
+      PasskeyCeremonyOptionsSchema.parse(
+        await companionAuth(options).recoveryRegistrationOptions(body, request.ip),
+      ),
+    );
+  });
+
+  server.post('/api/v1/auth/recovery/registration-verifications', async (request, reply) => {
+    const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const auth = companionAuth(options);
+      const result = await auth.verifyRecoveryRegistration(body.ceremonyId, body.response);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', auth.sessionCookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    });
+  });
+
   server.get('/api/v1/health', async () => ({
     status: 'ok',
     database: options.adminRepository === undefined ? 'in-memory-test' : 'sqlite-ready',
-    mode: demoMode ? 'demo' : 'private',
-    now: '2026-08-02T23:42:00.000Z',
+    mode: runtime.mode,
+    now: runtime.clock.now().toISOString(),
   }));
+
+  server.get('/api/v1/readiness', async (_request, reply) => {
+    try {
+      await options.readiness?.();
+      return { status: 'ready', database: 'ready', mode: runtime.mode };
+    } catch {
+      return reply.status(503).send({
+        status: 'not-ready',
+        database: 'unavailable',
+        mode: runtime.mode,
+      });
+    }
+  });
 
   server.get('/api/v1/households/:householdId/admin', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
@@ -212,6 +542,267 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       ),
     );
   });
+
+  server.get('/api/v1/households/:householdId/activity', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const query = parse(ActivityQuerySchema, request.query, reply);
+    if (params === null || query === null) return reply;
+    return run(reply, async () =>
+      ActivityFeedSchema.parse({
+        entries: await adminRepository.getActivity(
+          params.householdId,
+          actorId(request.headers, options),
+          query.limit,
+        ),
+        generatedAt: runtime.clock.now().toISOString(),
+        localOnly: true,
+      }),
+    );
+  });
+
+  server.get('/api/v1/households/:householdId/system-status', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      SystemStatusSchema.parse(
+        await systemOperations.getStatus(params.householdId, actorId(request.headers, options)),
+      ),
+    );
+  });
+
+  server.post('/api/v1/households/:householdId/system-backups', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CommandRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () =>
+      SystemBackupCommandResultSchema.parse(
+        await systemOperations.createBackup(
+          params.householdId,
+          actorId(request.headers, options),
+          body.requestId,
+        ),
+      ),
+    );
+  });
+
+  server.get('/api/v1/households/:householdId/today-configuration', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
+      return TodayConfigurationSchema.parse(
+        await todayContentRepository.getConfiguration(params.householdId),
+      );
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/today-sections', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(UpdateTodaySectionsRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = TodayConfigurationCommandResultSchema.parse(
+        await todayContentRepository.updateSections(params.householdId, body, actor),
+      );
+      realtime.publish(params.householdId, 'today.changed', params.householdId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/notices', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CreateHouseholdNoticeRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = TodayConfigurationCommandResultSchema.parse(
+        await todayContentRepository.createNotice(params.householdId, body, actor),
+      );
+      realtime.publish(params.householdId, 'today.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.patch('/api/v1/households/:householdId/notices/:noticeId', async (request, reply) => {
+    const params = parse(NoticeParamsSchema, request.params, reply);
+    const body = parse(UpdateHouseholdNoticeRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = TodayConfigurationCommandResultSchema.parse(
+        await todayContentRepository.updateNotice(params.householdId, params.noticeId, body, actor),
+      );
+      realtime.publish(params.householdId, 'today.changed', params.noticeId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/notices/:noticeId/archives',
+    async (request, reply) => {
+      const params = parse(NoticeParamsSchema, request.params, reply);
+      const body = parse(ArchiveHouseholdNoticeRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const actor = commandActor(request.headers, options, adminRepository);
+        await adminRepository.getOverview(params.householdId, actor.id);
+        const result = TodayConfigurationCommandResultSchema.parse(
+          await todayContentRepository.archiveNotice(
+            params.householdId,
+            params.noticeId,
+            body.requestId,
+            actor,
+          ),
+        );
+        realtime.publish(params.householdId, 'today.changed', params.noticeId);
+        return result;
+      });
+    },
+  );
+
+  server.get('/api/v1/households/:householdId/calendar-connection', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      const connection = await calendarConnectionRepository.get(
+        params.householdId,
+        actorId(request.headers, options),
+      );
+      return connection === null ? null : CalendarConnectionSettingsSchema.parse(connection);
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/calendar-connection-tests',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(CalendarConnectionTestRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        CalendarConnectionTestResultSchema.parse(
+          await calendarConnectionRepository.test(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/calendar-connection', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(SaveCalendarConnectionRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = CalendarConnectionCommandResultSchema.parse(
+        await calendarConnectionRepository.save(
+          params.householdId,
+          actorId(request.headers, options),
+          body,
+        ),
+      );
+      realtime.publish(params.householdId, 'calendar.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/calendar-connection/removals',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(RemoveCalendarConnectionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = CalendarConnectionCommandResultSchema.parse(
+          await calendarConnectionRepository.remove(
+            params.householdId,
+            actorId(request.headers, options),
+            body.requestId,
+          ),
+        );
+        realtime.publish(params.householdId, 'calendar.changed', result.audit.targetId);
+        return result;
+      });
+    },
+  );
+
+  server.get(
+    '/api/v1/households/:householdId/home-assistant-connection',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () => {
+        const connection = await homeAssistantConnectionRepository.get(
+          params.householdId,
+          actorId(request.headers, options),
+        );
+        return connection === null ? null : HomeAssistantConnectionSettingsSchema.parse(connection);
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/home-assistant-connection-tests',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(HomeAssistantConnectionTestRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        HomeAssistantConnectionTestResultSchema.parse(
+          await homeAssistantConnectionRepository.test(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.put(
+    '/api/v1/households/:householdId/home-assistant-connection',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(SaveHomeAssistantConnectionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = HomeAssistantConnectionCommandResultSchema.parse(
+          await homeAssistantConnectionRepository.save(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        );
+        realtime.publish(params.householdId, 'home.changed', result.audit.targetId);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/home-assistant-connection/removals',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(RemoveHomeAssistantConnectionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = HomeAssistantConnectionCommandResultSchema.parse(
+          await homeAssistantConnectionRepository.remove(
+            params.householdId,
+            actorId(request.headers, options),
+            body.requestId,
+          ),
+        );
+        realtime.publish(params.householdId, 'home.changed', result.audit.targetId);
+        return result;
+      });
+    },
+  );
 
   server.patch('/api/v1/households/:householdId/settings', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
@@ -229,6 +820,110 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return overview;
     });
   });
+
+  server.get('/api/v1/households/:householdId/adult-access', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      AdultAccessSummarySchema.parse(
+        companionAuth(options).adultAccess(
+          params.householdId,
+          companionActor(request.headers, options),
+        ),
+      ),
+    );
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/passkey-registration-options',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(AdditionalPasskeyOptionsRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        PasskeyCeremonyOptionsSchema.parse(
+          await companionAuth(options).additionalRegistrationOptions(
+            params.householdId,
+            companionActor(request.headers, options),
+            body,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/passkey-registration-verifications',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        PasskeyRegistrationResultSchema.parse(
+          await companionAuth(options).verifyAdditionalRegistration(
+            params.householdId,
+            companionActor(request.headers, options),
+            body.ceremonyId,
+            body.response,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/recovery-confirmation-options',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () =>
+        PasskeyCeremonyOptionsSchema.parse(
+          await companionAuth(options).recoveryConfirmationOptions(
+            params.householdId,
+            companionActor(request.headers, options),
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/recovery-codes',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(RecoveryCodeConfirmationRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        RecoveryCodeRevealSchema.parse(
+          await companionAuth(options).createRecoveryCode(
+            params.householdId,
+            companionActor(request.headers, options),
+            body.ceremonyId,
+            body.response,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/adult-access/passkeys/:passkeyId/revocations',
+    async (request, reply) => {
+      const params = parse(PasskeyParamsSchema, request.params, reply);
+      const body = parse(RevokePasskeyRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        PasskeyRevocationResultSchema.parse(
+          companionAuth(options).revokePasskey(
+            params.householdId,
+            params.passkeyId,
+            companionActor(request.headers, options),
+            body.requestId,
+          ),
+        ),
+      );
+    },
+  );
 
   server.post('/api/v1/households/:householdId/members', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
@@ -264,6 +959,59 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return member;
     });
   });
+
+  server.get('/api/v1/households/:householdId/members/:memberId/avatar', async (request, reply) => {
+    const params = parse(MemberParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      const asset = await adminRepository.getMemberAvatar(params.householdId, params.memberId);
+      return reply
+        .header('Cache-Control', 'private, max-age=31536000, immutable')
+        .header('Content-Length', String(asset.bytes.byteLength))
+        .header('X-Content-Type-Options', 'nosniff')
+        .type(asset.mimeType)
+        .send(Buffer.from(asset.bytes));
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/members/:memberId/avatar', async (request, reply) => {
+    const params = parse(MemberParamsSchema, request.params, reply);
+    const body = parse(UpdateMemberAvatarRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MemberAvatarCommandResultSchema.parse(
+        await adminRepository.updateMemberAvatar(
+          params.householdId,
+          params.memberId,
+          actorId(request.headers, options),
+          body,
+        ),
+      );
+      realtime.publish(params.householdId, 'household.changed', result.member.id);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/members/:memberId/avatar-resets',
+    async (request, reply) => {
+      const params = parse(MemberParamsSchema, request.params, reply);
+      const body = parse(ResetMemberAvatarRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = MemberAvatarCommandResultSchema.parse(
+          await adminRepository.resetMemberAvatar(
+            params.householdId,
+            params.memberId,
+            actorId(request.headers, options),
+            body.requestId,
+          ),
+        );
+        realtime.publish(params.householdId, 'household.changed', result.member.id);
+        return result;
+      });
+    },
+  );
 
   server.post(
     '/api/v1/households/:householdId/members/:memberId/archives',
@@ -325,15 +1073,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const params = parse(PairingParamsSchema, request.params, reply);
       const body = parse(ExchangeTvPairingRequestSchema, request.body, reply);
       if (params === null || body === null) return reply;
-      return run(reply, async () =>
-        TvDeviceSessionSchema.parse(
+      return run(reply, async () => {
+        const session = TvDeviceSessionSchema.parse(
           await adminRepository.exchangeTvPairing(
             params.pairingId,
             body.pairingSecret,
             body.requestId,
           ),
-        ),
-      );
+        );
+        reply
+          .header('Cache-Control', 'no-store')
+          .header('Set-Cookie', deviceSessionCookie(body.pairingSecret, isPrivateMode(options)));
+        return session;
+      });
     },
   );
 
@@ -445,6 +1197,80 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     );
   });
 
+  server.get('/api/v1/households/:householdId/photo-source', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
+      return PhotoSourceIndexStatusSchema.parse(
+        await photoRepository.getSourceStatus(params.householdId),
+      );
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/photo-source/refreshes', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(RefreshPhotoSourceRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = PhotoSourceRefreshResultSchema.parse(
+        await photoRepository.refreshSource(params.householdId, body.requestId, actor),
+      );
+      realtime.publish(params.householdId, 'photos.changed', result.status.collection.id);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/photo-assets/:assetId/curation-actions',
+    async (request, reply) => {
+      const params = parse(PhotoCurationParamsSchema, request.params, reply);
+      const body = parse(UpdatePhotoCurationRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const actor = commandActor(request.headers, options, adminRepository);
+        await adminRepository.getOverview(params.householdId, actor.id);
+        const result = PhotoCurationCommandResultSchema.parse(
+          await photoRepository.updateCuration(
+            params.householdId,
+            params.assetId,
+            body.action,
+            body.requestId,
+            actor,
+          ),
+        );
+        realtime.publish(params.householdId, 'photos.changed', params.assetId);
+        return result;
+      });
+    },
+  );
+
+  server.get(
+    '/api/v1/households/:householdId/photo-assets/:assetId/:variant',
+    async (request, reply) => {
+      const params = parse(PhotoAssetParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () => {
+        const asset = await photoRepository.getDerivative(
+          params.householdId,
+          params.assetId,
+          params.variant,
+        );
+        if (asset === null) {
+          throw new RepositoryError('NOT_FOUND', 'That family photo could not be found.');
+        }
+        return reply
+          .header('Cache-Control', 'private, max-age=31536000, immutable')
+          .header('Content-Length', String(asset.bytes.byteLength))
+          .header('X-Content-Type-Options', 'nosniff')
+          .type(asset.mimeType)
+          .send(Buffer.from(asset.bytes));
+      });
+    },
+  );
+
   server.get('/api/v1/households/:householdId/chore-occurrences', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     const query = parse(TodayQuerySchema, request.query, reply);
@@ -550,6 +1376,188 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       HouseholdListsSchema.parse(await planningRepository.getLists(params.householdId)),
     );
   });
+
+  server.get('/api/v1/households/:householdId/list-settings', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      HouseholdListSettingsSchema.parse(
+        await planningRepository.getListSettings(
+          params.householdId,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      ),
+    );
+  });
+
+  server.post('/api/v1/households/:householdId/lists', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CreateHouseholdListRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.createList(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/lists/:listId', async (request, reply) => {
+    const params = parse(ListParamsSchema, request.params, reply);
+    const body = parse(UpdateHouseholdListRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.updateList(
+          params.householdId,
+          params.listId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.listId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/lists/:listId/archives', async (request, reply) => {
+    const params = parse(ListParamsSchema, request.params, reply);
+    const body = parse(CommandRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.archiveList(
+          params.householdId,
+          params.listId,
+          body.requestId,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.listId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/lists/:listId/restorations',
+    async (request, reply) => {
+      const params = parse(ListParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ListSettingsCommandResultSchema.parse(
+          await planningRepository.restoreList(
+            params.householdId,
+            params.listId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'list.changed', params.listId);
+        return result;
+      });
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/list-order', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(ReorderHouseholdListsRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.reorderLists(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.householdId);
+      return result;
+    });
+  });
+
+  server.put('/api/v1/households/:householdId/list-items/:itemId', async (request, reply) => {
+    const params = parse(ListItemParamsSchema, request.params, reply);
+    const body = parse(UpdateListItemRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.updateListItem(
+          params.householdId,
+          params.itemId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.itemId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/list-items/:itemId/archives',
+    async (request, reply) => {
+      const params = parse(ListItemParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ListSettingsCommandResultSchema.parse(
+          await planningRepository.archiveListItem(
+            params.householdId,
+            params.itemId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'list.changed', params.itemId);
+        return result;
+      });
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/lists/:listId/item-order', async (request, reply) => {
+    const params = parse(ListParamsSchema, request.params, reply);
+    const body = parse(ReorderListItemsRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ListSettingsCommandResultSchema.parse(
+        await planningRepository.reorderListItems(
+          params.householdId,
+          params.listId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'list.changed', params.listId);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/lists/:listId/checked-item-clears',
+    async (request, reply) => {
+      const params = parse(ListParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ListSettingsCommandResultSchema.parse(
+          await planningRepository.clearCheckedListItems(
+            params.householdId,
+            params.listId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'list.changed', params.listId);
+        return result;
+      });
+    },
+  );
 
   server.post('/api/v1/households/:householdId/lists/:listId/items', async (request, reply) => {
     const params = parse(ListParamsSchema, request.params, reply);
@@ -682,6 +1690,130 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
+  server.get('/api/v1/households/:householdId/saved-meal-library', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      SavedMealLibrarySchema.parse(
+        await planningRepository.getSavedMealLibrary(
+          params.householdId,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      ),
+    );
+  });
+
+  server.put('/api/v1/households/:householdId/saved-meals/:mealId', async (request, reply) => {
+    const params = parse(SavedMealParamsSchema, request.params, reply);
+    const body = parse(UpdateSavedMealRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = SavedMealCommandResultSchema.parse(
+        await planningRepository.updateSavedMeal(
+          params.householdId,
+          params.mealId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.savedMeal.id);
+      return result;
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/saved-meals/:mealId/archives',
+    async (request, reply) => {
+      const params = parse(SavedMealParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = SavedMealCommandResultSchema.parse(
+          await planningRepository.archiveSavedMeal(
+            params.householdId,
+            params.mealId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'meal.changed', result.savedMeal.id);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/saved-meals/:mealId/restorations',
+    async (request, reply) => {
+      const params = parse(SavedMealParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = SavedMealCommandResultSchema.parse(
+          await planningRepository.restoreSavedMeal(
+            params.householdId,
+            params.mealId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'meal.changed', result.savedMeal.id);
+        return result;
+      });
+    },
+  );
+
+  server.put('/api/v1/households/:householdId/meal-plan-weeks', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(UpdateMealPlanWeekRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MealPlanWeekCommandResultSchema.parse(
+        await planningRepository.updateMealPlanWeek(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/meal-plan-week-clears', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(ClearMealPlanWeekRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MealPlanWeekCommandResultSchema.parse(
+        await planningRepository.clearMealPlanWeek(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
+  server.post('/api/v1/households/:householdId/meal-plan-week-copies', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(CopyMealPlanWeekRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = MealPlanWeekCommandResultSchema.parse(
+        await planningRepository.copyMealPlanWeek(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'meal.changed', result.audit.targetId);
+      return result;
+    });
+  });
+
   server.get('/api/v1/households/:householdId/pocket-money', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     const query = parse(PocketMoneyQuerySchema, request.query, reply);
@@ -731,6 +1863,27 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
+  server.post(
+    '/api/v1/households/:householdId/pocket-money-payments/:paymentId/voids',
+    async (request, reply) => {
+      const params = parse(PocketMoneyPaymentParamsSchema, request.params, reply);
+      const body = parse(VoidPocketMoneyPaymentRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = PocketMoneyPaymentVoidCommandResultSchema.parse(
+          await pocketMoneyRepository.voidPayment(
+            params.householdId,
+            params.paymentId,
+            body,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'pocket-money.changed', result.payment.memberId);
+        return result;
+      });
+    },
+  );
+
   server.get('/api/v1/households/:householdId/chore-templates', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     if (params === null) return reply;
@@ -761,6 +1914,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
+  server.put('/api/v1/households/:householdId/chore-template-order', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(ReorderChoreTemplatesRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = ChoreTemplateOrderCommandResultSchema.parse(
+        await planningRepository.reorderChoreTemplates(
+          params.householdId,
+          body,
+          commandActor(request.headers, options, adminRepository),
+        ),
+      );
+      realtime.publish(params.householdId, 'chore-template.changed', params.householdId);
+      return result;
+    });
+  });
+
   server.patch(
     '/api/v1/households/:householdId/chore-templates/:templateId',
     async (request, reply) => {
@@ -770,6 +1940,48 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return run(reply, async () => {
         const result = ChoreTemplateCommandResultSchema.parse(
           await planningRepository.updateChoreTemplate(
+            params.householdId,
+            params.templateId,
+            body,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore-template.changed', result.template.id);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/chore-templates/:templateId/archivals',
+    async (request, reply) => {
+      const params = parse(ChoreTemplateParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreTemplateCommandResultSchema.parse(
+          await planningRepository.archiveChoreTemplate(
+            params.householdId,
+            params.templateId,
+            body.requestId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore-template.changed', result.template.id);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/chore-templates/:templateId/restorations',
+    async (request, reply) => {
+      const params = parse(ChoreTemplateParamsSchema, request.params, reply);
+      const body = parse(RestoreChoreTemplateRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreTemplateCommandResultSchema.parse(
+          await planningRepository.restoreChoreTemplate(
             params.householdId,
             params.templateId,
             body,
@@ -806,6 +2018,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
     return reply;
   });
+
+  server.get(
+    '/api/v1/households/:householdId/chore-occurrences/:occurrenceId',
+    async (request, reply) => {
+      const params = parse(ChoreParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () =>
+        ChoreOccurrenceDetailSchema.parse(
+          await repository.getChoreOccurrenceDetail(
+            params.householdId,
+            params.occurrenceId,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        ),
+      );
+    },
+  );
 
   server.post(
     '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/completions',
@@ -856,7 +2085,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/skips',
     async (request, reply) => {
       const params = parse(ChoreParamsSchema, request.params, reply);
-      const body = parse(CommandRequestSchema, request.body, reply);
+      const body = parse(ChoreExceptionRequestSchema, request.body, reply);
       if (params === null || body === null) return reply;
       return run(reply, async () => {
         const result = ChoreSkipResultSchema.parse(
@@ -864,6 +2093,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             params.householdId,
             params.occurrenceId,
             body.requestId,
+            body.reason,
             commandActor(request.headers, options, adminRepository),
           ),
         );
@@ -874,7 +2104,54 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
-  if (options.demoMode !== false) {
+  server.post(
+    '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/excuses',
+    async (request, reply) => {
+      const params = parse(ChoreParamsSchema, request.params, reply);
+      const body = parse(ChoreExceptionRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreOccurrenceChangeResultSchema.parse(
+          await repository.excuse(
+            params.householdId,
+            params.occurrenceId,
+            body.requestId,
+            body.reason,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore.changed', params.occurrenceId);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.occurrenceId);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/chore-occurrences/:occurrenceId/reassignments',
+    async (request, reply) => {
+      const params = parse(ChoreParamsSchema, request.params, reply);
+      const body = parse(ChoreReassignmentRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ChoreOccurrenceChangeResultSchema.parse(
+          await repository.reassign(
+            params.householdId,
+            params.occurrenceId,
+            body.requestId,
+            body.assigneeId,
+            body.reason,
+            commandActor(request.headers, options, adminRepository),
+          ),
+        );
+        realtime.publish(params.householdId, 'chore.changed', params.occurrenceId);
+        realtime.publish(params.householdId, 'pocket-money.changed', params.occurrenceId);
+        return result;
+      });
+    },
+  );
+
+  if (demoMode) {
     server.post('/api/v1/demo/reset', async (_request, reply) => {
       planningRepository.reset();
       repository.reset();
@@ -882,6 +2159,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       homeRepository.reset();
       photoRepository.reset();
       pocketMoneyRepository.reset();
+      calendarConnectionRepository.reset();
+      homeAssistantConnectionRepository.reset();
+      systemOperations.reset();
+      todayContentRepository.reset();
       return reply.send({ reset: true });
     });
 
@@ -892,14 +2173,20 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       planningRepository.setScenario(body.scenario);
       homeRepository.setScenario(body.scenario);
       photoRepository.setScenario(body.scenario);
+      todayContentRepository.setScenario(body.scenario);
       return reply.send({ scenario: body.scenario });
     });
   }
 
   server.addHook('onClose', async () => {
+    await photoRepository.close();
     planningRepository.close();
     adminRepository.close();
     pocketMoneyRepository.close();
+    calendarConnectionRepository.close();
+    homeAssistantConnectionRepository.close();
+    systemOperations.close();
+    todayContentRepository.close();
   });
 
   return server;
@@ -933,20 +2220,22 @@ async function run(reply: FastifyReply, operation: () => Promise<unknown>): Prom
   } catch (error) {
     if (error instanceof RepositoryError) {
       const status =
-        error.code === 'UNAUTHENTICATED'
-          ? 401
-          : error.code === 'NOT_FOUND'
-            ? 404
-            : error.code === 'FORBIDDEN'
-              ? 403
-              : [
-                    'CONFLICT',
-                    'CONFIRMATION_REQUIRED',
-                    'AMBIGUOUS_TARGET',
-                    'DUPLICATE_ITEM',
-                  ].includes(error.code)
-                ? 409
-                : 503;
+        error.code === 'VALIDATION_ERROR'
+          ? 400
+          : error.code === 'UNAUTHENTICATED'
+            ? 401
+            : error.code === 'NOT_FOUND'
+              ? 404
+              : error.code === 'FORBIDDEN'
+                ? 403
+                : [
+                      'CONFLICT',
+                      'CONFIRMATION_REQUIRED',
+                      'AMBIGUOUS_TARGET',
+                      'DUPLICATE_ITEM',
+                    ].includes(error.code)
+                  ? 409
+                  : 503;
       return reply.status(status).send(
         ApiErrorSchema.parse({
           error: {
@@ -962,11 +2251,69 @@ async function run(reply: FastifyReply, operation: () => Promise<unknown>): Prom
   }
 }
 
+async function authorizePrivateHouseholdRead(
+  headers: Record<string, string | string[] | undefined>,
+  householdId: string,
+  options: BuildServerOptions,
+  adminRepository: AdminRepository,
+): Promise<void> {
+  const deviceCredential = optionalDeviceCredential(headers);
+  if (deviceCredential !== null) {
+    const session = adminRepository.getTvDeviceSession(deviceCredential);
+    if (session.householdId !== householdId) {
+      throw new RepositoryError('FORBIDDEN', 'This television belongs to a different Hearth home.');
+    }
+    if (!session.scopes.includes('household.read')) {
+      throw new RepositoryError('FORBIDDEN', 'This television cannot view household information.');
+    }
+    return;
+  }
+
+  const companionCredential = optionalCompanionCredential(headers);
+  if (companionCredential === null || options.companionAuth === undefined) {
+    throw new RepositoryError('UNAUTHENTICATED', 'Sign in or pair this television to continue.');
+  }
+  const session = options.companionAuth.session(companionCredential);
+  if (session.householdId !== householdId) {
+    throw new RepositoryError('FORBIDDEN', 'That sign-in belongs to a different Hearth home.');
+  }
+  const household = await adminRepository.getHousehold(householdId);
+  const member = household.members.find((candidate) => candidate.id === session.memberId);
+  if (member === undefined) {
+    throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+  }
+  if (!member.capabilities.includes('household.view')) {
+    throw new RepositoryError('FORBIDDEN', 'This household member cannot view Hearth.');
+  }
+}
+
+async function hasPrivateHouseholdReadAccess(
+  headers: Record<string, string | string[] | undefined>,
+  householdId: string,
+  options: BuildServerOptions,
+  adminRepository: AdminRepository,
+): Promise<boolean> {
+  try {
+    await authorizePrivateHouseholdRead(headers, householdId, options, adminRepository);
+    return true;
+  } catch (error) {
+    if (
+      error instanceof RepositoryError &&
+      (error.code === 'UNAUTHENTICATED' || error.code === 'FORBIDDEN' || error.code === 'NOT_FOUND')
+    ) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 function actorId(
   headers: Record<string, string | string[] | undefined>,
   options: BuildServerOptions,
 ): string {
-  if (options.demoMode === false) return 'actor_unauthenticated';
+  if (isPrivateMode(options)) {
+    return companionActor(headers, options).id;
+  }
   const header = headers['x-hearth-demo-actor'];
   return typeof header === 'string' ? header : DEMO_ADMIN_ACTOR_ID;
 }
@@ -978,8 +2325,8 @@ function commandActor(
 ): CommandActor {
   const credential = optionalDeviceCredential(headers);
   if (credential !== null) return adminRepository.authenticateDeviceCredential(credential);
-  if (options.demoMode === false) {
-    throw new RepositoryError('UNAUTHENTICATED', 'Pair this device or sign in to continue.');
+  if (isPrivateMode(options)) {
+    return companionActor(headers, options);
   }
   return demoCommandActor(headers);
 }
@@ -1005,7 +2352,7 @@ function assistActor(
   headers: Record<string, string | string[] | undefined>,
   options: BuildServerOptions,
 ): CommandActor {
-  if (options.demoMode === false) {
+  if (isPrivateMode(options)) {
     throw new RepositoryError('UNAUTHENTICATED', 'Home Assistant is not connected to Hearth.');
   }
   const actorHeader = headers['x-hearth-demo-actor'];
@@ -1013,6 +2360,10 @@ function assistActor(
     return { id: 'service_home_assistant', type: 'service', source: 'voice' };
   }
   return { ...demoCommandActor(headers), source: 'voice' };
+}
+
+function isPrivateMode(options: BuildServerOptions): boolean {
+  return options.runtime?.mode === 'private' || options.demoMode === false;
 }
 
 function deviceCredential(headers: Record<string, string | string[] | undefined>): string {
@@ -1037,10 +2388,64 @@ function optionalDeviceCredential(
     const [name, ...valueParts] = part.trim().split('=');
     if (name === HEARTH_DEVICE_COOKIE) {
       const value = valueParts.join('=');
-      return value.length > 0 ? decodeURIComponent(value) : null;
+      return value.length > 0 ? safeDecodeCookie(value) : null;
     }
   }
   return null;
+}
+
+function companionAuth(options: BuildServerOptions): CompanionAuthRepository {
+  if (options.companionAuth === undefined) {
+    throw new RepositoryError(
+      'INTEGRATION_UNAVAILABLE',
+      'Private companion authentication is not configured.',
+    );
+  }
+  return options.companionAuth;
+}
+
+function companionActor(
+  headers: Record<string, string | string[] | undefined>,
+  options: BuildServerOptions,
+): CommandActor {
+  if (options.companionAuth === undefined) {
+    throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+  }
+  return options.companionAuth.authenticate(companionCredential(headers));
+}
+
+function companionCredential(headers: Record<string, string | string[] | undefined>): string {
+  const token = optionalCompanionCredential(headers);
+  if (token === null) throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+  return token;
+}
+
+function optionalCompanionCredential(
+  headers: Record<string, string | string[] | undefined>,
+): string | null {
+  const cookie = headers.cookie;
+  if (typeof cookie !== 'string') return null;
+  for (const part of cookie.split(';')) {
+    const [name, ...valueParts] = part.trim().split('=');
+    if (name === HEARTH_COMPANION_COOKIE) {
+      const value = valueParts.join('=');
+      return value.length > 0 ? safeDecodeCookie(value) : null;
+    }
+  }
+  return null;
+}
+
+function safeDecodeCookie(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function deviceSessionCookie(credential: string, secure: boolean): string {
+  const secureAttribute = secure ? '; Secure' : '';
+  return `${HEARTH_DEVICE_COOKIE}=${encodeURIComponent(credential)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${DEVICE_SESSION_MAX_AGE_SECONDS}${secureAttribute}`;
 }
 
 function memberLookup(members: Member[]): Map<string, Member> {

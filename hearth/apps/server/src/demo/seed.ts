@@ -94,13 +94,13 @@ export function createDemoSeed(): DemoSeed {
   ];
 
   const chores: ChoreOccurrence[] = [
-    chore('occurrence_school_bag', 'Pack school bag', ezra, 'Morning'),
-    chore('occurrence_feed_pepper', 'Feed Pepper', ezra, 'Before school'),
-    chore('occurrence_dishes', 'Dishwasher', ezra, 'After dinner'),
-    chore('occurrence_laundry', 'Start laundry', maya, 'Morning'),
-    chore('occurrence_herbs', 'Water herbs', maya, 'Evening'),
+    chore('occurrence_school_bag', 'Pack school bag', ezra, 'Morning', '07:00', '07:30', 0),
+    chore('occurrence_feed_pepper', 'Feed Pepper', ezra, 'Before school', null, '07:15', 1),
+    chore('occurrence_dishes', 'Dishwasher', ezra, 'After dinner', '17:30', '18:45', 2),
+    chore('occurrence_laundry', 'Start laundry', maya, 'Morning', null, '07:20', 3),
+    chore('occurrence_herbs', 'Water herbs', maya, 'Evening', '16:30', '17:00', 4),
     {
-      ...chore('occurrence_make_bed', 'Make bed', maya, 'Morning'),
+      ...chore('occurrence_make_bed', 'Make bed', maya, 'Morning', null, '07:10', 5),
       state: 'completed',
       completionId: 'completion_seed_make_bed',
       completedAt: '2026-08-02T23:18:00.000Z',
@@ -169,12 +169,23 @@ function calendar(
   return { id, displayName, owner, color, access: 'read-only' };
 }
 
-function chore(id: string, title: string, assignee: Member, routineLabel: string): ChoreOccurrence {
+function chore(
+  id: string,
+  title: string,
+  assignee: Member,
+  routineLabel: string,
+  availableFromTime: string | null,
+  dueTime: string | null,
+  sortOrder: number,
+): ChoreOccurrence {
   return {
     id,
     title,
     assignee,
     routineLabel,
+    availableFromTime,
+    dueTime,
+    sortOrder,
     localDate: DEMO_LOCAL_DATE,
     state: 'pending',
     completionId: null,

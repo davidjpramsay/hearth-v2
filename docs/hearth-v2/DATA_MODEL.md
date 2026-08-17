@@ -35,6 +35,18 @@ Audit commands identify an actor as one of:
 - scheduled system job
 - external calendar synchroniser
 
+### Member avatar derivative
+
+- household/member identity, with a database guard that they match
+- normalized `image/jpeg` bytes, bounded to 1 MB
+- content-derived version key used only for same-origin cache invalidation
+- original opaque avatar key retained for restore
+- created/updated timestamps
+
+The chosen original image is not retained. Avatar command receipts and audit summaries contain only
+member/result metadata, never the base64 payload. This small identity image is separate from the
+Synology-backed family-photo collection.
+
 ## Calendar projection
 
 ### Calendar connection
@@ -45,6 +57,14 @@ Audit commands identify an actor as one of:
 - sync status, last success/error category
 - opaque incremental cursor plus bounded local-date sync window
 - read/write capabilities and approval state
+
+Migration `0011_calendar_connection_setup.sql` adds the adult-facing safe
+setup projection: provider type, family label, server hostname, masked account
+hint, readiness, selected calendar names/colours/owner mappings and test/success
+timestamps. It deliberately has no username, password, full server URL or raw
+collection URL column. The external mode-0600 secret file remains the only
+persistent credential source; a pending discovery test is memory-only and
+expires after ten minutes.
 
 ### Calendar
 
@@ -101,20 +121,38 @@ The external credential/config file is never stored in SQLite.
 - default assignee set
 - recurrence rule
 - routine/time-of-day grouping
-- due-time policy
+- optional available-from and due-by local times
+- stable household-local display order
 - active date range and archive state
 - creation/update history reference
 
 ### Chore occurrence
 
 - stable occurrence ID
-- template snapshot/reference
-- scheduled local date and due time
-- assigned member(s)
+- template reference plus snapshotted title and optional description
+- scheduled local date plus snapshotted available-from and due-by times
+- snapshotted display order
+- exactly one assigned member
 - state: pending, completed, skipped, excused or cancelled
-- completion timestamp, actor and optional note
+- completion/skip timestamp and actor where relevant
+- immutable audit history for completion, undo, skip, excuse and reassignment; adult exception
+  records include a bounded family-readable reason and reassignment records include prior/new member
+  identity
 
 Template edits do not rewrite historical occurrences. Generate occurrences within a controlled horizon and enforce a uniqueness rule for template/date/instance.
+Each member in a template's default assignee set expands to a distinct occurrence for the same
+template/date/instance. Completion, exception history and pocket-money eligibility therefore remain
+per person; one child's completion never completes another child's copy. The existing
+`chore_template_assignees` primary key and occurrence uniqueness key already enforce this model, so
+multi-assignee authoring does not require a new migration.
+The active template order is a complete, gap-free logical sequence scoped to a household. Reorder
+commands must name every active template exactly once. Generated occurrences snapshot that order
+and both optional window boundaries, so changing a future schedule never rearranges or retimes
+already materialized household history.
+One-off templates use an explicit once-only recurrence and equal start/end local dates. Archiving
+stops new generation without deleting the template or occurrences. Restoring begins a new active
+window on the supplied household-local date (and moves a restored one-off to that date), so dates
+inside the archived gap cannot be manufactured later merely by browsing history.
 
 ### Routine
 
@@ -141,9 +179,18 @@ Only active child members may receive a setting. New children appear as unconfig
 - Monday week start and Sunday week end
 - scheduled and completed counts at payment time
 - completion percentage and proportional amount in cents
+- optional parent note
 - payment timestamp, adult actor and source
 
-There is at most one recorded payment per child and week. Payment rows are immutable snapshots rather than a mutable balance. Chores in `excused` or `cancelled` state are excluded from the denominator; `pending` and `skipped` remain incomplete. Migration `0009_pocket_money.sql` introduces these records. The former reward tables from migration 0005 remain dormant for forward-only migration safety; no route, UI or chore command writes them.
+There may be multiple immutable partial payment rows for a child/week. The service sums only active rows and prevents their total exceeding the amount due. Chores in `excused` or `cancelled` state are excluded from the denominator; `pending` and `skipped` remain incomplete. Migration `0009_pocket_money.sql` introduces the original records; migration `0014_pocket_money_payment_history.sql` removes the one-row-per-week constraint and adds notes without rewriting prior snapshots.
+
+### Pocket-money payment void
+
+- one-to-one payment reference
+- required family-readable correction reason
+- correction timestamp, adult actor and companion source
+
+A payment is never edited or deleted. A mistaken record receives at most one separate void row; it remains in history but no longer contributes to the active paid total. Payment and void commands each use their own idempotency receipt and audit event. The former reward tables from migration 0005 remain dormant for forward-only migration safety; no active source contract, route, UI or chore command reads or writes them.
 
 ## Lists
 
@@ -165,13 +212,20 @@ There is at most one recorded payment per child and week. Payment rows are immut
 
 Repeated voice additions should use a command request ID and sensible normalisation to avoid accidental duplicates without preventing intentional duplicates.
 
+Migration `0005_household_planning.sql` already supplies the forward-only list
+and item archive/order columns used by the adult management commands. Clearing
+checked items soft-archives them; it does not erase their audit or command
+history. An archived list remains recoverable, and the final active list cannot
+be archived.
+
 ## Meals
 
 ### Meal
 
 - saved family meal name
-- optional description, tags and source/reference URL
-- favourite/archive state
+- optional description/notes and bounded preparation minutes
+- favourite state used for ordering and concise family counts
+- nullable archive time; archived meals remain in historical plans and can be restored
 
 ### Meal plan entry
 
@@ -179,6 +233,12 @@ Repeated voice additions should use a command request ID and sensible normalisat
 - meal slot such as breakfast/lunch/dinner
 - saved meal reference or free text
 - note and actor
+
+An adult may replace the displayed week's entries in one command, clear the week after explicit
+confirmation or copy one Monday–Sunday week to another. These commands validate every date against
+the target week, reject duplicate date/slot pairs and commit the plan mutation, command receipt and
+audit event together. Copying snapshots the meal name and retains a saved-meal reference only while
+that saved meal is active. Duplicate request IDs replay the original typed result.
 
 Recipe/ingredient modelling is deferred. Grocery linkage should use explicit generated list items with source references so changes remain understandable.
 
@@ -192,6 +252,7 @@ Recipe/ingredient modelling is deferred. Grocery linkage should use explicit gen
 - dimensions, orientation, capture time where available
 - favourite/hidden state
 - last shown time
+- source fingerprint, asset readiness and index time
 
 Do not expose Synology filesystem paths to clients. Derivatives should avoid repeatedly sending original multi-megabyte files to the television.
 
@@ -202,15 +263,27 @@ nullable featured opaque ID and orientation-aware assets containing only safe
 same-origin display/thumbnail URLs. Phase 7 selects the Today preview through
 that same injected adapter. Demo mode uses fictional bundled derivatives;
 private mode returns an unconfigured empty collection until one approved
-Synology source is selected. Neither response exposes its Synology path.
+Synology source is selected. Adult-only `PhotoSourceIndexStatus` adds aggregate ready, hidden,
+unsupported and corrupt counts, scan state and path-safe curation rows for ready assets. Those rows
+contain only opaque IDs, same-origin derivative URLs, presentation metadata and favourite/hidden
+flags. Neither response exposes its Synology path.
+Migration `0015_synology_photo_index.sql` adds the source fingerprint and scan-status index used for
+incremental refresh; the first adapter uses filesystem modification time as `capturedAt` after
+orientation correction rather than claiming EXIF capture-date fidelity.
 
 ### Announcement
 
-- title/body
-- priority
-- optional author/member scope
-- start and expiry times
-- acknowledged/dismissed state where applicable
+- opaque ID and household ID
+- concise message (maximum 240 characters)
+- Standard or Important priority
+- start time and nullable expiry time
+- archive, created and updated times
+
+`today_section_preferences` stores one row per household for Dinner, List
+summary, Notice and Family photo visibility. `announcements` is append/update/
+archive managed through adult commands; the active Today notice is the eligible
+Important notice first, then the most recently updated eligible notice. The
+browser never chooses priority ordering itself.
 
 ## Home actions
 
@@ -232,6 +305,13 @@ generic protected-media boolean and observation/cache timestamps. Home action
 receipts and audits reuse the generic command/audit tables. Raw entity IDs,
 service payloads and media metadata are deliberately absent.
 
+Migration `0019_home_assistant_connection_setup.sql` stores one credential-free connection
+projection per household: opaque connection ID, family label, hostname, instance/version, status,
+friendly state/action mapping labels and check timestamps. The Home Assistant root URL, long-lived
+token and seven raw entity IDs exist only in the separate mode-`0600` server secret file. Test
+discovery retains them for at most ten minutes in process and exposes only opaque option IDs; save
+and removal are normal adult-authorised, idempotent and audited commands.
+
 ## Devices and sessions
 
 ### Paired device
@@ -245,12 +325,42 @@ service payloads and media metadata are deliberately absent.
 Migration `0002_admin_and_pairing` implements the initial paired-device and
 short-lived pairing-request records. Migration `0007_tv_device_credentials`
 adds the SHA-256 credential hash, requesting shell version and exchange time.
-The server never stores the raw television pairing secret; Android retains it
-encrypted by a non-exportable Keystore key.
+The server never stores the raw television pairing secret. Android retains it
+encrypted by a non-exportable Keystore key. On an approved non-Android browser display, Web Crypto
+creates the same 256-bit secret and holds it only in volatile page memory until the server installs
+it as a persistent `HttpOnly`, `Secure`, `SameSite=Strict` device cookie. It never enters a URL,
+browser storage, response body, audit row or log; clearing site data requires re-pairing.
 
 ### Session
 
-Short-lived authenticated session with actor/device, expiry and scope. Do not persist raw bearer secrets in logs or audit rows.
+The private companion stores a random-session SHA-256 hash, household/member/passkey references,
+created/last-seen/expiry timestamps and revocation state. The passkey reference permits narrowly
+revoking sessions from a lost credential. The raw 30-day token exists only in the
+`HttpOnly`, `Secure`, `SameSite=Strict` browser cookie and never enters logs, audit rows or SQLite.
+
+### Passkey credential
+
+- opaque credential row ID and WebAuthn credential ID
+- household/member and WebAuthn user references
+- credential public key and signature counter
+- authenticator transports, device type and backup state
+- user-facing label, created/last-used timestamps and revocation state
+
+Registration challenges and the one-time first-use code are ephemeral and never stored in this
+table. Migration `0012_passkey_authentication.sql` implements both credential and companion-session
+records.
+
+### Companion recovery code
+
+- opaque recovery-code row ID and household/member references
+- SHA-256 code hash; never the displayed code
+- creating adult, created/expiry timestamps and consumed/revoked state
+- at most one active code for a household member
+
+Migration `0020_adult_access_recovery.sql` links new companion sessions to their authenticating
+credential and adds these one-time recovery records. Recovery expires after 180 days. Successful
+use consumes the code and revokes the recovered adult's prior passkeys and sessions before issuing
+the replacement session.
 
 ## Audit event
 
@@ -268,6 +378,13 @@ Required fields:
 
 Sensitive descriptions, provider tokens and full external payloads do not belong in the audit event.
 
+The adult-only recent-activity read projection returns at most 100 existing safe audit summaries,
+newest first; the current companion asks for 50. It never reads `request_id`,
+`safe_summary_json`, provider credentials, raw calendar payloads or backup host paths into the
+browser contract. Actor and target IDs remain opaque contract fields for typed correlation, while
+the interface resolves known actors to family/device labels and never renders those identifiers.
+This is a projection of the one audit table, not a second activity log.
+
 ## General persistence rules
 
 - Opaque IDs at API boundaries.
@@ -277,8 +394,11 @@ Sensitive descriptions, provider tokens and full external payloads do not belong
 - Transactions encompass domain mutation plus audit creation.
 - Foreign keys and uniqueness constraints enforce invariants already checked in code.
 - Schema changes use reviewed migrations and backup/restore tests.
+- Online recovery copies are external mode-restricted SQLite files, not rows or downloadable
+  assets. Only the manual/scheduled command receipt and safe audit summary live in the database;
+  backup host paths never enter a browser contract, receipt or audit event.
 
-## Phase 1–4 migration and runtime boundary
+## Current migration and runtime boundary
 
 Migration `apps/server/src/migrations/0001_household_core.sql` establishes the
 forward-only household/member, calendar connection/projection, chore
@@ -300,9 +420,39 @@ Migration `0006_home_assistant_projection.sql` adds the minimal cached household
 power/presence projection. Migration `0007_tv_device_credentials.sql` upgrades
 the pairing record for proof-of-possession exchange without storing a bearer
 secret.
+Migration `0008_photo_library.sql`, `0009_pocket_money.sql`,
+`0010_member_avatars.sql` and `0011_calendar_connection_setup.sql` add the
+approved photo projection, proportional pocket-money records, bounded member
+avatar derivatives and credential-free calendar-setup metadata respectively. Migration
+`0012_passkey_authentication.sql` adds public-key credentials and hash-only revocable companion
+sessions without storing a setup code or raw bearer token.
+Migration `0013_notices_and_today_sections.sql` adds bounded Today visibility settings and expiring
+household notices. Migration `0014_pocket_money_payment_history.sql` adds immutable partial-payment
+notes and reasoned one-to-one voids.
+Migration `0015_synology_photo_index.sql` adds the fingerprint and bounded status index required by
+the read-only Synology photo scanner without storing a source filesystem path in asset rows.
+Migration `0016_meal_planning_polish.sql` adds nullable, bounded preparation minutes and an index for
+active/favourite saved-meal ordering. Existing meal-plan rows and historical saved meals remain
+valid without rewriting household data.
+Migration `0017_chore_occurrence_management.sql` adds nullable description and due-time snapshots to
+existing occurrence rows, backfills them from the referenced template and adds the targeted audit
+history index. Skip, excuse and reassignment remain command/audit rows rather than mutable history
+blobs; no reason text is placed in a browser-visible receipt beyond the typed result.
+Migration `0018_chore_windows_and_order.sql` adds optional available-from time and deterministic sort
+order to chore templates, snapshots both window boundaries and order onto occurrences, and backfills
+existing rows without rewriting completion state. A household/order index supports the adult
+schedule and occurrence queries.
+Migration `0019_home_assistant_connection_setup.sql` adds only the safe Home Assistant connection
+projection described above. JSON validity and provider/status checks are enforced in SQLite; raw
+provider secrets and entity IDs remain outside the database.
+Migration `0020_adult_access_recovery.sql` links companion sessions to passkey credentials and adds
+one-active-per-adult, digest-only recovery records. The forward migration links older sessions when
+the pre-upgrade adult has exactly one active credential; ambiguous rows remain unlinked rather than
+guessing. New sessions always carry their credential reference so a single lost passkey can be
+revoked narrowly.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same
-repository boundary. It generates supported daily and weekly occurrences on
+repository boundary. It generates supported one-off, daily and weekly occurrences on
 query, snapshots title/routine/assignee identity, and commits occurrence
 mutation, audit and idempotent receipt transactionally. Duplicate request IDs
 replay the stored typed result. The in-memory repository remains available only
@@ -312,7 +462,22 @@ The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administ
 on the same SQLite connection. Voice list commands resolve a normalized list
 name before mutation, return `AMBIGUOUS_TARGET` rather than choosing among
 multiple matches, reject active exact-item duplicates, and replay a prior typed
-result when the same request ID is retried. Pocket-money settings and immutable
-weekly payment snapshots use the same idempotent, audited command path. The
+result when the same request ID is retried. Pocket-money settings, immutable partial weekly
+payment snapshots and reasoned one-to-one voids use the same idempotent, audited command path. The
 former reward tables remain dormant migration history and are not read or
 written by the runtime.
+Saved meals and whole-week dinner mutations use the same repository boundary. Adult-only create,
+update, archive, restore, batch save, clear and copy operations are transactional, audited and
+receipt-idempotent in both the SQLite runtime and injected in-memory contract tests.
+Chore-template creation/update accepts one-off or recurring schedules. Archive and restore reuse the
+existing forward-compatible active-range/archive columns, keep generated history intact and write
+their own idempotent receipts and audit events; no migration is required.
+Active template reordering is an adult-only, receipt-idempotent command requiring the exact active
+template set. Creation appends; edits preserve position. The SQLite transaction updates every
+position and its audit event together, while occurrence generation snapshots the active position
+and optional time window.
+Adult occurrence-management commands require a bounded reason. Skip keeps the occurrence eligible
+and incomplete, excuse moves pending/skipped work to `excused`, and reassignment moves pending or
+skipped work to another active member and resets it to pending. Mutation, audit event and receipt
+commit in one SQLite transaction; the adult-only detail query reconstructs newest-first history from
+safe audit summaries.

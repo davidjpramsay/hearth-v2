@@ -32,21 +32,36 @@ export function LoadingState() {
   );
 }
 
-export function EmptyState({ onBootstrap }: { onBootstrap: () => void }) {
+export function EmptyState({
+  onBootstrap,
+  title = 'Nothing is planned yet',
+  description,
+}: {
+  onBootstrap?: (() => void) | undefined;
+  title?: string | undefined;
+  description?: string | undefined;
+}) {
   return (
     <section className="state-panel">
       <img alt="" className="state-panel__mark" src="/brand/hearth-mark.png" />
-      <h1>Nothing is planned yet</h1>
-      <p>Add the fictional demo household to see how Hearth brings a family day together.</p>
-      <button
-        className="primary-action focusable"
-        data-focus-id="empty-bootstrap"
-        data-focus-left="nav-today"
-        onClick={onBootstrap}
-        type="button"
-      >
-        Show demo household
-      </button>
+      <h1>{title}</h1>
+      <p>
+        {description ??
+          (onBootstrap === undefined
+            ? 'Add plans, chores or a calendar from the companion to begin.'
+            : 'Add the fictional demo household to see how Hearth brings a family day together.')}
+      </p>
+      {onBootstrap === undefined ? null : (
+        <button
+          className="primary-action focusable"
+          data-focus-id="empty-bootstrap"
+          data-focus-left="nav-today"
+          onClick={onBootstrap}
+          type="button"
+        >
+          Show demo household
+        </button>
+      )}
     </section>
   );
 }

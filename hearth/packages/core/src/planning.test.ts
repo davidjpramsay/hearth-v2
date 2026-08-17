@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { HouseholdList, ListItem, RewardLedgerEntry } from '@hearth/shared';
+import type { HouseholdList, ListItem } from '@hearth/shared';
 
 import {
   assertNoActiveListDuplicate,
@@ -9,8 +9,6 @@ import {
   normaliseListItemText,
   PlanningDomainError,
   resolveHouseholdListTarget,
-  reverseRewardEntry,
-  rewardBalances,
 } from './planning.js';
 
 describe('planning domain', () => {
@@ -33,22 +31,9 @@ describe('planning domain', () => {
     );
   });
 
-  it('computes balances from history and creates a linked reversal', () => {
-    const original = ledger('entry_award', 12);
-    expect(rewardBalances([original, ledger('entry_spend', -3)]).get('member_ezra')).toBe(9);
-    const reversed = reverseRewardEntry(original, {
-      entryId: 'entry_reversal',
-      auditId: 'audit_reversal',
-      actorId: 'member_maya',
-      actorType: 'member',
-      source: 'companion',
-      occurredAt: '2026-08-03T08:00:00+08:00',
-    });
-    expect(reversed.entry).toMatchObject({ delta: -12, reversalOfEntryId: 'entry_award' });
-    expect(reversed.audit).toMatchObject({ action: 'reward.reverse', result: 'reversed' });
-  });
-
   it('round-trips the supported recurring chore patterns', () => {
+    expect(choreRecurrenceRule('once', [])).toBe('FREQ=ONCE');
+    expect(choreRepeatFromRule('FREQ=ONCE')).toEqual({ repeat: 'once', repeatDays: [] });
     expect(choreRecurrenceRule('weekdays', ['MO'])).toBe('FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR');
     expect(choreRepeatFromRule('FREQ=WEEKLY;BYDAY=MO,TH')).toEqual({
       repeat: 'weekly',
@@ -77,27 +62,5 @@ function list(id: string, name: string): HouseholdList {
     remainingCount: 0,
     totalCount: 0,
     items: [],
-  };
-}
-
-function ledger(id: string, delta: number): RewardLedgerEntry {
-  return {
-    id,
-    member: {
-      id: 'member_ezra',
-      displayName: 'Ezra',
-      color: '#1668b7',
-      avatarUrl: '/demo/ezra.png',
-      role: 'child',
-      capabilities: ['household.view'],
-    },
-    delta,
-    reason: 'Demo entry',
-    rewardId: null,
-    relatedChoreOccurrenceId: null,
-    reversalOfEntryId: null,
-    occurredAt: '2026-08-03T07:00:00+08:00',
-    actorId: 'member_maya',
-    source: 'companion',
   };
 }

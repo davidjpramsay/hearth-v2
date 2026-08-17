@@ -1,12 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { FormEvent } from 'react';
+import { Camera, RotateCcw } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 
-import { createRequestId, hearthApi, queryKeys, type HearthMember } from '../api/client';
+import './PeopleSettingsScreen.css';
+
+import type { Member as HearthMember } from '@hearth/shared';
+
+import { adminApi as hearthApi } from '../api/admin';
+import { createRequestId } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
+import { MemberAvatarDialog } from '../components/MemberAvatarDialog';
 import { MemberColourPicker } from '../components/MemberColourPicker';
 import { DEFAULT_MEMBER_COLOUR } from '../components/memberColours';
-import { useAdminQuery } from '../hooks/useHearthQueries';
+import { useAdminQuery } from '../hooks/useAdminQueries';
 
 interface MemberFields {
   displayName: string;
@@ -18,7 +26,14 @@ interface MemberFields {
 export function PeopleSettingsScreen() {
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    member: HearthMember;
+    file: File;
+  } | null>(null);
+  const [photoInputError, setPhotoInputError] = useState<string | null>(null);
   const refresh = async () => queryClient.invalidateQueries({ queryKey: queryKeys.admin });
+  const refreshHousehold = async () =>
+    queryClient.invalidateQueries({ queryKey: [queryKeys.today[0]] });
   const create = useMutation({ mutationFn: hearthApi.createMember, onSuccess: refresh });
   const update = useMutation({
     mutationFn: ({ memberId, fields }: { memberId: string; fields: MemberFields }) =>
@@ -29,6 +44,16 @@ export function PeopleSettingsScreen() {
     mutationFn: (memberId: string) =>
       hearthApi.archiveMember(memberId, createRequestId('member_archive')),
     onSuccess: refresh,
+  });
+  const updateAvatar = useMutation({
+    mutationFn: ({ memberId, dataBase64 }: { memberId: string; dataBase64: string }) =>
+      hearthApi.updateMemberAvatar(memberId, createRequestId('member_avatar_update'), dataBase64),
+    onSuccess: refreshHousehold,
+  });
+  const resetAvatar = useMutation({
+    mutationFn: (memberId: string) =>
+      hearthApi.resetMemberAvatar(memberId, createRequestId('member_avatar_reset')),
+    onSuccess: refreshHousehold,
   });
   if (admin.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;
@@ -41,28 +66,40 @@ export function PeopleSettingsScreen() {
   }
 
   return (
-    <AdminPage title="People" subtitle="Names, roles and home permissions">
+    <AdminPage title="People" subtitle="Photos, names, roles and home permissions">
       <div className="member-editor-list">
         {admin.data.household.members.map((member) => (
           <MemberEditor
             actorId={admin.data.actor.id}
             archivePending={archive.isPending}
             member={member}
+            avatarPending={updateAvatar.isPending || resetAvatar.isPending}
             onArchive={() => archive.mutate(member.id)}
+            onChoosePhoto={(file) => {
+              setPhotoInputError(null);
+              updateAvatar.reset();
+              if (file.size > 20_000_000) {
+                setPhotoInputError('That original photo is too large. Choose one under 20 MB.');
+                return;
+              }
+              setSelectedPhoto({ member, file });
+            }}
+            onResetPhoto={() => resetAvatar.mutate(member.id)}
             onSave={(fields) => update.mutate({ memberId: member.id, fields })}
             savePending={update.isPending}
             key={member.id}
           />
         ))}
       </div>
-      {create.isError || update.isError || archive.isError ? (
+      {create.isError || update.isError || archive.isError || resetAvatar.isError ? (
         <AdminError
           message={
-            (create.error ?? update.error ?? archive.error)?.message ??
+            (create.error ?? update.error ?? archive.error ?? resetAvatar.error)?.message ??
             'That change could not be saved.'
           }
         />
       ) : null}
+      {photoInputError !== null ? <AdminError message={photoInputError} /> : null}
       <form className="admin-form admin-form--add-member" onSubmit={addMember}>
         <h2>Add someone</h2>
         <label>
@@ -85,6 +122,24 @@ export function PeopleSettingsScreen() {
           {create.isPending ? 'Adding…' : 'Add person'}
         </button>
       </form>
+      {selectedPhoto === null ? null : (
+        <MemberAvatarDialog
+          file={selectedPhoto.file}
+          memberName={selectedPhoto.member.displayName}
+          onCancel={() => {
+            if (!updateAvatar.isPending) setSelectedPhoto(null);
+          }}
+          onSave={async (dataBase64) => {
+            await updateAvatar.mutateAsync({
+              memberId: selectedPhoto.member.id,
+              dataBase64,
+            });
+            setSelectedPhoto(null);
+          }}
+          saving={updateAvatar.isPending}
+          serverError={updateAvatar.error?.message ?? null}
+        />
+      )}
     </AdminPage>
   );
 }
@@ -94,15 +149,21 @@ function MemberEditor({
   actorId,
   onSave,
   onArchive,
+  onChoosePhoto,
+  onResetPhoto,
   savePending,
   archivePending,
+  avatarPending,
 }: {
   member: HearthMember;
   actorId: string;
   onSave: (fields: MemberFields) => void;
   onArchive: () => void;
+  onChoosePhoto: (file: File) => void;
+  onResetPhoto: () => void;
   savePending: boolean;
   archivePending: boolean;
+  avatarPending: boolean;
 }) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,6 +181,33 @@ function MemberEditor({
         <div>
           <strong>{member.displayName}</strong>
           <span>{member.role === 'adult' ? 'Adult' : 'Child'}</span>
+        </div>
+        <div className="member-editor__photo-actions">
+          <label className="admin-secondary member-photo-picker">
+            <Camera aria-hidden="true" />
+            {hasCustomAvatar(member) ? 'Replace photo' : 'Change photo'}
+            <input
+              accept="image/*"
+              aria-label={`Choose profile photo for ${member.displayName}`}
+              disabled={avatarPending}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file !== undefined) onChoosePhoto(file);
+                event.currentTarget.value = '';
+              }}
+              type="file"
+            />
+          </label>
+          {hasCustomAvatar(member) ? (
+            <button
+              className="admin-secondary member-photo-reset"
+              disabled={avatarPending}
+              onClick={onResetPhoto}
+              type="button"
+            >
+              <RotateCcw aria-hidden="true" /> Restore original
+            </button>
+          ) : null}
         </div>
       </div>
       <label>
@@ -166,6 +254,10 @@ function MemberEditor({
       </div>
     </form>
   );
+}
+
+function hasCustomAvatar(member: HearthMember): boolean {
+  return member.avatarUrl.includes(`/members/${member.id}/avatar?v=`);
 }
 
 function memberFields(data: FormData, forceAdministrator = false): MemberFields {

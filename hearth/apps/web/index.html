@@ -24,9 +24,16 @@
     </script>
     <script>
       if (navigator.userAgent.includes('HearthTV/')) {
+        document.documentElement.dataset.hearthTv = 'true';
+        const deviceWidth = window.screen?.width || window.innerWidth;
+        const deviceHeight = window.screen?.height || window.innerHeight;
+        const scale = Math.max(0.25, Math.min(1, deviceWidth / 1920, deviceHeight / 1080));
         document
           .querySelector('meta[name="viewport"]')
-          ?.setAttribute('content', 'width=1920, viewport-fit=cover');
+          ?.setAttribute(
+            'content',
+            `width=1920, height=1080, initial-scale=${scale}, minimum-scale=${scale}, maximum-scale=${scale}, user-scalable=no, viewport-fit=cover`,
+          );
       }
     </script>
     <meta name="theme-color" content="#f8f6f0" />

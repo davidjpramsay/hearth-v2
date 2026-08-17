@@ -10,6 +10,10 @@ export const LocalDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a YYYY-MM-DD local date');
 
+export const LocalTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Expected a 24-hour HH:mm local time');
+
 export const TimestampSchema = z.iso.datetime({ offset: true });
 export const TimezoneSchema = z.string().min(1).max(80);
 
@@ -40,6 +44,122 @@ export const HouseholdSummarySchema = z.object({
   mode: z.string().min(1).max(40),
   members: z.array(MemberSchema),
 });
+
+export const RuntimeModeSchema = z.enum(['demo', 'test', 'private']);
+
+export const RuntimeHouseholdSchema = HouseholdSummarySchema.pick({
+  id: true,
+  name: true,
+  timezone: true,
+  locale: true,
+});
+
+export const RuntimeContextSchema = z.object({
+  mode: RuntimeModeSchema,
+  generatedAt: TimestampSchema,
+  household: RuntimeHouseholdSchema.nullable(),
+  timezone: TimezoneSchema,
+  locale: z.string().min(2).max(20),
+  localDate: LocalDateSchema,
+  weekStart: LocalDateSchema,
+  currentMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  requiresSetup: z.boolean(),
+});
+
+export const PasskeyAuthStatusSchema = z.object({
+  mode: RuntimeModeSchema,
+  configured: z.boolean(),
+  secureOrigin: z.boolean(),
+  requiresSetup: z.boolean(),
+  authenticated: z.boolean(),
+  actor: MemberSchema.pick({ id: true, displayName: true, role: true }).nullable(),
+});
+
+export const FirstUsePasskeyOptionsRequestSchema = z
+  .object({
+    setupCode: z.string().trim().min(12).max(160),
+    householdName: z.string().trim().min(1).max(100),
+    adultName: z.string().trim().min(1).max(80),
+    timezone: TimezoneSchema,
+    passkeyLabel: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
+export const PasskeyCeremonyOptionsSchema = z.object({
+  ceremonyId: OpaqueIdSchema,
+  options: z.record(z.string(), z.unknown()),
+  expiresAt: TimestampSchema,
+});
+
+export const PasskeyCeremonyVerificationRequestSchema = z
+  .object({
+    ceremonyId: OpaqueIdSchema,
+    response: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
+export const PasskeySessionSchema = z.object({
+  authenticated: z.literal(true),
+  householdId: OpaqueIdSchema,
+  memberId: OpaqueIdSchema,
+  displayName: z.string().min(1).max(80),
+  expiresAt: TimestampSchema,
+});
+
+export const PasskeySignOutResultSchema = z.object({ signedOut: z.literal(true) });
+
+export const PasskeyCredentialSummarySchema = z.object({
+  id: OpaqueIdSchema,
+  memberId: OpaqueIdSchema,
+  label: z.string().min(1).max(80),
+  deviceType: z.enum(['singleDevice', 'multiDevice']),
+  backedUp: z.boolean(),
+  createdAt: TimestampSchema,
+  lastUsedAt: TimestampSchema.nullable(),
+});
+
+export const AdultAccessAccountSchema = z.object({
+  member: MemberSchema.pick({ id: true, displayName: true, avatarUrl: true }),
+  passkeys: z.array(PasskeyCredentialSummarySchema),
+  recovery: z.object({
+    configured: z.boolean(),
+    createdAt: TimestampSchema.nullable(),
+    expiresAt: TimestampSchema.nullable(),
+  }),
+});
+
+export const AdultAccessSummarySchema = z.object({
+  householdId: OpaqueIdSchema,
+  actorMemberId: OpaqueIdSchema,
+  adults: z.array(AdultAccessAccountSchema),
+});
+
+export const AdditionalPasskeyOptionsRequestSchema = z
+  .object({
+    memberId: OpaqueIdSchema,
+    passkeyLabel: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
+export const RecoveryCodeConfirmationRequestSchema = z
+  .object({
+    ceremonyId: OpaqueIdSchema,
+    response: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
+export const RecoveryCodeRevealSchema = z.object({
+  code: z.string().regex(/^([A-F0-9]{4}-){7}[A-F0-9]{4}$/),
+  createdAt: TimestampSchema,
+  expiresAt: TimestampSchema,
+});
+
+export const RecoveryPasskeyOptionsRequestSchema = z
+  .object({
+    recoveryCode: z.string().trim().min(32).max(64),
+    passkeyLabel: z.string().trim().min(1).max(80),
+  })
+  .strict();
 
 export const IntegrationStateSchema = z.object({
   kind: z.enum(['calendar', 'home-assistant']),
@@ -89,6 +209,9 @@ export const ChoreOccurrenceSchema = z.object({
   title: z.string().min(1).max(140),
   assignee: MemberSchema,
   routineLabel: z.string().min(1).max(80),
+  availableFromTime: LocalTimeSchema.nullable().default(null),
+  dueTime: LocalTimeSchema.nullable().default(null),
+  sortOrder: z.number().int().nonnegative().default(0),
   localDate: LocalDateSchema,
   state: ChoreStateSchema,
   completionId: OpaqueIdSchema.nullable(),
@@ -135,6 +258,12 @@ export const PhotoAssetSchema = z.object({
   favourite: z.boolean(),
 });
 
+export const PhotoCurationActionSchema = z.enum(['favourite', 'unfavourite', 'hide', 'unhide']);
+
+export const PhotoCurationAssetSchema = PhotoAssetSchema.extend({
+  hidden: z.boolean(),
+});
+
 export const PhotoSourceSummarySchema = z.object({
   kind: z.enum(['demo', 'synology-folder']),
   label: z.string().min(1).max(100),
@@ -159,13 +288,50 @@ export const PhotoGallerySchema = z.object({
   photos: z.array(PhotoAssetSchema),
 });
 
+export const PhotoSourceIndexStatusSchema = z.object({
+  householdId: OpaqueIdSchema,
+  collection: PhotoCollectionSchema,
+  scanInProgress: z.boolean(),
+  indexedFileCount: z.number().int().nonnegative(),
+  visiblePhotoCount: z.number().int().nonnegative(),
+  hiddenPhotoCount: z.number().int().nonnegative(),
+  unsupportedFileCount: z.number().int().nonnegative(),
+  corruptFileCount: z.number().int().nonnegative(),
+  photos: z.array(PhotoCurationAssetSchema),
+});
+
+export const TodaySectionVisibilitySchema = z.object({
+  dinner: z.boolean(),
+  listSummary: z.boolean(),
+  notice: z.boolean(),
+  photo: z.boolean(),
+});
+
+export const HouseholdNoticeSchema = z.object({
+  id: OpaqueIdSchema,
+  householdId: OpaqueIdSchema,
+  message: z.string().trim().min(1).max(240),
+  priority: z.enum(['standard', 'important']),
+  startsAt: TimestampSchema,
+  expiresAt: TimestampSchema.nullable(),
+  createdAt: TimestampSchema,
+  updatedAt: TimestampSchema,
+});
+
+export const TodayConfigurationSchema = z.object({
+  householdId: OpaqueIdSchema,
+  sections: TodaySectionVisibilitySchema,
+  activeNoticeId: OpaqueIdSchema.nullable(),
+  notices: z.array(HouseholdNoticeSchema),
+});
+
 export const TodaySummarySchema = z.object({
   household: HouseholdSummarySchema,
   localDate: LocalDateSchema,
   generatedAt: TimestampSchema,
   displayTime: z.string().regex(/^\d{1,2}:\d{2}$/),
   displayDate: z.string().min(1).max(100),
-  weather: WeatherSummarySchema,
+  weather: WeatherSummarySchema.nullable(),
   freshness: z.enum(['current', 'stale', 'offline']),
   statusMessage: z.string().max(180).nullable(),
   calendars: z.array(CalendarSourceSchema),
@@ -180,6 +346,7 @@ export const TodaySummarySchema = z.object({
     .nullable(),
   notice: z.string().max(240).nullable(),
   photo: TodayPhotoSummarySchema.nullable(),
+  sections: TodaySectionVisibilitySchema,
   integrations: z.array(IntegrationStateSchema),
 });
 
@@ -296,44 +463,176 @@ export const AssistChoreCompletionRequestSchema = CommandRequestSchema.extend({
   choreTitle: z.string().trim().min(1).max(140),
 });
 
-export const ChoreRepeatSchema = z.enum(['daily', 'weekdays', 'weekly']);
+export const ChoreRepeatSchema = z.enum(['once', 'daily', 'weekdays', 'weekly']);
 
-export const ChoreTemplateSchema = z.object({
-  id: OpaqueIdSchema,
-  title: z.string().min(1).max(140),
-  description: z.string().max(320).nullable(),
-  assignee: MemberSchema,
-  routineLabel: z.string().min(1).max(80),
-  repeat: ChoreRepeatSchema,
-  repeatDays: z.array(z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])).min(1),
-  activeFrom: LocalDateSchema,
-  archived: z.boolean(),
-});
+const ChoreDaySchema = z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']);
+
+function validateChoreSchedule(
+  value: { repeat: z.infer<typeof ChoreRepeatSchema>; repeatDays: string[] },
+  context: z.core.$RefinementCtx,
+) {
+  if (value.repeat !== 'once' && value.repeatDays.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Choose at least one day for a recurring chore.',
+      path: ['repeatDays'],
+    });
+  }
+  if (value.repeat === 'once' && value.repeatDays.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A one-off chore must not contain recurring days.',
+      path: ['repeatDays'],
+    });
+  }
+}
+
+function validateChoreTemplate(
+  value: {
+    repeat: z.infer<typeof ChoreRepeatSchema>;
+    repeatDays: string[];
+    activeFrom: string;
+    activeUntil: string | null;
+    availableFromTime: string | null;
+    dueTime: string | null;
+  },
+  context: z.core.$RefinementCtx,
+) {
+  validateChoreSchedule(value, context);
+  validateChoreWindow(value, context);
+  if (value.repeat === 'once' && value.activeUntil !== value.activeFrom) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A one-off chore must begin and end on its due date.',
+      path: ['activeUntil'],
+    });
+  }
+}
+
+function validateChoreWindow(
+  value: { availableFromTime: string | null; dueTime: string | null },
+  context: z.core.$RefinementCtx,
+) {
+  if (
+    value.availableFromTime !== null &&
+    value.dueTime !== null &&
+    value.availableFromTime >= value.dueTime
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Due by must be later than available from.',
+      path: ['dueTime'],
+    });
+  }
+}
+
+function validateChoreFields(
+  value: {
+    repeat: z.infer<typeof ChoreRepeatSchema>;
+    repeatDays: string[];
+    availableFromTime: string | null;
+    dueTime: string | null;
+  },
+  context: z.core.$RefinementCtx,
+) {
+  validateChoreSchedule(value, context);
+  validateChoreWindow(value, context);
+}
+
+const ChoreTemplateAssigneesSchema = z
+  .array(MemberSchema)
+  .min(1, 'Choose at least one person for this chore.')
+  .max(20)
+  .refine((members) => new Set(members.map((member) => member.id)).size === members.length, {
+    message: 'Choose each person only once.',
+  });
+
+function normalizeLegacyChoreTemplate(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if ('assignees' in record || !('assignee' in record)) return value;
+  const { assignee, ...template } = record;
+  return { ...template, assignees: [assignee] };
+}
+
+export const ChoreTemplateSchema = z.preprocess(
+  normalizeLegacyChoreTemplate,
+  z
+    .object({
+      id: OpaqueIdSchema,
+      title: z.string().min(1).max(140),
+      description: z.string().max(320).nullable(),
+      assignees: ChoreTemplateAssigneesSchema,
+      routineLabel: z.string().min(1).max(80),
+      availableFromTime: LocalTimeSchema.nullable().default(null),
+      dueTime: LocalTimeSchema.nullable().default(null),
+      sortOrder: z.number().int().nonnegative().default(0),
+      repeat: ChoreRepeatSchema,
+      repeatDays: z.array(ChoreDaySchema),
+      activeFrom: LocalDateSchema,
+      activeUntil: LocalDateSchema.nullable(),
+      archived: z.boolean(),
+    })
+    .superRefine(validateChoreTemplate),
+);
 
 export const ChoreTemplateListSchema = z.object({
   householdId: OpaqueIdSchema,
   templates: z.array(ChoreTemplateSchema),
 });
 
-const ChoreTemplateFieldsSchema = z.object({
+const ChoreTemplateAssigneeIdsSchema = z
+  .array(OpaqueIdSchema)
+  .min(1, 'Choose at least one person for this chore.')
+  .max(20)
+  .refine((memberIds) => new Set(memberIds).size === memberIds.length, {
+    message: 'Choose each person only once.',
+  });
+
+const ChoreTemplateFieldsSchema = CommandRequestSchema.extend({
   title: z.string().trim().min(1).max(140),
   description: z.string().trim().max(320).nullable(),
-  assigneeId: OpaqueIdSchema,
+  assigneeIds: ChoreTemplateAssigneeIdsSchema,
   routineLabel: z.string().trim().min(1).max(80),
+  availableFromTime: LocalTimeSchema.nullable().default(null),
+  dueTime: LocalTimeSchema.nullable().default(null),
   repeat: ChoreRepeatSchema,
-  repeatDays: z.array(z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])).min(1),
+  repeatDays: z.array(ChoreDaySchema),
   activeFrom: LocalDateSchema,
 });
 
-export const CreateChoreTemplateRequestSchema = CommandRequestSchema.extend(
-  ChoreTemplateFieldsSchema.shape,
+function normalizeLegacyChoreTemplateRequest(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if ('assigneeIds' in record || !('assigneeId' in record)) return value;
+  const { assigneeId, ...request } = record;
+  return { ...request, assigneeIds: [assigneeId] };
+}
+
+export const CreateChoreTemplateRequestSchema = z.preprocess(
+  normalizeLegacyChoreTemplateRequest,
+  ChoreTemplateFieldsSchema.superRefine(validateChoreFields),
 );
-export const UpdateChoreTemplateRequestSchema = CommandRequestSchema.extend(
-  ChoreTemplateFieldsSchema.shape,
+export const UpdateChoreTemplateRequestSchema = z.preprocess(
+  normalizeLegacyChoreTemplateRequest,
+  ChoreTemplateFieldsSchema.superRefine(validateChoreFields),
 );
+export const RestoreChoreTemplateRequestSchema = CommandRequestSchema.extend({
+  resumeFrom: LocalDateSchema,
+});
+
+export const ReorderChoreTemplatesRequestSchema = CommandRequestSchema.extend({
+  orderedTemplateIds: uniqueIdOrder(OpaqueIdSchema),
+});
 
 export const ChoreTemplateCommandResultSchema = z.object({
   template: ChoreTemplateSchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
+export const ChoreTemplateOrderCommandResultSchema = z.object({
+  list: ChoreTemplateListSchema,
   audit: z.lazy(() => AuditSummarySchema),
   replayed: z.boolean(),
 });
@@ -364,6 +663,67 @@ export const HouseholdListsSchema = z.object({
   lists: z.array(HouseholdListSchema),
 });
 
+export const ArchivedHouseholdListSchema = z.object({
+  id: OpaqueIdSchema,
+  name: z.string().min(1).max(100),
+  type: HouseholdListTypeSchema,
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  archivedAt: TimestampSchema,
+});
+
+export const HouseholdListSettingsSchema = z.object({
+  householdId: OpaqueIdSchema,
+  activeLists: z.array(HouseholdListSchema),
+  archivedLists: z.array(ArchivedHouseholdListSchema),
+});
+
+const HouseholdListFieldsSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  type: HouseholdListTypeSchema,
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
+export const CreateHouseholdListRequestSchema = CommandRequestSchema.extend(
+  HouseholdListFieldsSchema.shape,
+);
+export const UpdateHouseholdListRequestSchema = CommandRequestSchema.extend(
+  HouseholdListFieldsSchema.shape,
+);
+
+function uniqueIdOrder<T extends z.ZodTypeAny>(schema: T) {
+  return z
+    .array(schema)
+    .min(1)
+    .max(100)
+    .superRefine((ids, context) => {
+      if (new Set(ids).size !== ids.length) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Order cannot contain duplicate identifiers.',
+        });
+      }
+    });
+}
+
+export const ReorderHouseholdListsRequestSchema = CommandRequestSchema.extend({
+  orderedListIds: uniqueIdOrder(OpaqueIdSchema),
+});
+
+export const UpdateListItemRequestSchema = CommandRequestSchema.extend({
+  text: z.string().trim().min(1).max(160),
+  quantity: z.string().trim().max(40).nullable(),
+});
+
+export const ReorderListItemsRequestSchema = CommandRequestSchema.extend({
+  orderedItemIds: uniqueIdOrder(OpaqueIdSchema),
+});
+
+export const ListSettingsCommandResultSchema = z.object({
+  settings: HouseholdListSettingsSchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
 export const AddListItemRequestSchema = CommandRequestSchema.extend({
   text: z.string().trim().min(1).max(160),
   quantity: z.string().trim().max(40).nullable(),
@@ -386,7 +746,15 @@ export const SavedMealSchema = z.object({
   id: OpaqueIdSchema,
   name: z.string().min(1).max(140),
   description: z.string().max(320).nullable(),
+  preparationMinutes: z.number().int().min(1).max(600).nullable(),
   favourite: z.boolean(),
+  archivedAt: TimestampSchema.nullable(),
+});
+
+export const SavedMealLibrarySchema = z.object({
+  householdId: OpaqueIdSchema,
+  activeMeals: z.array(SavedMealSchema),
+  archivedMeals: z.array(SavedMealSchema),
 });
 
 export const MealPlanEntrySchema = z.object({
@@ -426,6 +794,50 @@ export const UpsertMealPlanRequestSchema = CommandRequestSchema.extend({
 export const CreateSavedMealRequestSchema = CommandRequestSchema.extend({
   name: z.string().trim().min(1).max(140),
   description: z.string().trim().max(320).nullable(),
+  preparationMinutes: z.number().int().min(1).max(600).nullable(),
+  favourite: z.boolean(),
+});
+
+export const UpdateSavedMealRequestSchema = CreateSavedMealRequestSchema;
+
+export const MealPlanEntryInputSchema = UpsertMealPlanRequestSchema.omit({ requestId: true });
+
+export const UpdateMealPlanWeekRequestSchema = CommandRequestSchema.extend({
+  startDate: LocalDateSchema,
+  entries: z.array(MealPlanEntryInputSchema).min(1).max(21),
+}).superRefine((value, context) => {
+  const start = Date.parse(`${value.startDate}T12:00:00Z`);
+  const end = start + 6 * 86_400_000;
+  const seen = new Set<string>();
+  for (const [index, entry] of value.entries.entries()) {
+    const date = Date.parse(`${entry.localDate}T12:00:00Z`);
+    if (date < start || date > end) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Every meal must belong to the selected seven-day week.',
+        path: ['entries', index, 'localDate'],
+      });
+    }
+    const key = `${entry.localDate}:${entry.slot}`;
+    if (seen.has(key)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Each day and meal slot can appear only once.',
+        path: ['entries', index, 'slot'],
+      });
+    }
+    seen.add(key);
+  }
+});
+
+export const ClearMealPlanWeekRequestSchema = CommandRequestSchema.extend({
+  startDate: LocalDateSchema,
+});
+
+export const CopyMealPlanWeekRequestSchema = CommandRequestSchema.extend({
+  sourceStartDate: LocalDateSchema,
+  targetStartDate: LocalDateSchema,
+  replaceExisting: z.boolean(),
 });
 
 export const SavedMealCommandResultSchema = z.object({
@@ -440,6 +852,12 @@ export const MealCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
+export const MealPlanWeekCommandResultSchema = z.object({
+  plan: MealPlanSchema,
+  audit: z.lazy(() => AuditSummarySchema),
+  replayed: z.boolean(),
+});
+
 export const PaydaySchema = z.enum([
   'monday',
   'tuesday',
@@ -449,6 +867,15 @@ export const PaydaySchema = z.enum([
   'saturday',
   'sunday',
 ]);
+
+export const PocketMoneyPaymentVoidSchema = z.object({
+  id: OpaqueIdSchema,
+  paymentId: OpaqueIdSchema,
+  reason: z.string().trim().min(3).max(240),
+  voidedAt: TimestampSchema,
+  voidedByActorId: OpaqueIdSchema,
+  source: z.literal('companion'),
+});
 
 export const PocketMoneyPaymentSchema = z
   .object({
@@ -460,9 +887,11 @@ export const PocketMoneyPaymentSchema = z
     completedCount: z.number().int().nonnegative(),
     completionPercentage: z.number().int().min(0).max(100),
     amountCents: z.number().int().nonnegative(),
+    note: z.string().trim().min(1).max(240).nullable(),
     paidAt: TimestampSchema,
     paidByActorId: OpaqueIdSchema,
     source: z.enum(['companion', 'system']),
+    void: PocketMoneyPaymentVoidSchema.nullable(),
   })
   .refine((payment) => payment.completedCount <= payment.scheduledCount, {
     message: 'Completed chores cannot exceed scheduled chores.',
@@ -479,8 +908,11 @@ export const PocketMoneyChildSummarySchema = z
     completedCount: z.number().int().nonnegative(),
     completionPercentage: z.number().int().min(0).max(100),
     earnedAmountCents: z.number().int().nonnegative().nullable(),
-    status: z.enum(['not-configured', 'building', 'ready', 'paid']),
-    payment: PocketMoneyPaymentSchema.nullable(),
+    paidAmountCents: z.number().int().nonnegative(),
+    remainingAmountCents: z.number().int().nonnegative().nullable(),
+    paydayReached: z.boolean(),
+    status: z.enum(['not-configured', 'building', 'ready', 'partially-paid', 'paid']),
+    payments: z.array(PocketMoneyPaymentSchema),
   })
   .refine((summary) => summary.completedCount <= summary.scheduledCount, {
     message: 'Completed chores cannot exceed scheduled chores.',
@@ -494,6 +926,7 @@ export const PocketMoneyOverviewSchema = z.object({
   asOfDate: LocalDateSchema,
   displayRange: z.string().min(1).max(80),
   children: z.array(PocketMoneyChildSummarySchema),
+  recentPayments: z.array(PocketMoneyPaymentSchema),
 });
 
 export const UpdatePocketMoneySettingsRequestSchema = CommandRequestSchema.extend({
@@ -507,6 +940,13 @@ export const RecordPocketMoneyPaymentRequestSchema = CommandRequestSchema.extend
   memberId: OpaqueIdSchema,
   weekStart: LocalDateSchema,
   asOfDate: LocalDateSchema,
+  amountCents: z.number().int().positive().max(100_000).optional(),
+  note: z.string().trim().min(1).max(240).nullable().optional(),
+});
+
+export const VoidPocketMoneyPaymentRequestSchema = CommandRequestSchema.extend({
+  asOfDate: LocalDateSchema,
+  reason: z.string().trim().min(3).max(240),
 });
 
 export const PocketMoneySettingsCommandResultSchema = z.object({
@@ -522,80 +962,23 @@ export const PocketMoneyPaymentCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
-/** @deprecated Retained only so historical reward records remain readable. */
-export const RewardDefinitionSchema = z.object({
-  id: OpaqueIdSchema,
-  name: z.string().min(1).max(140),
-  description: z.string().max(320).nullable(),
-  cost: z.number().int().positive().max(100_000),
-  approvalRequired: z.boolean(),
-  archived: z.boolean(),
-});
-
-export const RewardLedgerEntrySchema = z.object({
-  id: OpaqueIdSchema,
-  member: MemberSchema,
-  delta: z
-    .number()
-    .int()
-    .refine((value) => value !== 0),
-  reason: z.string().min(1).max(180),
-  rewardId: OpaqueIdSchema.nullable(),
-  relatedChoreOccurrenceId: OpaqueIdSchema.nullable(),
-  reversalOfEntryId: OpaqueIdSchema.nullable(),
-  occurredAt: TimestampSchema,
-  actorId: OpaqueIdSchema,
-  source: z.enum(['tv', 'companion', 'voice', 'automation', 'system']),
-});
-
-export const MemberRewardBalanceSchema = z.object({
-  member: MemberSchema,
-  balance: z.number().int(),
-});
-
-export const RewardsOverviewSchema = z.object({
-  householdId: OpaqueIdSchema,
-  balances: z.array(MemberRewardBalanceSchema),
-  definitions: z.array(RewardDefinitionSchema),
-  ledger: z.array(RewardLedgerEntrySchema),
-});
-
-export const CreateRewardDefinitionRequestSchema = CommandRequestSchema.extend({
-  name: z.string().trim().min(1).max(140),
-  description: z.string().trim().max(320).nullable(),
-  cost: z.number().int().positive().max(100_000),
-  approvalRequired: z.boolean(),
-});
-
-export const RewardDefinitionCommandResultSchema = z.object({
-  definition: RewardDefinitionSchema,
-  audit: z.lazy(() => AuditSummarySchema),
-  replayed: z.boolean(),
-});
-
-export const AdjustRewardRequestSchema = CommandRequestSchema.extend({
-  memberId: OpaqueIdSchema,
-  delta: z
-    .number()
-    .int()
-    .min(-100_000)
-    .max(100_000)
-    .refine((value) => value !== 0),
-  reason: z.string().trim().min(1).max(180),
-  rewardId: OpaqueIdSchema.nullable(),
-});
-
-export const ReverseRewardEntryRequestSchema = CommandRequestSchema;
-
-export const RewardCommandResultSchema = z.object({
-  entry: RewardLedgerEntrySchema,
-  balances: z.array(MemberRewardBalanceSchema),
+export const PocketMoneyPaymentVoidCommandResultSchema = z.object({
+  payment: PocketMoneyPaymentSchema,
+  child: PocketMoneyChildSummarySchema,
   audit: z.lazy(() => AuditSummarySchema),
   replayed: z.boolean(),
 });
 
 export const CompletionReversalRequestSchema = CommandRequestSchema.extend({
   completionId: OpaqueIdSchema,
+});
+
+export const ChoreExceptionRequestSchema = CommandRequestSchema.extend({
+  reason: z.string().trim().min(2).max(240),
+});
+
+export const ChoreReassignmentRequestSchema = ChoreExceptionRequestSchema.extend({
+  assigneeId: OpaqueIdSchema,
 });
 
 export const AuditSummarySchema = z.object({
@@ -607,30 +990,134 @@ export const AuditSummarySchema = z.object({
     'chore.complete',
     'chore.undo',
     'chore.skip',
+    'chore.excuse',
+    'chore.reassign',
     'household.update',
     'member.create',
     'member.update',
+    'member.avatar.update',
+    'member.avatar.reset',
     'member.archive',
     'device.pair',
     'device.revoke',
     'chore-template.create',
     'chore-template.update',
+    'chore-template.archive',
+    'chore-template.restore',
+    'chore-template.reorder',
+    'list.create',
+    'list.update',
+    'list.archive',
+    'list.restore',
+    'list.reorder',
     'list.item.add',
+    'list.item.update',
+    'list.item.archive',
+    'list.item.reorder',
+    'list.item.clear-checked',
     'list.item.complete',
     'list.item.undo',
     'meal.plan',
+    'meal.week.update',
+    'meal.week.clear',
+    'meal.week.copy',
     'saved-meal.create',
-    'reward.definition.create',
-    'reward.adjust',
-    'reward.reverse',
-    'reward.award',
+    'saved-meal.update',
+    'saved-meal.archive',
+    'saved-meal.restore',
     'pocket-money.settings.update',
     'pocket-money.payment.record',
+    'pocket-money.payment.void',
+    'calendar.connection.save',
+    'calendar.connection.remove',
+    'home-assistant.connection.save',
+    'home-assistant.connection.remove',
+    'system.backup.create',
+    'photo.source.refresh',
+    'photo.favourite',
+    'photo.unfavourite',
+    'photo.hide',
+    'photo.unhide',
+    'auth.passkey.register',
+    'auth.passkey.revoke',
+    'auth.recovery-code.rotate',
+    'auth.account.recover',
     'home.action.execute',
+    'notice.create',
+    'notice.update',
+    'notice.archive',
+    'today.sections.update',
   ]),
   targetId: OpaqueIdSchema,
   occurredAt: TimestampSchema,
   result: z.enum(['succeeded', 'rejected', 'failed', 'reversed']),
+});
+
+export const PasskeyRegistrationResultSchema = z.object({
+  credential: PasskeyCredentialSummarySchema,
+  audit: AuditSummarySchema,
+});
+
+export const RevokePasskeyRequestSchema = CommandRequestSchema;
+
+export const PasskeyRevocationResultSchema = z.object({
+  access: AdultAccessSummarySchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+const NoticeFieldsSchema = z.object({
+  message: HouseholdNoticeSchema.shape.message,
+  priority: HouseholdNoticeSchema.shape.priority,
+  startsAt: TimestampSchema,
+  expiresAt: TimestampSchema.nullable(),
+});
+
+function validateNoticeWindow(
+  value: z.infer<typeof NoticeFieldsSchema>,
+  context: z.core.$RefinementCtx,
+) {
+  if (value.expiresAt !== null && Date.parse(value.expiresAt) <= Date.parse(value.startsAt)) {
+    context.addIssue({
+      code: 'custom',
+      message: 'The notice expiry must be after its start time.',
+      path: ['expiresAt'],
+    });
+  }
+}
+
+export const CreateHouseholdNoticeRequestSchema = CommandRequestSchema.extend(
+  NoticeFieldsSchema.shape,
+).superRefine(validateNoticeWindow);
+export const UpdateHouseholdNoticeRequestSchema = CreateHouseholdNoticeRequestSchema;
+export const ArchiveHouseholdNoticeRequestSchema = CommandRequestSchema;
+export const UpdateTodaySectionsRequestSchema = CommandRequestSchema.extend(
+  TodaySectionVisibilitySchema.shape,
+);
+
+export const RefreshPhotoSourceRequestSchema = CommandRequestSchema;
+
+export const UpdatePhotoCurationRequestSchema = CommandRequestSchema.extend({
+  action: PhotoCurationActionSchema,
+});
+
+export const PhotoSourceRefreshResultSchema = z.object({
+  status: PhotoSourceIndexStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+export const PhotoCurationCommandResultSchema = z.object({
+  photo: PhotoCurationAssetSchema,
+  status: PhotoSourceIndexStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+export const TodayConfigurationCommandResultSchema = z.object({
+  configuration: TodayConfigurationSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
 });
 
 export const ChoreCommandResultSchema = z.object({
@@ -644,6 +1131,23 @@ export const ChoreSkipResultSchema = z.object({
   occurrence: ChoreOccurrenceSchema,
   audit: AuditSummarySchema,
   replayed: z.boolean(),
+});
+
+export const ChoreOccurrenceChangeResultSchema = ChoreSkipResultSchema;
+
+export const ChoreOccurrenceHistoryEntrySchema = z.object({
+  id: OpaqueIdSchema,
+  action: z.enum(['chore.complete', 'chore.undo', 'chore.skip', 'chore.excuse', 'chore.reassign']),
+  label: z.string().min(1).max(180),
+  actorLabel: z.string().min(1).max(80),
+  occurredAt: TimestampSchema,
+  reason: z.string().max(240).nullable(),
+});
+
+export const ChoreOccurrenceDetailSchema = z.object({
+  occurrence: ChoreOccurrenceSchema,
+  description: z.string().max(320).nullable(),
+  history: z.array(ChoreOccurrenceHistoryEntrySchema),
 });
 
 export const HomeActionResultSchema = z.object({
@@ -673,10 +1177,12 @@ export const RealtimeEventSchema = z.object({
     'household.changed',
     'list.changed',
     'meal.changed',
-    'reward.changed',
     'pocket-money.changed',
     'chore-template.changed',
     'home.changed',
+    'calendar.changed',
+    'today.changed',
+    'photos.changed',
   ]),
   householdId: OpaqueIdSchema,
   targetId: OpaqueIdSchema,
@@ -740,6 +1246,278 @@ export const AdminOverviewSchema = z.object({
   localOnly: z.literal(true),
 });
 
+export const ActivityFeedSchema = z.object({
+  entries: z.array(AuditSummarySchema).max(100),
+  generatedAt: TimestampSchema,
+  localOnly: z.literal(true),
+});
+
+export const CalendarConnectionCalendarSchema = z.object({
+  displayName: z.string().trim().min(1).max(80),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  owner: MemberSchema.nullable(),
+});
+
+export const CalendarConnectionSettingsSchema = z.object({
+  id: OpaqueIdSchema,
+  provider: z.literal('caldav'),
+  label: z.string().trim().min(1).max(80),
+  serverHost: z.string().trim().min(1).max(253),
+  accountHint: z.string().trim().min(1).max(80),
+  status: z.enum(['ready', 'needs-attention']),
+  readOnly: z.literal(true),
+  calendars: z.array(CalendarConnectionCalendarSchema).min(1).max(40),
+  lastCheckedAt: TimestampSchema,
+  lastSuccessfulAt: TimestampSchema.nullable(),
+  message: z.string().trim().min(1).max(180),
+});
+
+const HttpsCalendarServerSchema = z
+  .url()
+  .max(500)
+  .refine((value) => /^https:\/\//i.test(value), 'Expected an HTTPS URL');
+
+export const CalendarConnectionTestRequestSchema = z
+  .object({
+    serverUrl: HttpsCalendarServerSchema,
+    username: z.string().trim().min(1).max(320),
+    appPassword: z.string().min(4).max(512),
+  })
+  .strict();
+
+export const CalendarConnectionOptionSchema = z.object({
+  id: OpaqueIdSchema,
+  displayName: z.string().trim().min(1).max(80),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
+export const CalendarConnectionTestResultSchema = z.object({
+  testId: OpaqueIdSchema,
+  provider: z.literal('caldav'),
+  serverHost: z.string().trim().min(1).max(253),
+  accountHint: z.string().trim().min(1).max(80),
+  availableCalendars: z.array(CalendarConnectionOptionSchema).min(1).max(40),
+  expiresAt: TimestampSchema,
+});
+
+const SelectedCalendarSchema = z.object({
+  calendarId: OpaqueIdSchema,
+  ownerMemberId: OpaqueIdSchema.nullable(),
+});
+
+export const SaveCalendarConnectionRequestSchema = CommandRequestSchema.extend({
+  testId: OpaqueIdSchema,
+  label: z.string().trim().min(1).max(80),
+  calendars: z.array(SelectedCalendarSchema).min(1).max(40),
+}).superRefine((value, context) => {
+  const ids = value.calendars.map(({ calendarId }) => calendarId);
+  if (new Set(ids).size !== ids.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['calendars'],
+      message: 'Choose each calendar only once',
+    });
+  }
+});
+
+export const RemoveCalendarConnectionRequestSchema = CommandRequestSchema;
+
+export const CalendarConnectionCommandResultSchema = z.object({
+  connection: CalendarConnectionSettingsSchema.nullable(),
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+export const HomeAssistantConnectionSettingsSchema = z.object({
+  id: OpaqueIdSchema,
+  provider: z.literal('home-assistant'),
+  label: z.string().trim().min(1).max(80),
+  serverHost: z.string().trim().min(1).max(253),
+  instanceName: z.string().trim().min(1).max(100),
+  version: z.string().trim().min(1).max(40),
+  status: z.enum(['ready', 'needs-attention']),
+  stateMappings: z.object({
+    occupancy: z.string().trim().min(1).max(100),
+    televisionPower: z.string().trim().min(1).max(100),
+    hearthForeground: z.string().trim().min(1).max(100),
+    protectedMedia: z.string().trim().min(1).max(100),
+  }),
+  actionMappings: z.object({
+    evening: z.string().trim().min(1).max(100),
+    goodnight: z.string().trim().min(1).max(100),
+    screenOff: z.string().trim().min(1).max(100),
+  }),
+  lastCheckedAt: TimestampSchema,
+  lastSuccessfulAt: TimestampSchema.nullable(),
+  message: z.string().trim().min(1).max(180),
+});
+
+const HomeAssistantServerUrlSchema = z
+  .url()
+  .max(500)
+  .superRefine((value, context) => {
+    const rootAddress = /^(https?):\/\/([^/@:#?]+|\[[^\]]+\])(?::\d+)?\/?$/i.exec(value);
+    if (rootAddress === null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Use the Home Assistant root address without credentials, a path or query',
+      });
+      return;
+    }
+    const [, protocol = '', hostname = ''] = rootAddress;
+    if (protocol.toLowerCase() === 'http' && !isPrivateHomeAssistantHost(hostname)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Plain HTTP is allowed only for a private local Home Assistant address',
+      });
+    }
+  });
+
+export const HomeAssistantConnectionTestRequestSchema = z
+  .object({
+    serverUrl: HomeAssistantServerUrlSchema,
+    accessToken: z.string().trim().min(20).max(512),
+  })
+  .strict();
+
+export const HomeAssistantConnectionOptionSchema = z.object({
+  id: OpaqueIdSchema,
+  displayName: z.string().trim().min(1).max(100),
+  kindLabel: z.string().trim().min(1).max(60),
+});
+
+const HomeAssistantConnectionOptionsSchema = z.object({
+  occupancy: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  televisionPower: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  hearthForeground: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  protectedMedia: z.array(HomeAssistantConnectionOptionSchema).max(80),
+  scripts: z.array(HomeAssistantConnectionOptionSchema).max(80),
+});
+
+export const HomeAssistantConnectionTestResultSchema = z.object({
+  testId: OpaqueIdSchema,
+  provider: z.literal('home-assistant'),
+  serverHost: z.string().trim().min(1).max(253),
+  instanceName: z.string().trim().min(1).max(100),
+  version: z.string().trim().min(1).max(40),
+  options: HomeAssistantConnectionOptionsSchema,
+  expiresAt: TimestampSchema,
+});
+
+const HomeAssistantMappingSelectionSchema = z.object({
+  occupancyId: OpaqueIdSchema,
+  televisionPowerId: OpaqueIdSchema,
+  hearthForegroundId: OpaqueIdSchema,
+  protectedMediaId: OpaqueIdSchema,
+  eveningScriptId: OpaqueIdSchema,
+  goodnightScriptId: OpaqueIdSchema,
+  screenOffScriptId: OpaqueIdSchema,
+});
+
+export const SaveHomeAssistantConnectionRequestSchema = CommandRequestSchema.extend({
+  testId: OpaqueIdSchema,
+  label: z.string().trim().min(1).max(80),
+  mappings: HomeAssistantMappingSelectionSchema,
+}).superRefine((value, context) => {
+  const states = [
+    value.mappings.occupancyId,
+    value.mappings.televisionPowerId,
+    value.mappings.hearthForegroundId,
+    value.mappings.protectedMediaId,
+  ];
+  const scripts = [
+    value.mappings.eveningScriptId,
+    value.mappings.goodnightScriptId,
+    value.mappings.screenOffScriptId,
+  ];
+  if (new Set(states).size !== states.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['mappings'],
+      message: 'Choose a different state for each safety signal',
+    });
+  }
+  if (new Set(scripts).size !== scripts.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['mappings'],
+      message: 'Choose a different script for each Home action',
+    });
+  }
+});
+
+export const RemoveHomeAssistantConnectionRequestSchema = CommandRequestSchema;
+
+export const HomeAssistantConnectionCommandResultSchema = z.object({
+  connection: HomeAssistantConnectionSettingsSchema.nullable(),
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+export const SystemBackupStatusSchema = z.object({
+  state: z.enum(['ready', 'never-run', 'not-configured', 'failed']),
+  scheduled: z.boolean(),
+  retentionCount: z.number().int().min(1).max(90),
+  lastSuccessfulAt: TimestampSchema.nullable(),
+  sizeBytes: z.number().int().nonnegative().nullable(),
+  message: z.string().trim().min(1).max(180),
+});
+
+export const SystemStatusSchema = z.object({
+  version: z.string().trim().min(1).max(80),
+  mode: RuntimeModeSchema,
+  generatedAt: TimestampSchema,
+  database: z.object({
+    state: z.enum(['ready', 'needs-attention']),
+    migrationVersion: z.number().int().positive(),
+    message: z.string().trim().min(1).max(180),
+  }),
+  backup: SystemBackupStatusSchema,
+});
+
+export const CreateSystemBackupRequestSchema = CommandRequestSchema;
+
+export const SystemBackupCommandResultSchema = z.object({
+  status: SystemStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+function isPrivateHomeAssistantHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (
+    host === 'localhost' ||
+    host.endsWith('.local') ||
+    host.endsWith('.home.arpa') ||
+    host === '::1'
+  ) {
+    return true;
+  }
+  if (host.includes(':')) {
+    const firstHextet = Number.parseInt(host.split(':', 1)[0] ?? '', 16);
+    return (
+      Number.isInteger(firstHextet) &&
+      ((firstHextet >= 0xfc00 && firstHextet <= 0xfdff) ||
+        (firstHextet >= 0xfe80 && firstHextet <= 0xfebf))
+    );
+  }
+  const octets = host.split('.').map(Number);
+  if (
+    octets.length !== 4 ||
+    octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
+  )
+    return false;
+  const [first = -1, second = -1] = octets;
+  return (
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 100 && second >= 64 && second <= 127)
+  );
+}
+
 export const UpdateHouseholdRequestSchema = CommandRequestSchema.extend({
   name: z.string().trim().min(1).max(100),
   timezone: TimezoneSchema,
@@ -772,6 +1550,23 @@ export const UpdateMemberRequestSchema = CommandRequestSchema.extend(
   MemberFieldsSchema.shape,
 ).superRefine(validateMemberPermissions);
 export const ArchiveMemberRequestSchema = CommandRequestSchema;
+
+export const UpdateMemberAvatarRequestSchema = CommandRequestSchema.extend({
+  mimeType: z.literal('image/jpeg'),
+  dataBase64: z
+    .string()
+    .min(4)
+    .max(1_400_000)
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Expected base64-encoded image data')
+    .refine((value) => value.length % 4 === 0, 'Expected complete base64-encoded image data'),
+});
+export const ResetMemberAvatarRequestSchema = CommandRequestSchema;
+
+export const MemberAvatarCommandResultSchema = z.object({
+  member: MemberSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
 
 export const CreatePairingRequestSchema = CommandRequestSchema.extend({
   deviceName: z.string().trim().min(1).max(80),
@@ -835,18 +1630,53 @@ export const DemoScenarioRequestSchema = z.object({ scenario: DemoScenarioSchema
 export type Member = z.infer<typeof MemberSchema>;
 export type Capability = z.infer<typeof CapabilitySchema>;
 export type HouseholdSummary = z.infer<typeof HouseholdSummarySchema>;
+export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
+export type RuntimeHousehold = z.infer<typeof RuntimeHouseholdSchema>;
+export type RuntimeContext = z.infer<typeof RuntimeContextSchema>;
+export type PasskeyAuthStatus = z.infer<typeof PasskeyAuthStatusSchema>;
+export type FirstUsePasskeyOptionsRequest = z.infer<typeof FirstUsePasskeyOptionsRequestSchema>;
+export type PasskeyCeremonyOptions = z.infer<typeof PasskeyCeremonyOptionsSchema>;
+export type PasskeyCeremonyVerificationRequest = z.infer<
+  typeof PasskeyCeremonyVerificationRequestSchema
+>;
+export type PasskeySession = z.infer<typeof PasskeySessionSchema>;
+export type PasskeySignOutResult = z.infer<typeof PasskeySignOutResultSchema>;
+export type PasskeyCredentialSummary = z.infer<typeof PasskeyCredentialSummarySchema>;
+export type AdultAccessAccount = z.infer<typeof AdultAccessAccountSchema>;
+export type AdultAccessSummary = z.infer<typeof AdultAccessSummarySchema>;
+export type AdditionalPasskeyOptionsRequest = z.infer<typeof AdditionalPasskeyOptionsRequestSchema>;
+export type RecoveryCodeConfirmationRequest = z.infer<typeof RecoveryCodeConfirmationRequestSchema>;
+export type RecoveryCodeReveal = z.infer<typeof RecoveryCodeRevealSchema>;
+export type RecoveryPasskeyOptionsRequest = z.infer<typeof RecoveryPasskeyOptionsRequestSchema>;
+export type PasskeyRegistrationResult = z.infer<typeof PasskeyRegistrationResultSchema>;
+export type RevokePasskeyRequest = z.infer<typeof RevokePasskeyRequestSchema>;
+export type PasskeyRevocationResult = z.infer<typeof PasskeyRevocationResultSchema>;
 export type IntegrationState = z.infer<typeof IntegrationStateSchema>;
 export type CalendarSource = z.infer<typeof CalendarSourceSchema>;
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
 export type ChoreState = z.infer<typeof ChoreStateSchema>;
 export type ChoreOccurrence = z.infer<typeof ChoreOccurrenceSchema>;
 export type TodaySummary = z.infer<typeof TodaySummarySchema>;
+export type TodaySectionVisibility = z.infer<typeof TodaySectionVisibilitySchema>;
+export type HouseholdNotice = z.infer<typeof HouseholdNoticeSchema>;
+export type TodayConfiguration = z.infer<typeof TodayConfigurationSchema>;
+export type CreateHouseholdNoticeRequest = z.infer<typeof CreateHouseholdNoticeRequestSchema>;
+export type UpdateHouseholdNoticeRequest = z.infer<typeof UpdateHouseholdNoticeRequestSchema>;
+export type UpdateTodaySectionsRequest = z.infer<typeof UpdateTodaySectionsRequestSchema>;
+export type TodayConfigurationCommandResult = z.infer<typeof TodayConfigurationCommandResultSchema>;
 export type TodayPhotoSummary = z.infer<typeof TodayPhotoSummarySchema>;
 export type PhotoOrientation = z.infer<typeof PhotoOrientationSchema>;
 export type PhotoAsset = z.infer<typeof PhotoAssetSchema>;
+export type PhotoCurationAction = z.infer<typeof PhotoCurationActionSchema>;
+export type PhotoCurationAsset = z.infer<typeof PhotoCurationAssetSchema>;
 export type PhotoSourceSummary = z.infer<typeof PhotoSourceSummarySchema>;
 export type PhotoCollection = z.infer<typeof PhotoCollectionSchema>;
 export type PhotoGallery = z.infer<typeof PhotoGallerySchema>;
+export type PhotoSourceIndexStatus = z.infer<typeof PhotoSourceIndexStatusSchema>;
+export type RefreshPhotoSourceRequest = z.infer<typeof RefreshPhotoSourceRequestSchema>;
+export type PhotoSourceRefreshResult = z.infer<typeof PhotoSourceRefreshResultSchema>;
+export type UpdatePhotoCurationRequest = z.infer<typeof UpdatePhotoCurationRequestSchema>;
+export type PhotoCurationCommandResult = z.infer<typeof PhotoCurationCommandResultSchema>;
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 export type WeekDay = z.infer<typeof WeekDaySchema>;
 export type WeekSchedule = z.infer<typeof WeekScheduleSchema>;
@@ -867,24 +1697,43 @@ export type ChoreTemplate = z.infer<typeof ChoreTemplateSchema>;
 export type ChoreTemplateList = z.infer<typeof ChoreTemplateListSchema>;
 export type CreateChoreTemplateRequest = z.infer<typeof CreateChoreTemplateRequestSchema>;
 export type UpdateChoreTemplateRequest = z.infer<typeof UpdateChoreTemplateRequestSchema>;
+export type RestoreChoreTemplateRequest = z.infer<typeof RestoreChoreTemplateRequestSchema>;
 export type ChoreTemplateCommandResult = z.infer<typeof ChoreTemplateCommandResultSchema>;
+export type ReorderChoreTemplatesRequest = z.infer<typeof ReorderChoreTemplatesRequestSchema>;
+export type ChoreTemplateOrderCommandResult = z.infer<typeof ChoreTemplateOrderCommandResultSchema>;
 export type HouseholdListType = z.infer<typeof HouseholdListTypeSchema>;
 export type ListItem = z.infer<typeof ListItemSchema>;
 export type HouseholdList = z.infer<typeof HouseholdListSchema>;
 export type HouseholdLists = z.infer<typeof HouseholdListsSchema>;
+export type ArchivedHouseholdList = z.infer<typeof ArchivedHouseholdListSchema>;
+export type HouseholdListSettings = z.infer<typeof HouseholdListSettingsSchema>;
+export type CreateHouseholdListRequest = z.infer<typeof CreateHouseholdListRequestSchema>;
+export type UpdateHouseholdListRequest = z.infer<typeof UpdateHouseholdListRequestSchema>;
+export type ReorderHouseholdListsRequest = z.infer<typeof ReorderHouseholdListsRequestSchema>;
+export type UpdateListItemRequest = z.infer<typeof UpdateListItemRequestSchema>;
+export type ReorderListItemsRequest = z.infer<typeof ReorderListItemsRequestSchema>;
+export type ListSettingsCommandResult = z.infer<typeof ListSettingsCommandResultSchema>;
 export type AddListItemRequest = z.infer<typeof AddListItemRequestSchema>;
 export type AssistAddListItemRequest = z.infer<typeof AssistAddListItemRequestSchema>;
 export type ListItemCommandResult = z.infer<typeof ListItemCommandResultSchema>;
 export type MealSlot = z.infer<typeof MealSlotSchema>;
 export type SavedMeal = z.infer<typeof SavedMealSchema>;
+export type SavedMealLibrary = z.infer<typeof SavedMealLibrarySchema>;
 export type MealPlanEntry = z.infer<typeof MealPlanEntrySchema>;
+export type MealPlanEntryInput = z.infer<typeof MealPlanEntryInputSchema>;
 export type MealPlanDay = z.infer<typeof MealPlanDaySchema>;
 export type MealPlan = z.infer<typeof MealPlanSchema>;
 export type UpsertMealPlanRequest = z.infer<typeof UpsertMealPlanRequestSchema>;
 export type CreateSavedMealRequest = z.infer<typeof CreateSavedMealRequestSchema>;
+export type UpdateSavedMealRequest = z.infer<typeof UpdateSavedMealRequestSchema>;
+export type UpdateMealPlanWeekRequest = z.infer<typeof UpdateMealPlanWeekRequestSchema>;
+export type ClearMealPlanWeekRequest = z.infer<typeof ClearMealPlanWeekRequestSchema>;
+export type CopyMealPlanWeekRequest = z.infer<typeof CopyMealPlanWeekRequestSchema>;
 export type SavedMealCommandResult = z.infer<typeof SavedMealCommandResultSchema>;
 export type MealCommandResult = z.infer<typeof MealCommandResultSchema>;
+export type MealPlanWeekCommandResult = z.infer<typeof MealPlanWeekCommandResultSchema>;
 export type Payday = z.infer<typeof PaydaySchema>;
+export type PocketMoneyPaymentVoid = z.infer<typeof PocketMoneyPaymentVoidSchema>;
 export type PocketMoneyPayment = z.infer<typeof PocketMoneyPaymentSchema>;
 export type PocketMoneyChildSummary = z.infer<typeof PocketMoneyChildSummarySchema>;
 export type PocketMoneyOverview = z.infer<typeof PocketMoneyOverviewSchema>;
@@ -892,24 +1741,24 @@ export type UpdatePocketMoneySettingsRequest = z.infer<
   typeof UpdatePocketMoneySettingsRequestSchema
 >;
 export type RecordPocketMoneyPaymentRequest = z.infer<typeof RecordPocketMoneyPaymentRequestSchema>;
+export type VoidPocketMoneyPaymentRequest = z.infer<typeof VoidPocketMoneyPaymentRequestSchema>;
 export type PocketMoneySettingsCommandResult = z.infer<
   typeof PocketMoneySettingsCommandResultSchema
 >;
 export type PocketMoneyPaymentCommandResult = z.infer<typeof PocketMoneyPaymentCommandResultSchema>;
-export type RewardDefinition = z.infer<typeof RewardDefinitionSchema>;
-export type RewardLedgerEntry = z.infer<typeof RewardLedgerEntrySchema>;
-export type MemberRewardBalance = z.infer<typeof MemberRewardBalanceSchema>;
-export type RewardsOverview = z.infer<typeof RewardsOverviewSchema>;
-export type CreateRewardDefinitionRequest = z.infer<typeof CreateRewardDefinitionRequestSchema>;
-export type RewardDefinitionCommandResult = z.infer<typeof RewardDefinitionCommandResultSchema>;
-export type AdjustRewardRequest = z.infer<typeof AdjustRewardRequestSchema>;
-export type ReverseRewardEntryRequest = z.infer<typeof ReverseRewardEntryRequestSchema>;
-export type RewardCommandResult = z.infer<typeof RewardCommandResultSchema>;
+export type PocketMoneyPaymentVoidCommandResult = z.infer<
+  typeof PocketMoneyPaymentVoidCommandResultSchema
+>;
 export type CommandRequest = z.infer<typeof CommandRequestSchema>;
 export type CompletionReversalRequest = z.infer<typeof CompletionReversalRequestSchema>;
+export type ChoreExceptionRequest = z.infer<typeof ChoreExceptionRequestSchema>;
+export type ChoreReassignmentRequest = z.infer<typeof ChoreReassignmentRequestSchema>;
 export type AuditSummary = z.infer<typeof AuditSummarySchema>;
 export type ChoreCommandResult = z.infer<typeof ChoreCommandResultSchema>;
 export type ChoreSkipResult = z.infer<typeof ChoreSkipResultSchema>;
+export type ChoreOccurrenceChangeResult = z.infer<typeof ChoreOccurrenceChangeResultSchema>;
+export type ChoreOccurrenceHistoryEntry = z.infer<typeof ChoreOccurrenceHistoryEntrySchema>;
+export type ChoreOccurrenceDetail = z.infer<typeof ChoreOccurrenceDetailSchema>;
 export type HomeActionResult = z.infer<typeof HomeActionResultSchema>;
 export type AssistDaySummaryResult = z.infer<typeof AssistDaySummaryResultSchema>;
 export type AssistChoreCompletionResult = z.infer<typeof AssistChoreCompletionResultSchema>;
@@ -921,10 +1770,43 @@ export type AdminActor = z.infer<typeof AdminActorSchema>;
 export type PairedDevice = z.infer<typeof PairedDeviceSchema>;
 export type PairingRequest = z.infer<typeof PairingRequestSchema>;
 export type AdminOverview = z.infer<typeof AdminOverviewSchema>;
+export type ActivityFeed = z.infer<typeof ActivityFeedSchema>;
+export type CalendarConnectionCalendar = z.infer<typeof CalendarConnectionCalendarSchema>;
+export type CalendarConnectionSettings = z.infer<typeof CalendarConnectionSettingsSchema>;
+export type CalendarConnectionTestRequest = z.infer<typeof CalendarConnectionTestRequestSchema>;
+export type CalendarConnectionOption = z.infer<typeof CalendarConnectionOptionSchema>;
+export type CalendarConnectionTestResult = z.infer<typeof CalendarConnectionTestResultSchema>;
+export type SaveCalendarConnectionRequest = z.infer<typeof SaveCalendarConnectionRequestSchema>;
+export type RemoveCalendarConnectionRequest = z.infer<typeof RemoveCalendarConnectionRequestSchema>;
+export type CalendarConnectionCommandResult = z.infer<typeof CalendarConnectionCommandResultSchema>;
+export type HomeAssistantConnectionSettings = z.infer<typeof HomeAssistantConnectionSettingsSchema>;
+export type HomeAssistantConnectionTestRequest = z.infer<
+  typeof HomeAssistantConnectionTestRequestSchema
+>;
+export type HomeAssistantConnectionOption = z.infer<typeof HomeAssistantConnectionOptionSchema>;
+export type HomeAssistantConnectionTestResult = z.infer<
+  typeof HomeAssistantConnectionTestResultSchema
+>;
+export type SaveHomeAssistantConnectionRequest = z.infer<
+  typeof SaveHomeAssistantConnectionRequestSchema
+>;
+export type RemoveHomeAssistantConnectionRequest = z.infer<
+  typeof RemoveHomeAssistantConnectionRequestSchema
+>;
+export type HomeAssistantConnectionCommandResult = z.infer<
+  typeof HomeAssistantConnectionCommandResultSchema
+>;
+export type SystemBackupStatus = z.infer<typeof SystemBackupStatusSchema>;
+export type SystemStatus = z.infer<typeof SystemStatusSchema>;
+export type CreateSystemBackupRequest = z.infer<typeof CreateSystemBackupRequestSchema>;
+export type SystemBackupCommandResult = z.infer<typeof SystemBackupCommandResultSchema>;
 export type UpdateHouseholdRequest = z.infer<typeof UpdateHouseholdRequestSchema>;
 export type CreateMemberRequest = z.infer<typeof CreateMemberRequestSchema>;
 export type UpdateMemberRequest = z.infer<typeof UpdateMemberRequestSchema>;
 export type ArchiveMemberRequest = z.infer<typeof ArchiveMemberRequestSchema>;
+export type UpdateMemberAvatarRequest = z.infer<typeof UpdateMemberAvatarRequestSchema>;
+export type ResetMemberAvatarRequest = z.infer<typeof ResetMemberAvatarRequestSchema>;
+export type MemberAvatarCommandResult = z.infer<typeof MemberAvatarCommandResultSchema>;
 export type CreatePairingRequest = z.infer<typeof CreatePairingRequestSchema>;
 export type CreateTvPairingSessionRequest = z.infer<typeof CreateTvPairingSessionRequestSchema>;
 export type TvPairingSession = z.infer<typeof TvPairingSessionSchema>;

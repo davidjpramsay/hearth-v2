@@ -3,7 +3,9 @@ import { useState } from 'react';
 
 import type { ChoreCommandResult, ChoreList, ChoreOccurrence, TodaySummary } from '@hearth/shared';
 
-import { createRequestId, HearthApiError, hearthApi, queryKeys } from '../api/client';
+import { choresApi as hearthApi } from '../api/chores';
+import { createRequestId, HearthApiError } from '../api/core';
+import { queryKeys } from '../api/queryKeys';
 
 interface ChoreMutationVariables {
   action: 'complete' | 'undo';
@@ -37,7 +39,7 @@ export function useChoreMutation() {
       await Promise.all([
         queryClient.cancelQueries({ queryKey: queryKeys.today }),
         queryClient.cancelQueries({ queryKey: queryKeys.chores }),
-        queryClient.cancelQueries({ queryKey: queryKeys.pocketMoney }),
+        queryClient.cancelQueries({ queryKey: queryKeys.pocketMoneyRoot }),
       ]);
       const context = {
         today: queryClient.getQueryData<TodaySummary>(queryKeys.today),
@@ -64,7 +66,7 @@ export function useChoreMutation() {
     },
     onSuccess: (result) => {
       updateOccurrence(queryClient, result.occurrence);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoney });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot });
     },
     onError: (error, variables, context) => {
       if (context?.today !== undefined) queryClient.setQueryData(queryKeys.today, context.today);
