@@ -154,7 +154,7 @@ describe('Hearth v2 API', () => {
     expect(status.json()).toMatchObject({
       mode: 'test',
       generatedAt: '2026-08-02T23:42:00.000Z',
-      database: { state: 'ready', migrationVersion: 20 },
+      database: { state: 'ready', migrationVersion: 21 },
       backup: { state: 'ready', scheduled: true, retentionCount: 14 },
     });
 
@@ -414,6 +414,7 @@ describe('Hearth v2 API', () => {
       temperatureCelsius: 16,
       condition: 'clear',
       label: 'Clear',
+      source: 'demo',
     });
     expect(month.json()).toMatchObject({
       month: '2026-08',
@@ -1986,7 +1987,7 @@ describe('Hearth v2 API', () => {
       title: 'Bring bins in',
       description: null,
       assigneeIds: ['member_ezra', 'member_maya'],
-      routineLabel: 'Extra jobs',
+      routineLabel: 'Anytime',
       availableFromTime: '15:45',
       dueTime: '16:30',
       repeat: 'once',

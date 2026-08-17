@@ -109,6 +109,19 @@ export function ListsScreen({
         <StatusBanner kind="offline">You’re offline · Saved lists remain available.</StatusBanner>
       ) : null}
       <div className="lists-layout">
+        <label className="phone-list-picker">
+          <span>Choose a list</span>
+          <select
+            onChange={(event) => setSelectedListId(event.currentTarget.value)}
+            value={selected.id}
+          >
+            {query.data.lists.map((list) => (
+              <option key={list.id} value={list.id}>
+                {list.name} · {list.remainingCount} remaining
+              </option>
+            ))}
+          </select>
+        </label>
         <nav className="list-chooser" aria-label="Household lists">
           {query.data.lists.map((list, index, lists) => (
             <button
@@ -179,9 +192,7 @@ export function ListsScreen({
               {add.isPending ? 'Adding…' : 'Add'}
             </button>
           </form>
-          <p className="assist-availability-note">
-            Home Assistant Assist can add items through the same validated household command.
-          </p>
+          <p className="assist-availability-note">You can also ask Home Assistant to add items.</p>
           {add.isError ? (
             <p className="list-command-error" role="alert">
               {add.error.message}

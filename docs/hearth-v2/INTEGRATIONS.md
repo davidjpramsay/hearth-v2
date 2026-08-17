@@ -63,7 +63,27 @@ status and timestamps. The password and full server URL are held only in the
 short-lived in-process test result until save, then discarded. Demo mode uses a
 deterministic fake verifier and never contacts iCloud.
 
-Do not scrape calendar web interfaces or ingest private ICS links into client code.
+Only authenticated CalDAV account connections are supported. Calendar web interfaces and
+alternate URL-ingestion paths remain outside the integration boundary.
+
+## Weather
+
+Private mode uses the server-side Open-Meteo forecast API with an approximate household latitude
+and longitude supplied through `HEARTH_WEATHER_LATITUDE` and `HEARTH_WEATHER_LONGITUDE`. Both
+values must be present or weather stays explicitly unconfigured. The browser never receives the
+coordinates and there is no API key or Home Assistant weather-entity mapping.
+
+The adapter requests only current temperature/condition and daily maximum temperature/condition,
+normalizes WMO codes into Hearth's compact presentation contract and caches one successful response
+for 30 minutes. Concurrent reads share the same request. If a refresh fails, the last safe response
+remains available; if no safe response exists, Today shows **Forecast unavailable** and Week omits
+the weather cue without affecting calendars or household data. The current value and seven-day
+projection are labelled and linked to Open-Meteo beside the displayed data as required by its CC BY
+4.0 licence.
+
+Open-Meteo's official forecast contract documents `current`, `daily`, `timezone`, `past_days` and
+`forecast_days` at <https://open-meteo.com/en/docs>; attribution requirements are documented at
+<https://open-meteo.com/en/licence>.
 
 ## Home Assistant
 
@@ -97,8 +117,8 @@ The first adapter reads exactly four mapped states in parallel:
 - one generic protected-media-active state covering native and Cast playback
 
 Translate entity IDs and raw states into family-readable Hearth models.
-Weather, climate and door sensors are not part of this first allowlist; weather remains a separate
-provider decision rather than an excuse to expose a general Home Assistant dashboard.
+Weather, climate and door sensors are not part of this first allowlist. Weather uses the separate
+Open-Meteo adapter above rather than expanding Hearth into a general Home Assistant dashboard.
 
 ### Command path
 
@@ -272,7 +292,7 @@ a new recorded decision.
 
 ## Photos
 
-Start with one approved Synology directory or album. The server:
+Start with one approved Synology directory. The server:
 
 - indexes only that configured source
 - stores opaque asset references
@@ -282,15 +302,6 @@ Start with one approved Synology directory or album. The server:
 - never exposes the parent filesystem
 
 Do not attempt facial recognition or ingest every personal photo folder in the first release.
-
-An Apple Photos Shared Album public website is a viewing link, not Hearth's
-photo-source API. Apple documents that anyone with the link can view a public
-album in a browser; it should therefore be treated as public-by-link. Apple's
-supported PhotoKit asset access runs inside an authorised Apple-platform app,
-not as a documented headless Synology or Google TV feed. Hearth does not scrape,
-index or persist an iCloud Shared Album webpage URL. If selected Apple photos
-are wanted in Hearth, export or sync them into the one approved Synology source,
-or add a separately reviewed future iPhone PhotoKit upload flow.
 
 The current Phase 7 product slice provides the typed source boundary, safe demo
 display/thumbnail derivatives, gallery, cached-source states and ambient exit. Private mode now

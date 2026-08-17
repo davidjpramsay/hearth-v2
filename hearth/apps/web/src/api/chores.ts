@@ -8,6 +8,7 @@ import {
   ChoreTemplateListSchema,
   ChoreTemplateOrderCommandResultSchema,
 } from '@hearth/shared';
+import type { RoutineTimeOfDay } from '@hearth/shared';
 
 import { demoAdminHeaders, getHearthRuntime, householdApiBase, request } from './core';
 
@@ -15,7 +16,7 @@ export interface ChoreTemplateInput {
   title: string;
   description: string | null;
   assigneeIds: string[];
-  routineLabel: string;
+  routineLabel: RoutineTimeOfDay;
   availableFromTime: string | null;
   dueTime: string | null;
   repeat: 'once' | 'daily' | 'weekdays' | 'weekly';

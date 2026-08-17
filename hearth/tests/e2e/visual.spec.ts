@@ -374,6 +374,7 @@ test('@visual Phase 3 calendar projection at TV and phone viewports', async ({ p
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.reload();
   await expect(page.getByRole('button', { name: /School drop-off, Ezra$/ }).first()).toBeVisible();
+  await expect(page.locator('.week-agenda')).toBeHidden();
   await captureEvidence(page, {
     path: resolve(phaseThreeEvidence, 'week-tv-1080.png'),
     animations: 'disabled',
@@ -382,6 +383,7 @@ test('@visual Phase 3 calendar projection at TV and phone viewports', async ({ p
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.reload();
   await expect(page.getByRole('button', { name: /School drop-off, Ezra$/ }).first()).toBeVisible();
+  await expect(page.locator('.week-agenda')).toBeHidden();
   await captureEvidence(page, {
     path: resolve(phaseThreeEvidence, 'week-tv-1366.png'),
     animations: 'disabled',

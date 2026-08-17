@@ -23,7 +23,7 @@ const sectionOptions: Array<{
   {
     key: 'photo',
     title: 'Family photo',
-    description: 'A substantial photo from the approved album',
+    description: 'A substantial photo from the dedicated Synology folder',
   },
 ];
 

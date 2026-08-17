@@ -178,8 +178,8 @@ export function PhotosScreen({
         <Icon name="image" />
         <h1 id="photos-empty-title">No family photos selected</h1>
         <p>
-          Choose one approved album in companion administration. Hearth will never scan every
-          personal folder by default.
+          Connect the dedicated Synology photo folder in companion administration. Hearth will never
+          scan every personal folder by default.
         </p>
         {scenario === 'empty' ? (
           <button

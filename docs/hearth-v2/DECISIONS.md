@@ -249,31 +249,19 @@ Record durable choices here. New decisions should include date, status, context,
   42-day provider-neutral response remains sufficient. No credential, calendar
   write, API-contract or persistence change is introduced.
 
-## D-025 — Synology is the photo source; Apple public links are view-only
+## D-025 — One dedicated Synology folder is Hearth's photo source
 
 - Date: 2026-08-05
 - Status: accepted
-- Context: The owner asked whether an Apple Photos album link could supply the
-  new Photos section. Apple Shared Albums can publish a public website that
-  anyone with the link can view, while Apple's supported PhotoKit library access
-  requires user authorisation inside an Apple-platform application. Apple does
-  not document the public Shared Album webpage as a stable headless
-  Synology/Google TV photo-feed API.
-- Choice: Keep one explicitly approved Synology folder/album as Hearth's first
-  production source. Hearth indexes through a server-only adapter, stores opaque
-  asset records and exposes only same-origin display/thumbnail derivatives. It
-  does not scrape, index or persist an Apple public-album URL. Apple-origin
-  photos may enter through a deliberate export/sync into the approved Synology
-  source or a future separately reviewed iPhone PhotoKit selection/upload flow.
-  Demo mode uses five original fictional assets through the same public
-  contract; private mode fails safe as unconfigured.
-- Consequence: A public-by-link iCloud URL is not exposed to the household TV,
-  logs or browser contracts, gallery behaviour does not depend on an
-  undocumented webpage format, and local ownership remains on the Synology.
-  The exact approved Synology collection and any future iPhone upload design
-  remain owner decisions. The current ambient slideshow is local and exits on
-  any remote key; Home Assistant presence/quiet-hours coordination is still a
-  separate Phase 7 task.
+- Context: Hearth needs a private, predictable photo source that the Synology can expose to the
+  server without granting access to the household's wider photo library.
+- Choice: Keep one explicitly approved Synology folder as Hearth's production source. Hearth
+  indexes through a server-only adapter, stores opaque asset records and exposes only same-origin
+  display/thumbnail derivatives. Demo mode uses five original fictional assets through the same
+  public contract; private mode fails safe as unconfigured.
+- Consequence: Local ownership remains on the Synology and the browser never receives an original
+  file or filesystem path. The current ambient slideshow is local and exits on any remote key;
+  Home Assistant presence/quiet-hours coordination remains a separate Phase 7 task.
 
 ## D-026 — Appearance is per display; evening dimming is independent
 
@@ -319,8 +307,8 @@ Record durable choices here. New decisions should include date, status, context,
   idempotent and audited; image bytes are excluded from receipts, responses and logs.
 - Consequence: Member identity photos are editable, restart/backup safe and consistently shaped
   without retaining the selected original or coupling People to the Synology photo adapter. SQLite
-  backups now include these small derivatives. A future PhotoKit picker may feed the same crop
-  contract, but Apple public-album scraping remains excluded by D-025.
+  backups now include these small derivatives. Any future phone photo picker may feed the same crop
+  contract without changing the stored derivative boundary.
 
 ## D-029 — Calendar setup writes an external secret, not browser or database credentials
 
@@ -329,8 +317,8 @@ Record durable choices here. New decisions should include date, status, context,
 - Context: The read-only CalDAV projection was complete, but connecting it
   required manually authoring a server JSON file. The Connections screen only
   described that process, so an adult could not add the calendar account from
-  Hearth. A generic shared-calendar URL would also bypass exact allowlisting
-  and encourage private links to cross the browser boundary.
+  Hearth. Calendar setup also needed one clear authenticated account path that
+  preserves exact server-side calendar allowlisting.
 - Choice: Add an adult-only companion workflow for an HTTPS CalDAV server,
   account and app-specific password. Test/discovery occurs on the server and
   returns only opaque option IDs plus calendar names/colours. Keep the pending
@@ -342,10 +330,9 @@ Record durable choices here. New decisions should include date, status, context,
   performs network access.
 - Consequence: Calendar setup is usable and auditable without making a browser,
   SQLite backup or log a credential store. `HEARTH_CALENDAR_CONFIG_PATH` remains
-  mandatory for a private save; a public ICS/Apple Shared Calendar link is not
-  the supported connection method. Live iCloud validation still requires the
-  owner's app-specific credential and explicit approval, and calendar writes
-  remain absent.
+  mandatory for a private save, and the supported connection is an authenticated
+  CalDAV account. Live iCloud validation still requires the owner's app-specific
+  credential and explicit approval, and calendar writes remain absent.
 
 ## D-030 — Runtime household and dates come from one server bootstrap
 
@@ -502,7 +489,7 @@ Record durable choices here. New decisions should include date, status, context,
   family photos efficiently while Synology remains the original-file authority. Migration
   `0015_synology_photo_index.sql` adds incremental fingerprints and a status index. The initial
   adapter uses filesystem modification time for ordering/`capturedAt`; richer EXIF capture dates,
-  hiding/favourite administration and any iPhone PhotoKit import remain later, separately bounded
+  hiding/favourite administration and any future phone import remain later, separately bounded
   work.
 
 Implementation extension (2026-08-10): the existing favourite/hidden columns are now exposed only
@@ -744,3 +731,39 @@ Official platform references:
 - <https://developer.samsung.com/smarttv/develop/guides/multimedia/4k-8k-uhd-video.html>
 - <https://developer.amazon.com/docs/fire-tv/design-and-user-experience-guidelines.html>
 - <https://developer.amazon.com/docs/fire-tv/4k-tunnel-mode-playback.html>
+
+## D-048 — Chore grouping uses five fixed time-of-day values
+
+- Date: 2026-08-17
+- Status: accepted
+- Context: The routine editor exposed a free-text **Routine group** field. Different labels such as
+  “School morning”, “Before school” and “Extra jobs” described overlapping concepts, made television
+  grouping unpredictable and did not explain what adults should enter.
+- Choice: Rename the adult-facing field **Time of day** and use a native selector containing exactly
+  **Morning**, **After school**, **Evening**, **Bedtime** and **Anytime**. Retain `routineLabel` and
+  `routine_label` as compatibility names inside the existing API/database shape, but constrain the
+  shared command and read contracts to the five values. Migration `0021_routine_time_of_day.sql`
+  maps existing morning, after-school/afternoon, bedtime and evening/dinner labels to their canonical
+  values and maps any other historical label to Anytime.
+- Consequence: Phone, keyboard and remote authoring share an accessible native control; chores can
+  be grouped consistently without inventing a separate Routine entity. Existing routine schedules
+  and occurrence history remain intact, with only their display grouping normalized.
+
+## D-049 — Weather uses a narrow server-side Open-Meteo adapter
+
+- Date: 2026-08-17
+- Status: accepted
+- Context: Today and Week already had a browser-safe forecast contract, but private mode returned
+  no forecast because only deterministic demo data existed. Routing weather through Home Assistant
+  would widen its deliberately small allowlist and make a useful read-only cue depend on the Pi.
+- Choice: Use Open-Meteo from the Hearth server with approximate latitude/longitude supplied only
+  through the private deployment environment. Request current conditions plus daily maximums and
+  WMO condition codes, normalize them into the existing four display conditions, cache successful
+  responses for 30 minutes, coalesce concurrent reads and retain the last safe response during
+  outage. Expose only a bounded provider identity so the browser can render the required visible
+  attribution link; never expose or persist coordinates. Leave weather unavailable when either
+  coordinate is absent rather than guessing from an address or calendar.
+- Consequence: Weather works without credentials, a browser-side request or Home Assistant entity,
+  while calendar/household content remains independent during internet failure. Deployment needs
+  two non-secret coordinate values. A future provider change remains behind the same injected
+  adapter and public forecast schema.

@@ -95,8 +95,8 @@ export function createDemoSeed(): DemoSeed {
 
   const chores: ChoreOccurrence[] = [
     chore('occurrence_school_bag', 'Pack school bag', ezra, 'Morning', '07:00', '07:30', 0),
-    chore('occurrence_feed_pepper', 'Feed Pepper', ezra, 'Before school', null, '07:15', 1),
-    chore('occurrence_dishes', 'Dishwasher', ezra, 'After dinner', '17:30', '18:45', 2),
+    chore('occurrence_feed_pepper', 'Feed Pepper', ezra, 'Morning', null, '07:15', 1),
+    chore('occurrence_dishes', 'Dishwasher', ezra, 'Evening', '17:30', '18:45', 2),
     chore('occurrence_laundry', 'Start laundry', maya, 'Morning', null, '07:20', 3),
     chore('occurrence_herbs', 'Water herbs', maya, 'Evening', '16:30', '17:00', 4),
     {
@@ -173,7 +173,7 @@ function chore(
   id: string,
   title: string,
   assignee: Member,
-  routineLabel: string,
+  routineLabel: ChoreOccurrence['routineLabel'],
   availableFromTime: string | null,
   dueTime: string | null,
   sortOrder: number,
@@ -210,13 +210,23 @@ function integration(
 
 export function demoForecastForDay(index: number): DailyForecast {
   const forecasts: DailyForecast[] = [
-    { temperatureCelsius: 16, condition: 'clear', label: 'Clear' },
-    { temperatureCelsius: 18, condition: 'partly-cloudy', label: 'Partly cloudy' },
-    { temperatureCelsius: 17, condition: 'rain', label: 'Showers' },
-    { temperatureCelsius: 18, condition: 'cloudy', label: 'Cloudy' },
-    { temperatureCelsius: 19, condition: 'clear', label: 'Clear' },
-    { temperatureCelsius: 20, condition: 'partly-cloudy', label: 'Partly cloudy' },
-    { temperatureCelsius: 17, condition: 'rain', label: 'Rain' },
+    { temperatureCelsius: 16, condition: 'clear', label: 'Clear', source: 'demo' },
+    {
+      temperatureCelsius: 18,
+      condition: 'partly-cloudy',
+      label: 'Partly cloudy',
+      source: 'demo',
+    },
+    { temperatureCelsius: 17, condition: 'rain', label: 'Showers', source: 'demo' },
+    { temperatureCelsius: 18, condition: 'cloudy', label: 'Cloudy', source: 'demo' },
+    { temperatureCelsius: 19, condition: 'clear', label: 'Clear', source: 'demo' },
+    {
+      temperatureCelsius: 20,
+      condition: 'partly-cloudy',
+      label: 'Partly cloudy',
+      source: 'demo',
+    },
+    { temperatureCelsius: 17, condition: 'rain', label: 'Rain', source: 'demo' },
   ];
   return forecasts[index % forecasts.length] ?? forecasts[0]!;
 }

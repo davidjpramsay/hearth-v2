@@ -72,7 +72,7 @@ Can understand the current household state and use clearly exposed room controls
 - Skipping leaves the chore due and incomplete; excusing removes it from the pocket-money
   denominator; reassignment moves an awaiting occurrence to the selected household member.
 - Optional evidence/note support later; never required for ordinary chores.
-- Morning, after-school, evening and bedtime routine grouping.
+- Morning, after-school, evening, bedtime and anytime chore grouping.
 - Streaks and progress that encourage rather than shame.
 
 ### 3. Pocket money

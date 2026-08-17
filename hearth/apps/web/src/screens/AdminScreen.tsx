@@ -79,7 +79,7 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
     settings: [
       {
         title: 'Photos',
-        description: () => 'Approved album and source',
+        description: () => 'Synology folder and photo choices',
         icon: 'image',
         path: '/admin/photos',
       },

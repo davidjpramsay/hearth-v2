@@ -50,6 +50,12 @@ import {
   DEMO_TODAY_PHOTO,
 } from './demo/seed.js';
 import { FakeCalendarProvider, type CalendarProvider } from './integrations/calendar-provider.js';
+import {
+  UnconfiguredWeatherProvider,
+  emptyWeatherSnapshot,
+  type WeatherForecastSnapshot,
+  type WeatherProvider,
+} from './integrations/weather-provider.js';
 import { RepositoryError, type CommandActor, type HearthRepository } from './repository.js';
 import { FixedClock, type HearthClock } from './runtime-context.js';
 
@@ -77,18 +83,21 @@ export class SqliteHearthRepository implements HearthRepository {
   private readonly seedCalendarSnapshot: (() => void) | null;
   private readonly demoSeedEnabled: boolean;
   private readonly clock: HearthClock;
+  private readonly weatherProvider: WeatherProvider;
 
   constructor(
     private readonly database: InstanceType<typeof Database>,
     options: {
       calendarProvider?: CalendarProvider;
       ownerForCalendarExternalId?: (externalId: string) => string | null;
+      weatherProvider?: WeatherProvider;
       seedDemo?: boolean;
       clock?: HearthClock;
     } = {},
   ) {
     this.demoSeedEnabled = options.seedDemo ?? true;
     this.clock = options.clock ?? new FixedClock(DEMO_NOW);
+    this.weatherProvider = options.weatherProvider ?? new UnconfiguredWeatherProvider();
     if (this.demoSeedEnabled) this.seedDemo();
     const fixture = createDemoCalendarFixture();
     const demoProvider = new FakeCalendarProvider(fixture.calendars, fixture.events);
@@ -129,16 +138,14 @@ export class SqliteHearthRepository implements HearthRepository {
     this.assertHousehold(householdId);
     await this.applyLatency();
     const seed = createDemoSeed();
-    const projection = await this.calendar.projectRange(
-      householdId,
-      localDate,
-      localDate,
-      this.calendarMode(),
-    );
+    const household = this.readHousehold(householdId);
+    const [projection, weatherForecast] = await Promise.all([
+      this.calendar.projectRange(householdId, localDate, localDate, this.calendarMode()),
+      this.readWeather(household.timezone),
+    ]);
     const isEmpty = this.scenario === 'empty';
     const chores = isEmpty ? [] : this.readOccurrences(householdId, localDate);
 
-    const household = this.readHousehold(householdId);
     const now = this.clock.now();
     return {
       household,
@@ -151,7 +158,9 @@ export class SqliteHearthRepository implements HearthRepository {
         hour12: false,
       }).format(now),
       displayDate: displayDate(localDate, household.locale),
-      weather: this.demoSeedEnabled ? { temperatureCelsius: 16, condition: 'Clear' } : null,
+      weather: this.demoSeedEnabled
+        ? { temperatureCelsius: 16, condition: 'Clear', source: 'demo' }
+        : weatherForDate(weatherForecast, localDate),
       freshness: projection.freshness,
       statusMessage: projection.statusMessage,
       calendars: projection.calendars,
@@ -185,12 +194,11 @@ export class SqliteHearthRepository implements HearthRepository {
     this.assertHousehold(householdId);
     await this.applyLatency();
     const endDate = addLocalDays(startDate, 6);
-    const projection = await this.calendar.projectRange(
-      householdId,
-      startDate,
-      endDate,
-      this.calendarMode(),
-    );
+    const household = this.readHousehold(householdId);
+    const [projection, weatherForecast] = await Promise.all([
+      this.calendar.projectRange(householdId, startDate, endDate, this.calendarMode()),
+      this.readWeather(household.timezone),
+    ]);
     return {
       householdId,
       startDate,
@@ -198,10 +206,24 @@ export class SqliteHearthRepository implements HearthRepository {
       displayRange: displayRange(startDate, endDate),
       freshness: projection.freshness,
       statusMessage: projection.statusMessage,
-      days: createWeekDays(startDate, this.currentLocalDate(householdId), this.demoSeedEnabled),
+      days: createWeekDays(
+        startDate,
+        this.currentLocalDate(householdId),
+        this.demoSeedEnabled,
+        weatherForecast.daily,
+      ),
       calendars: projection.calendars,
       events: this.scenario === 'empty' ? [] : sortByStart(projection.events),
     };
+  }
+
+  private async readWeather(timezone: string): Promise<WeatherForecastSnapshot> {
+    if (this.demoSeedEnabled || !this.weatherProvider.configured) return emptyWeatherSnapshot();
+    try {
+      return await this.weatherProvider.read(timezone);
+    } catch {
+      return emptyWeatherSnapshot();
+    }
   }
 
   async getMonth(householdId: string, month: string): Promise<MonthSchedule> {
@@ -1136,6 +1158,7 @@ function createWeekDays(
   startDate: string,
   currentLocalDate: string,
   includeDemoForecast: boolean,
+  forecasts: ReadonlyMap<string, WeekDay['forecast']> = new Map(),
 ): WeekDay[] {
   return Array.from({ length: 7 }, (_, index) => {
     const localDate = addLocalDays(startDate, index);
@@ -1151,9 +1174,25 @@ function createWeekDays(
         timeZone: 'UTC',
       }).format(date),
       isToday: localDate === currentLocalDate,
-      forecast: includeDemoForecast ? demoForecastForDay(index) : null,
+      forecast: includeDemoForecast
+        ? demoForecastForDay(index)
+        : (forecasts.get(localDate) ?? null),
     };
   });
+}
+
+function weatherForDate(
+  forecast: WeatherForecastSnapshot,
+  localDate: string,
+): TodaySummary['weather'] {
+  if (forecast.current?.localDate === localDate) return forecast.current.summary;
+  const daily = forecast.daily.get(localDate);
+  if (daily === undefined) return null;
+  return {
+    temperatureCelsius: daily.temperatureCelsius,
+    condition: daily.label,
+    source: daily.source,
+  };
 }
 
 function displayRange(startDate: string, endDate: string): string {

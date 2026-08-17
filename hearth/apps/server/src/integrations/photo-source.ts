@@ -188,7 +188,7 @@ export class UnconfiguredPhotoSourceProvider implements PhotoSourceProvider {
         kind: 'synology-folder',
         label: 'Synology photos',
         status: 'unconfigured',
-        message: 'Choose one approved Synology folder in companion administration.',
+        message: 'The dedicated Synology photo folder has not been connected to this Hearth.',
       },
       featuredPhotoId: null,
       photos: [],

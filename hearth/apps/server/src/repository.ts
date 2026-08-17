@@ -148,7 +148,7 @@ export class InMemoryHearthRepository implements HearthRepository {
       generatedAt: DEMO_NOW,
       displayTime: '7:42',
       displayDate: 'Monday, 3 August',
-      weather: { temperatureCelsius: 16, condition: 'Clear' },
+      weather: { temperatureCelsius: 16, condition: 'Clear', source: 'demo' },
       freshness: isStale || isUnavailable ? 'stale' : 'current',
       statusMessage: isStale
         ? 'Calendar last updated at 6:45 · Trying again quietly.'

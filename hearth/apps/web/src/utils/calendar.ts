@@ -2,6 +2,21 @@ import type { CalendarEvent, DailyForecast } from '@hearth/shared';
 
 import type { IconName } from '../components/Icon';
 
+export function eventColorVariables(color: string): Record<string, string> {
+  const channels = [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [red = 0, green = 0, blue = 0] = channels;
+  const darkForeground = [red, green, blue].map((channel) =>
+    Math.round(channel + (255 - channel) * 0.55),
+  );
+  return {
+    '--event-color': color,
+    '--event-background': `rgba(${red}, ${green}, ${blue}, 0.22)`,
+    '--event-background-dark': `rgba(${red}, ${green}, ${blue}, 0.28)`,
+    '--event-border': `rgba(${red}, ${green}, ${blue}, 0.55)`,
+    '--event-foreground-dark': `rgb(${darkForeground.join(', ')})`,
+  };
+}
+
 export function forecastIcon(condition: DailyForecast['condition']): IconName {
   switch (condition) {
     case 'clear':

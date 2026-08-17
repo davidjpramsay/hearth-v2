@@ -195,7 +195,8 @@
 }
 
 .phone-list-add,
-.lists-manage-link {
+.lists-manage-link,
+.phone-list-picker {
   display: none;
 }
 
@@ -212,41 +213,50 @@
 }
 
 @media (max-width: 900px) {
+  .lists-screen .screen-header {
+    gap: 12px;
+  }
+
+  .lists-screen .screen-header__actions {
+    margin-left: auto;
+  }
+
   .lists-layout {
     min-height: 0;
     display: block;
   }
 
   .list-chooser {
-    margin: 0 -18px 14px;
-    padding: 0 18px 4px;
-    overflow-x: auto;
-    flex-direction: row;
+    display: none;
   }
 
-  .list-choice {
-    width: auto;
-    min-width: 145px;
-    min-height: 62px;
-    padding: 9px 12px;
-    border-radius: 14px;
+  .phone-list-picker {
+    margin-bottom: 12px;
+    display: grid;
+    gap: 5px;
   }
 
-  .list-choice > svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  .list-choice strong {
-    font-size: 17px;
-  }
-
-  .list-choice small {
+  .phone-list-picker > span {
+    color: var(--muted);
     font-size: 13px;
+    font-weight: 720;
+  }
+
+  .phone-list-picker select {
+    width: 100%;
+    min-height: 50px;
+    padding: 0 42px 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 13px;
+    color: var(--ink);
+    background: var(--input-surface);
+    font: inherit;
+    font-size: 17px;
+    font-weight: 700;
   }
 
   .active-list {
-    padding: 12px;
+    padding: 14px;
     border-radius: 17px;
   }
 
@@ -290,8 +300,12 @@
   .phone-list-add {
     margin-top: 13px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 72px 70px;
+    grid-template-columns: minmax(0, 1fr) 92px;
     gap: 8px;
+  }
+
+  .phone-list-add > input:first-of-type {
+    grid-column: 1 / -1;
   }
 
   .phone-list-add input,
@@ -329,7 +343,19 @@
   }
 
   .assist-availability-note {
-    font-size: 14px;
+    margin: 11px 2px 0;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 900px) {
+  .phone-list-add {
+    grid-template-columns: minmax(0, 1fr) 104px 94px;
+  }
+
+  .phone-list-add > input:first-of-type {
+    grid-column: auto;
   }
 }
 
@@ -351,6 +377,10 @@
   border-color: var(--hairline);
   color: var(--ink);
   background: var(--input-surface);
+}
+
+:root[data-theme='dark'] .phone-list-picker select {
+  border-color: var(--hairline);
 }
 
 :root[data-theme='dark'] .list-choice--selected {

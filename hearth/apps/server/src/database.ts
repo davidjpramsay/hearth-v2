@@ -50,6 +50,10 @@ const migrations = [
     version: 20,
     url: new URL('./migrations/0020_adult_access_recovery.sql', import.meta.url),
   },
+  {
+    version: 21,
+    url: new URL('./migrations/0021_routine_time_of_day.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

@@ -34,6 +34,10 @@ const PRE_ADULT_ACCESS_MIGRATIONS = [
   '0018_chore_windows_and_order.sql',
   '0019_home_assistant_connection_setup.sql',
 ] as const;
+const PRE_ROUTINE_TIME_OF_DAY_MIGRATIONS = [
+  ...PRE_ADULT_ACCESS_MIGRATIONS,
+  '0020_adult_access_recovery.sql',
+] as const;
 
 afterEach(async () => {
   await Promise.all(
@@ -916,6 +920,78 @@ describe('0001 household core migration', () => {
         'member_access', '2026-08-15T00:02:00.000Z', '2027-02-11T00:00:00.000Z', NULL, NULL
       );
     `);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('normalizes free-text routine groups into the five time-of-day values', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    for (const migration of PRE_ROUTINE_TIME_OF_DAY_MIGRATIONS) {
+      database.exec(readFileSync(fileURLToPath(new URL(migration, import.meta.url)), 'utf8'));
+    }
+    database.exec(`
+      INSERT INTO households
+        (id, name, timezone, locale, week_starts_on, created_at, updated_at)
+      VALUES ('household_routine_time', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO members
+        (id, household_id, display_name, colour, avatar_key, role, archived_at, created_at,
+         updated_at, capabilities_json)
+      VALUES ('member_routine_time', 'household_routine_time', 'Child', '#2f766d', NULL,
+              'child', NULL, 'now', 'now', '["household.view","chores.complete"]');
+      INSERT INTO chore_templates
+        (id, household_id, title, description, recurrence_rule, routine_label, due_time,
+         points_value, active_from, active_until, archived_at, created_at, updated_at)
+      VALUES
+        ('template_school', 'household_routine_time', 'Bag', NULL, 'FREQ=DAILY',
+         'School morning', NULL, 0, '2026-08-17', NULL, NULL, 'now', 'now'),
+        ('template_dinner', 'household_routine_time', 'Dishes', NULL, 'FREQ=DAILY',
+         'After dinner', NULL, 0, '2026-08-17', NULL, NULL, 'now', 'now'),
+        ('template_extra', 'household_routine_time', 'Bins', NULL, 'FREQ=ONCE',
+         'Extra jobs', NULL, 0, '2026-08-17', '2026-08-17', NULL, 'now', 'now');
+      INSERT INTO chore_template_assignees VALUES
+        ('template_school', 'member_routine_time'),
+        ('template_dinner', 'member_routine_time'),
+        ('template_extra', 'member_routine_time');
+      INSERT INTO chore_occurrences
+        (id, household_id, template_id, scheduled_local_date, instance_key, title_snapshot,
+         routine_label_snapshot, assignee_member_id, state, completion_id, completed_at,
+         completed_by_actor_id, created_at, updated_at)
+      VALUES
+        ('occurrence_school', 'household_routine_time', 'template_school', '2026-08-17',
+         'default', 'Bag', 'Before school', 'member_routine_time', 'pending', NULL, NULL, NULL,
+         'now', 'now'),
+        ('occurrence_bed', 'household_routine_time', 'template_dinner', '2026-08-17',
+         'bed', 'Teeth', 'Bed time', 'member_routine_time', 'pending', NULL, NULL, NULL,
+         'now', 'now');
+    `);
+    database.exec(
+      readFileSync(
+        fileURLToPath(new URL('./0021_routine_time_of_day.sql', import.meta.url)),
+        'utf8',
+      ),
+    );
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 21').get()).toEqual(
+      { name: 'routine_time_of_day' },
+    );
+    expect(
+      database.prepare('SELECT id, routine_label FROM chore_templates ORDER BY id').all(),
+    ).toEqual([
+      { id: 'template_dinner', routine_label: 'Evening' },
+      { id: 'template_extra', routine_label: 'Anytime' },
+      { id: 'template_school', routine_label: 'Morning' },
+    ]);
+    expect(
+      database
+        .prepare('SELECT id, routine_label_snapshot FROM chore_occurrences ORDER BY id')
+        .all(),
+    ).toEqual([
+      { id: 'occurrence_bed', routine_label_snapshot: 'Bedtime' },
+      { id: 'occurrence_school', routine_label_snapshot: 'Morning' },
+    ]);
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();

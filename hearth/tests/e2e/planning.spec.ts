@@ -45,6 +45,11 @@ test('remote-only Lists check, undo, Meals navigation and Back restoration', asy
 test('phone adds a list item and edits several dinners through the typed API', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/lists');
+  await expect(page.getByLabel('Choose a list')).toBeVisible();
+  await expect(page.locator('.list-chooser')).toBeHidden();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
   await page.getByPlaceholder('Add an item').fill('Oranges');
   await page.getByLabel('Quantity (optional)').fill('6');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -68,6 +73,32 @@ test('phone adds a list item and edits several dinners through the typed API', a
   await expect(page.getByRole('textbox', { name: 'Wed dinner', exact: true })).toHaveValue(
     'Leftover curry',
   );
+});
+
+test('phone Meals shows the full week without a sideways card strip', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/meals');
+
+  const week = page.locator('.meal-week');
+  await expect(week.locator('.meal-day')).toHaveCount(7);
+  await expect
+    .poll(() => week.evaluate((element) => getComputedStyle(element).overflowX))
+    .not.toBe('auto');
+  await expect(page.getByRole('button', { name: 'Earlier week' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Later week' })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect
+    .poll(() =>
+      week
+        .locator('.meal-day')
+        .last()
+        .evaluate((element) => element.getBoundingClientRect().right <= window.innerWidth),
+    )
+    .toBe(true);
 });
 
 test('phone adults search, create, edit, archive and restore saved meals and copy a week', async ({
@@ -219,20 +250,27 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await page.getByRole('link', { name: /Routines and chores/ }).click();
   const schoolBag = page.locator('.routine-editor').filter({ hasText: 'Pack school bag' });
   await schoolBag.locator('summary').click();
-  await schoolBag.getByLabel('Routine group').fill('School morning');
+  await expect(schoolBag.getByLabel('Time of day').locator('option')).toHaveText([
+    'Morning',
+    'After school',
+    'Evening',
+    'Bedtime',
+    'Anytime',
+  ]);
+  await schoolBag.getByLabel('Time of day').selectOption('Morning');
   await schoolBag.getByLabel('Due by').fill('07:45');
   await schoolBag.getByRole('button', { name: 'Save future schedule' }).click();
   await expect(page.getByRole('status')).toContainText('updated from today forward');
   await page.reload();
   await schoolBag.locator('summary').click();
-  await expect(schoolBag.getByLabel('Routine group')).toHaveValue('School morning');
+  await expect(schoolBag.getByLabel('Time of day')).toHaveValue('Morning');
   await expect(schoolBag.getByLabel('Due by')).toHaveValue('07:45');
 
   await page.getByRole('button', { name: 'New chore' }).click();
   const addChore = page.locator('.routine-add-form');
   await addChore.getByLabel('Chore', { exact: true }).fill('Bring bins in');
   await addChore.getByLabel('Repeat').selectOption('once');
-  await addChore.getByLabel('Routine group').fill('Extra jobs');
+  await addChore.getByLabel('Time of day').selectOption('Anytime');
   await addChore.getByLabel('Due date').fill('2026-08-03');
   await addChore.getByLabel('Due by').fill('17:30');
   await addChore.getByRole('button', { name: 'Add chore' }).click();
@@ -243,7 +281,7 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/chores');
   await expect(page.getByText('Bring bins in')).toBeVisible();
-  await expect(page.getByText('Extra jobs · Due 5:30 pm')).toBeVisible();
+  await expect(page.getByText('Anytime · Due 5:30 pm')).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'chores-one-off-tv-1080.png'),
     animations: 'disabled',
@@ -459,7 +497,7 @@ test('phone routines assign one schedule to several people and TV expands separa
   await expect(alex).not.toBeChecked();
   await alex.check();
   await form.getByLabel('Chore', { exact: true }).fill('Put sports gear away');
-  await form.getByLabel('Routine group').fill('After school');
+  await form.getByLabel('Time of day').selectOption('After school');
   await form.getByLabel('Available from').fill('15:45');
   await form.getByLabel('Due by').fill('16:15');
   await form.getByRole('button', { name: 'Add chore' }).click();
@@ -531,7 +569,7 @@ test('one-off chore creation reports a failed save and retries the same safe com
   const addChore = page.locator('.routine-add-form');
   await addChore.getByLabel('Chore', { exact: true }).fill('Clean football boots');
   await addChore.getByLabel('Repeat').selectOption('once');
-  await addChore.getByLabel('Routine group').fill('Extra jobs');
+  await addChore.getByLabel('Time of day').selectOption('Anytime');
   await addChore.getByRole('button', { name: 'Add chore' }).click();
   await expect(page.getByRole('alert')).toContainText('That change did not save');
   await page.getByRole('button', { name: 'Try again' }).click();

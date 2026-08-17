@@ -1,7 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 
-import type { ChoreTemplate, Member as HearthMember } from '@hearth/shared';
+import {
+  ROUTINE_TIME_OF_DAY_VALUES,
+  RoutineTimeOfDaySchema,
+  type ChoreTemplate,
+  type Member as HearthMember,
+  type RoutineTimeOfDay,
+} from '@hearth/shared';
 
 import { choresApi as hearthApi, type ChoreTemplateInput } from '../api/chores';
 import { createRequestId } from '../api/core';
@@ -452,15 +458,20 @@ function RoutineFields({
           </select>
         </label>
         <label>
-          Routine group
-          <input
-            defaultValue={
-              template?.routineLabel ?? (repeat === 'once' ? 'Extra jobs' : 'Morning routine')
-            }
-            maxLength={80}
+          Time of day
+          <select
+            defaultValue={normalizeRoutineTimeOfDay(
+              template?.routineLabel ?? (repeat === 'once' ? 'Anytime' : 'Morning'),
+            )}
             name="routineLabel"
             required
-          />
+          >
+            {ROUTINE_TIME_OF_DAY_VALUES.map((timeOfDay) => (
+              <option key={timeOfDay} value={timeOfDay}>
+                {timeOfDay}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       {repeat === 'weekly' ? (
@@ -547,7 +558,7 @@ function templateFields(
     title: String(data.get('title') ?? '').trim(),
     description: String(data.get('description') ?? '').trim() || null,
     assigneeIds: data.getAll('assigneeIds').map(String),
-    routineLabel: String(data.get('routineLabel') ?? '').trim(),
+    routineLabel: RoutineTimeOfDaySchema.parse(data.get('routineLabel')),
     availableFromTime: String(data.get('availableFromTime') ?? '').trim() || null,
     dueTime: String(data.get('dueTime') ?? '').trim() || null,
     repeat,
@@ -563,6 +574,17 @@ function templateFields(
               : [existingDays?.[0] ?? 'MO'],
     activeFrom: String(data.get('activeFrom') ?? today),
   };
+}
+
+function normalizeRoutineTimeOfDay(value: string): RoutineTimeOfDay {
+  const normalized = value.trim().toLowerCase();
+  if (normalized.includes('morning') || normalized.includes('before school')) return 'Morning';
+  if (normalized.includes('after school') || normalized.includes('afternoon')) {
+    return 'After school';
+  }
+  if (normalized.includes('bed')) return 'Bedtime';
+  if (normalized.includes('evening') || normalized.includes('dinner')) return 'Evening';
+  return 'Anytime';
 }
 
 function repeatLabel(template: ChoreTemplate): string {

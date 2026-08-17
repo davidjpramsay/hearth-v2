@@ -36,6 +36,7 @@ Exact numbers may be refined from real-TV testing, but may not be reduced merely
 Primary commands are Up, Down, Left, Right, Select and Back.
 
 - A persistent navigation rail or dock exposes Today, Calendar, Chores, Lists, Meals, selected Home actions and Photos, in that order; Week and Month are views inside Calendar rather than competing primary destinations.
+- Every household surface shows the live household-local time and date in shared application chrome: in the television rail and in a compact companion header on phone/admin layouts. Individual screens do not repeat their own clock. Pairing and pre-authentication setup remain uncluttered exceptions.
 - The focused destination and focused action are always visually obvious.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
 - Opening a detail page should place focus on its primary meaningful control.
@@ -86,10 +87,10 @@ dialog. Back restores the exact originating row, overflow action or summary band
 ### Calendar
 
 - **Week:** primary television planning surface; columns/days must remain legible.
-- Week day headings include a compact, read-only forecast icon and temperature when forecast data is available; the phone agenda carries the same daily cue without compressing its event list.
+- Week day headings include a compact, read-only forecast icon and temperature when forecast data is available; the phone agenda carries the same daily cue without compressing its event list. The grouped phone presentation replaces the timeline at narrow widths and must never render as a second block beneath the television Week timeline.
 - **Agenda:** chronological list suitable for dense days.
 - **Today:** expanded day with person lanes where useful.
-- **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact colour-coded event titles and a deterministic `+N more` summary when the day is dense; faces and source labels appear once in a persistent Calendar key. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
+- **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact event titles on readable calendar-colour tinted backgrounds and a deterministic `+N more` summary when the day is dense; faces and solid source colours appear once in a persistent Calendar key. Week event cards use the same tinted-surface language rather than relying on a narrow edge stripe. The six Month rows grow to use the available television height, and the Earlier/current/Later month bar stays at the bottom with the same geometry as Week navigation. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
 
 Event cards must express start time, title, owner/source and conflicts. Location and notes appear in a focused detail surface.
 
@@ -119,6 +120,9 @@ the phone More hub.
 - The phone schedule editor lets an adult move active schedules earlier or later with substantial,
   labelled controls. That explicit top-to-bottom order is the television order; drag, touch or
   hidden heuristics are never required. New schedules append to the end.
+- The schedule editor labels its grouping field **Time of day** and uses one native selector with
+  exactly **Morning**, **After school**, **Evening**, **Bedtime** and **Anytime**. Adults do not type
+  arbitrary group names; the fixed vocabulary keeps phone authoring and television grouping clear.
 - An optional **Available from** and **Due by** pair forms a household-local time window. Either end
   may be used independently; when both are present, the start must be earlier than the due time.
   Previously generated occurrences keep the window and order they were created with.

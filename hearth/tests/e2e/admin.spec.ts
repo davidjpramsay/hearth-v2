@@ -134,8 +134,9 @@ test('adult can test, select, map, save and remove a read-only calendar connecti
   await page.locator('[data-focus-id="connection-calendar"]').click();
   await expect(page).toHaveURL(/\/admin\/connections\/calendar$/);
   await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
+  await expect(page.getByText(/Local demo:/)).toBeVisible();
 
-  await page.getByLabel('Apple ID or account name').fill('fictional@example.com');
+  await page.getByLabel('Apple Account email or CalDAV username').fill('fictional@example.com');
   await page.getByLabel('App-specific password').fill('fictional-app-password');
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(page.getByText('Connection works')).toBeVisible();
@@ -166,13 +167,60 @@ test('calendar setup exposes a family-safe sign-in error and supports keyboard B
   await page.locator('[data-focus-id="connection-calendar"]').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-focus-id="calendar-server-url"]')).toBeFocused();
-  await page.getByLabel('Apple ID or account name').fill('fictional@example.com');
+  await page.getByLabel('Apple Account email or CalDAV username').fill('fictional@example.com');
   await page.getByLabel('App-specific password').fill('wrong-password');
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(page.getByRole('alert')).toContainText('Calendar sign-in was not accepted');
   await page.keyboard.press('Escape');
   await expect(page).toHaveURL(/\/admin\/connections$/);
   await expect(page.locator('[data-focus-id="connection-calendar"]')).toBeFocused();
+});
+
+test('private calendar setup does not describe the live connection as a local demo', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/runtime', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        mode: 'private',
+        generatedAt: '2026-08-17T03:47:00.000Z',
+        household: {
+          id: 'household_hearth_demo',
+          name: 'Private household',
+          timezone: 'Australia/Perth',
+          locale: 'en-AU',
+        },
+        timezone: 'Australia/Perth',
+        locale: 'en-AU',
+        localDate: '2026-08-17',
+        weekStart: '2026-08-17',
+        currentMonth: '2026-08',
+        requiresSetup: false,
+      }),
+    }),
+  );
+  await page.route('**/api/v1/auth/status', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        mode: 'private',
+        configured: true,
+        secureOrigin: true,
+        requiresSetup: false,
+        authenticated: true,
+        actor: { id: 'member_maya', displayName: 'Maya', role: 'adult' },
+      }),
+    }),
+  );
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/connections/calendar');
+
+  await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
+  await expect(page.getByText(/Local demo:/)).toHaveCount(0);
+  await expect(page.getByText(/For iCloud, keep the CalDAV address above/)).toBeVisible();
+  await expect(page.getByLabel('Apple Account email or CalDAV username')).toBeVisible();
 });
 
 test('adult can test, map, save and remove a tightly scoped Home Assistant connection', async ({
@@ -287,7 +335,7 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 20 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 21 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(
     page.getByText('Provider tokens stay in the separate protected secrets folder.'),
@@ -794,7 +842,7 @@ for (const viewport of [
 test('@visual calendar selection at phone portrait', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/connections/calendar');
-  await page.getByLabel('Apple ID or account name').fill('fictional@example.com');
+  await page.getByLabel('Apple Account email or CalDAV username').fill('fictional@example.com');
   await page.getByLabel('App-specific password').fill('fictional-app-password');
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(page.getByText('Connection works')).toBeVisible();

@@ -159,6 +159,7 @@ test('calendar sources remain identifiable and cached Week survives provider out
   await expect(page.locator('.week-grid .week-event__family').first()).toHaveText('H');
   await expect(page.locator('.week-grid .week-day-forecast')).toHaveCount(7);
   await expect(page.getByLabel('Clear, 16 degrees Celsius').first()).toBeVisible();
+  await expect(page.locator('.week-agenda')).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
@@ -323,7 +324,7 @@ test('reduced motion removes meaningful focus transforms', async ({ page }) => {
   await expect(chore).toHaveCSS('transform', 'none');
 });
 
-test('phone presents agenda navigation and the same chore command', async ({ page }) => {
+test('phone presents Week navigation and the same chore command', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/today');
   await expect(page.locator('.phone-tabs')).toBeVisible();

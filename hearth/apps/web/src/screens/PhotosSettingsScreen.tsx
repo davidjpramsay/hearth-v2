@@ -65,6 +65,37 @@ export function PhotosSettingsScreen() {
     : 'photo-source-refresh';
   return (
     <AdminPage title="Photo source" subtitle="Control what may appear on the family screen">
+      <section
+        aria-labelledby="photo-source-guide-title"
+        className={`photo-source-guide photo-source-guide--${status}`}
+      >
+        <div className="photo-source-guide__heading">
+          <span className="admin-setting-row__icon">
+            <Icon name={status === 'ready' ? 'image' : 'warning'} />
+          </span>
+          <div>
+            <h2 id="photo-source-guide-title">
+              {status === 'ready' ? 'Add images from Synology' : 'Connect the family photo folder'}
+            </h2>
+            <p>{photoSourceStatusMessage(status)}</p>
+          </div>
+        </div>
+        <ol>
+          <li>
+            In Synology File Station, add images to the shared folder named{' '}
+            <strong>hearth-photos</strong>.
+          </li>
+          <li>
+            Return here and choose <strong>Scan now</strong>.
+          </li>
+          <li>
+            Favourite the photos you want Hearth to show first, or hide any you do not want shown.
+          </li>
+        </ol>
+        <p className="photo-source-guide__formats">
+          Supported: JPEG, PNG, HEIC, HEIF, TIFF, AVIF and WebP. Subfolders are included.
+        </p>
+      </section>
       <div className="connection-list photo-source-options">
         <article className="connection-row">
           <span className="admin-setting-row__icon">
@@ -128,19 +159,6 @@ export function PhotosSettingsScreen() {
             </button>
           ) : null}
         </article>
-        <article className="connection-row">
-          <span className="admin-setting-row__icon">
-            <Icon name="link" />
-          </span>
-          <div>
-            <strong>Apple Shared Album link</strong>
-            <p>
-              A public album page can be opened by anyone with its link, but it is not a supported
-              private Hearth feed and will not be scraped or stored.
-            </p>
-          </div>
-          <span className="connection-badge">Not a sync source</span>
-        </article>
       </div>
       {refresh.isError ? <AdminError message={refresh.error.message} /> : null}
       {refresh.isSuccess ? (
@@ -201,12 +219,8 @@ export function PhotosSettingsScreen() {
         </p>
       ) : null}
       <div className="phase-note">
-        <strong>{canScan ? 'Local and private' : 'Folder selection is still required'}</strong>
-        <p>
-          {canScan
-            ? 'Hearth makes orientation-correct TV copies and thumbnails locally, then checks the approved folder quietly in the background.'
-            : 'The server administrator must mount exactly one approved NAS folder as read-only. Hearth will not browse the rest of Synology Photos.'}
-        </p>
+        <strong>{photoSourceNoteTitle(status)}</strong>
+        <p>{photoSourceNote(status)}</p>
       </div>
       <Link
         className="admin-primary-action focusable"
@@ -219,6 +233,32 @@ export function PhotosSettingsScreen() {
       </Link>
     </AdminPage>
   );
+}
+
+function photoSourceStatusMessage(status: 'ready' | 'unavailable' | 'unconfigured'): string {
+  if (status === 'ready') {
+    return 'Hearth can read the dedicated Synology folder and will keep it private on this server.';
+  }
+  if (status === 'unavailable') {
+    return 'Your files are safe, but Hearth cannot read the dedicated Synology folder right now. Its read-only server connection needs to be repaired before a scan can succeed.';
+  }
+  return 'The Hearth server has not yet been given read-only access to the dedicated Synology folder.';
+}
+
+function photoSourceNoteTitle(status: 'ready' | 'unavailable' | 'unconfigured'): string {
+  if (status === 'ready') return 'Local and private';
+  if (status === 'unavailable') return 'Folder connection needs attention';
+  return 'One server setup step remains';
+}
+
+function photoSourceNote(status: 'ready' | 'unavailable' | 'unconfigured'): string {
+  if (status === 'ready') {
+    return 'Hearth makes orientation-correct TV copies and thumbnails locally, then checks the dedicated folder quietly in the background.';
+  }
+  if (status === 'unavailable') {
+    return 'An administrator needs to reconnect the hearth-photos share to the Hearth server as read-only. After that, Scan now will index the images already in the folder.';
+  }
+  return 'An administrator needs to connect the hearth-photos share to the Hearth server as read-only. Hearth will never browse the rest of Synology Photos.';
 }
 
 function PhotoCurationCard({

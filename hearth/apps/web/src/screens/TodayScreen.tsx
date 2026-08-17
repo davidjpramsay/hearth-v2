@@ -14,6 +14,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { SummaryBand } from '../components/SummaryBand';
 import { TodayPhoto } from '../components/TodayPhoto';
+import { WeatherAttribution } from '../components/WeatherAttribution';
 import { useChoreMutation } from '../hooks/useChoreMutation';
 import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -114,19 +115,19 @@ export function TodayScreen({
       <ScreenHeader
         eyebrow={today.household.mode}
         title="Today"
-        meta={<span>{today.displayDate}</span>}
         actions={
           <div className="today-glance">
-            <div>
-              <strong>{today.displayTime}</strong>
-              <span>{timezoneLabel(today.household.timezone)}</span>
-            </div>
             <div className="weather">
               <Icon name={today.weather === null ? 'cloud' : 'sun'} />
               <strong>
                 {today.weather === null ? '—' : `${today.weather.temperatureCelsius}°`}
               </strong>
-              <span>{today.weather?.condition ?? 'Forecast unavailable'}</span>
+              <span>
+                {today.weather?.condition ?? 'Forecast unavailable'}
+                {today.weather === null ? null : (
+                  <WeatherAttribution source={today.weather.source} />
+                )}
+              </span>
             </div>
           </div>
         }
@@ -310,8 +311,4 @@ export function TodayScreen({
       <NoticeDetailsDialog message={selectedNotice} onClose={() => setSelectedNotice(null)} />
     </div>
   );
-}
-
-function timezoneLabel(timezone: string): string {
-  return (timezone.split('/').at(-1) ?? timezone).replaceAll('_', ' ');
 }

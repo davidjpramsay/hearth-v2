@@ -195,10 +195,12 @@ unconfigured. The adapter ignores symlinks, incrementally fingerprints source fi
 orientation, writes bounded WebP derivatives atomically and preserves the last safe index while the
 NAS is unavailable. Each
 `WeekSchedule` day also carries a nullable, presentation-safe daily forecast
-summary (condition code, family-readable label and Celsius temperature). The
+summary (condition code, family-readable label, Celsius temperature and safe provider identity). The
 existing query routes read calendar values from the durable SQLite projection
-rather than from browser fixtures; the current forecast is a deterministic
-demo value until a separately approved provider is selected.
+rather than from browser fixtures. Demo mode uses deterministic forecasts. Private mode injects the
+server-only Open-Meteo adapter when both deployment coordinates are configured, coalesces concurrent
+requests, caches successful responses for 30 minutes and retains the last safe response during a
+temporary provider outage. Coordinates never enter the browser contract or SQLite.
 
 `MonthSchedule` returns a fixed Monday-first 42-day projection window, calendar
 source descriptors and the normalized events overlapping that window. The
@@ -295,12 +297,12 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0020` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0021` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
 management history, snapshotted chore windows/order, credential-free Home Assistant connection
-metadata, and named-adult passkey recovery. The live demo server uses the SQLite
+metadata, named-adult passkey recovery, and canonical chore time-of-day grouping. The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
