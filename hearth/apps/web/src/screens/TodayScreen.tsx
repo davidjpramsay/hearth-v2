@@ -14,6 +14,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { SummaryBand } from '../components/SummaryBand';
 import { TodayPhoto } from '../components/TodayPhoto';
+import { WeatherAttribution } from '../components/WeatherAttribution';
 import { useChoreMutation } from '../hooks/useChoreMutation';
 import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -121,7 +122,12 @@ export function TodayScreen({
               <strong>
                 {today.weather === null ? '—' : `${today.weather.temperatureCelsius}°`}
               </strong>
-              <span>{today.weather?.condition ?? 'Forecast unavailable'}</span>
+              <span>
+                {today.weather?.condition ?? 'Forecast unavailable'}
+                {today.weather === null ? null : (
+                  <WeatherAttribution source={today.weather.source} />
+                )}
+              </span>
             </div>
           </div>
         }

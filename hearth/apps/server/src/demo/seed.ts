@@ -210,13 +210,23 @@ function integration(
 
 export function demoForecastForDay(index: number): DailyForecast {
   const forecasts: DailyForecast[] = [
-    { temperatureCelsius: 16, condition: 'clear', label: 'Clear' },
-    { temperatureCelsius: 18, condition: 'partly-cloudy', label: 'Partly cloudy' },
-    { temperatureCelsius: 17, condition: 'rain', label: 'Showers' },
-    { temperatureCelsius: 18, condition: 'cloudy', label: 'Cloudy' },
-    { temperatureCelsius: 19, condition: 'clear', label: 'Clear' },
-    { temperatureCelsius: 20, condition: 'partly-cloudy', label: 'Partly cloudy' },
-    { temperatureCelsius: 17, condition: 'rain', label: 'Rain' },
+    { temperatureCelsius: 16, condition: 'clear', label: 'Clear', source: 'demo' },
+    {
+      temperatureCelsius: 18,
+      condition: 'partly-cloudy',
+      label: 'Partly cloudy',
+      source: 'demo',
+    },
+    { temperatureCelsius: 17, condition: 'rain', label: 'Showers', source: 'demo' },
+    { temperatureCelsius: 18, condition: 'cloudy', label: 'Cloudy', source: 'demo' },
+    { temperatureCelsius: 19, condition: 'clear', label: 'Clear', source: 'demo' },
+    {
+      temperatureCelsius: 20,
+      condition: 'partly-cloudy',
+      label: 'Partly cloudy',
+      source: 'demo',
+    },
+    { temperatureCelsius: 17, condition: 'rain', label: 'Rain', source: 'demo' },
   ];
   return forecasts[index % forecasts.length] ?? forecasts[0]!;
 }

@@ -11,6 +11,7 @@ import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
+import { WeatherAttribution } from '../components/WeatherAttribution';
 import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
@@ -56,7 +57,10 @@ export function WeekScreen({
               <div>
                 <Icon name={forecastIcon(currentForecast.condition)} />
                 <strong>{currentForecast.temperatureCelsius}°</strong>
-                <span>{currentForecast.label}</span>
+                <span>
+                  {currentForecast.label}
+                  <WeatherAttribution source={currentForecast.source} />
+                </span>
               </div>
             )}
             <div>

@@ -477,13 +477,20 @@ describe('shared wire schemas', () => {
         temperatureCelsius: 16,
         condition: 'clear',
         label: 'Clear',
+        source: 'open-meteo',
       }),
-    ).toEqual({ temperatureCelsius: 16, condition: 'clear', label: 'Clear' });
+    ).toEqual({
+      temperatureCelsius: 16,
+      condition: 'clear',
+      label: 'Clear',
+      source: 'open-meteo',
+    });
     expect(
       DailyForecastSchema.safeParse({
         temperatureCelsius: 16,
         condition: 'provider-specific-code',
         label: 'Clear',
+        source: 'open-meteo',
       }).success,
     ).toBe(false);
   });

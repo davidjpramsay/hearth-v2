@@ -233,12 +233,14 @@ export const ChoreOccurrenceSchema = z.object({
 export const WeatherSummarySchema = z.object({
   temperatureCelsius: z.number().int().min(-30).max(60),
   condition: z.string().min(1).max(80),
+  source: z.enum(['demo', 'open-meteo']),
 });
 
 export const DailyForecastSchema = z.object({
   temperatureCelsius: z.number().int().min(-30).max(60),
   condition: z.enum(['clear', 'partly-cloudy', 'cloudy', 'rain']),
   label: z.string().min(1).max(80),
+  source: z.enum(['demo', 'open-meteo']),
 });
 
 const SameOriginAssetUrlSchema = z
@@ -1668,6 +1670,7 @@ export type ChoreState = z.infer<typeof ChoreStateSchema>;
 export type RoutineTimeOfDay = z.infer<typeof RoutineTimeOfDaySchema>;
 export type ChoreOccurrence = z.infer<typeof ChoreOccurrenceSchema>;
 export type TodaySummary = z.infer<typeof TodaySummarySchema>;
+export type WeatherSummary = z.infer<typeof WeatherSummarySchema>;
 export type TodaySectionVisibility = z.infer<typeof TodaySectionVisibilitySchema>;
 export type HouseholdNotice = z.infer<typeof HouseholdNoticeSchema>;
 export type TodayConfiguration = z.infer<typeof TodayConfigurationSchema>;

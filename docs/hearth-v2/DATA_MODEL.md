@@ -90,9 +90,11 @@ The provider is authoritative. This table is a local projection/cache and pendin
 
 The browser-safe `WeekSchedule` day model may include a nullable compact daily
 forecast containing a normalized condition code, family-readable label and
-Celsius temperature. Phase 1 demo forecasts are deterministic seeded data; no
-weather provider, credential or new system of record is implied by this display
-contract.
+Celsius temperature plus a bounded `demo` or `open-meteo` source identity for
+correct display attribution. Phase 1 demo forecasts remain deterministic seeded
+data. Private forecasts are transient server-cache projections from Open-Meteo;
+coordinates remain server environment configuration and neither coordinates nor
+provider payloads become a new SQLite system of record.
 
 The browser-safe `MonthSchedule` is a read projection rather than a new stored
 calendar model. It contains a Monday-first 42-day grid window, normalized events

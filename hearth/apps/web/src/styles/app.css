@@ -465,6 +465,13 @@
   color: var(--muted);
   font-size: 21px;
 }
+.weather-attribution {
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
 .weather svg {
   width: 33px;
   height: 33px;

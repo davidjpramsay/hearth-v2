@@ -53,6 +53,10 @@ A change is complete only when:
   assign optional people, save, reload and remove the connection from the phone
   companion. Passwords and raw collection URLs never appear in responses,
   SQLite, screenshots or logs; child and unauthenticated setup are rejected.
+- With both server-only weather coordinates configured, Today shows current local conditions and
+  Week shows normalized daily forecasts with visible Open-Meteo attribution. Coordinates never
+  enter browser responses, logs or SQLite. A provider outage retains the last safe forecast and a
+  first-load failure leaves calendar and household content usable with an unavailable weather cue.
 
 Phase 3 evidence as of 2026-08-03: the first five read/degraded-mode scenarios
 are automated against the fake adapter, SQLite cache and rendered Today/Week/Month

@@ -748,3 +748,22 @@ Official platform references:
 - Consequence: Phone, keyboard and remote authoring share an accessible native control; chores can
   be grouped consistently without inventing a separate Routine entity. Existing routine schedules
   and occurrence history remain intact, with only their display grouping normalized.
+
+## D-049 — Weather uses a narrow server-side Open-Meteo adapter
+
+- Date: 2026-08-17
+- Status: accepted
+- Context: Today and Week already had a browser-safe forecast contract, but private mode returned
+  no forecast because only deterministic demo data existed. Routing weather through Home Assistant
+  would widen its deliberately small allowlist and make a useful read-only cue depend on the Pi.
+- Choice: Use Open-Meteo from the Hearth server with approximate latitude/longitude supplied only
+  through the private deployment environment. Request current conditions plus daily maximums and
+  WMO condition codes, normalize them into the existing four display conditions, cache successful
+  responses for 30 minutes, coalesce concurrent reads and retain the last safe response during
+  outage. Expose only a bounded provider identity so the browser can render the required visible
+  attribution link; never expose or persist coordinates. Leave weather unavailable when either
+  coordinate is absent rather than guessing from an address or calendar.
+- Consequence: Weather works without credentials, a browser-side request or Home Assistant entity,
+  while calendar/household content remains independent during internet failure. Deployment needs
+  two non-secret coordinate values. A future provider change remains behind the same injected
+  adapter and public forecast schema.

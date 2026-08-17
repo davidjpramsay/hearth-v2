@@ -414,6 +414,7 @@ describe('Hearth v2 API', () => {
       temperatureCelsius: 16,
       condition: 'clear',
       label: 'Clear',
+      source: 'demo',
     });
     expect(month.json()).toMatchObject({
       month: '2026-08',

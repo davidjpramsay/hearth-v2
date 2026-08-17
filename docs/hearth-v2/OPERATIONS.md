@@ -153,6 +153,13 @@ service call and has no Jellyfin, Music Assistant or Cast control. If validation
 remove the connection through Admin and revoke the dedicated token. Take a fresh Home Assistant
 backup only after the verified mapping/hardware test.
 
+Weather is independent of Home Assistant. Set both `HEARTH_WEATHER_LATITUDE` and
+`HEARTH_WEATHER_LONGITUDE` in the private Compose environment to approximate household coordinates
+(suburb or city-centre precision is sufficient). Leaving both blank keeps the weather adapter off;
+setting only one or using an out-of-range value fails startup rather than guessing. The server makes
+outbound HTTPS requests only to Open-Meteo's fixed forecast endpoint and caches the last safe
+response. Do not put a street address into Hearth configuration.
+
 Set `HEARTH_MODE=private` only with a dedicated private database path. If
 `HEARTH_DATABASE_PATH` is omitted, Hearth chooses `data/hearth-private.sqlite`
 for private mode and `data/hearth-demo.sqlite` for demo/test. Do not point

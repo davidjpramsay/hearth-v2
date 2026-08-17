@@ -66,6 +66,25 @@ deterministic fake verifier and never contacts iCloud.
 Only authenticated CalDAV account connections are supported. Calendar web interfaces and
 alternate URL-ingestion paths remain outside the integration boundary.
 
+## Weather
+
+Private mode uses the server-side Open-Meteo forecast API with an approximate household latitude
+and longitude supplied through `HEARTH_WEATHER_LATITUDE` and `HEARTH_WEATHER_LONGITUDE`. Both
+values must be present or weather stays explicitly unconfigured. The browser never receives the
+coordinates and there is no API key or Home Assistant weather-entity mapping.
+
+The adapter requests only current temperature/condition and daily maximum temperature/condition,
+normalizes WMO codes into Hearth's compact presentation contract and caches one successful response
+for 30 minutes. Concurrent reads share the same request. If a refresh fails, the last safe response
+remains available; if no safe response exists, Today shows **Forecast unavailable** and Week omits
+the weather cue without affecting calendars or household data. The current value and seven-day
+projection are labelled and linked to Open-Meteo beside the displayed data as required by its CC BY
+4.0 licence.
+
+Open-Meteo's official forecast contract documents `current`, `daily`, `timezone`, `past_days` and
+`forecast_days` at <https://open-meteo.com/en/docs>; attribution requirements are documented at
+<https://open-meteo.com/en/licence>.
+
 ## Home Assistant
 
 Hearth talks to Home Assistant from the server through its supported REST API. The television/web
@@ -98,8 +117,8 @@ The first adapter reads exactly four mapped states in parallel:
 - one generic protected-media-active state covering native and Cast playback
 
 Translate entity IDs and raw states into family-readable Hearth models.
-Weather, climate and door sensors are not part of this first allowlist; weather remains a separate
-provider decision rather than an excuse to expose a general Home Assistant dashboard.
+Weather, climate and door sensors are not part of this first allowlist. Weather uses the separate
+Open-Meteo adapter above rather than expanding Hearth into a general Home Assistant dashboard.
 
 ### Command path
 

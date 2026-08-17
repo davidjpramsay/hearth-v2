@@ -42,6 +42,11 @@ import {
   SynologyFolderPhotoSourceProvider,
   resolveSynologyPhotoSourceConfiguration,
 } from './integrations/synology-photo-source.js';
+import {
+  OpenMeteoWeatherProvider,
+  UnconfiguredWeatherProvider,
+  resolveOpenMeteoWeatherConfiguration,
+} from './integrations/weather-provider.js';
 import { HomeService } from './home-repository.js';
 import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
@@ -97,6 +102,11 @@ const managedCalendarProvider = new ManagedCalendarProvider();
 if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);
 const managedHomeAssistantProvider = new ManagedHomeAssistantProvider();
 if (homeAssistantRuntime !== null) managedHomeAssistantProvider.configure(homeAssistantRuntime);
+const weatherConfiguration = demoMode ? null : resolveOpenMeteoWeatherConfiguration(process.env);
+const weatherProvider =
+  weatherConfiguration === null
+    ? new UnconfiguredWeatherProvider()
+    : new OpenMeteoWeatherProvider(weatherConfiguration);
 const repository = new SqliteHearthRepository(
   database,
   demoMode
@@ -104,6 +114,7 @@ const repository = new SqliteHearthRepository(
     : {
         calendarProvider: managedCalendarProvider,
         ownerForCalendarExternalId: managedCalendarProvider.ownerForCalendarExternalId,
+        weatherProvider,
         seedDemo: false,
         clock,
       },
