@@ -12,9 +12,9 @@ const RESPONSE = {
     weather_code: 1,
   },
   daily: {
-    time: ['2026-08-17', '2026-08-18', '2026-08-19'],
-    weather_code: [95, 3, 53],
-    temperature_2m_max: [19, 17.1, 17.6],
+    time: ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20'],
+    weather_code: [95, 3, 53, null],
+    temperature_2m_max: [19, 17.1, 17.6, null],
   },
 };
 
@@ -53,6 +53,7 @@ describe('Open-Meteo weather provider', () => {
       label: 'Cloudy',
       source: 'open-meteo',
     });
+    expect(forecast.daily.has('2026-08-20')).toBe(false);
   });
 
   it('coalesces reads, caches briefly and retains the last safe forecast during outage', async () => {

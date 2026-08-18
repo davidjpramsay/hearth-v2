@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatHouseholdDate, formatHouseholdTime } from './useHouseholdClock';
+import {
+  formatHouseholdDate,
+  formatHouseholdTime,
+  hasHouseholdDateChanged,
+} from './useHouseholdClock';
 
 describe('household clock', () => {
   it('formats the same instant in the configured household timezone', () => {
@@ -13,5 +17,11 @@ describe('household clock', () => {
     const instant = new Date('2026-08-02T23:42:00.000Z');
     expect(formatHouseholdDate(instant, 'en-AU', 'Australia/Perth')).toBe('Monday 3 August');
     expect(formatHouseholdDate(instant, 'en-AU', 'America/Los_Angeles')).toBe('Sunday 2 August');
+  });
+
+  it('detects when an always-on display has crossed the household midnight', () => {
+    const instant = new Date('2026-08-18T00:01:00.000Z');
+    expect(hasHouseholdDateChanged(instant, 'Australia/Perth', '2026-08-17')).toBe(true);
+    expect(hasHouseholdDateChanged(instant, 'Australia/Perth', '2026-08-18')).toBe(false);
   });
 });

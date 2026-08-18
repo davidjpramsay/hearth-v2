@@ -19,8 +19,8 @@ const OpenMeteoResponseSchema = z.object({
   }),
   daily: z.object({
     time: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1),
-    weather_code: z.array(z.number().int().min(0).max(99)).min(1),
-    temperature_2m_max: z.array(z.number().finite()).min(1),
+    weather_code: z.array(z.number().int().min(0).max(99).nullable()).min(1),
+    temperature_2m_max: z.array(z.number().finite().nullable()).min(1),
   }),
 });
 
@@ -170,7 +170,7 @@ function mapOpenMeteoResponse(
   for (const [index, localDate] of response.daily.time.entries()) {
     const weatherCode = response.daily.weather_code[index];
     const temperature = response.daily.temperature_2m_max[index];
-    if (weatherCode === undefined || temperature === undefined) continue;
+    if (weatherCode == null || temperature == null) continue;
     const condition = describeWeatherCode(weatherCode);
     daily.set(
       localDate,

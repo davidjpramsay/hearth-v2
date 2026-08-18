@@ -7,6 +7,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { localDateInTimezone } from '@hearth/core';
 
 import { getHearthRuntime } from '../api/core';
 
@@ -20,6 +23,7 @@ const HouseholdClockContext = createContext<HouseholdDateTime | null>(null);
 
 export function HouseholdClockProvider({ children }: { children: ReactNode }) {
   const runtime = getHearthRuntime();
+  const queryClient = useQueryClient();
   const [now, setNow] = useState(() =>
     runtime.mode === 'private' ? new Date() : new Date(runtime.generatedAt),
   );
@@ -28,15 +32,22 @@ export function HouseholdClockProvider({ children }: { children: ReactNode }) {
     if (runtime.mode !== 'private') return undefined;
     const untilNextMinute = 60_000 - (Date.now() % 60_000);
     let interval: number | undefined;
+    const updateClock = () => {
+      const nextNow = new Date();
+      setNow(nextNow);
+      if (hasHouseholdDateChanged(nextNow, runtime.timezone, runtime.localDate)) {
+        void queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] });
+      }
+    };
     const timeout = window.setTimeout(() => {
-      setNow(new Date());
-      interval = window.setInterval(() => setNow(new Date()), 60_000);
+      updateClock();
+      interval = window.setInterval(updateClock, 60_000);
     }, untilNextMinute);
     return () => {
       window.clearTimeout(timeout);
       if (interval !== undefined) window.clearInterval(interval);
     };
-  }, [runtime.mode]);
+  }, [queryClient, runtime.localDate, runtime.mode, runtime.timezone]);
 
   const value = useMemo(
     () => ({
@@ -75,4 +86,12 @@ export function formatHouseholdDate(date: Date, locale: string, timezone: string
     month: 'long',
     timeZone: timezone,
   }).format(date);
+}
+
+export function hasHouseholdDateChanged(
+  now: Date,
+  timezone: string,
+  runtimeLocalDate: string,
+): boolean {
+  return localDateInTimezone(now.toISOString(), timezone) !== runtimeLocalDate;
 }
