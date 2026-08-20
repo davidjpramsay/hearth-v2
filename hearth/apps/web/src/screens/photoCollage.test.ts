@@ -43,15 +43,61 @@ describe('photo collage arrangement', () => {
     expect(photoCollageMode(arranged[0]!.photo)).toBe('landscape');
   });
 
-  it('uses a selected portrait as the tall feature and limits the calm collage to five photos', () => {
+  it('uses real portrait rails and wide landscape bands for a mixed five-photo collage', () => {
     const arranged = arrangePhotoCollage(
       [...photos, photo('portrait-2', 'portrait')],
       'portrait-1',
     );
     expect(arranged[0]?.photo.id).toBe('portrait-1');
     expect(photoCollageMode(arranged[0]!.photo)).toBe('portrait');
-    expect(arranged[1]!.photo.orientation).toBe('landscape');
     expect(arranged).toHaveLength(5);
+    expect(arranged.filter((item) => item.photo.orientation === 'portrait')).toHaveLength(2);
+    for (const item of arranged) {
+      if (item.photo.orientation === 'portrait') {
+        expect(item.placement.rowSpan).toBe(4);
+        expect(item.placement.columnSpan / item.placement.columns).toBeLessThanOrEqual(0.25);
+      } else {
+        expect(item.placement.rowSpan).toBe(2);
+      }
+    }
+  });
+
+  it('uses fewer larger tiles when a portrait-heavy set cannot form a truthful five-photo mosaic', () => {
+    const portraitHeavy = [
+      photo('portrait-1', 'portrait'),
+      photo('portrait-2', 'portrait'),
+      photo('portrait-3', 'portrait'),
+      photo('portrait-4', 'portrait'),
+      photo('landscape-1', 'landscape'),
+    ];
+
+    const selectedPortrait = arrangePhotoCollage(portraitHeavy, 'portrait-1');
+    expect(selectedPortrait).toHaveLength(3);
+    expect(selectedPortrait.map((item) => item.photo.orientation).sort()).toEqual([
+      'landscape',
+      'portrait',
+      'portrait',
+    ]);
+    expect(selectedPortrait[0]?.photo.id).toBe('portrait-1');
+
+    const selectedLandscape = arrangePhotoCollage(portraitHeavy, 'landscape-1');
+    expect(selectedLandscape).toHaveLength(3);
+    expect(selectedLandscape[0]?.photo.id).toBe('landscape-1');
+    expect(selectedLandscape.filter((item) => item.photo.orientation === 'portrait')).toHaveLength(
+      2,
+    );
+  });
+
+  it('uses four equal portrait rails when every available photo is portrait', () => {
+    const allPortrait = Array.from({ length: 6 }, (_, index) =>
+      photo(`portrait-${index + 1}`, 'portrait'),
+    );
+    const arranged = arrangePhotoCollage(allPortrait, 'portrait-5');
+
+    expect(arranged).toHaveLength(4);
+    expect(arranged[0]?.photo.id).toBe('portrait-5');
+    expect(arranged.every((item) => item.placement.rowSpan === 4)).toBe(true);
+    expect(arranged.every((item) => item.placement.columnSpan === 3)).toBe(true);
   });
 
   it('uses the selected landscape as the large anchor when no portrait exists', () => {

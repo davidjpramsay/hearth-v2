@@ -43,6 +43,19 @@ for (const viewport of viewports) {
     await expect(photo).toHaveCSS('object-fit', 'contain');
     await expect(page.locator('.today-photo__backdrop')).toHaveCount(0);
     await expect(page.locator('.today-photo')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    if (viewport.width > 900) {
+      expect(
+        await page.evaluate(() => {
+          const appContent = document.querySelector('.app-content');
+          const todayScreen = document.querySelector('.today-screen');
+          return (
+            document.documentElement.scrollHeight <= window.innerHeight + 1 &&
+            (appContent === null || appContent.scrollHeight <= appContent.clientHeight + 1) &&
+            (todayScreen === null || todayScreen.scrollHeight <= todayScreen.clientHeight + 1)
+          );
+        }),
+      ).toBe(true);
+    }
     await captureEvidence(page, {
       path: resolve(evidence, `today-${viewport.name}.png`),
       animations: 'disabled',

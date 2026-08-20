@@ -17,14 +17,13 @@ import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   arrangePhotoCollage,
-  PHOTO_COLLAGE_SIZE,
+  mirroredPlacement,
   nextPhotoId,
   PHOTO_COLLAGE_ROTATION_MS,
   photoCollageFeatureSide,
   photoCollageMode,
   type PhotoCollageItem,
   type PhotoCollageFeatureSide,
-  type PhotoCollageSlot,
 } from './photoCollage';
 
 export function PhotosScreen({
@@ -71,6 +70,11 @@ export function PhotosScreen({
     gallery?.featuredPhotoId ?? gallery?.photos[0]?.id ?? null,
   );
   const visibleCollageItems = compactLandscape ? collageItems.slice(0, 3) : collageItems;
+  const collagePlacement = visibleCollageItems[0]?.placement;
+  const collagePortraitCount = visibleCollageItems.reduce(
+    (count, item) => count + Number(item.photo.orientation === 'portrait'),
+    0,
+  );
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -255,40 +259,46 @@ export function PhotosScreen({
           {gallery.statusMessage}
         </StatusBanner>
       ) : null}
-      <div className="photos-source-line" role="status">
-        <Icon name={gallery.collection.source.status === 'ready' ? 'shield' : 'warning'} />
-        <strong>{gallery.collection.name}</strong>
-        <span>·</span>
-        <span>{gallery.collection.source.message}</span>
-        {!prefersReducedMotion && gallery.photos.length > 1 ? (
-          <span className="photos-rotation-note">
+      {!prefersReducedMotion && gallery.photos.length > 1 ? (
+        <div className="photos-source-line">
+          <span
+            aria-label={`${gallery.collection.name}. ${gallery.collection.source.message} ${
+              rotationPaused
+                ? 'Automatic photo rotation paused.'
+                : 'Photos change automatically every 45 seconds.'
+            }`}
+            className={`photos-rotation-note${rotationPaused ? ' photos-rotation-note--paused' : ''}`}
+            role="status"
+          >
             <Icon name="refresh" />
-            <span>
-              {rotationPaused ? 'Automatic rotation paused' : 'Automatic · every 45 seconds'}
-            </span>
-            {!rotationPaused ? (
+            <span
+              aria-hidden="true"
+              className="photos-rotation-progress"
+              key={`${selected?.id ?? 'first'}-${manualSelectionRevision}`}
+            >
               <span
-                aria-hidden="true"
-                className="photos-rotation-progress"
-                key={`${selected?.id ?? 'first'}-${manualSelectionRevision}`}
-              >
-                <span
-                  className="photos-rotation-progress__fill"
-                  style={
-                    {
-                      '--photo-rotation-duration': `${PHOTO_COLLAGE_ROTATION_MS}ms`,
-                    } as CSSProperties
-                  }
-                />
-              </span>
-            ) : null}
+                className="photos-rotation-progress__fill"
+                style={
+                  {
+                    '--photo-rotation-duration': `${PHOTO_COLLAGE_ROTATION_MS}ms`,
+                  } as CSSProperties
+                }
+              />
+            </span>
           </span>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div className="photos-layout">
         <div
           aria-label="Family photos. The featured photo and collage arrangement change about once every 45 seconds."
           className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--feature-${collageFeatureSide} photos-collage--count-${visibleCollageItems.length}`}
+          data-portrait-count={collagePortraitCount}
+          style={
+            {
+              '--photo-collage-columns': collagePlacement?.columns ?? 12,
+              '--photo-collage-rows': collagePlacement?.rows ?? 4,
+            } as CSSProperties
+          }
         >
           {visibleCollageItems.map((item) => (
             <PhotoThumbnail
@@ -354,7 +364,8 @@ function PhotoThumbnail({
   featureSide: PhotoCollageFeatureSide;
 }) {
   const { photo, slot } = item;
-  const links = collageFocusLinks(slot, items, featureSide);
+  const links = collageFocusLinks(item, items, featureSide);
+  const placement = mirroredPlacement(item.placement, featureSide);
   const featured = slot === 'feature';
   return (
     <button
@@ -368,7 +379,12 @@ function PhotoThumbnail({
       data-focus-right={links.right}
       data-focus-up={links.up}
       data-photo-id={photo.id}
+      data-photo-orientation={photo.orientation}
       onClick={onSelect}
+      style={{
+        gridColumn: `${placement.column} / span ${placement.columnSpan}`,
+        gridRow: `${placement.row} / span ${placement.rowSpan}`,
+      }}
       type="button"
     >
       <PhotoAssetImage
@@ -387,53 +403,64 @@ function PhotoThumbnail({
 }
 
 function collageFocusLinks(
-  slot: PhotoCollageSlot,
+  item: PhotoCollageItem,
   items: PhotoCollageItem[],
   featureSide: PhotoCollageFeatureSide,
 ): { up: string; down: string; left: string; right: string } {
-  const bySlot = new Map(items.map((item) => [item.slot, `photos-thumb-${item.photo.id}`]));
-  const feature = bySlot.get('feature') ?? 'photos-start-ambient';
-  const support1 = bySlot.get('support-1') ?? feature;
-  const support2 = bySlot.get('support-2') ?? support1;
-  const support3 = bySlot.get('support-3') ?? support2;
-  const support4 = bySlot.get('support-4') ?? support3;
+  const current = mirroredPlacement(item.placement, featureSide);
+  const currentId = `photos-thumb-${item.photo.id}`;
+  const center = placementCenter(current);
+  const candidates = items
+    .filter((candidate) => candidate.photo.id !== item.photo.id)
+    .map((candidate, index) => ({
+      center: placementCenter(mirroredPlacement(candidate.placement, featureSide)),
+      focusId: `photos-thumb-${candidate.photo.id}`,
+      index,
+      placement: mirroredPlacement(candidate.placement, featureSide),
+    }));
 
-  const featureAtStart = {
-    feature: { up: 'photos-start-ambient', down: feature, left: 'nav-photos', right: support1 },
-    'support-1': {
-      up: 'photos-start-ambient',
-      down: support3,
-      left: feature,
-      right: support2,
-    },
-    'support-2': {
-      up: 'photos-start-ambient',
-      down: support4,
-      left: support1,
-      right: support2,
-    },
-    'support-3': { up: support1, down: support3, left: feature, right: support4 },
-    'support-4': { up: support2, down: support4, left: support3, right: support4 },
-  } satisfies Record<PhotoCollageSlot, { up: string; down: string; left: string; right: string }>;
+  function nearest(direction: 'up' | 'down' | 'left' | 'right'): string | null {
+    const vertical = direction === 'up' || direction === 'down';
+    return (
+      candidates
+        .filter((candidate) => {
+          if (direction === 'up') {
+            return candidate.placement.row + candidate.placement.rowSpan <= current.row + 0.01;
+          }
+          if (direction === 'down') {
+            return candidate.placement.row >= current.row + current.rowSpan - 0.01;
+          }
+          if (direction === 'left') {
+            return (
+              candidate.placement.column + candidate.placement.columnSpan <= current.column + 0.01
+            );
+          }
+          return candidate.placement.column >= current.column + current.columnSpan - 0.01;
+        })
+        .map((candidate) => {
+          const primary = vertical
+            ? Math.abs(candidate.center.y - center.y)
+            : Math.abs(candidate.center.x - center.x);
+          const secondary = vertical
+            ? Math.abs(candidate.center.x - center.x)
+            : Math.abs(candidate.center.y - center.y);
+          return { ...candidate, score: primary + secondary * 0.45 };
+        })
+        .sort((a, b) => a.score - b.score || a.index - b.index)[0]?.focusId ?? null
+    );
+  }
 
-  if (featureSide === 'start' || items.length < PHOTO_COLLAGE_SIZE) return featureAtStart[slot];
+  return {
+    up: nearest('up') ?? 'photos-start-ambient',
+    down: nearest('down') ?? currentId,
+    left: nearest('left') ?? 'nav-photos',
+    right: nearest('right') ?? currentId,
+  };
+}
 
-  const featureAtEnd = {
-    feature: { up: 'photos-start-ambient', down: feature, left: support1, right: feature },
-    'support-1': {
-      up: 'photos-start-ambient',
-      down: support3,
-      left: support2,
-      right: feature,
-    },
-    'support-2': {
-      up: 'photos-start-ambient',
-      down: support4,
-      left: 'nav-photos',
-      right: support1,
-    },
-    'support-3': { up: support1, down: support3, left: support4, right: feature },
-    'support-4': { up: support2, down: support4, left: 'nav-photos', right: support3 },
-  } satisfies Record<PhotoCollageSlot, { up: string; down: string; left: string; right: string }>;
-  return featureAtEnd[slot];
+function placementCenter(placement: PhotoCollageItem['placement']): { x: number; y: number } {
+  return {
+    x: placement.column + placement.columnSpan / 2,
+    y: placement.row + placement.rowSpan / 2,
+  };
 }

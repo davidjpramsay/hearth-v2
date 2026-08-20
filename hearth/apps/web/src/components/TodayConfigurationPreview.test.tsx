@@ -9,6 +9,7 @@ import type { TodayPreviewData } from './todayPreviewData';
 afterEach(cleanup);
 
 const data: TodayPreviewData = {
+  eyebrow: 'Morning',
   displayTime: '07:42',
   displayDate: 'Monday 3 August',
   weather: { temperature: '16°', condition: 'Clear' },
@@ -39,7 +40,7 @@ const data: TodayPreviewData = {
     freshness: 'current',
     statusMessage: null,
   },
-  photo: { url: '/demo/family.webp', alt: 'Family breakfast' },
+  photo: { url: '/demo/family.webp', alt: 'Family breakfast', orientation: 'landscape' },
 };
 
 const allSections: TodaySectionVisibility = {
@@ -57,6 +58,8 @@ describe('TodayConfigurationPreview', () => {
     expect(screen.getByRole('img', { name: /TV Today preview/ })).toBeVisible();
     expect(screen.getByRole('button', { name: 'TV' })).toHaveAttribute('aria-pressed', 'true');
     expect(container.querySelector('.today-configuration-preview--television')).toBeVisible();
+    expect(screen.getByText('Morning')).toBeVisible();
+    expect(screen.getByText('Today')).toBeVisible();
     expect(screen.getByText('School drop-off')).toBeVisible();
     expect(screen.getByText('Lemon chicken')).toBeVisible();
     expect(container.querySelector('.today-configuration-preview__photo')).toBeVisible();
@@ -69,7 +72,32 @@ describe('TodayConfigurationPreview', () => {
 
     expect(screen.getByRole('button', { name: 'Phone' })).toHaveAttribute('aria-pressed', 'true');
     expect(container.querySelector('.today-configuration-preview--phone')).toBeVisible();
+    expect(container.querySelector('.today-configuration-preview__phone-topbar')).toHaveTextContent(
+      '07:42',
+    );
+    expect(container.querySelectorAll('.today-configuration-preview__phone-tabs svg')).toHaveLength(
+      4,
+    );
     expect(screen.getByRole('img', { name: /Optional sections shown: Dinner/ })).toBeVisible();
+  });
+
+  it('uses the portrait television composition when the featured photo is portrait', () => {
+    const portraitData: TodayPreviewData = {
+      ...data,
+      photo: {
+        url: '/demo/photos/garden-morning.webp',
+        alt: 'Family garden',
+        orientation: 'portrait',
+      },
+    };
+    const { container } = render(
+      <TodayConfigurationPreview data={portraitData} sections={allSections} />,
+    );
+
+    expect(
+      container.querySelector('.today-configuration-preview__canvas--photo-portrait'),
+    ).toBeVisible();
+    expect(container.querySelector('.today-configuration-preview__photo--portrait')).toBeVisible();
   });
 
   it('removes optional regions without hiding the stable plans and chores core', () => {

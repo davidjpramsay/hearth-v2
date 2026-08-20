@@ -16,6 +16,7 @@ export const DEMO_NOW = '2026-08-03T07:42:00+08:00';
 export const DEMO_TODAY_PHOTO: TodayPhotoSummary = {
   url: '/demo/family-breakfast.webp',
   alt: 'Ezra and Maya set the breakfast table together.',
+  orientation: 'landscape',
 };
 
 const ezra: Member = {

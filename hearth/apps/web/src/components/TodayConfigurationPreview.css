@@ -63,11 +63,12 @@
   color: var(--ink);
   background: var(--canvas);
   box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--surface) 72%, transparent);
+  container-type: inline-size;
 }
 
 .today-configuration-preview--television {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1666 / 1080;
   border-radius: 16px;
 }
 
@@ -76,13 +77,22 @@
   aspect-ratio: 390 / 844;
   margin-inline: auto;
   border-radius: 22px;
+  display: grid;
+  grid-template-rows: 29px minmax(0, 1fr) 37px;
 }
 
 .today-configuration-preview__canvas {
   height: 100%;
-  padding: clamp(9px, 2.3vw, 19px);
+  min-height: 0;
+  box-sizing: border-box;
+  padding: clamp(9px, 2.3cqi, 19px);
   display: flex;
   flex-direction: column;
+}
+
+.today-configuration-preview__phone-topbar,
+.today-configuration-preview__phone-tabs {
+  display: none;
 }
 
 .today-configuration-preview__state {
@@ -97,8 +107,8 @@
 }
 
 .today-configuration-preview__state svg {
-  width: clamp(22px, 4vw, 38px);
-  height: clamp(22px, 4vw, 38px);
+  width: clamp(22px, 4cqi, 38px);
+  height: clamp(22px, 4cqi, 38px);
   margin-bottom: 7px;
   color: var(--eucalyptus);
 }
@@ -110,80 +120,80 @@
 
 .today-configuration-preview__state strong {
   color: var(--ink);
-  font-size: clamp(12px, 2vw, 19px);
+  font-size: clamp(12px, 2cqi, 19px);
 }
 
 .today-configuration-preview__state span {
   margin-top: 2px;
-  font-size: clamp(9px, 1.4vw, 13px);
+  font-size: clamp(9px, 1.4cqi, 13px);
 }
 
 .today-configuration-preview__header {
-  min-height: 29px;
+  min-height: 9.6cqi;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: clamp(7px, 1.6vw, 16px);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: clamp(7px, 1.6cqi, 16px);
 }
 
-.today-configuration-preview__brand,
-.today-configuration-preview__date,
+.today-configuration-preview__title,
 .today-configuration-preview__weather {
   min-width: 0;
   display: flex;
-  align-items: center;
 }
 
-.today-configuration-preview__brand {
-  gap: 5px;
-  color: var(--ink);
-  font-size: clamp(9px, 1.55vw, 15px);
-  font-weight: 760;
+.today-configuration-preview__title {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.today-configuration-preview__brand svg {
-  width: clamp(12px, 1.8vw, 18px);
-  height: clamp(12px, 1.8vw, 18px);
+.today-configuration-preview__title small {
   color: var(--eucalyptus);
+  font-size: clamp(5px, 0.86cqi, 13px);
+  font-weight: 780;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
-.today-configuration-preview__date {
-  gap: 6px;
-}
-
-.today-configuration-preview__date strong {
-  font-size: clamp(12px, 2.15vw, 21px);
-}
-
-.today-configuration-preview__date span,
-.today-configuration-preview__weather span {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: clamp(7px, 1.25vw, 12px);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.today-configuration-preview__title strong {
+  margin-top: 0.6cqi;
+  font-size: clamp(10px, 3.5cqi, 54px);
+  letter-spacing: -0.035em;
+  line-height: 0.95;
 }
 
 .today-configuration-preview__weather {
+  align-items: center;
   gap: 4px;
 }
 
 .today-configuration-preview__weather svg {
-  width: clamp(11px, 1.8vw, 18px);
-  height: clamp(11px, 1.8vw, 18px);
+  width: clamp(11px, 1.8cqi, 18px);
+  height: clamp(11px, 1.8cqi, 18px);
   color: var(--ochre);
 }
 
 .today-configuration-preview__weather strong {
-  font-size: clamp(9px, 1.55vw, 15px);
+  font-size: clamp(9px, 1.55cqi, 15px);
+}
+
+.today-configuration-preview__weather span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: clamp(6px, 1.25cqi, 12px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .today-configuration-preview__core {
   min-height: 0;
-  margin-top: clamp(4px, 1vw, 10px);
+  margin-top: clamp(4px, 1cqi, 10px);
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(6px, 1.5vw, 14px);
+  gap: clamp(6px, 1.5cqi, 14px);
 }
 
 .today-configuration-preview__section {
@@ -191,10 +201,10 @@
 }
 
 .today-configuration-preview__section h4 {
-  margin: 0 0 clamp(3px, 0.7vw, 7px);
+  margin: 0 0 clamp(3px, 0.7cqi, 7px);
   overflow: hidden;
   color: var(--ink);
-  font-size: clamp(8px, 1.45vw, 14px);
+  font-size: clamp(8px, 1.45cqi, 14px);
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -203,17 +213,17 @@
 .today-configuration-preview__rows {
   display: flex;
   flex-direction: column;
-  gap: clamp(3px, 0.6vw, 6px);
+  gap: clamp(3px, 0.6cqi, 6px);
 }
 
 .today-configuration-preview__event,
 .today-configuration-preview__chore,
 .today-configuration-preview__empty {
   min-width: 0;
-  min-height: clamp(24px, 4.3vw, 42px);
-  padding: clamp(3px, 0.65vw, 7px);
+  min-height: clamp(14px, 4.3cqi, 42px);
+  padding: clamp(2px, 0.65cqi, 7px);
   border: 1px solid var(--hairline);
-  border-radius: clamp(5px, 1vw, 10px);
+  border-radius: clamp(5px, 1cqi, 10px);
   background: var(--surface);
   box-shadow: 0 3px 9px rgb(50 53 49 / 5%);
 }
@@ -222,11 +232,11 @@
   display: grid;
   grid-template-columns: auto 3px minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(3px, 0.7vw, 7px);
+  gap: clamp(3px, 0.7cqi, 7px);
 }
 
 .today-configuration-preview__event time {
-  font-size: clamp(7px, 1.25vw, 12px);
+  font-size: clamp(5px, 1.25cqi, 12px);
   font-weight: 720;
 }
 
@@ -240,7 +250,7 @@
 .today-configuration-preview__chore > strong {
   min-width: 0;
   overflow: hidden;
-  font-size: clamp(7px, 1.3vw, 13px);
+  font-size: clamp(5px, 1.3cqi, 13px);
   line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -250,13 +260,13 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(4px, 0.8vw, 8px);
+  gap: clamp(4px, 0.8cqi, 8px);
 }
 
 .today-configuration-preview__person,
 .today-configuration-preview__check {
-  width: clamp(14px, 2.6vw, 25px);
-  height: clamp(14px, 2.6vw, 25px);
+  width: clamp(9px, 2.6cqi, 25px);
+  height: clamp(9px, 2.6cqi, 25px);
   flex: 0 0 auto;
   border-radius: 50%;
 }
@@ -268,7 +278,7 @@
   display: grid;
   place-items: center;
   color: var(--eucalyptus);
-  font-size: clamp(6px, 1.1vw, 10px);
+  font-size: clamp(6px, 1.1cqi, 10px);
   font-style: normal;
   font-weight: 760;
 }
@@ -281,17 +291,18 @@
   color: var(--muted);
   display: grid;
   place-items: center start;
-  font-size: clamp(7px, 1.25vw, 12px);
+  font-size: clamp(5px, 1.25cqi, 12px);
 }
 
 .today-configuration-preview__summary {
+  height: 15cqi;
   min-height: 0;
-  margin-top: clamp(5px, 1vw, 10px);
-  padding-top: clamp(5px, 1vw, 10px);
+  margin-top: clamp(5px, 1cqi, 10px);
+  padding-top: clamp(5px, 1cqi, 10px);
   border-top: 1px solid var(--hairline);
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  gap: clamp(5px, 1vw, 10px);
+  gap: clamp(5px, 1cqi, 10px);
 }
 
 .today-configuration-preview__summary--without-photo {
@@ -302,7 +313,7 @@
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(var(--preview-band-count, 1), minmax(0, 1fr));
-  gap: clamp(3px, 0.65vw, 7px);
+  gap: clamp(3px, 0.65cqi, 7px);
 }
 
 .today-configuration-preview__bands--count-2 {
@@ -314,25 +325,24 @@
 }
 
 .today-configuration-preview__bands--count-4 {
-  --preview-band-count: 2;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  --preview-band-count: 4;
 }
 
 .today-configuration-preview__band {
   min-width: 0;
-  min-height: clamp(29px, 5.8vw, 57px);
-  padding: clamp(4px, 0.8vw, 8px);
+  min-height: clamp(18px, 5.8cqi, 57px);
+  padding: clamp(2px, 0.8cqi, 8px);
   border: 1px solid var(--hairline);
-  border-radius: clamp(5px, 1vw, 10px);
+  border-radius: clamp(5px, 1cqi, 10px);
   background: var(--surface);
   display: flex;
   align-items: center;
-  gap: clamp(3px, 0.6vw, 6px);
+  gap: clamp(3px, 0.6cqi, 6px);
 }
 
 .today-configuration-preview__band > svg {
-  width: clamp(10px, 1.9vw, 19px);
-  height: clamp(10px, 1.9vw, 19px);
+  width: clamp(10px, 1.9cqi, 19px);
+  height: clamp(10px, 1.9cqi, 19px);
   flex: 0 0 auto;
   color: var(--eucalyptus);
 }
@@ -346,7 +356,7 @@
 
 .today-configuration-preview__band strong {
   color: var(--muted);
-  font-size: clamp(5px, 0.92vw, 9px);
+  font-size: clamp(4px, 0.92cqi, 9px);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -355,7 +365,7 @@
   margin-top: 1px;
   overflow: hidden;
   color: var(--ink);
-  font-size: clamp(6px, 1.12vw, 11px);
+  font-size: clamp(4px, 1.12cqi, 11px);
   font-weight: 680;
   line-height: 1.05;
   text-overflow: ellipsis;
@@ -365,12 +375,53 @@
 .today-configuration-preview__photo {
   width: 100%;
   min-height: 0;
-  border-radius: clamp(6px, 1.1vw, 11px);
-  object-fit: cover;
+  border-radius: clamp(6px, 1.1cqi, 11px);
+  object-fit: contain;
 }
 
 .today-configuration-preview--television .today-configuration-preview__photo {
   height: 100%;
+}
+
+.today-configuration-preview--television .today-configuration-preview__canvas--photo-portrait {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 28%);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(5px, 1cqi, 10px);
+}
+
+.today-configuration-preview--television
+  .today-configuration-preview__canvas--photo-portrait
+  .today-configuration-preview__header {
+  grid-column: 1 / -1;
+}
+
+.today-configuration-preview--television
+  .today-configuration-preview__canvas--photo-portrait
+  .today-configuration-preview__core {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: 0;
+}
+
+.today-configuration-preview--television
+  .today-configuration-preview__canvas--photo-portrait
+  .today-configuration-preview__summary {
+  display: contents;
+}
+
+.today-configuration-preview--television
+  .today-configuration-preview__canvas--photo-portrait
+  .today-configuration-preview__bands {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.today-configuration-preview--television
+  .today-configuration-preview__canvas--photo-portrait
+  .today-configuration-preview__photo {
+  grid-column: 2;
+  grid-row: 2 / 4;
 }
 
 .today-configuration-preview__photo--empty {
@@ -380,52 +431,45 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  font-size: clamp(6px, 1.1vw, 11px);
+  font-size: clamp(6px, 1.1cqi, 11px);
 }
 
 .today-configuration-preview__photo--empty svg {
-  width: clamp(10px, 1.8vw, 18px);
-  height: clamp(10px, 1.8vw, 18px);
+  width: clamp(10px, 1.8cqi, 18px);
+  height: clamp(10px, 1.8cqi, 18px);
 }
 
 .today-configuration-preview--phone .today-configuration-preview__canvas {
+  height: auto;
+  min-height: 100%;
   padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .today-configuration-preview--phone .today-configuration-preview__header {
-  min-height: 42px;
+  min-height: 56px;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'brand weather'
-    'date date';
-  gap: 2px 7px;
+  align-items: center;
+  gap: 7px;
 }
 
-.today-configuration-preview--phone .today-configuration-preview__brand {
-  grid-area: brand;
-  font-size: 12px;
-}
-
-.today-configuration-preview--phone .today-configuration-preview__date {
-  grid-area: date;
-  justify-content: space-between;
-}
-
-.today-configuration-preview--phone .today-configuration-preview__date strong {
-  font-size: 17px;
-}
-
-.today-configuration-preview--phone .today-configuration-preview__date span,
-.today-configuration-preview--phone .today-configuration-preview__weather span {
+.today-configuration-preview--phone .today-configuration-preview__title small {
   font-size: 9px;
 }
 
+.today-configuration-preview--phone .today-configuration-preview__title strong {
+  font-size: 24px;
+}
+
 .today-configuration-preview--phone .today-configuration-preview__weather {
-  grid-area: weather;
+  align-self: center;
 }
 
 .today-configuration-preview--phone .today-configuration-preview__core {
   margin-top: 8px;
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -462,6 +506,7 @@
 }
 
 .today-configuration-preview--phone .today-configuration-preview__summary {
+  height: auto;
   margin-top: 9px;
   padding-top: 9px;
   display: flex;
@@ -495,8 +540,37 @@
 }
 
 .today-configuration-preview--phone .today-configuration-preview__photo {
-  min-height: 78px;
+  min-height: 118px;
   flex: 1 1 auto;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__phone-topbar,
+.today-configuration-preview--phone .today-configuration-preview__phone-tabs {
+  padding-inline: 11px;
+  color: var(--muted);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__phone-topbar {
+  border-bottom: 1px solid var(--hairline);
+  font-size: 9px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__phone-topbar strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.today-configuration-preview--phone .today-configuration-preview__phone-tabs {
+  border-top: 1px solid var(--hairline);
+}
+
+.today-configuration-preview--phone .today-configuration-preview__phone-tabs svg {
+  width: 17px;
+  height: 17px;
 }
 
 @media (max-width: 420px) {

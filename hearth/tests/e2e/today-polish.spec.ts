@@ -60,7 +60,7 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
     animations: 'disabled',
   });
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/calendar\/agenda\?start=2026-08-03$/);
+  await expect(page).toHaveURL(/\/calendar\/agenda$/);
   await expect(page.getByRole('heading', { name: 'Agenda', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(eventOverflow).toBeFocused();
@@ -137,6 +137,71 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   expect(consoleProblems).toEqual([]);
 });
 
+for (const viewport of [
+  { name: 'tv-1080', width: 1920, height: 1080 },
+  { name: 'tv-1366', width: 1366, height: 768 },
+] as const) {
+  test(`@visual Today reflows a portrait photo without dashboard scrolling at ${viewport.name}`, async ({
+    page,
+  }) => {
+    await usePortraitPhoto(page);
+    await page.setViewportSize(viewport);
+    await page.goto('/today');
+
+    const dashboard = page.locator('.today-dashboard');
+    await expect(dashboard).toHaveAttribute('data-photo-orientation', 'portrait');
+    await expect(
+      page.getByAltText('Ezra and Maya water herbs in the family garden.'),
+    ).toBeVisible();
+    expect(await hasTelevisionOverflow(page)).toBe(false);
+    expect(
+      await page.locator('.chore-row').evaluateAll((rows) =>
+        rows.every((row) => {
+          const copy = row.querySelector('.chore-row__copy');
+          const action = row.querySelector('.chore-row__action');
+          if (copy === null || action === null) return false;
+          return copy.getBoundingClientRect().right <= action.getBoundingClientRect().left;
+        }),
+      ),
+    ).toBe(true);
+
+    const columnsBox = await page.locator('.today-columns').boundingBox();
+    const photoBox = await page.locator('.today-photo-action').boundingBox();
+    const summariesBox = await page.locator('.summary-details').boundingBox();
+    expect(columnsBox).not.toBeNull();
+    expect(photoBox).not.toBeNull();
+    expect(summariesBox).not.toBeNull();
+    expect(photoBox!.x).toBeGreaterThan(columnsBox!.x + columnsBox!.width);
+    expect(photoBox!.height).toBeGreaterThan(summariesBox!.height * 2);
+
+    await captureEvidence(page, {
+      path: resolve(evidence, `today-adaptive-portrait-${viewport.name}.png`),
+      animations: 'disabled',
+    });
+  });
+}
+
+test('@visual Today expands enabled summaries when the photo is disabled', async ({ page }) => {
+  await useNoPhoto(page);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/today');
+
+  await expect(page.locator('.today-dashboard')).toHaveAttribute('data-photo-orientation', 'none');
+  await expect(page.locator('.today-photo')).toHaveCount(0);
+  expect(await hasTelevisionOverflow(page)).toBe(false);
+
+  const dashboardBox = await page.locator('.today-dashboard').boundingBox();
+  const summariesBox = await page.locator('.summary-details').boundingBox();
+  expect(dashboardBox).not.toBeNull();
+  expect(summariesBox).not.toBeNull();
+  expect(summariesBox!.width).toBeGreaterThan(dashboardBox!.width * 0.95);
+
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-adaptive-no-photo-tv-1080.png'),
+    animations: 'disabled',
+  });
+});
+
 async function addOverflowPlans(page: Page): Promise<void> {
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
     const response = await route.fetch();
@@ -170,5 +235,45 @@ async function addOverflowPlans(page: Page): Promise<void> {
       { ...firstChore, id: 'occurrence_school_shoes', title: 'Put school shoes away' },
     );
     await route.fulfill({ response, json: payload });
+  });
+}
+
+async function usePortraitPhoto(page: Page): Promise<void> {
+  await page.route('**/api/v1/households/*/today?date=*', async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      photo: { alt: string; orientation: string; url: string } | null;
+    };
+    payload.photo = {
+      alt: 'Ezra and Maya water herbs in the family garden.',
+      orientation: 'portrait',
+      url: '/demo/photos/garden-morning.webp',
+    };
+    await route.fulfill({ response, json: payload });
+  });
+}
+
+async function useNoPhoto(page: Page): Promise<void> {
+  await page.route('**/api/v1/households/*/today?date=*', async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      photo: unknown;
+      sections: { photo: boolean };
+    };
+    payload.photo = null;
+    payload.sections.photo = false;
+    await route.fulfill({ response, json: payload });
+  });
+}
+
+async function hasTelevisionOverflow(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const appContent = document.querySelector('.app-content');
+    const todayScreen = document.querySelector('.today-screen');
+    return (
+      document.documentElement.scrollHeight > window.innerHeight + 1 ||
+      (appContent !== null && appContent.scrollHeight > appContent.clientHeight + 1) ||
+      (todayScreen !== null && todayScreen.scrollHeight > todayScreen.clientHeight + 1)
+    );
   });
 }

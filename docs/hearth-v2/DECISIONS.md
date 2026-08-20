@@ -873,3 +873,78 @@ Official platform references:
   weakening secret boundaries. A missing key or ESV outage cannot take down Today. Migration
   `0024_daily_bible_verse.sql` adds only one visibility flag and the bounded cache; live token
   installation remains an owner-approved deployment action.
+
+## D-056 — Synology pulls verified immutable images instead of compiling releases
+
+- Date: 2026-08-21
+- Status: accepted
+- Context: The commissioned DS920+ has an Intel Celeron J4125 and approximately 4 GB of memory.
+  Production updates were rebuilding the complete pnpm workspace and native `better-sqlite3`
+  binding on that appliance even though GitHub Actions already built the same `linux/amd64`
+  targets. This made routine updates slow and extended service downtime without adding assurance.
+- Choice: Keep the multi-stage Dockerfile as the reproducible image definition, but publish the
+  server and web targets to private GitHub Container Registry packages only after the complete
+  web/server, Android and Synology-image verification jobs pass. Tag each package solely with the
+  full immutable Git commit. Production Compose contains image references and no `build:` section;
+  Synology authenticates once with a read-only `read:packages` credential, pulls both images while
+  the existing containers remain available, then recreates the project and checks readiness. Keep
+  `compose.build.yaml` as an explicit operator-only fallback for registry outages or recovery.
+- Consequence: Native compilation and dependency installation happen on the GitHub-hosted amd64
+  builder, not the NAS. Image publication is not live deployment: the workflow cannot reach the
+  private Synology and receives no household credential. The NAS registry credential remains an
+  access-restricted operational secret outside source, Compose and logs. Previous images are not
+  automatically pruned, while database rollback remains restore-based when a migration is not
+  backward compatible.
+
+## D-057 — Agenda is a rolling today-plus-three-days surface
+
+- Date: 2026-08-21
+- Status: accepted
+- Context: The dedicated Agenda was presenting the complete Monday–Sunday week even when today was
+  late in that week. That made past dates prominent, duplicated Week navigation and pushed the most
+  immediately useful plans below the first television viewport.
+- Choice: Anchor Agenda to the configured household-local current date and render exactly today plus
+  the next three calendar dates. Ignore legacy `start` query parameters on this route and remove its
+  earlier/current/later controls. Week and Month remain the explicit surfaces for navigating beyond
+  the immediate four-day horizon.
+- Consequence: Agenda stays compact and useful across a week boundary without changing calendar
+  provider contracts or stored data. The four columns fill a television row, phone keeps the same
+  chronological groups, and event detail/Back focus behavior remains unchanged.
+
+## D-058 — Today composition is derived from content and photo orientation
+
+- Date: 2026-08-21
+- Status: accepted
+- Context: A fixed lower row reserved excessive height for empty or short summary modules and placed
+  portrait and landscape photos in the same geometry. Real household combinations therefore left
+  dead space, pushed useful content below the television viewport and made Today behave like a web
+  page that needed scrolling.
+- Choice: Make television Today a deterministic single-viewport composition. Add normalized photo
+  orientation to the browser-safe `TodaySummary` photo contract. Portrait photos occupy a substantial
+  right-side rail spanning the dashboard; landscape and square photos use a shorter wide lower panel;
+  no-photo layouts return the full width to one-to-four compact summary tiles. Keep the three-row
+  event/chore cap and existing focus graph. Do not expose layout controls or carry the non-scrolling
+  constraint into the phone companion.
+- Consequence: Today responds to real enabled content without becoming a layout editor, keeps every
+  module visible on supported television viewports and preserves undistorted photography. New photo
+  producers must supply normalized orientation, while old private state needs no database migration
+  because orientation is derived from stored image dimensions.
+
+## D-059 — Photos collage geometry follows every visible asset's orientation
+
+- Date: 2026-08-21
+- Status: accepted
+- Context: The Photos gallery selected a template from only the featured image and forced every
+  support photo into the remaining rectangles. Real portrait photos were consequently displayed in
+  landscape-shaped cells and lost important content to `cover` cropping, while portrait-heavy sets
+  produced narrow strips merely to preserve a fixed five-photo count.
+- Choice: Select and place visible occupants using each photo's normalized orientation. Mixed
+  television galleries use no more than two full-height portrait rails with `contain` fitting and
+  fill the remaining area with wide landscape/square bands. Show fewer than five occupants when the
+  available mix cannot form honest regions; an all-portrait gallery uses four equal rails. Phone
+  portrait uses orientation-aware dense spans, while phone landscape keeps three substantial
+  occupants. Preserve automatic rotation, selection, ambient mode and geometry-derived D-pad links.
+- Consequence: Portrait files remain legible without being cut into landscape frames, landscape
+  files do not become ribbons and each supported television composition stays within one viewport.
+  The visible count can vary with content; rotation remains responsible for bringing every approved
+  photo through over time rather than squeezing every file into each arrangement.

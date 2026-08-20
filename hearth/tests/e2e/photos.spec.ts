@@ -31,20 +31,19 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   const breakfast = page.locator('[data-focus-id="photos-thumb-photo_family_breakfast"]');
   await expect(breakfast).toBeFocused();
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowLeft');
   const portrait = page.locator('[data-focus-id="photos-thumb-photo_garden_morning"]');
   await expect(portrait).toBeFocused();
   const portraitBox = await portrait.boundingBox();
   expect(portraitBox?.width).toBeGreaterThanOrEqual(250);
   expect(portraitBox?.height).toBeGreaterThanOrEqual(250);
-  await expect(portrait.locator('img')).toHaveCSS('object-fit', 'cover');
+  await expect(portrait.locator('img')).toHaveCSS('object-fit', 'contain');
   await page.keyboard.press('Enter');
   const portraitFeature = page.locator('.photos-hero--portrait');
   await expect(portraitFeature).toBeVisible();
   const portraitFeatureBox = await portraitFeature.boundingBox();
   expect(portraitFeatureBox?.height).toBeGreaterThan((portraitFeatureBox?.width ?? 0) * 1.4);
-  await expect(page.locator('.photos-hero__image')).toHaveCSS('object-fit', 'cover');
+  await expect(page.locator('.photos-hero__image')).toHaveCSS('object-fit', 'contain');
   await expect(page.locator('.photos-hero figcaption')).toHaveCount(0);
   await expect(page.locator('.photos-hero')).not.toContainText(
     'Ezra and Maya water herbs in the family garden.',
@@ -85,7 +84,10 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await page.goto('/photos');
   await expect(page).toHaveTitle(/Hearth/);
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
-  await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
+  await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
+    'aria-label',
+    /Photos change automatically every 45 seconds\./,
+  );
   await expect(page.getByRole('button', { name: 'Pause automatic photo rotation' })).toBeVisible();
   await expect(page.locator('.photos-rotation-progress')).toBeVisible();
 
@@ -96,18 +98,25 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   );
   expect(new Set(photoIds).size).toBe(5);
 
-  const landscapeFeature = page.locator('.photo-collage__tile--feature');
   const portraitSupport = page.locator('[data-photo-id="photo_garden_morning"]');
-  const landscapeSupport = page.locator('.photo-collage__tile--support-1');
-  const [featureBox, portraitBox, landscapeBox] = await Promise.all([
-    landscapeFeature.boundingBox(),
-    portraitSupport.boundingBox(),
-    landscapeSupport.boundingBox(),
-  ]);
-  expect(featureBox?.width).toBeGreaterThan((landscapeBox?.width ?? 0) * 1.8);
-  expect(featureBox?.height).toBeGreaterThan((landscapeBox?.height ?? 0) * 1.8);
+  const portraitBox = await portraitSupport.boundingBox();
   expect(portraitBox?.width).toBeGreaterThanOrEqual(250);
-  expect(portraitBox?.height).toBeGreaterThanOrEqual(250);
+  expect(portraitBox?.height).toBeGreaterThan((portraitBox?.width ?? 0) * 1.5);
+  await expect(portraitSupport.locator('img')).toHaveCSS('object-fit', 'contain');
+
+  const landscapeBoxes = await page
+    .locator('[data-photo-orientation="landscape"]')
+    .evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { height: rect.height, width: rect.width };
+      }),
+    );
+  expect(landscapeBoxes.every((box) => box.width > box.height * 1.25)).toBe(true);
+  await captureEvidence(page, {
+    animations: 'disabled',
+    path: resolve(evidence, 'photos-adaptive-mixed-tv-1080.png'),
+  });
 
   for (const photoId of photoIds) {
     await page.locator(`[data-photo-id="${photoId}"]`).click();
@@ -180,13 +189,16 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   );
   await expect(page.locator('.photos-collage--feature-end')).toBeVisible();
   const mirroredFeatureBox = await page.locator('.photos-hero').boundingBox();
-  expect(mirroredFeatureBox?.x).toBeGreaterThan(900);
+  expect((mirroredFeatureBox?.x ?? 0) + (mirroredFeatureBox?.width ?? 0) / 2).toBeGreaterThan(960);
   await captureEvidence(page, {
     animations: 'disabled',
     path: resolve(evidence, 'photos-auto-mirrored-tv-1080.png'),
   });
   await page.getByRole('button', { name: 'Pause automatic photo rotation' }).click();
-  await expect(page.getByText('Automatic rotation paused')).toBeVisible();
+  await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
+    'aria-label',
+    /Automatic photo rotation paused\./,
+  );
   await page.locator('.photos-hero').focus();
   const leftTargetFocusId = await page.locator('.photos-hero').getAttribute('data-focus-left');
   expect(leftTargetFocusId).not.toBeNull();
@@ -196,7 +208,10 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.photos-hero')).toBeFocused();
   await page.getByRole('button', { name: 'Resume automatic photo rotation' }).click();
-  await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
+  await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
+    'aria-label',
+    /Photos change automatically every 45 seconds\./,
+  );
   await page.locator('.photos-hero').focus();
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',
@@ -209,12 +224,18 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     path: resolve(evidence, 'photos-auto-portrait-tv-1080.png'),
   });
   await page.getByRole('button', { name: 'Pause automatic photo rotation' }).click();
-  await expect(page.getByText('Automatic rotation paused')).toBeVisible();
+  await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
+    'aria-label',
+    /Automatic photo rotation paused\./,
+  );
   const pausedPhotoId = await page.locator('.photos-hero').getAttribute('data-photo-id');
   await page.waitForTimeout(900);
   await expect(page.locator('.photos-hero')).toHaveAttribute('data-photo-id', pausedPhotoId!);
   await page.getByRole('button', { name: 'Resume automatic photo rotation' }).click();
-  await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
+  await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
+    'aria-label',
+    /Photos change automatically every 45 seconds\./,
+  );
   await expect(page.locator('.photos-rotation-progress')).toBeVisible();
   await expect(page.locator('.photos-hero')).not.toHaveAttribute('data-photo-id', pausedPhotoId!, {
     timeout: 2_000,
@@ -233,6 +254,84 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   expect(consoleProblems).toEqual([]);
 });
 
+test('a portrait-rich gallery uses tall rails and wide bands without cropping portrait files', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/households/*/photos', async (route) => {
+    const response = await route.fetch();
+    const data = (await response.json()) as {
+      featuredPhotoId: string | null;
+      photos: Array<{
+        alt: string;
+        capturedAt: string | null;
+        displayUrl: string;
+        favourite: boolean;
+        height: number;
+        id: string;
+        orientation: 'landscape' | 'portrait' | 'square';
+        thumbnailUrl: string;
+        width: number;
+      }>;
+    };
+    const portrait = data.photos.find((photo) => photo.orientation === 'portrait');
+    const landscapes = data.photos.filter((photo) => photo.orientation === 'landscape');
+    if (portrait === undefined || landscapes.length < 2) {
+      await route.fulfill({ response });
+      return;
+    }
+    data.photos = [
+      { ...portrait, id: 'portrait-a', alt: 'Portrait A' },
+      { ...portrait, id: 'portrait-b', alt: 'Portrait B' },
+      { ...portrait, id: 'portrait-c', alt: 'Portrait C' },
+      { ...landscapes[0]!, id: 'landscape-a', alt: 'Landscape A' },
+      { ...landscapes[1]!, id: 'landscape-b', alt: 'Landscape B' },
+    ];
+    data.featuredPhotoId = 'portrait-a';
+    await route.fulfill({ response, json: data });
+  });
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/photos');
+  const portraitTiles = page.locator('[data-photo-orientation="portrait"]');
+  const landscapeTiles = page.locator('[data-photo-orientation="landscape"]');
+  await expect(portraitTiles).toHaveCount(2);
+  await expect(landscapeTiles).toHaveCount(2);
+
+  const portraitBoxes = await portraitTiles.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    }),
+  );
+  const wideBoxes = await landscapeTiles.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    }),
+  );
+  expect(portraitBoxes.every((box) => box.height > box.width * 1.5)).toBe(true);
+  expect(wideBoxes.every((box) => box.width > box.height * 1.6)).toBe(true);
+  await expect(portraitTiles.first().locator('img')).toHaveCSS('object-fit', 'contain');
+
+  const overflow = await page.locator('.photos-collage').evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    clientWidth: element.clientWidth,
+    scrollHeight: element.scrollHeight,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+  expect(overflow.scrollHeight).toBeLessThanOrEqual(overflow.clientHeight + 2);
+  const pageOverflow = await page.evaluate(() => ({
+    clientHeight: document.documentElement.clientHeight,
+    scrollHeight: document.documentElement.scrollHeight,
+  }));
+  expect(pageOverflow.scrollHeight).toBeLessThanOrEqual(pageOverflow.clientHeight);
+  await captureEvidence(page, {
+    animations: 'disabled',
+    path: resolve(evidence, 'photos-adaptive-portrait-rich-tv-1080.png'),
+  });
+});
+
 test('reduced motion keeps the Photos collage still', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => {
@@ -246,7 +345,7 @@ test('reduced motion keeps the Photos collage still', async ({ page }) => {
   });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
-  await expect(page.getByText('Automatic · every 45 seconds')).toHaveCount(0);
+  await expect(page.locator('.photos-rotation-note')).toHaveCount(0);
   await expect(page.locator('.photos-rotation-progress')).toHaveCount(0);
   await expect(page.locator('.photos-hero')).toHaveAttribute(
     'data-photo-id',

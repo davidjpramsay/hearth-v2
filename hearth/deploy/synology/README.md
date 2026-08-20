@@ -27,6 +27,12 @@ docker compose \
   -f deploy/synology/compose.yaml \
   config
 
+docker compose \
+  --env-file deploy/synology/.env.example \
+  -f deploy/synology/compose.yaml \
+  -f deploy/synology/compose.build.yaml \
+  config
+
 docker build \
   --target server \
   -f deploy/synology/Dockerfile \
@@ -46,10 +52,29 @@ pinned build image so it does not depend on a prebuilt binary from a different L
 
 ## Deployment inputs
 
+The generic `.env.example` below describes a fresh or isolated deployment. It is not the live
+household path. The commissioned private instance keeps its release source under
+`/volume1/docker/hearth-v2` but keeps household state and secrets in the separate protected share
+`/volume1/hearth-v2-private`:
+
+```text
+/volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/
+  docker-compose.yml
+  .env
+/volume1/hearth-v2-private/
+  data/
+  secrets/
+```
+
+Its `HEARTH_SECRETS_DIR` is `/volume1/hearth-v2-private/secrets`, mounted inside the server as
+`/run/hearth-secrets`. Do not create provider secrets under the source checkout or under the old
+`/volume1/docker/hearth` deployment.
+
 Before any approved Synology commissioning:
 
 1. Copy `.env.example` to an access-restricted `.env` outside source control.
-2. Replace `HEARTH_VERSION` with the exact tested release or commit identifier.
+2. Set `HEARTH_IMAGE_REGISTRY` to the approved private package namespace and replace
+   `HEARTH_VERSION` with the full 40-character verified Git commit.
 3. Set `HEARTH_UID` and `HEARTH_GID` to a dedicated, non-root Synology service account.
 4. Create the separate v2 data and secret directories described in `OPERATIONS.md`; grant only that
    service account read/write access and never use world-writable permissions.
@@ -64,7 +89,7 @@ Before any approved Synology commissioning:
 
    ```sh
    umask 077
-   openssl rand -base64 32 > /volume1/docker/hearth-v2/secrets/first-use-code
+   openssl rand -base64 32 > "${HEARTH_SECRETS_DIR}/first-use-code"
    ```
 
    Read that code locally during first setup; do not place it in Compose, Git, chat or a URL. Hearth
@@ -76,11 +101,12 @@ Before any approved Synology commissioning:
 10. Family photos require no shared-folder setup. Authenticated adults use **More → Admin → Photos
     → Choose photos**; Hearth writes normalized managed masters under `/data/photo-uploads` and
     display/thumbnail WebPs under `/data/photo-derivatives`, both inside `HEARTH_DATA_DIR`. To bulk
-    import an existing collection only, approve one exact Synology folder, uncomment the
-    `/photos-source:ro` volume, set `HEARTH_PHOTO_HOST_DIR` to that host folder and set
-    `HEARTH_PHOTO_SOURCE_DIR=/photos-source`. The optional importer ignores symlinks and returns
-    only opaque asset URLs. Never mount the Synology Photos library root. Leaving the source blank
-    disables only optional folder import, not managed phone uploads.
+    import an existing collection only, approve one exact Synology folder, set
+    `HEARTH_PHOTO_HOST_DIR` to that host folder and set `HEARTH_PHOTO_SOURCE_DIR=/photos-source`.
+    Production Compose always keeps this one narrow host path mounted read-only; set it to a
+    dedicated empty folder when import is unused. The optional importer ignores symlinks and
+    returns only opaque asset URLs. Never mount the Synology Photos library root. Leaving the source
+    blank disables only optional folder import, not managed phone uploads.
 
 11. Leave Home Assistant unconfigured until its current backup and rollback path are verified. An
     adult can then use **More → Connections → Home Assistant** to test the private root address and
@@ -90,7 +116,8 @@ Before any approved Synology commissioning:
 
 12. Daily Bible verse is optional. After creating or rotating an ESV API token, put only the token
     in `${HEARTH_SECRETS_DIR}/esv-api-key`, set mode `0600` and ownership to the Hearth service
-    UID/GID, then enable it in **Today & notices**. Never add the token to this Compose file, `.env`,
+    UID/GID, then restart the Hearth server and enable it in **Today & notices**. The current server
+    reads this optional secret at process startup. Never add the token to this Compose file, `.env`,
     Git, an image layer, logs or screenshots.
 
 13. Keep `HEARTH_BACKUP_RETENTION=14` and `HEARTH_BACKUP_INTERVAL_HOURS=24` initially. The server
@@ -126,24 +153,46 @@ private database, secrets or approved photo mount into a demo or local developme
 
 ## Updating the commissioned private instance
 
-Private household state is not stored in an image or source checkout. Rebuilding `hearth-v2`
-preserves `/volume1/hearth-v2-private`, including managed photo files, and any optional read-only
+Private household state is not stored in an image or source checkout. Recreating `hearth-v2`
+preserves `/volume1/hearth-v2-private`, including managed photo files, and the narrow read-only
 `/volume1/hearth-photos` import mount.
 
-After a commit has passed the repository verification workflow, run this from the repository root:
+### One-time GHCR authentication
+
+The verified server and web packages are private. Create a separately revocable GitHub Personal
+Access Token (classic) with only `read:packages`. In an interactive NAS administrator SSH session,
+run the command below and enter the GitHub username and token only at its prompts:
 
 ```sh
-hearth/deploy/synology/stage-private-release.sh <full-verified-commit>
+sudo /var/packages/ContainerManager/target/usr/bin/docker login ghcr.io
 ```
 
-The script uses the `hearth-synology` SSH alias by default. If that alias needs a hostname override,
-set `HEARTH_DEPLOY_SSH_HOSTNAME=<private-nas-hostname>` for the command.
+Docker retains that reader under root's access-restricted configuration because private releases
+run Compose through `sudo`. Never place it in `.env`, Compose, Git, a command argument, chat or a
+screenshot. Do not make the packages public. Registry sign-in grants persistent package access and
+therefore requires explicit owner confirmation when performed.
 
-The script exports that exact Git commit, transfers it through a release-specific staging directory,
-updates only the source tree, preserves the ignored private project configuration and records the
-12-character image version. It cannot start or rebuild containers. In DSM Container Manager, select
-the `hearth-v2` project and choose **Action → Build**. Wait for both containers to become healthy,
-then verify:
+### Normal pull-only update
+
+After the exact full commit has passed all hosted checks and the publish job has produced both
+`linux/amd64` images, run this from the repository root:
+
+```sh
+hearth/deploy/synology/activate-private-release.sh <full-verified-commit>
+```
+
+The scripts use the `hearth-synology` SSH alias by default. If that alias needs a hostname override,
+set `HEARTH_DEPLOY_SSH_HOSTNAME=<private-nas-hostname>` for the command. Synology may ask for the
+administrator password interactively; Hearth never reads or stores it.
+
+The activation first stages the exact source revision and copies the canonical pull-only production
+Compose into the preserved private project. The staging guard also refuses a release whose Compose
+file omits the server-side ESV secret path. It then pulls both images while the old containers are
+still serving, recreates the project with the requested full commit and waits for the loopback
+readiness route. Only a ready release becomes the recorded active version; the former active version
+is then retained as the rollback image version. An image-authentication or download failure occurs
+before replacement, so it does not deliberately stop the working release. Confirm the private
+routes too:
 
 ```sh
 curl --fail --silent --show-error \
@@ -154,6 +203,13 @@ curl --fail --silent --show-error \
 
 Perform this from the home LAN or connected Tailscale because the private origin denies other
 networks. Do not deploy an uncommitted working tree or automatically follow an unverified branch.
+Do not choose Container Manager **Build** for an ordinary update; production Compose deliberately
+contains no build context.
+
+`stage-private-release.sh <full-verified-commit>` remains available when an operator intentionally
+wants to stage without restarting. If the private registry is unavailable, a deliberately slow
+source recovery build remains possible by combining `compose.yaml` and `compose.build.yaml`. This
+is an explicit fallback only and must not occur automatically on the DS920+.
 
 ## Backup verification and clean-location restore
 
@@ -161,19 +217,23 @@ The Admin **System Health** page reports only safe database, backup and version 
 request a new online copy there. It never exposes a filename or downloadable household database.
 
 From a restricted Synology administrator shell, choose one retained file and verify it inside the
-server image:
+server image. On the commissioned private instance, use the preserved private project paths:
 
 ```sh
-docker compose --env-file /volume1/docker/hearth-v2/env/hearth.env \
-  -f /volume1/docker/hearth-v2/compose.yaml exec server \
+docker compose \
+  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
+  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
+  exec server \
   node dist/recovery-cli.js verify /data/backups/<backup-file>.sqlite
 ```
 
 For the required drill, restore to a new location only:
 
 ```sh
-docker compose --env-file /volume1/docker/hearth-v2/env/hearth.env \
-  -f /volume1/docker/hearth-v2/compose.yaml exec server \
+docker compose \
+  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
+  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
+  exec server \
   node dist/recovery-cli.js restore /data/backups/<backup-file>.sqlite \
   /data/restore-drill/hearth.sqlite
 ```
@@ -185,14 +245,18 @@ preservation of the current file and explicit approval; it is deliberately not a
 
 ## Start and inspect
 
-Only after explicit approval to change the live Synology:
+Only after explicit approval to change the live Synology. On the commissioned private instance:
 
 ```sh
-docker compose --env-file /volume1/docker/hearth-v2/env/hearth.env \
-  -f /volume1/docker/hearth-v2/compose.yaml up -d
+docker compose \
+  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
+  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
+  up -d
 
-docker compose --env-file /volume1/docker/hearth-v2/env/hearth.env \
-  -f /volume1/docker/hearth-v2/compose.yaml ps
+docker compose \
+  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
+  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
+  ps
 ```
 
 Expected checks:

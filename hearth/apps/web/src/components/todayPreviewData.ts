@@ -14,6 +14,7 @@ interface PreviewRow {
 }
 
 export interface TodayPreviewData {
+  eyebrow: string;
   displayTime: string;
   displayDate: string;
   weather: { temperature: string; condition: string } | null;
@@ -32,6 +33,7 @@ export function createTodayPreviewData(
 ): TodayPreviewData {
   if (today === undefined) {
     return {
+      eyebrow: 'Household',
       displayTime: '—:—',
       displayDate: 'Today',
       weather: null,
@@ -46,6 +48,7 @@ export function createTodayPreviewData(
   }
 
   return {
+    eyebrow: today.household.mode,
     displayTime: today.displayTime,
     displayDate: today.displayDate,
     weather:
@@ -55,14 +58,14 @@ export function createTodayPreviewData(
             temperature: `${today.weather.temperatureCelsius}°`,
             condition: today.weather.condition,
           },
-    events: today.events.slice(0, 2).map((event) => ({
+    events: today.events.slice(0, 3).map((event) => ({
       id: event.id,
       title: event.title,
       time: formatEventTime(event, today.household.timezone),
       color: event.color,
       person: previewPerson(event.owner?.displayName ?? 'Family', event.owner?.avatarUrl ?? ''),
     })),
-    chores: today.chores.slice(0, 2).map((chore) => ({
+    chores: today.chores.slice(0, 3).map((chore) => ({
       id: chore.id,
       title: chore.title,
       person: previewPerson(chore.assignee.displayName, chore.assignee.avatarUrl),

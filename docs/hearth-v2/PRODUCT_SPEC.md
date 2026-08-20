@@ -215,7 +215,8 @@ The first household release includes:
 
 - Household and member setup
 - Seeded demo mode plus migration to real household data
-- Today, Week, Month and Agenda calendar views
+- Today, Week, Month and Agenda calendar views; Agenda is a rolling window containing today and the
+  next three calendar days only.
 - Read-only calendar connection plus editable person/avatar/colour assignments
 - Chores/routines, weekly pocket-money progress and payment history
 - Lists

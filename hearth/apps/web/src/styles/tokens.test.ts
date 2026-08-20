@@ -9,6 +9,8 @@ const runtimeTokens = new Set([
   '--event-foreground-dark',
   '--event-top',
   '--member-colour',
+  '--photo-collage-columns',
+  '--photo-collage-rows',
   '--photo-rotation-duration',
 ]);
 

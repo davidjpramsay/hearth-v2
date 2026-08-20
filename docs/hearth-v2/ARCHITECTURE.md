@@ -190,8 +190,9 @@ disbursements per child/week and one reasoned void per payment.
 `TodaySummary`, `WeekSchedule` and `MonthSchedule` expose read-only calendar sources and
 normalized events with opaque `calendarId`, inclusive household-local start/end
 dates, provider version, recurrence-master identity and an explicit exception
-flag. `TodaySummary` may include one nullable same-origin photo derivative and
-family-readable alternative text. Phase 7 now selects that preview through the
+flag. `TodaySummary` may include one nullable same-origin photo derivative, family-readable
+alternative text and the normalized `portrait | landscape | square` orientation required for
+deterministic television composition. Phase 7 now selects that preview through the
 same injected photo-source adapter as the Photos gallery; demo mode returns
 fictional bundled derivatives. Private mode always constructs the managed Synology adapter. Adult
 uploads are normalized to a private master plus bounded WebP display/thumbnail derivatives under
@@ -457,7 +458,10 @@ is deliberately excluded as brittle.
 
 ## Deployment
 
-The intended production deployment is Docker Compose under a new Synology path such as `/volume1/docker/hearth-v2`; do not overwrite the old `/volume1/docker/hearth` path without explicit approval.
+The commissioned production deployment uses Docker Compose source and release files under
+`/volume1/docker/hearth-v2`, with private household data and secrets deliberately kept in the
+separate `/volume1/hearth-v2-private` share. Do not overwrite the old `/volume1/docker/hearth`
+path without explicit approval.
 
 Initial containers:
 
@@ -471,6 +475,12 @@ web container. No router port-forward or public DNS exposure is part of this dep
 
 The server image compiles its SQLite native binding inside the pinned Linux build image for the
 target CPU architecture, rather than trusting a prebuilt binary from a different glibc runtime.
+GitHub Actions performs that `linux/amd64` compilation after the complete verification gate and
+publishes the server/web images to private GitHub Container Registry packages tagged with the full
+Git commit. Production Compose is pull-only; the DS920+ does not install pnpm dependencies or
+compile native code during an ordinary update. A separate Compose override retains source builds
+only as an explicit recovery fallback. Image publication is an outbound package operation and does
+not give GitHub Actions network or credential access to the private household deployment.
 `GET /api/v1/health` reports process liveness; `GET /api/v1/readiness` verifies SQLite and the latest
 migration. The stable private hostname and trusted certificate remain commissioning inputs because
 adult passkeys bind to that origin. See D-031.

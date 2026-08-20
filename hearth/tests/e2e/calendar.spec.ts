@@ -33,8 +33,22 @@ test('Calendar is one television destination with Week, Month and Agenda views',
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/calendar\/agenda$/);
   await expect(page.getByRole('heading', { name: 'Agenda' })).toBeVisible();
-  await expect(page.locator('.agenda-day')).toHaveCount(7);
+  const agendaDays = page.locator('.agenda-day');
+  await expect(agendaDays).toHaveCount(4);
+  await expect(agendaDays.nth(0)).toContainText('Mon3 AugToday');
+  await expect(agendaDays.nth(3)).toContainText('Thu6 Aug');
+  await expect(page.getByRole('button', { name: /Earlier|Later/ })).toHaveCount(0);
   await expect(page.locator('.agenda-event').first()).toBeFocused();
+});
+
+test('Agenda always starts today and ignores old period links', async ({ page }) => {
+  await page.goto('/calendar/agenda?start=2026-07-20');
+  const agendaDays = page.locator('.agenda-day');
+  await expect(agendaDays).toHaveCount(4);
+  await expect(agendaDays.nth(0)).toContainText('Mon3 AugToday');
+  await expect(agendaDays.nth(3)).toContainText('Thu6 Aug');
+  await expect(page.getByText('3–6 August')).toBeVisible();
+  await expect(page.getByText('Fri7 Aug')).toHaveCount(0);
 });
 
 test('Agenda event details open and Back restores the exact event focus', async ({ page }) => {

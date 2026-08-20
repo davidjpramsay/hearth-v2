@@ -71,13 +71,21 @@ reading dialog so a full quotation and ESV attribution do not make Today dense; 
 key produces a calm unavailable band rather than a broken dashboard. Upcoming plans and due chores
 remain the stable core. The remaining summary bands expand to
 use the freed space; a photo-only configuration is centred rather than leaving
-an unexplained empty column.
+an unexplained empty column. Television Today is a single non-scrolling dashboard rather than a
+vertical document. It selects a bounded composition from the enabled band count and the featured
+photo's typed orientation: portrait photos use a substantial right-side rail, landscape and square
+photos use a shorter wide panel, and no-photo layouts return the full lower width to summary bands.
+One to four bands become compact tiles without reserving empty rows. The phone keeps its natural
+single-column scroll because it is an editing and companion surface rather than a wall appliance.
 
 The settings surface includes live TV and Phone previews built from the current household summary.
 They show the real composition produced by the section switches, not a draggable editor or a static
 illustration. Rapid changes are applied optimistically and serialised so one switch cannot restore
 another switch's older value. If overview data cannot load, the preview says so while leaving the
-visibility controls usable.
+visibility controls usable. The TV preview models the Today content viewport after the navigation
+rail has been reserved, rather than squeezing that content into a physical 16:9 display frame. The
+Phone preview models the real phone shell and its scrollable single-column Today document. Both
+previews use the same three-event and three-chore visibility bounds as the rendered Today screen.
 
 The first focus should usually be the most relevant actionable item, not the navigation chrome.
 Today keeps at most three event rows and three chore rows visible on television. A deterministic,
@@ -90,7 +98,9 @@ dialog. Back restores the exact originating row, overflow action or summary band
 
 - **Week:** primary television planning surface; columns/days must remain legible.
 - Week day headings include a compact, read-only forecast icon and temperature when forecast data is available; the phone agenda carries the same daily cue without compressing its event list. The grouped phone presentation replaces the timeline at narrow widths and must never render as a second block beneath the television Week timeline.
-- **Agenda:** chronological list suitable for dense days.
+- **Agenda:** a chronological, rolling four-day view containing today and the next three calendar
+  days. It never includes past dates or days beyond that window and therefore has no earlier/later
+  period controls.
 - **Today:** expanded day with person lanes where useful.
 - **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact event titles on readable calendar-colour tinted backgrounds and a deterministic `+N more` summary when the day is dense; faces and solid source colours appear once in a persistent Calendar key. Week event cards use the same tinted-surface language rather than relying on a narrow edge stripe. The six Month rows grow to use the available television height, and the Earlier/current/Later month bar stays at the bottom with the same geometry as Week navigation. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
 
@@ -98,8 +108,9 @@ Event cards must express start time, title, owner/source and conflicts. Location
 
 The Calendar view switch is available on both television and phone. Week,
 Month and Agenda keep their own stable URLs beneath `/calendar`; the previous
-`/week` and `/month` paths redirect while preserving query parameters. Earlier,
-current-period and later controls must perform real provider-neutral queries.
+`/week` and `/month` paths redirect while preserving query parameters. Week and Month earlier,
+current-period and later controls must perform real provider-neutral queries; Agenda is always
+anchored to the household-local current date.
 Calendar source setup is directly discoverable from the Calendar toolbar and
 the phone More hub.
 
@@ -165,19 +176,21 @@ the phone More hub.
 ### Photos
 
 - Full-screen ambient slideshow.
-- The normal Photos screen is a full-screen five-image collage rather than a large image plus a
-  duplicated thumbnail. The selected or automatically advanced photo owns the feature region so
-  every rotation is visually meaningful. A featured portrait becomes a tall anchor beside a 2×2
-  support grid; a featured landscape becomes a wide anchor beside the same balanced support grid.
-  Portraits used as support photos remain substantial cropped tiles rather than skinny columns, and
-  landscapes never become shallow ribbons. Phone portrait uses a
-  three-row mosaic so every tile remains useful rather than stacking several narrow strips. Phone
+- The normal Photos screen is an orientation-aware full-screen collage rather than a large image
+  plus a duplicated thumbnail. The selected or automatically advanced photo remains present while
+  Hearth chooses the visible occupants and geometry from every photo's stored orientation. Portrait
+  files use substantial full-height rails with `contain` fitting, landscape/square files use wide
+  bands, and mixed sets show fewer than five photos when five honest regions would create a skinny
+  portrait strip or shallow landscape ribbon. Four or more portrait-only files use four equal tall
+  rails. Phone portrait uses a dense orientation-aware mosaic so landscape files span both columns
+  while portraits remain tall, rather than stacking several narrow strips. Phone
   landscape shows three substantial images at a time and lets rotation bring the remaining photos
   through, rather than squeezing the five-image television composition into shallow ribbons.
-- The collage advances its selected photo, feature region and visible occupants every 45 seconds
-  with a restrained image settle while choosing geometry from the featured photo's orientation.
-  A subtle progress line makes the next automatic arrangement legible without adding slideshow
-  chrome. Manual D-pad/touch selection restarts that interval. A clearly labelled Pause/Resume
+- The collage advances its selected photo and visible occupants every 45 seconds with a restrained
+  image settle while recomputing the orientation-aware composition.
+  A compact refresh symbol and progress line make the next automatic arrangement legible without
+  repeating collection/storage or timing copy on the dashboard; the combined state remains
+  available to assistive technology. Manual D-pad/touch selection restarts that interval. A clearly labelled Pause/Resume
   control is reachable by remote and touch, hidden tabs do not consume rotations, and reduced-motion
   mode leaves the collage static.
 - Optional minimal overlay: time, next event and discreet notification badge.
@@ -239,7 +252,7 @@ the phone More hub.
   exposing credentials or raw provider details.
 - Today & notices lets an adult publish, edit and remove concise notices, choose
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
-  and see which eligible notice currently wins. It also owns the four optional
+  and see which eligible notice currently wins. It also owns the five optional
   Today summary switches; it is not a general layout editor.
 - Adult access shows every named adult's enrolled passkeys and recovery readiness. An administrator
   can enrol another passkey on that adult's phone, revoke a lost credential and, after confirming

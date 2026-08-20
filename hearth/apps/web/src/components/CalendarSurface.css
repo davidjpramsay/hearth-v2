@@ -523,35 +523,6 @@
   color: var(--muted);
   font-size: 16px;
 }
-.calendar-period-controls {
-  min-height: 66px;
-  margin-top: 18px;
-  padding: 0 10px;
-  border: 1px solid var(--hairline);
-  border-radius: 16px;
-  background: rgb(255 254 250 / 54%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.calendar-period-controls button {
-  min-height: 52px;
-  padding: 0 14px;
-  border: 0;
-  color: var(--ink);
-  background: transparent;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font: inherit;
-  font-size: 19px;
-  font-weight: 680;
-}
-.calendar-period-controls svg {
-  width: 23px;
-  height: 23px;
-}
-
 .month-empty-note {
   min-height: 48px;
   margin-bottom: 10px;
@@ -575,8 +546,7 @@
 :root[data-theme='dark'] .month-footer-controls,
 :root[data-theme='dark'] .calendar-manage-link,
 :root[data-theme='dark'] .agenda-day,
-:root[data-theme='dark'] .agenda-event,
-:root[data-theme='dark'] .calendar-period-controls {
+:root[data-theme='dark'] .agenda-event {
   background: var(--surface-glass);
 }
 :root[data-theme='dark'] .week-event,
@@ -592,6 +562,14 @@
 }
 
 @media (min-width: 901px) {
+  .agenda-screen {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .agenda-screen .calendar-agenda {
+    flex: 1 1 auto;
+  }
   .month-screen {
     height: 100%;
     display: flex;
@@ -1010,16 +988,6 @@
     margin: 1px 0 0;
     color: var(--muted);
     font-size: 14px;
-  }
-  .calendar-period-controls {
-    min-height: 54px;
-    margin-top: 14px;
-    border-radius: 13px;
-  }
-  .calendar-period-controls button {
-    min-height: 46px;
-    padding: 0 6px;
-    font-size: 15px;
   }
 }
 

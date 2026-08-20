@@ -129,6 +129,9 @@ test('@visual and @a11y Today notice administration and customised television ov
 
   const tvPreview = page.getByRole('img', { name: /TV Today preview/ });
   await expect(tvPreview).toBeVisible();
+  const tvBox = await tvPreview.boundingBox();
+  expect(tvBox).not.toBeNull();
+  expect((tvBox?.width ?? 0) / (tvBox?.height ?? 1)).toBeCloseTo(1666 / 1080, 2);
   await tvPreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await captureEvidence(page, {
     path: resolve(evidence, 'today-preview-tv-phone-portrait.png'),
@@ -137,18 +140,38 @@ test('@visual and @a11y Today notice administration and customised television ov
   await page.getByRole('button', { name: 'Phone' }).click();
   const phonePreview = page.getByRole('img', { name: /phone Today preview/ });
   await expect(phonePreview).toBeVisible();
+  const phoneBox = await phonePreview.boundingBox();
+  expect(phoneBox).not.toBeNull();
+  expect((phoneBox?.width ?? 0) / (phoneBox?.height ?? 1)).toBeCloseTo(390 / 844, 2);
   await phonePreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await expect(page.getByText('School drop-off')).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'today-preview-phone-phone-portrait.png'),
     animations: 'disabled',
   });
+  const phoneCanvas = phonePreview.locator('.today-configuration-preview__canvas');
+  await expect
+    .poll(() => phoneCanvas.evaluate((element) => element.scrollHeight > element.clientHeight))
+    .toBe(true);
+  await phoneCanvas.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect.poll(() => phoneCanvas.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   const previewResults = await new AxeBuilder({ page }).analyze();
   expect(
     previewResults.violations.filter((violation) =>
       ['serious', 'critical'].includes(violation.impact ?? ''),
     ),
   ).toEqual([]);
+
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.getByRole('button', { name: 'TV' }).click();
+  const wideTvPreview = page.getByRole('img', { name: /TV Today preview/ });
+  await wideTvPreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-preview-tv-admin-1366.png'),
+    animations: 'disabled',
+  });
 
   await page.getByRole('switch', { name: /Dinner/ }).click();
   await page.getByRole('switch', { name: /Family photo/ }).click();

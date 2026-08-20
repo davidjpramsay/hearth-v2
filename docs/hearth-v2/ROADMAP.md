@@ -169,6 +169,10 @@ runtime household timezone rather than a browser-side Perth constant. Phone
 More now exposes family modules before grouped setup links, Home precedes Photos
 on television, and duplicate pairing/settings wording has been removed.
 
+Implementation extension (2026-08-21): Agenda is now a rolling household-local four-day surface
+containing today and the next three dates only. It no longer accepts past/future week navigation or
+renders days outside that window; Week and Month retain period navigation for planning further out.
+
 Implementation extension (2026-08-09): **Today & notices** now provides
 phone-first adult creation, editing and removal of expiring Standard/Important
 household notices plus independent Dinner, List summary, Notice, Daily Bible verse and Family
@@ -186,6 +190,12 @@ details; Dinner, List summary and Family photo link to their real modules; and
 Notice opens the full announcement in a Back-safe dialog. Automated remote-only
 TV and phone flows prove focus restoration, responsive composition, accessibility
 and clean console behaviour.
+
+Implementation extension (2026-08-21): Today now treats television height as a hard appliance
+constraint. Its typed photo orientation and enabled summary count select a deterministic portrait,
+wide-photo or no-photo composition; one to four summary tiles reflow without blank reserved bands,
+and the full dashboard remains non-scrolling at 1920×1080 and 1366×768. The same rules drive the
+adult TV preview while the phone keeps its naturally scrolling single-column presentation.
 
 Implementation extension (2026-08-20): Daily Bible verse uses the same bounded Today preference
 contract. It is off by default, reads an ESV token only from a server secret file, caches a small
@@ -379,10 +389,11 @@ new Hearth application phase.
 
 ## Phase 7 — Photos, ambient mode and production operations
 
-Status as of 2026-08-20: in progress. The browser/server Photos slice is
+Status as of 2026-08-21: in progress. The browser/server Photos slice is
 implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
-responsive full-screen collage templates with no skinny leftover strips, calm
+responsive content-dependent collage placement with uncropped portrait rails, wide landscape
+bands, fewer larger tiles when a mixed set cannot truthfully fill five regions, calm
 45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
 slideshow, immediate remote exit, cached-source states and corrupt-image fallback. The private
 server now includes direct adult companion uploads into private managed Synology storage, decoded
@@ -393,13 +404,21 @@ status and persistent favourite/hide/restore curation. Hidden assets
 remain indexed but are excluded from Today, gallery and ambient projections. A production-oriented two-container Synology
 scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
 with same-origin proxying, non-root/read-only processes, readiness gating,
-forward migrations and clean shutdown verified locally. A three-job GitHub Actions gate mirrors
-the complete web/server/browser suite, Android TV shell and production container image builds and
-has passed on the release-checkpoint branch. Live Synology
-commissioning, hostname/TLS and real-device passkey enrolment/recovery validation, live managed
-upload/backup evidence and optional folder-import evidence,
+forward migrations and clean shutdown verified locally. The three verification jobs mirror the
+complete web/server/browser suite, Android TV shell and production container image builds and have
+passed on the release-checkpoint branch. The private Synology instance and hostname/TLS are now
+commissioned; real-device passkey enrolment/recovery validation, live managed upload/backup
+evidence and optional folder-import evidence,
 Home Assistant presence/quiet-hours coordination,
 restore evidence and the household pilot remain open; Phase 7 is not complete.
+
+Deployment extension (2026-08-21): production Compose now uses private, immutable
+GitHub Container Registry images tagged with the full verified commit. A fourth workflow job
+publishes the already verified `linux/amd64` server and web targets only after the other three jobs
+pass, while `compose.build.yaml` retains an explicit source-build fallback. The pull-before-recreate
+activation script and documentation are implemented locally; the first hosted package publication,
+one-time NAS `read:packages` sign-in and live pull-only update remain unverified until the change is
+approved for commit/push and commissioned.
 
 Adult-access extension (2026-08-15): private Admin now manages named adults with multiple passkeys,
 independent credential revocation and a passkey-confirmed, 128-bit one-time recovery code. Recovery

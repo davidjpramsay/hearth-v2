@@ -540,18 +540,21 @@ describe('shared wire schemas', () => {
       TodayPhotoSummarySchema.parse({
         url: '/demo/family-breakfast.webp',
         alt: 'Two fictional household members set the breakfast table together.',
+        orientation: 'landscape',
       }).url,
     ).toBe('/demo/family-breakfast.webp');
     expect(
       TodayPhotoSummarySchema.safeParse({
         url: 'file:///volume1/photos/private/family.jpg',
         alt: 'Private family photograph.',
+        orientation: 'landscape',
       }).success,
     ).toBe(false);
     expect(
       TodayPhotoSummarySchema.safeParse({
         url: '//remote.example/family.jpg',
         alt: 'Remote family photograph.',
+        orientation: 'landscape',
       }).success,
     ).toBe(false);
   });

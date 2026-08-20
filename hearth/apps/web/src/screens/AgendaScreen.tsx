@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
-import { addLocalDays } from '@hearth/core';
-import type { CalendarEvent, DemoScenario } from '@hearth/shared';
+import type { CalendarEvent, DemoScenario, WeekDay } from '@hearth/shared';
 
 import { CalendarAgenda } from '../components/CalendarAgenda';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
-import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useWeekQuery } from '../hooks/useCalendarQueries';
@@ -22,26 +19,22 @@ export function AgendaScreen({
   preparing: boolean;
 }) {
   const runtime = useHearthRuntime();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const requestedStart = searchParams.get('start');
-  const weekStart =
-    requestedStart !== null && /^\d{4}-\d{2}-\d{2}$/.test(requestedStart)
-      ? requestedStart
-      : runtime.weekStart;
-  const query = useWeekQuery(weekStart, !preparing);
+  const query = useWeekQuery(runtime.localDate, !preparing);
   const online = useOnlineStatus(scenario === 'offline');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const week = query.data;
+  const days = week.days.slice(0, 4);
+  const events = eventsInRange(week.events, days);
   return (
     <div className="screen agenda-screen">
       <ScreenHeader
         eyebrow="Calendar"
         title="Agenda"
-        meta={week.displayRange}
-        actions={<span className="agenda-count">{agendaCount(week.events.length)}</span>}
+        meta={agendaRange(days, runtime.locale)}
+        actions={<span className="agenda-count">{agendaCount(events.length)}</span>}
       />
       <CalendarViewSwitch />
       {!online ? (
@@ -53,43 +46,11 @@ export function AgendaScreen({
         </StatusBanner>
       ) : null}
       <CalendarAgenda
-        days={week.days}
-        events={week.events}
+        days={days}
+        events={events}
         onSelect={setSelectedEvent}
         timezone={runtime.timezone}
       />
-      <div className="calendar-period-controls">
-        <button
-          className="focusable"
-          data-focus-id="agenda-earlier"
-          data-focus-left="nav-calendar"
-          data-focus-right="agenda-today"
-          onClick={() => changeWeek(-7)}
-          type="button"
-        >
-          <Icon name="chevron-left" /> Earlier
-        </button>
-        <button
-          className="focusable"
-          data-focus-id="agenda-today"
-          data-focus-left="agenda-earlier"
-          data-focus-right="agenda-later"
-          onClick={goToCurrentWeek}
-          type="button"
-        >
-          This week
-        </button>
-        <button
-          className="focusable"
-          data-focus-id="agenda-later"
-          data-focus-left="agenda-today"
-          data-focus-right="agenda-later"
-          onClick={() => changeWeek(7)}
-          type="button"
-        >
-          Later <Icon name="chevron-right" />
-        </button>
-      </div>
       <EventDetailsDialog
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
@@ -97,20 +58,34 @@ export function AgendaScreen({
       />
     </div>
   );
-
-  function changeWeek(dayCount: number): void {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('start', addLocalDays(weekStart, dayCount));
-    setSearchParams(nextParams, { replace: true });
-  }
-
-  function goToCurrentWeek(): void {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete('start');
-    setSearchParams(nextParams, { replace: true });
-  }
 }
 
 function agendaCount(eventCount: number): string {
-  return `${eventCount} ${eventCount === 1 ? 'plan' : 'plans'} this week`;
+  return `${eventCount} ${eventCount === 1 ? 'plan' : 'plans'} · 4 days`;
+}
+
+function eventsInRange(events: CalendarEvent[], days: WeekDay[]): CalendarEvent[] {
+  const firstDay = days[0]?.localDate;
+  const lastDay = days[days.length - 1]?.localDate;
+  if (firstDay === undefined || lastDay === undefined) return [];
+  return events.filter(
+    (event) => event.startLocalDate <= lastDay && event.endLocalDate >= firstDay,
+  );
+}
+
+function agendaRange(days: WeekDay[], locale: string): string {
+  const firstDay = days[0]?.localDate;
+  const lastDay = days[days.length - 1]?.localDate;
+  if (firstDay === undefined || lastDay === undefined) return 'Today and the next 3 days';
+  const start = new Date(`${firstDay}T12:00:00.000Z`);
+  const end = new Date(`${lastDay}T12:00:00.000Z`);
+  const day = new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
+  const month = new Intl.DateTimeFormat(locale, { month: 'long', timeZone: 'UTC' });
+  const startDay = day.format(start);
+  const endDay = day.format(end);
+  const startMonth = month.format(start);
+  const endMonth = month.format(end);
+  return startMonth === endMonth
+    ? `${startDay}–${endDay} ${endMonth}`
+    : `${startDay} ${startMonth}–${endDay} ${endMonth}`;
 }

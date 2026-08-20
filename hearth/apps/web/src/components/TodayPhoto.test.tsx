@@ -11,6 +11,7 @@ describe('TodayPhoto', () => {
       <TodayPhoto
         photo={{
           alt: 'A family portrait.',
+          orientation: 'portrait',
           url: '/demo/family-portrait.webp',
         }}
       />,
@@ -18,6 +19,10 @@ describe('TodayPhoto', () => {
 
     expect(screen.getByRole('img', { name: 'A family portrait.' })).toHaveClass(
       'today-photo__image',
+    );
+    expect(container.querySelector('.today-photo')).toHaveAttribute(
+      'data-photo-orientation',
+      'portrait',
     );
     expect(container.querySelectorAll('img')).toHaveLength(1);
     expect(container.querySelector('.today-photo__backdrop')).not.toBeInTheDocument();

@@ -162,8 +162,9 @@ backup only after the verified mapping/hardware test.
 The optional Today daily verse remains inert unless `HEARTH_ESV_API_KEY_PATH` points to an
 owner-readable server file containing only an active ESV API token. In the Synology Compose layout,
 create `${HEARTH_SECRETS_DIR}/esv-api-key`, make it readable only by the configured Hearth UID/GID
-and enable **Daily Bible verse** in **Today & notices**. Never place the token in Compose, `.env`, a
-Vite variable, source, logs or screenshots. If a token is disclosed, revoke/regenerate it at
+and restart the Hearth server before enabling **Daily Bible verse** in **Today & notices**. The
+current server reads this optional secret at process startup. Never place the token in Compose,
+`.env`, a Vite variable, source, logs or screenshots. If a token is disclosed, revoke/regenerate it at
 <https://api.esv.org/account/> before commissioning.
 
 Weather is independent of Home Assistant. Use **Hearth settings → Household →
@@ -183,20 +184,30 @@ private mode at a copied demo database. The adult first-use command is implement
 without the approved private HTTPS origin and external one-time code. Do not enrol a real passkey or
 enter household data until that origin/certificate is commissioned.
 
-## Proposed Synology paths
+## Synology paths
 
-Keep v2 separate from the old deployment:
+Keep the v2 source/release area separate from the private household state and from the old
+deployment:
 
 ```text
 /volume1/docker/hearth-v2/
-  compose.yaml
-  env/                 secrets/production env, access-restricted and not in source
-  data/                SQLite and application state
-  backups/             consistent Hearth backups
-  logs/                bounded/rotated logs if not using Container Manager logging
+  source/              exact staged Hearth source tree
+  staging/             temporary release staging
+  staged-source-version       candidate copied but not yet activated
+  active-source-version       last release that passed readiness
+  previous-source-version     retained rollback image version
+
+/volume1/hearth-v2-private/
+  data/                SQLite, managed photos, derivatives and online backups
+  secrets/             external runtime secrets, mode-restricted
 ```
 
-Deployment files belong in `hearth/deploy/synology`; live secrets never return to the workspace.
+The commissioned private project is
+`/volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/`. Its `.env`
+points `HEARTH_DATA_DIR` to `/volume1/hearth-v2-private/data` and `HEARTH_SECRETS_DIR` to
+`/volume1/hearth-v2-private/secrets`. The generic `./runtime/data` and `./runtime/secrets` values
+in `hearth/deploy/synology/.env.example` are only for a new isolated deployment. Live secrets
+never return to the workspace.
 
 For pre-commission television testing, `compose.demo.yaml` provides a separate LAN-bound pilot with
 fictional data only. It does not mount the secrets directory, calendar/Home Assistant configuration
@@ -215,6 +226,12 @@ explicit two-hop DSM Reverse Proxy → nginx → Fastify trust boundary for clie
 and an ignored runtime directory template. The server production build includes all 24 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 
+As of 2026-08-21, ordinary production updates no longer execute that build on the DS920+.
+GitHub Actions builds and caches the native `linux/amd64` server/web targets, then publishes them to
+private GitHub Container Registry packages only after every verification job passes. Production
+Compose contains immutable image references and no build instructions. `compose.build.yaml` keeps
+the same Dockerfile available as an explicit recovery fallback, not the normal release path.
+
 Both native ARM64 development images and emulated `linux/amd64` images for the DS920+ were built and
 started together in private mode. In both runs the server and web containers became healthy, the
 proxied readiness endpoint returned `ready`, the runtime returned `household: null` and
@@ -227,6 +244,9 @@ Validation commands from `hearth/`:
 ```sh
 docker compose --env-file deploy/synology/.env.example \
   -f deploy/synology/compose.yaml config --quiet
+docker compose --env-file deploy/synology/.env.example \
+  -f deploy/synology/compose.yaml \
+  -f deploy/synology/compose.build.yaml config --quiet
 docker build --platform linux/amd64 --target server \
   -t hearth-v2-server:local-amd64 -f deploy/synology/Dockerfile .
 docker build --platform linux/amd64 --target web \
@@ -234,18 +254,54 @@ docker build --platform linux/amd64 --target web \
 ```
 
 On 2026-08-16 the private Synology service was commissioned at the allowlisted HTTPS origin recorded
-in the private commissioning runbook. It uses a dedicated non-root service identity, external data
-and secret folders, and a separate read-only photo share. The temporary fictional NAS demo was then
-stopped and removed at the owner's request. First-adult enrolment, second-adult recovery validation,
-an encrypted off-device backup, an actual clean-location restore drill and a focused security review
-remain operational acceptance work.
+in the private commissioning runbook. It uses a dedicated non-root service identity, source/release
+files under `/volume1/docker/hearth-v2`, private data under `/volume1/hearth-v2-private/data`,
+private secrets under `/volume1/hearth-v2-private/secrets`, and a separate read-only photo share.
+The temporary fictional NAS demo was then stopped and removed at the owner's request. First-adult
+enrolment, second-adult recovery validation, an encrypted off-device backup, an actual clean-location
+restore drill and a focused security review remain operational acceptance work.
 
-Promote future changes from an exact commit that has passed the repository verification workflow.
-`hearth/deploy/synology/stage-private-release.sh <verified-commit>` exports only that commit to the
-NAS source tree while preserving the ignored private project directory, then records the immutable
-image version. Rebuild the `hearth-v2` project in DSM Container Manager and verify private readiness
-and runtime before considering the update accepted. The database, secrets and photo originals stay
-outside the source tree and container images.
+### One-time private image-registry setup
+
+The two GHCR packages remain private. GitHub Actions publishes them with its short-lived
+`GITHUB_TOKEN`; no repository secret is required and the workflow cannot contact the Synology.
+The NAS needs one separately revocable Personal Access Token (classic) with only
+`read:packages`, as currently required by GitHub Container Registry. Do not make the packages public
+and do not grant `write:packages`, `delete:packages` or unrelated account scopes.
+
+From an interactive administrator SSH session on the NAS, run the Container Manager Docker client
+and enter the GitHub username plus the token only at its password prompt:
+
+```sh
+sudo /var/packages/ContainerManager/target/usr/bin/docker login ghcr.io
+```
+
+The credential belongs to root's access-restricted Docker configuration because the release command
+runs Compose through `sudo`. Never put it in `.env`, Compose, a shell argument, source, chat or the
+GitHub workflow. Revoke the token in GitHub and run `docker logout ghcr.io` on the NAS if the reader
+is retired. This one-time persistent-access setup requires explicit owner confirmation when it is
+performed.
+
+### Normal private release
+
+Promote only an exact full Git commit whose hosted workflow has completed successfully and published
+both packages. From the repository root, run:
+
+```sh
+hearth/deploy/synology/activate-private-release.sh <full-verified-commit>
+```
+
+The activation script stages that exact source/Compose revision and pulls both images while the
+existing containers remain running. It recreates the project with an explicit full immutable commit
+tag, waits up to 60 seconds for the loopback readiness route, and only then records the new active
+version plus the previous rollback version in the runtime metadata. Synology may ask for the
+administrator password; the script neither reads nor stores it. The database, managed photos,
+optional read-only import and integration secrets stay in their existing external mounts.
+
+`stage-private-release.sh` remains available when an operator deliberately wants to stage without
+restarting. Do not choose Container Manager **Build** for a normal update: production Compose has no
+build context. If GHCR is unavailable and an operator explicitly accepts a slow NAS recovery build,
+combine `compose.yaml` with `compose.build.yaml`; never silently fall back to compilation.
 
 ## Backup design
 
@@ -305,21 +361,26 @@ provider is deliberately unreachable.
 
 ## Update and rollback
 
-- Build immutable versioned container images.
+- Publish immutable full-commit images only after the complete hosted verification gate.
+- Pull both target images before recreating either running container.
 - Record deployed image/version and migration number.
 - Take a current database backup before migrations.
 - Use health checks before switching/declaring success.
-- Retain the prior compatible image for rollback.
+- Retain the prior image and `previous-source-version`; do not prune them as part of deployment.
 - Database rollback is restore-based unless a specific migration has a verified reverse path.
+- Do not automatically start an older image after a forward migration. Verify compatibility or
+  restore the matching pre-update database through the documented operator recovery path.
 
 ## Continuous verification
 
 `.github/workflows/verify.yml` is the merge gate for `main` and pull requests. It uses pinned
-full-commit action references, read-only repository permissions and no household secrets. Three
-independent jobs run the complete pnpm/Playwright gate on Node 24.18.0, the Android TV
-test/lint/debug-and-release build on Java 21 plus SDK 36, and both Synology production image builds
-after validating the Compose configuration. The workflow never deploys, signs an APK, contacts a
-provider or changes a live household system.
+full-commit action references and no household secrets. Three independent verification jobs run the
+complete pnpm/Playwright gate on Node 24.18.0, the Android TV test/lint/debug-and-release build on
+Java 21 plus SDK 36, and both Synology production image builds after validating pull-only and
+fallback Compose configuration. On a non-pull-request run, a fourth job receives only
+`contents: read` and `packages: write`; it waits for all three verification jobs, reuses the Buildx
+cache and publishes the server/web `linux/amd64` images under the exact full commit tag. It never
+deploys, signs an APK, contacts a provider or gains access to the private household network.
 
 Keep local verification authoritative while changing the workflow itself, then confirm the first
 GitHub run before requiring it in branch protection. Retain Playwright's single CI worker for

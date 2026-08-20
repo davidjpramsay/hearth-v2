@@ -38,6 +38,8 @@ A change is complete only when:
 - Week, Month and Agenda are views beneath one Calendar primary destination on
   television and phone. Every view is reachable with D-pad/keyboard-only input;
   legacy Week/Month links redirect without losing scenario/date query state.
+- Agenda shows exactly four household-local dates—today plus the next three days—with no past,
+  fifth-day-or-later content or period navigation.
 - Earlier, current-period and later controls issue the requested week/month
   query, and Calendar source setup is directly discoverable without searching
   the general settings list.
@@ -181,6 +183,10 @@ Chromium fallback produced the retained evidence.
   editor.
 - The TV summary rebalances cleanly for one, two, three or four bands, with or without
   a photo; phone administration remains accessible and usable at 390×844.
+- At 1920×1080 and 1366×768, every supported Today combination remains inside one television
+  viewport with no page or content-panel scrolling. Portrait photos use the right-side composition,
+  landscape/square photos use the wide composition, no-photo summaries reclaim the available width,
+  and each source remains fully visible without distortion.
 - When Daily Bible verse is enabled, demo mode shows fictional copy and private mode shows an
   attributed ESV passage only when its server secret is configured. Select opens a Back-safe full
   reading; a missing key or provider outage cannot take down Today, and cached text is marked stale.
@@ -278,14 +284,15 @@ live-system commissioning tasks requiring owner approval.
 - Approved photos rotate without visible distortion, incorrect orientation or filesystem exposure.
 - Automatic collage rotation can be paused and resumed using only the remote or touch, does not
   advance while the document is hidden, and remains still when reduced motion is requested.
-- The normal gallery shows each visible photo once, fills its available screen region and chooses a
-  stable composition from the featured photo's orientation. In a mixed five-photo set each automatic
-  advance visibly changes the feature: a featured portrait becomes a useful tall anchor and a
-  featured landscape becomes a wide anchor. Portrait support tiles remain substantial, with no
-  skinny portrait column, shallow landscape ribbon or horizontal overflow. Rotation occurs every
+- The normal gallery shows each visible photo once and chooses a stable composition from every
+  visible photo's stored orientation. Portraits render in substantial tall rails without cropping;
+  landscape/square photos render in wide bands. A mixed set may intentionally show fewer than five
+  occupants when five truthful regions would create a skinny portrait strip or shallow landscape
+  ribbon. A portrait-only set exposes four equal tall rails. Rotation occurs every
   45 seconds, exposes subtle visible progress to the next composition and remains static under
-  reduced motion. Phone landscape shows three
-  substantial rotating occupants rather than five compressed strips.
+  reduced motion. The television page has no horizontal or vertical overflow; phone portrait uses
+  orientation-aware spans and phone landscape shows three substantial rotating occupants rather
+  than five compressed strips.
 - Remote/voice input exits ambient mode immediately.
 - The same static dashboard is not left illuminated overnight.
 - Missing/corrupt photos fail gracefully.
@@ -304,8 +311,9 @@ live-system commissioning tasks requiring owner approval.
   reach any response or log. Synology metadata and recycle directories such as `@eaDir` and
   `#recycle` are ignored rather than making the approved-folder check fail.
 
-Status as of 2026-08-20: the local browser/server slice passes a unique-image,
-orientation-selected full-screen collage with bounded tile geometry, visible 45-second occupant
+Status as of 2026-08-21: the local browser/server slice passes a unique-image,
+content-dependent orientation-aware collage with bounded tile geometry, uncropped portrait rails,
+wide landscape bands, visible 45-second occupant
 rotation and a reduced-motion pause, mixed landscape and portrait rendering, path-safe typed
 responses, D-pad gallery selection,
 immediate keyboard/Back-equivalent ambient exit, real offline cached content,
@@ -398,6 +406,10 @@ not yet complete.
 ### Operations and recovery
 
 - Hearth server restarts automatically after Synology restart.
+- A normal verified release pulls immutable full-commit server and web images before recreating the
+  project; it does not install dependencies or compile native code on the Synology.
+- Private image pulls use a separately revocable read-only registry credential that is absent from
+  source, Compose, workflow logs and application containers.
 - Home Assistant recovers after Pi restart.
 - TV, Pi, NAS and router restarts are each tested.
 - A current Hearth backup is restored into a clean test location successfully.
@@ -413,6 +425,12 @@ bounded retention; an automated clean-location restore reads the household succe
 phone System Health surface reports database/version/backup state without exposing paths. The five
 operations bullets above still require the actual Synology, Pi, TV, router and live restore drill,
 so production acceptance remains incomplete.
+
+Pull-only deployment evidence as of 2026-08-21: production/fallback Compose validation, immutable
+full-commit image references, pinned Buildx publishing configuration and the stage/activation shell
+syntax are locally verified. The first hosted package publication, one-time NAS registry sign-in and
+live pull/recreate timing remain not run until the change is approved for commit/push and the
+private credential is commissioned.
 
 ## Release evidence
 

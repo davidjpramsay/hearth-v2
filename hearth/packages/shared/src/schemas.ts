@@ -252,12 +252,13 @@ const SameOriginAssetUrlSchema = z
     message: 'Asset URLs must stay on the Hearth origin.',
   });
 
+export const PhotoOrientationSchema = z.enum(['landscape', 'portrait', 'square']);
+
 export const TodayPhotoSummarySchema = z.object({
   url: SameOriginAssetUrlSchema,
   alt: z.string().min(1).max(180),
+  orientation: PhotoOrientationSchema,
 });
-
-export const PhotoOrientationSchema = z.enum(['landscape', 'portrait', 'square']);
 
 export const PhotoAssetSchema = z.object({
   id: OpaqueIdSchema,

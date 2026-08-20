@@ -26,7 +26,8 @@
     "tv:lint": "./apps/tv/gradlew -p apps/tv lintDebug lintRelease",
     "tv:build": "./apps/tv/gradlew -p apps/tv assembleDebug assembleRelease",
     "verify:tv": "pnpm tv:test && pnpm tv:lint && pnpm tv:build",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm test:migrations && pnpm build && pnpm test:e2e"
+    "verify:deploy": "sh deploy/synology/verify-deployment.sh",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm test:migrations && pnpm verify:deploy && pnpm build && pnpm test:e2e"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

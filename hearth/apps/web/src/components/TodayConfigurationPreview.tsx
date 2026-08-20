@@ -21,6 +21,7 @@ export function TodayConfigurationPreview({
   const [mode, setMode] = useState<PreviewMode>('television');
   const summaryBands = previewSummaryBands(data, sections);
   const showPhoto = sections.photo;
+  const photoOrientation = showPhoto ? (data.photo?.orientation ?? 'landscape') : 'none';
   const enabledNames = [
     sections.dinner ? 'Dinner' : null,
     sections.listSummary ? 'List summary' : null,
@@ -77,38 +78,53 @@ export function TodayConfigurationPreview({
         role="img"
       >
         {status === 'ready' ? (
-          <div aria-hidden="true" className="today-configuration-preview__canvas">
-            <PreviewHeader data={data} />
-            <div className="today-configuration-preview__core">
-              <PreviewEvents events={data.events} />
-              <PreviewChores chores={data.chores} />
+          <>
+            <div aria-hidden="true" className="today-configuration-preview__phone-topbar">
+              <strong>{data.displayTime}</strong>
+              <span>{data.displayDate}</span>
             </div>
-            {summaryBands.length === 0 && !showPhoto ? null : (
-              <div
-                className={`today-configuration-preview__summary${showPhoto ? '' : ' today-configuration-preview__summary--without-photo'}`}
-              >
-                {summaryBands.length === 0 ? null : (
-                  <div
-                    className={`today-configuration-preview__bands today-configuration-preview__bands--count-${summaryBands.length}`}
-                  >
-                    {summaryBands.map((band) => (
-                      <div
-                        className={`today-configuration-preview__band today-configuration-preview__band--${band.key}`}
-                        key={band.key}
-                      >
-                        <Icon name={band.icon} />
-                        <span>
-                          <strong>{band.label}</strong>
-                          <small>{band.value}</small>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {showPhoto ? <PreviewPhoto photo={data.photo} /> : null}
+            <div
+              aria-hidden="true"
+              className={`today-configuration-preview__canvas today-configuration-preview__canvas--photo-${photoOrientation}`}
+            >
+              <PreviewHeader data={data} />
+              <div className="today-configuration-preview__core">
+                <PreviewEvents events={data.events} />
+                <PreviewChores chores={data.chores} />
               </div>
-            )}
-          </div>
+              {summaryBands.length === 0 && !showPhoto ? null : (
+                <div
+                  className={`today-configuration-preview__summary${showPhoto ? '' : ' today-configuration-preview__summary--without-photo'}`}
+                >
+                  {summaryBands.length === 0 ? null : (
+                    <div
+                      className={`today-configuration-preview__bands today-configuration-preview__bands--count-${summaryBands.length}`}
+                    >
+                      {summaryBands.map((band) => (
+                        <div
+                          className={`today-configuration-preview__band today-configuration-preview__band--${band.key}`}
+                          key={band.key}
+                        >
+                          <Icon name={band.icon} />
+                          <span>
+                            <strong>{band.label}</strong>
+                            <small>{band.value}</small>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showPhoto ? <PreviewPhoto photo={data.photo} /> : null}
+                </div>
+              )}
+            </div>
+            <div aria-hidden="true" className="today-configuration-preview__phone-tabs">
+              <Icon name="today" />
+              <Icon name="calendar" />
+              <Icon name="chores" />
+              <Icon name="more" />
+            </div>
+          </>
         ) : (
           <div aria-hidden="true" className="today-configuration-preview__state">
             <Icon name={status === 'loading' ? 'refresh' : 'warning'} />
@@ -131,13 +147,9 @@ export function TodayConfigurationPreview({
 function PreviewHeader({ data }: { data: TodayPreviewData }) {
   return (
     <header className="today-configuration-preview__header">
-      <span className="today-configuration-preview__brand">
-        <Icon name="leaf" />
-        Hearth
-      </span>
-      <span className="today-configuration-preview__date">
-        <strong>{data.displayTime}</strong>
-        <span>{data.displayDate}</span>
+      <span className="today-configuration-preview__title">
+        <small>{data.eyebrow}</small>
+        <strong>Today</strong>
       </span>
       <span className="today-configuration-preview__weather">
         <Icon name={data.weather === null ? 'cloud' : 'sun'} />
@@ -215,7 +227,12 @@ function PreviewPhoto({ photo }: { photo: TodayPreviewData['photo'] }) {
       <span>Family photo</span>
     </div>
   ) : (
-    <img alt="" className="today-configuration-preview__photo" loading="lazy" src={photo.url} />
+    <img
+      alt=""
+      className={`today-configuration-preview__photo today-configuration-preview__photo--${photo.orientation}`}
+      loading="lazy"
+      src={photo.url}
+    />
   );
 }
 

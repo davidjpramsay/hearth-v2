@@ -54,6 +54,11 @@ export function TodayScreen({
     today.sections.dailyVerse,
   ].filter(Boolean).length;
   const showPhoto = today.sections.photo && today.photo !== null;
+  const photoOrientation = showPhoto && today.photo !== null ? today.photo.orientation : 'none';
+  const dashboardDensity =
+    eventOverflowCount > 0 || choreOverflowCount > 0 || visibleSummaryCount >= 3
+      ? 'dense'
+      : 'relaxed';
   const summaryFocusIds = [
     today.sections.dinner ? 'today-summary-dinner' : null,
     today.sections.listSummary ? 'today-summary-list' : null,
@@ -139,183 +144,192 @@ export function TodayScreen({
           {today.statusMessage}
         </StatusBanner>
       ) : null}
-      <div className="today-columns">
-        <section className="today-section upcoming-section">
-          <div className="section-heading">
-            <h2>Upcoming</h2>
-            {eventOverflowCount > 0 ? (
-              <Link
-                aria-label={`View ${eventOverflowCount} more ${eventOverflowCount === 1 ? 'plan' : 'plans'} in Calendar`}
-                className="today-section-more focusable"
-                data-focus-down={firstBottomFocusId}
-                data-focus-id="today-event-overflow"
-                data-focus-left="nav-today"
-                data-focus-right={
-                  choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId
-                }
-                data-focus-up={lastEventFocusId}
-                to={`/calendar/agenda?start=${runtime.weekStart}`}
-              >
-                +{eventOverflowCount} more <Icon name="chevron-right" />
-              </Link>
-            ) : (
-              <span>{today.events.length} plans</span>
-            )}
-          </div>
-          <div className="event-list">
-            {visibleEvents.map((event, index, events) => (
-              <EventRow
-                event={event}
-                focus={{
-                  'data-focus-id': `today-event-${event.id}`,
-                  'data-focus-up':
-                    index === 0
-                      ? `today-event-${event.id}`
-                      : `today-event-${events[index - 1]?.id}`,
-                  'data-focus-down':
-                    index === events.length - 1
-                      ? eventAfterRowsFocusId
-                      : `today-event-${events[index + 1]?.id}`,
-                  'data-focus-left': 'nav-today',
-                  'data-focus-right': visibleChores[Math.min(index, visibleChores.length - 1)]
-                    ? `today-chore-${visibleChores[Math.min(index, visibleChores.length - 1)]!.id}`
-                    : 'nav-today',
-                }}
-                key={event.id}
-                onSelect={setSelectedEvent}
-              />
-            ))}
-          </div>
-        </section>
-        <section className="today-section chores-due-section">
-          <div className="section-heading">
-            <h2>Due now &amp; today</h2>
-            {choreOverflowCount > 0 ? (
-              <Link
-                aria-label={`View ${choreOverflowCount} more ${choreOverflowCount === 1 ? 'chore' : 'chores'}`}
-                className="today-section-more focusable"
-                data-focus-down={showPhoto ? 'today-photo' : firstBottomFocusId}
-                data-focus-id="today-chore-overflow"
-                data-focus-left={eventOverflowCount > 0 ? 'today-event-overflow' : lastEventFocusId}
-                data-focus-right="today-chore-overflow"
-                data-focus-up={lastChoreFocusId}
-                to="/chores"
-              >
-                +{choreOverflowCount} more <Icon name="chevron-right" />
-              </Link>
-            ) : (
-              <span>{today.chores.filter((item) => item.state === 'pending').length} left</span>
-            )}
-          </div>
-          <div className="chore-list">
-            {visibleChores.map((occurrence, index, chores) => (
-              <ChoreRow
-                focus={{
-                  'data-focus-id': `today-chore-${occurrence.id}`,
-                  'data-focus-entry': occurrence.id === primaryChoreId ? 'true' : undefined,
-                  'data-focus-up':
-                    index === 0
-                      ? `today-chore-${occurrence.id}`
-                      : `today-chore-${chores[index - 1]?.id}`,
-                  'data-focus-down':
-                    index === chores.length - 1
-                      ? choreAfterRowsFocusId
-                      : `today-chore-${chores[index + 1]?.id}`,
-                  'data-focus-left':
-                    index < visibleEvents.length
-                      ? `today-event-${visibleEvents[index]?.id}`
-                      : 'nav-today',
-                }}
-                key={occurrence.id}
-                mutation={mutation}
-                occurrence={occurrence}
-              />
-            ))}
-          </div>
-        </section>
-      </div>
-      {visibleSummaryCount === 0 && !showPhoto ? null : (
-        <div
-          className={`summary-row${showPhoto ? '' : ' summary-row--without-photo'}${visibleSummaryCount === 0 ? ' summary-row--photo-only' : ''}`}
-        >
-          {visibleSummaryCount === 0 ? null : (
-            <div className={`summary-details summary-details--count-${visibleSummaryCount}`}>
-              {today.sections.dinner ? (
-                <SummaryBand
-                  ariaLabel="Open the family meal plan"
-                  focus={summaryFocus('today-summary-dinner')}
-                  icon="meal"
-                  label="Dinner"
-                  to="/meals"
+      <div
+        className={`today-dashboard today-dashboard--photo-${photoOrientation}`}
+        data-density={dashboardDensity}
+        data-photo-orientation={photoOrientation}
+        data-summary-count={visibleSummaryCount}
+      >
+        <div className="today-columns">
+          <section className="today-section upcoming-section">
+            <div className="section-heading">
+              <h2>Upcoming</h2>
+              {eventOverflowCount > 0 ? (
+                <Link
+                  aria-label={`View ${eventOverflowCount} more ${eventOverflowCount === 1 ? 'plan' : 'plans'} in Calendar`}
+                  className="today-section-more focusable"
+                  data-focus-down={firstBottomFocusId}
+                  data-focus-id="today-event-overflow"
+                  data-focus-left="nav-today"
+                  data-focus-right={
+                    choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId
+                  }
+                  data-focus-up={lastEventFocusId}
+                  to="/calendar/agenda"
                 >
-                  {today.dinner ?? 'Nothing planned'}
-                </SummaryBand>
-              ) : null}
-              {today.sections.listSummary ? (
-                <SummaryBand
-                  ariaLabel="Open household lists"
-                  focus={summaryFocus('today-summary-list')}
-                  icon="list"
-                  label="List summary"
-                  to="/lists"
-                >
-                  {today.listSummary === null
-                    ? 'No active list'
-                    : `${today.listSummary.name} · ${today.listSummary.remainingCount} items left`}
-                </SummaryBand>
-              ) : null}
-              {today.sections.notice ? (
-                today.notice === null ? (
-                  <SummaryBand icon="home" label="Notice">
-                    No notices
-                  </SummaryBand>
-                ) : (
-                  <SummaryBand
-                    ariaLabel="Read the full household notice"
-                    focus={summaryFocus('today-summary-notice')}
-                    icon="home"
-                    label="Notice"
-                    onActivate={() => setSelectedNotice(today.notice)}
-                  >
-                    {today.notice}
-                  </SummaryBand>
-                )
-              ) : null}
-              {today.sections.dailyVerse ? (
-                today.dailyVerse === null ? (
-                  <SummaryBand icon="book-open" label="Daily verse">
-                    Add the private ESV key to show today’s verse
-                  </SummaryBand>
-                ) : (
-                  <SummaryBand
-                    ariaLabel={`Read ${today.dailyVerse.reference}`}
-                    focus={summaryFocus('today-summary-daily-verse')}
-                    icon="book-open"
-                    label="Daily verse"
-                    onActivate={() => setSelectedDailyVerse(today.dailyVerse)}
-                  >
-                    {today.dailyVerse.reference} · {today.dailyVerse.text}
-                  </SummaryBand>
-                )
-              ) : null}
+                  +{eventOverflowCount} more <Icon name="chevron-right" />
+                </Link>
+              ) : (
+                <span>{today.events.length} plans</span>
+              )}
             </div>
-          )}
-          {showPhoto && today.photo !== null ? (
-            <Link
-              aria-label="Open family photos"
-              className="today-photo-action focusable"
-              data-focus-down="today-photo"
-              data-focus-id="today-photo"
-              data-focus-left={summaryFocusIds.at(-1) ?? 'nav-today'}
-              data-focus-right="today-photo"
-              data-focus-up={choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId}
-              to="/photos"
-            >
-              <TodayPhoto photo={today.photo} />
-            </Link>
-          ) : null}
+            <div className="event-list">
+              {visibleEvents.map((event, index, events) => (
+                <EventRow
+                  event={event}
+                  focus={{
+                    'data-focus-id': `today-event-${event.id}`,
+                    'data-focus-up':
+                      index === 0
+                        ? `today-event-${event.id}`
+                        : `today-event-${events[index - 1]?.id}`,
+                    'data-focus-down':
+                      index === events.length - 1
+                        ? eventAfterRowsFocusId
+                        : `today-event-${events[index + 1]?.id}`,
+                    'data-focus-left': 'nav-today',
+                    'data-focus-right': visibleChores[Math.min(index, visibleChores.length - 1)]
+                      ? `today-chore-${visibleChores[Math.min(index, visibleChores.length - 1)]!.id}`
+                      : 'nav-today',
+                  }}
+                  key={event.id}
+                  onSelect={setSelectedEvent}
+                />
+              ))}
+            </div>
+          </section>
+          <section className="today-section chores-due-section">
+            <div className="section-heading">
+              <h2>Due now &amp; today</h2>
+              {choreOverflowCount > 0 ? (
+                <Link
+                  aria-label={`View ${choreOverflowCount} more ${choreOverflowCount === 1 ? 'chore' : 'chores'}`}
+                  className="today-section-more focusable"
+                  data-focus-down={showPhoto ? 'today-photo' : firstBottomFocusId}
+                  data-focus-id="today-chore-overflow"
+                  data-focus-left={
+                    eventOverflowCount > 0 ? 'today-event-overflow' : lastEventFocusId
+                  }
+                  data-focus-right="today-chore-overflow"
+                  data-focus-up={lastChoreFocusId}
+                  to="/chores"
+                >
+                  +{choreOverflowCount} more <Icon name="chevron-right" />
+                </Link>
+              ) : (
+                <span>{today.chores.filter((item) => item.state === 'pending').length} left</span>
+              )}
+            </div>
+            <div className="chore-list">
+              {visibleChores.map((occurrence, index, chores) => (
+                <ChoreRow
+                  focus={{
+                    'data-focus-id': `today-chore-${occurrence.id}`,
+                    'data-focus-entry': occurrence.id === primaryChoreId ? 'true' : undefined,
+                    'data-focus-up':
+                      index === 0
+                        ? `today-chore-${occurrence.id}`
+                        : `today-chore-${chores[index - 1]?.id}`,
+                    'data-focus-down':
+                      index === chores.length - 1
+                        ? choreAfterRowsFocusId
+                        : `today-chore-${chores[index + 1]?.id}`,
+                    'data-focus-left':
+                      index < visibleEvents.length
+                        ? `today-event-${visibleEvents[index]?.id}`
+                        : 'nav-today',
+                  }}
+                  key={occurrence.id}
+                  mutation={mutation}
+                  occurrence={occurrence}
+                />
+              ))}
+            </div>
+          </section>
         </div>
-      )}
+        {visibleSummaryCount === 0 && !showPhoto ? null : (
+          <div
+            className={`summary-row${showPhoto ? '' : ' summary-row--without-photo'}${visibleSummaryCount === 0 ? ' summary-row--photo-only' : ''}`}
+          >
+            {visibleSummaryCount === 0 ? null : (
+              <div className={`summary-details summary-details--count-${visibleSummaryCount}`}>
+                {today.sections.dinner ? (
+                  <SummaryBand
+                    ariaLabel="Open the family meal plan"
+                    focus={summaryFocus('today-summary-dinner')}
+                    icon="meal"
+                    label="Dinner"
+                    to="/meals"
+                  >
+                    {today.dinner ?? 'Nothing planned'}
+                  </SummaryBand>
+                ) : null}
+                {today.sections.listSummary ? (
+                  <SummaryBand
+                    ariaLabel="Open household lists"
+                    focus={summaryFocus('today-summary-list')}
+                    icon="list"
+                    label="List summary"
+                    to="/lists"
+                  >
+                    {today.listSummary === null
+                      ? 'No active list'
+                      : `${today.listSummary.name} · ${today.listSummary.remainingCount} items left`}
+                  </SummaryBand>
+                ) : null}
+                {today.sections.notice ? (
+                  today.notice === null ? (
+                    <SummaryBand icon="home" label="Notice">
+                      No notices
+                    </SummaryBand>
+                  ) : (
+                    <SummaryBand
+                      ariaLabel="Read the full household notice"
+                      focus={summaryFocus('today-summary-notice')}
+                      icon="home"
+                      label="Notice"
+                      onActivate={() => setSelectedNotice(today.notice)}
+                    >
+                      {today.notice}
+                    </SummaryBand>
+                  )
+                ) : null}
+                {today.sections.dailyVerse ? (
+                  today.dailyVerse === null ? (
+                    <SummaryBand icon="book-open" label="Daily verse">
+                      Add the private ESV key to show today’s verse
+                    </SummaryBand>
+                  ) : (
+                    <SummaryBand
+                      ariaLabel={`Read ${today.dailyVerse.reference}`}
+                      focus={summaryFocus('today-summary-daily-verse')}
+                      icon="book-open"
+                      label="Daily verse"
+                      onActivate={() => setSelectedDailyVerse(today.dailyVerse)}
+                    >
+                      {today.dailyVerse.reference} · {today.dailyVerse.text}
+                    </SummaryBand>
+                  )
+                ) : null}
+              </div>
+            )}
+            {showPhoto && today.photo !== null ? (
+              <Link
+                aria-label="Open family photos"
+                className="today-photo-action focusable"
+                data-focus-down="today-photo"
+                data-focus-id="today-photo"
+                data-focus-left={summaryFocusIds.at(-1) ?? 'nav-today'}
+                data-focus-right="today-photo"
+                data-focus-up={choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId}
+                to="/photos"
+              >
+                <TodayPhoto photo={today.photo} />
+              </Link>
+            ) : null}
+          </div>
+        )}
+      </div>
       <p className="sr-only" aria-live="polite">
         {mutation.pendingOccurrenceId === null ? '' : 'Saving chore change'}
       </p>

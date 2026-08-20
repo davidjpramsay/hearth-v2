@@ -423,7 +423,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ? today.photo
           : featuredPhoto === null
             ? null
-            : { url: featuredPhoto.displayUrl, alt: featuredPhoto.alt },
+            : {
+                url: featuredPhoto.displayUrl,
+                alt: featuredPhoto.alt,
+                orientation: featuredPhoto.orientation,
+              },
       calendars: today.calendars.map((calendar) => ({
         ...calendar,
         owner: calendar.owner === null ? null : (members.get(calendar.owner.id) ?? calendar.owner),

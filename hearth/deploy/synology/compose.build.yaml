@@ -1,0 +1,14 @@
+services:
+  server:
+    image: hearth-v2-server:${HEARTH_VERSION:?Set HEARTH_VERSION to a local build identifier}
+    build:
+      context: ../..
+      dockerfile: deploy/synology/Dockerfile
+      target: server
+
+  web:
+    image: hearth-v2-web:${HEARTH_VERSION:?Set HEARTH_VERSION to a local build identifier}
+    build:
+      context: ../..
+      dockerfile: deploy/synology/Dockerfile
+      target: web
