@@ -151,6 +151,52 @@ describe('read-only CalDAV calendar provider', () => {
     ]);
   });
 
+  it('interprets floating and declared local event times independently of a UTC server', async () => {
+    const previousTimezone = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      const provider = providerFixture(
+        clientFixture({
+          calendars: [calendar('Family', FAMILY_URL)],
+          objects: [floatingTimeCalendarObject()],
+        }),
+        [{ displayName: 'Family', ownerMemberId: null }],
+      );
+
+      const result = await provider.syncEvents({
+        startDate: '2026-08-17',
+        endDate: '2026-08-23',
+        cursor: null,
+      });
+      const event = result.changes.find(
+        (change) => change.type === 'upsert' && change.event.title === "Annie's birthday",
+      );
+
+      expect(event).toMatchObject({
+        type: 'upsert',
+        event: {
+          start: '2026-08-20T07:00:00.000Z',
+          end: '2026-08-20T08:00:00.000Z',
+          startLocalDate: '2026-08-20',
+          endLocalDate: '2026-08-20',
+        },
+      });
+      const reminder = result.changes.find(
+        (change) => change.type === 'upsert' && change.event.title === 'Floating reminder',
+      );
+      expect(reminder).toMatchObject({
+        type: 'upsert',
+        event: {
+          start: '2026-08-21T09:00:00.000Z',
+          end: '2026-08-21T09:30:00.000Z',
+        },
+      });
+    } finally {
+      if (previousTimezone === undefined) delete process.env.TZ;
+      else process.env.TZ = previousTimezone;
+    }
+  });
+
   it('refuses calendars outside the exact server-side allowlist', async () => {
     const provider = providerFixture(
       clientFixture({ calendars: [calendar('Family', FAMILY_URL)], objects: [] }),
@@ -450,6 +496,32 @@ DTSTART:20260805T010000Z\r
 DTEND:20260805T020000Z\r
 SUMMARY:Cancelled appointment\r
 STATUS:CANCELLED\r
+END:VEVENT\r
+END:VCALENDAR\r
+`,
+  };
+}
+
+function floatingTimeCalendarObject(): DAVCalendarObject {
+  return {
+    url: `${FAMILY_URL}annie-birthday.ics`,
+    etag: 'fixture-floating-time',
+    data: `BEGIN:VCALENDAR\r
+VERSION:2.0\r
+PRODID:-//Hearth Test//CalDAV floating fixture//EN\r
+BEGIN:VEVENT\r
+UID:annie-birthday\r
+DTSTAMP:20260819T010000Z\r
+DTSTART;TZID=Australia/Perth:20260820T150000\r
+DTEND;TZID=Australia/Perth:20260820T160000\r
+SUMMARY:Annie's birthday\r
+END:VEVENT\r
+BEGIN:VEVENT\r
+UID:floating-reminder\r
+DTSTAMP:20260819T010000Z\r
+DTSTART:20260821T170000\r
+DTEND:20260821T173000\r
+SUMMARY:Floating reminder\r
 END:VEVENT\r
 END:VCALENDAR\r
 `,

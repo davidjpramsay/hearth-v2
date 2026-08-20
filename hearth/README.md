@@ -131,6 +131,14 @@ or Cast control surface. Live connection and hardware commissioning still requir
 Home Assistant backup/rollback check; no real token belongs in this workspace, `.env`, a Vite
 variable, image layer or command line.
 
+## Optional daily Bible verse
+
+The Today verse is off by default. In private mode, set `HEARTH_ESV_API_KEY_PATH` to an
+owner-readable file outside the repository containing only an ESV API token, then enable **Daily
+Bible verse** in **More → Admin → Today & notices**. The browser never receives the token. Demo mode
+uses fictional preview text and does not contact ESV. If the secret is absent, the rest of Today
+continues normally and the enabled band explains that configuration is needed.
+
 ## Private backup and recovery
 
 Set an absolute `HEARTH_BACKUP_DIR` only in private server configuration. The service creates

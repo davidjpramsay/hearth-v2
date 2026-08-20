@@ -37,6 +37,11 @@ import {
 } from './integrations/home-assistant-runtime.js';
 import { FakePhotoSourceProvider } from './integrations/photo-source.js';
 import {
+  EsvDailyVerseProvider,
+  FakeDailyVerseProvider,
+  UnconfiguredDailyVerseProvider,
+} from './integrations/daily-verse-provider.js';
+import {
   SynologyFolderPhotoSourceProvider,
   resolveSynologyPhotoSourceConfiguration,
 } from './integrations/synology-photo-source.js';
@@ -88,6 +93,12 @@ const homeAssistantRuntime = await resolveHomeAssistantProvider({
   configPath: homeAssistantConfigPath,
 });
 const database = await openHearthDatabase(databasePath);
+const esvApiKey = demoMode ? null : await readOptionalSecret(process.env.HEARTH_ESV_API_KEY_PATH);
+const dailyVerseProvider = demoMode
+  ? new FakeDailyVerseProvider()
+  : esvApiKey === null
+    ? new UnconfiguredDailyVerseProvider()
+    : new EsvDailyVerseProvider(database, esvApiKey);
 const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
 const adminRepository = new SqliteAdminRepository(database, {
   seedDemo: demoMode,
@@ -170,6 +181,12 @@ const systemOperations: SystemOperationsRepository = demoMode
 const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
   ? undefined
   : {
+      load: async () => {
+        if (calendarConfigPath === undefined) {
+          throw new Error('HEARTH_CALENDAR_CONFIG_PATH is not configured.');
+        }
+        return readCalendarRuntimeConfig(calendarConfigPath);
+      },
       save: async (config) => {
         if (calendarConfigPath === undefined) {
           throw new Error('HEARTH_CALENDAR_CONFIG_PATH is not configured.');
@@ -239,6 +256,7 @@ const server = buildServer({
   adminRepository,
   planningRepository,
   todayContentRepository,
+  dailyVerseProvider,
   weatherLocationRepository,
   repository,
   homeRepository,
@@ -346,4 +364,15 @@ function resolveCompanionAuthConfiguration(): CompanionAuthConfiguration | null 
 
 function isMissingFile(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+}
+
+async function readOptionalSecret(path: string | undefined): Promise<string | null> {
+  if (path === undefined || path.trim() === '') return null;
+  try {
+    const value = (await readFile(path, 'utf8')).trim();
+    return value === '' ? null : value;
+  } catch (error) {
+    if (isMissingFile(error)) return null;
+    throw error;
+  }
 }

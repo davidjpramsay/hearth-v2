@@ -77,7 +77,7 @@ Can understand the current household state and use clearly exposed room controls
 
 ### 3. Pocket money
 
-- Every participating child has a required weekly amount in Australian dollars and a household-selected payday.
+- Every participating child has a required weekly amount in Australian dollars and a household-selected payday. These are standing rules that repeat until an adult changes them; they are not re-entered for each week.
 - Week-to-date progress is the number of completed chore occurrences divided by all non-excused, non-cancelled occurrences due so far in the Monday–Sunday week.
 - The amount due is the same proportion of the weekly amount, rounded to the nearest cent. Skipped chores remain due and therefore reduce the proportion.
 - A parent can record one or more partial disbursements, each with an optional note. Every payment stores a dated snapshot of the counts, percentage and amount so later chore/template edits do not rewrite payment history; active payments for a week may never exceed the amount currently due.
@@ -145,6 +145,9 @@ Hearth data backup boundary.
 ### 7. Notices and household summary
 
 - Brief announcements with expiry and priority.
+- Optional household-local daily Bible verse from the ESV API. It is off by default,
+  server-fetched, visibly attributed and read-only; provider failure must not affect other Today
+  content.
 - Weather and basic room/home state where useful.
 - Avoid a dense sensor dashboard. Show only states that affect a family decision.
 

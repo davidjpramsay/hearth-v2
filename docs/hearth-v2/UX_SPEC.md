@@ -65,14 +65,16 @@ The default shared overview:
   blurred backing panel
 - quick access to selected Home scenes
 
-Adults may independently show or hide Dinner, List summary, Notice and Family
-photo from the phone-first **Today & notices** settings surface. Upcoming plans
-and due chores remain the stable core. The remaining summary bands expand to
+Adults may independently show or hide Dinner, List summary, Notice, Daily Bible verse and Family
+photo from the phone-first **Today & notices** settings surface. The verse opens in a Back-safe
+reading dialog so a full quotation and ESV attribution do not make Today dense; a missing server
+key produces a calm unavailable band rather than a broken dashboard. Upcoming plans and due chores
+remain the stable core. The remaining summary bands expand to
 use the freed space; a photo-only configuration is centred rather than leaving
 an unexplained empty column.
 
 The settings surface includes live TV and Phone previews built from the current household summary.
-They show the real composition produced by the four switches, not a draggable editor or a static
+They show the real composition produced by the section switches, not a draggable editor or a static
 illustration. Rapid changes are applied optimistically and serialised so one switch cannot restore
 another switch's older value. If overview data cannot load, the preview says so while leaving the
 visibility controls usable.
@@ -215,8 +217,12 @@ the phone More hub.
   name → Assigned person → Display colour**. An adult may change those
   assignments at any time without reconnecting or re-entering a password; a
   person assignment uses that member's current avatar and Hearth colour, while
-  Whole family uses the family mark and colour. Account replacement and removal
-  remain separate explicit actions.
+  Whole family uses Hearth's fixed green household mark and family colour rather
+  than a member photo. **Edit calendars** securely rediscovers the account using
+  its saved server-side sign-in, allowing calendars to be added or removed
+  without returning or re-entering the password. **Replace connection** is used
+  only when the account, server address or app-specific password changes;
+  removal remains a separate explicit action.
 - Household keeps timezone and weather location as separate settings. Weather
   setup searches by suburb/postcode or requests this phone's location once,
   shows a family-readable place label, hides coordinates under **Advanced**,
@@ -248,8 +254,9 @@ the phone More hub.
   television.
 - Use a warm charcoal canvas and softened surfaces in Dark rather than pure black. Preserve
   member/event identity colours, semantic states and the high-contrast blue D-pad focus treatment.
-- Provide Appearance in the companion More/Admin area and as a small remote-reachable television
-  rail utility.
+- Provide Appearance as a device-local control in companion More and as a small remote-reachable
+  television rail utility. It must not require administrator authentication because it changes only
+  that browser or paired display and cannot mutate household data.
 - Keep evening dimming independent of theme and Home Assistant's Evening scene. It reduces Hearth's
   overall rendered glare, including photos and ambient mode, but does not claim to change panel
   hardware brightness.
@@ -269,11 +276,13 @@ The same web application may present a phone-oriented shell for:
 
 The companion is responsive, not a shrunken TV canvas. Shared domain components are encouraged; television navigation chrome need not be reused on mobile.
 
-Pocket-money administration provides previous/current/next week navigation, named setup warnings,
-paid/partially-paid/unpaid states and a recent payment history. Adults may record a full or partial
-amount with an optional note. Before payday the interface warns that early recording is allowed. A
-mistake opens a reason form and creates a visible void record; no interface offers silent payment
-editing or deletion.
+Pocket-money administration separates standing **Weekly settings** from **Weekly progress**. Each
+child's amount and payday are configured once and repeat until changed. A labelled **Week to review**
+selector defaults to this week and offers past weeks only; it never makes the standing settings look
+week-specific. The screen provides named setup warnings, paid/partially-paid/unpaid states and a
+recent payment history. Adults may record a full or partial amount with an optional note. Before
+payday the interface warns that early recording is allowed. A mistake opens a reason form and
+creates a visible void record; no interface offers silent payment editing or deletion.
 
 ## Required UI states
 

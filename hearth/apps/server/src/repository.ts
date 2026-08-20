@@ -164,7 +164,8 @@ export class InMemoryHearthRepository implements HearthRepository {
       listSummary: isEmpty ? null : { name: 'Groceries', remainingCount: 6 },
       notice: isEmpty ? null : 'Bins go out tonight',
       photo: isEmpty ? null : DEMO_TODAY_PHOTO,
-      sections: { dinner: true, listSummary: true, notice: true, photo: true },
+      dailyVerse: null,
+      sections: { dinner: true, listSummary: true, notice: true, photo: true, dailyVerse: false },
       integrations: this.seed.integrations.map((integration) =>
         integration.kind === 'calendar' && (isStale || isUnavailable)
           ? {

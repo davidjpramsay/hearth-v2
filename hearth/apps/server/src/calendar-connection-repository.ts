@@ -63,6 +63,7 @@ export interface CalendarConnectionVerifier {
 }
 
 export interface CalendarCredentialStore {
+  load(): Promise<CalDavRuntimeConfig>;
   save(config: CalDavRuntimeConfig): Promise<void>;
   updateMappings(
     calendars: CalDavRuntimeConfig['calendars'],
@@ -73,6 +74,7 @@ export interface CalendarCredentialStore {
 
 export interface CalendarConnectionRepository {
   get(householdId: string, actorId: string): Promise<CalendarConnectionSettings | null>;
+  refreshSelection(householdId: string, actorId: string): Promise<CalendarConnectionTestResult>;
   test(
     householdId: string,
     actorId: string,
@@ -151,6 +153,46 @@ export class CalendarConnectionService implements CalendarConnectionRepository {
     input: CalendarConnectionTestRequest,
   ): Promise<CalendarConnectionTestResult> {
     await this.adminRepository.getOverview(householdId, actorId);
+    const discovered = await this.discover(input);
+    return this.stageTest(householdId, input, discovered);
+  }
+
+  async refreshSelection(
+    householdId: string,
+    actorId: string,
+  ): Promise<CalendarConnectionTestResult> {
+    await this.adminRepository.getOverview(householdId, actorId);
+    const row = this.readRow(householdId);
+    if (row === null) throw new RepositoryError('NOT_FOUND', 'No calendar connection is saved.');
+    let input: CalendarConnectionTestRequest;
+    if (this.options.credentialStore === undefined) {
+      input = {
+        serverUrl: `https://${row.server_host}`,
+        username: 'fictional@example.com',
+        appPassword: 'saved-demo-password',
+      };
+    } else {
+      try {
+        input = await this.options.credentialStore.load();
+      } catch {
+        throw new RepositoryError(
+          'COMMAND_FAILED',
+          'Hearth could not read the saved calendar sign-in securely.',
+          true,
+        );
+      }
+    }
+    const discovered = await this.discover(input, true);
+    return this.stageTest(householdId, input, discovered, {
+      serverHost: row.server_host,
+      accountHint: row.account_hint,
+    });
+  }
+
+  private async discover(
+    input: CalendarConnectionTestRequest,
+    usingSavedCredential = false,
+  ): Promise<DiscoveredCalendar[]> {
     let discovered: DiscoveredCalendar[];
     try {
       discovered = await this.verifier.verify(input);
@@ -159,7 +201,9 @@ export class CalendarConnectionService implements CalendarConnectionRepository {
         throw new RepositoryError(
           'INTEGRATION_UNAVAILABLE',
           error.code === 'AUTHENTICATION_REQUIRED'
-            ? 'Calendar sign-in was not accepted. Check the account and app-specific password.'
+            ? usingSavedCredential
+              ? 'Calendar sign-in needs attention. The saved app-specific password may need replacing.'
+              : 'Calendar sign-in was not accepted. Check the account and app-specific password.'
             : error.message,
           error.code === 'UNAVAILABLE',
         );
@@ -169,6 +213,15 @@ export class CalendarConnectionService implements CalendarConnectionRepository {
     if (discovered.length === 0) {
       throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'No event calendars were found.');
     }
+    return discovered;
+  }
+
+  private stageTest(
+    householdId: string,
+    input: CalendarConnectionTestRequest,
+    discovered: DiscoveredCalendar[],
+    metadata?: { serverHost: string; accountHint: string },
+  ): CalendarConnectionTestResult {
     const now = this.now();
     const testId = `calendar_test_${randomUUID().replaceAll('-', '_')}`;
     const expiresAt = new Date(now.getTime() + 10 * 60_000).toISOString();
@@ -178,8 +231,8 @@ export class CalendarConnectionService implements CalendarConnectionRepository {
       serverUrl: input.serverUrl,
       username: input.username,
       appPassword: input.appPassword,
-      serverHost: new URL(input.serverUrl).hostname,
-      accountHint: maskAccount(input.username),
+      serverHost: metadata?.serverHost ?? new URL(input.serverUrl).hostname,
+      accountHint: metadata?.accountHint ?? maskAccount(input.username),
       calendars: discovered.slice(0, 40).map((calendar) => ({
         ...calendar,
         id: opaqueId('calendar_option', calendar.externalId),

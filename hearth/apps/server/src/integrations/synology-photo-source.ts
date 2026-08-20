@@ -38,6 +38,7 @@ const UNSUPPORTED_IMAGE_EXTENSIONS = new Set(['.bmp', '.gif', '.pdf', '.svg']);
 const MAX_SOURCE_FILES = 20_000;
 const MAX_SOURCE_DEPTH = 16;
 const MAX_SOURCE_BYTES = 120 * 1024 * 1024;
+const IGNORED_SOURCE_DIRECTORIES = new Set(['@eaDir', '#recycle']);
 export const MAX_MANAGED_PHOTO_BYTES = 25 * 1024 * 1024;
 const MAX_INPUT_PIXELS = 120_000_000;
 const DERIVATIVE_KEY_PATTERN = /^[a-f0-9]{64}-(display|thumbnail)\.webp$/;
@@ -890,6 +891,7 @@ async function discoverSourceFiles(root: string): Promise<SourceFile[]> {
       if (entry.isSymbolicLink()) continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) {
+        if (IGNORED_SOURCE_DIRECTORIES.has(entry.name)) continue;
         await visit(path, depth + 1);
         continue;
       }

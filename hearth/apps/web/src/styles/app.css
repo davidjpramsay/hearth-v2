@@ -465,13 +465,6 @@
   color: var(--muted);
   font-size: 21px;
 }
-.weather-attribution {
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
 .weather svg {
   width: 33px;
   height: 33px;
@@ -773,6 +766,19 @@
 .summary-details--count-2 {
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
+.summary-details--count-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.summary-details--count-4 .summary-band + .summary-band {
+  border-top: 0;
+}
+.summary-details--count-4 .summary-band:nth-child(n + 3) {
+  border-top: 1px solid var(--hairline);
+}
+.summary-details--count-4 .summary-band:nth-child(even) {
+  border-left: 1px solid var(--hairline);
+}
 .summary-band {
   min-height: 116px;
   padding: 22px 26px;
@@ -947,6 +953,26 @@
   font-size: 27px;
   font-weight: 620;
   line-height: 1.35;
+}
+.daily-verse-detail blockquote {
+  margin: 20px 0 12px;
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(25px, 2vw, 36px);
+  line-height: 1.45;
+}
+.event-detail__panel > .daily-verse-detail__status,
+.event-detail__panel > .daily-verse-detail__copyright {
+  margin: 12px 0 20px;
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+  text-transform: none;
+}
+.daily-verse-detail__copyright a {
+  color: var(--eucalyptus);
+  font-weight: 750;
 }
 
 .pocket-progress {
@@ -2152,6 +2178,24 @@
 .calendar-mapping-save {
   margin-top: 18px;
 }
+.calendar-family-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #cad8cb;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #496148;
+  background: var(--eucalyptus-soft);
+}
+.calendar-family-note .calendar-family-avatar {
+  flex: 0 0 auto;
+}
+.calendar-family-note p {
+  margin: 0;
+  line-height: 1.45;
+}
 .calendar-connection-actions {
   margin-top: 18px;
   display: flex;
@@ -2793,6 +2837,16 @@
   }
   .summary-details {
     border: 0;
+  }
+  .summary-details--count-4 {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+  .summary-details--count-4 .summary-band:nth-child(even) {
+    border-left: 0;
+  }
+  .summary-details--count-4 .summary-band + .summary-band {
+    border-top: 1px solid var(--hairline);
   }
   .summary-band {
     min-height: 74px;
@@ -3761,10 +3815,16 @@
   gap: 6px;
 }
 .routine-days legend {
-  margin-bottom: 7px;
   color: #51484d;
   font-size: 14px;
   font-weight: 680;
+}
+.routine-days > p {
+  grid-column: 1 / -1;
+  margin: 2px 0 7px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.3;
 }
 .routine-days label {
   min-height: 39px;
@@ -3787,13 +3847,15 @@
   opacity: 0;
   cursor: pointer;
 }
-.routine-days label:has(input:checked) {
+.routine-days label.routine-days__option--selected {
   border-color: #8fa996;
   color: #315a40;
   background: var(--eucalyptus-soft);
+  box-shadow: inset 0 0 0 1px rgb(63 114 81 / 18%);
 }
-.routine-days label:has(input:focus-visible) {
+.routine-days label:focus-within {
   outline: 3px solid rgb(85 50 74 / 18%);
+  outline-offset: 1px;
 }
 .routine-save {
   flex: 1 1 220px;
@@ -4076,43 +4138,95 @@
   color: var(--ink);
   font-size: 14px;
 }
-.pocket-money-week-nav {
+.pocket-money-rules {
   margin-top: 17px;
-  padding: 6px;
+  padding: 18px;
   border: 1px solid var(--hairline);
-  border-radius: 15px;
-  background: var(--surface-muted);
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  border-radius: 20px;
+  background: var(--surface-glass);
 }
-.pocket-money-week-nav button {
-  min-height: 45px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
-  color: var(--ink);
-  background: transparent;
+.pocket-money-rules > header,
+.pocket-money-review__header {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font: inherit;
-  font-weight: 680;
-  cursor: pointer;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
 }
-.pocket-money-week-nav button:not(:disabled):hover,
-.pocket-money-week-nav button:not(:disabled):focus-visible {
-  background: var(--surface);
+.pocket-money-rules h2,
+.pocket-money-rules p,
+.pocket-money-review h2,
+.pocket-money-review p {
+  margin: 0;
 }
-.pocket-money-week-nav button:disabled {
+.pocket-money-rules h2,
+.pocket-money-review h2 {
+  color: var(--ink);
+  font-size: 23px;
+}
+.pocket-money-rules header p,
+.pocket-money-review__header p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.pocket-money-rules > header > svg {
+  width: 30px;
+  height: 30px;
   color: var(--eucalyptus);
-  background: var(--surface);
-  cursor: default;
 }
-.pocket-money-week-nav svg {
-  width: 20px;
-  height: 20px;
+.pocket-money-rule-list {
+  margin-top: 15px;
+  border-top: 1px solid var(--hairline);
+}
+.pocket-money-rule {
+  padding: 16px 0 2px;
+}
+.pocket-money-rule + .pocket-money-rule {
+  margin-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+.pocket-money-rule > header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+}
+.pocket-money-rule .avatar {
+  width: 44px;
+  height: 44px;
+}
+.pocket-money-rule h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 19px;
+}
+.pocket-money-rule header span {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.pocket-money-review {
+  margin-top: 24px;
+}
+.pocket-money-review__header label {
+  min-width: 240px;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 680;
+}
+.pocket-money-review__header select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--input-surface, white);
+  font: inherit;
 }
 .pocket-money-intro {
   margin-top: 17px;
@@ -4201,7 +4315,7 @@
   align-items: center;
   gap: 13px;
 }
-.pocket-money-admin-card h2 {
+.pocket-money-admin-card h3 {
   margin: 0;
   font-size: 23px;
 }
@@ -4284,28 +4398,6 @@
 .pocket-money-settings-form .admin-secondary {
   min-height: 48px;
   white-space: nowrap;
-}
-.pocket-money-settings-readonly {
-  margin-top: 15px;
-  padding: 13px 14px;
-  border: 1px solid var(--hairline);
-  border-radius: 13px;
-  background: var(--surface-muted);
-}
-.pocket-money-settings-readonly strong,
-.pocket-money-settings-readonly span,
-.pocket-money-settings-readonly small {
-  display: block;
-}
-.pocket-money-settings-readonly span {
-  margin-top: 3px;
-  color: var(--ink);
-  font-weight: 680;
-}
-.pocket-money-settings-readonly small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 13px;
 }
 .pocket-payment {
   margin-top: 15px;
@@ -4676,9 +4768,26 @@
   .chore-management-actions button {
     width: 100%;
   }
-  .pocket-money-settings-form,
+  .pocket-money-settings-form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .pocket-money-settings-form .admin-secondary {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
   .pocket-payment-form {
     grid-template-columns: 1fr;
+  }
+  .pocket-money-rules {
+    padding: 15px;
+  }
+  .pocket-money-review__header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pocket-money-review__header label {
+    min-width: 0;
   }
   .pocket-money-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5170,6 +5279,7 @@
 :root[data-theme='dark'] .planning-area-card,
 :root[data-theme='dark'] .routine-editor,
 :root[data-theme='dark'] .chore-management-row,
+:root[data-theme='dark'] .pocket-money-rules,
 :root[data-theme='dark'] .pocket-money-admin-card,
 :root[data-theme='dark'] .pocket-money-history,
 :root[data-theme='dark'] .meal-week-settings,
@@ -5222,6 +5332,12 @@
 :root[data-theme='dark'] .pocket-payment__summary span {
   color: var(--muted);
 }
+:root[data-theme='dark'] .connection-row--action:hover,
+:root[data-theme='dark'] .connection-row--action:focus-visible {
+  border-color: var(--sky);
+  color: var(--ink);
+  background: var(--surface-raised);
+}
 :root[data-theme='dark'] .admin-home__title h1,
 :root[data-theme='dark'] .admin-page__header h1,
 :root[data-theme='dark'] .admin-setting-row,
@@ -5273,6 +5389,7 @@
 :root[data-theme='dark'] .routine-days label,
 :root[data-theme='dark'] .pocket-money-settings-form input,
 :root[data-theme='dark'] .pocket-money-settings-form select,
+:root[data-theme='dark'] .pocket-money-review__header select,
 :root[data-theme='dark'] .pocket-payment-form input,
 :root[data-theme='dark'] .pocket-money-void-form input,
 :root[data-theme='dark'] .meal-night-editor input,
@@ -5284,6 +5401,12 @@
   border-color: var(--hairline);
   color: var(--ink);
   background: var(--input-surface);
+}
+:root[data-theme='dark'] .routine-days label.routine-days__option--selected {
+  border-color: var(--eucalyptus);
+  color: #f4fff6;
+  background: #31583c;
+  box-shadow: inset 0 0 0 1px rgb(130 200 149 / 34%);
 }
 :root[data-theme='dark'] .admin-form input,
 :root[data-theme='dark'] .admin-form select,
@@ -5305,9 +5428,18 @@
   background: var(--brick-soft);
 }
 :root[data-theme='dark'] .phase-note {
+  color: var(--ink);
   background: var(--ochre-soft);
 }
+:root[data-theme='dark'] .phase-note p {
+  color: var(--muted);
+}
 :root[data-theme='dark'] .calendar-privacy-note {
+  border-color: #48604f;
+  color: #d6e8d9;
+  background: var(--eucalyptus-soft);
+}
+:root[data-theme='dark'] .calendar-family-note {
   border-color: #48604f;
   color: #d6e8d9;
   background: var(--eucalyptus-soft);

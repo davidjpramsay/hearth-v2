@@ -31,6 +31,14 @@ const data: TodayPreviewData = {
   dinner: 'Lemon chicken',
   listSummary: 'Groceries · 6 left',
   notice: 'Bins go out tonight',
+  dailyVerse: {
+    text: 'Let kindness shape the way you speak and serve one another today.',
+    reference: 'Demo preview',
+    translation: 'Demo',
+    sourceUrl: null,
+    freshness: 'current',
+    statusMessage: null,
+  },
   photo: { url: '/demo/family.webp', alt: 'Family breakfast' },
 };
 
@@ -39,6 +47,7 @@ const allSections: TodaySectionVisibility = {
   listSummary: true,
   notice: true,
   photo: true,
+  dailyVerse: true,
 };
 
 describe('TodayConfigurationPreview', () => {
@@ -67,7 +76,13 @@ describe('TodayConfigurationPreview', () => {
     const { container } = render(
       <TodayConfigurationPreview
         data={data}
-        sections={{ dinner: false, listSummary: false, notice: false, photo: false }}
+        sections={{
+          dinner: false,
+          listSummary: false,
+          notice: false,
+          photo: false,
+          dailyVerse: false,
+        }}
       />,
     );
 

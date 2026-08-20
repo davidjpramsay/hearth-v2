@@ -64,6 +64,53 @@ test('notice removal restores the next eligible household notice', async ({ page
   await expect(page.getByText('Bins go out tonight')).toBeVisible();
 });
 
+test('@visual @a11y daily verse is optional and Back restores its television focus', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/today');
+  const dailyVerse = page.getByRole('switch', { name: /Daily Bible verse/ });
+  await expect(dailyVerse).toHaveAttribute('aria-checked', 'false');
+  await dailyVerse.click();
+  await expect(dailyVerse).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText('Demo preview')).toBeVisible();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-daily-verse-settings-phone-portrait.png'),
+    animations: 'disabled',
+  });
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/today');
+  await expect(page.getByRole('button', { name: 'Read Demo preview' })).toBeVisible();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-daily-verse-tv-1080.png'),
+    animations: 'disabled',
+  });
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowLeft');
+  const verseBand = page.locator('[data-focus-id="today-summary-daily-verse"]');
+  await expect(verseBand).toBeFocused();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Demo preview' });
+  await expect(dialog).toContainText('Let kindness shape');
+  await expect(page.locator('[data-focus-id="daily-verse-detail-close"]')).toBeFocused();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-daily-verse-dialog-tv-1080.png'),
+    animations: 'disabled',
+  });
+  await page.keyboard.press('Escape');
+  await expect(verseBand).toBeFocused();
+});
+
 test('@visual and @a11y Today notice administration and customised television overview', async ({
   page,
 }) => {

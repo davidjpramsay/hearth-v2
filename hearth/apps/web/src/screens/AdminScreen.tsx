@@ -94,7 +94,7 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
         title: 'Appearance',
         description: () => 'Light, dark and evening comfort',
         icon: 'moon',
-        path: '/admin/appearance',
+        path: '/appearance',
       },
     ],
   },

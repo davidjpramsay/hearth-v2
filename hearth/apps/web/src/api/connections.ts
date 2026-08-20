@@ -25,6 +25,12 @@ export const connectionsApi = {
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
     }),
+  refreshCalendarSelection: () =>
+    request(
+      `${householdApiBase()}/calendar-connection-selection-tests`,
+      CalendarConnectionTestResultSchema,
+      { method: 'POST', headers: demoAdminHeaders },
+    ),
   saveCalendarConnection: (input: {
     requestId: string;
     testId: string;

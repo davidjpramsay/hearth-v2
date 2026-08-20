@@ -222,6 +222,13 @@ selects the one active notice by start/expiry window and priority, publishes a
 `today.changed` invalidation and returns explicit visibility flags in
 `TodaySummary`. This is bounded content configuration, not a layout DSL.
 
+The optional daily-verse flag resolves through an injected `DailyVerseProvider` only when enabled.
+Demo mode returns original fictional copy. Private mode either uses the ESV passage-text API with a
+token read from `HEARTH_ESV_API_KEY_PATH`, or an explicit unconfigured adapter. Successful text is
+cached by household and passage in SQLite; a failed refresh may return that passage as stale, while
+provider failure never fails the wider Today response. The token and raw response do not enter
+browser contracts, logs, receipts or audits.
+
 The server selects its calendar implementation at composition time. Demo mode
 injects `FakeCalendarProvider`; private mode injects a stable managed provider
 that delegates either to the read-only `CalDavCalendarProvider` loaded from an
@@ -248,6 +255,12 @@ Calendar-owner edits use a fourth idempotent mapping command. It requires the
 complete connected source set, validates every member against the household,
 updates the safe projection and external allowlist atomically, and leaves the
 existing URL/account/password fields untouched.
+
+Selected-calendar edits use an adult-only rediscovery route. The server loads
+the existing external credential, stages the same bounded ten-minute safe test
+result used by initial setup and never returns credential material. Saving the
+revised set reuses the idempotent calendar save contract, so adding or removing
+an allowed calendar does not require replacing the connection.
 
 Weather location setup is a separate adult-only repository boundary with
 search, test and save routes. Search and phone reverse-labelling are server
@@ -314,14 +327,14 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0023` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0024` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
 management history, snapshotted chore windows/order, credential-free Home Assistant connection
 metadata, named-adult passkey recovery, canonical chore time-of-day grouping,
-the tested household weather location, managed photo-upload metadata and optional folder-import
-status. The live demo server uses the SQLite
+the tested household weather location, managed photo-upload metadata, optional folder-import status,
+daily-verse visibility and the bounded attributed passage cache. The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.

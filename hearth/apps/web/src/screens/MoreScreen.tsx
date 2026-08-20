@@ -27,6 +27,17 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
     ],
   },
   {
+    title: 'This device',
+    links: [
+      {
+        title: 'Appearance',
+        description: 'Light, dark and evening comfort',
+        icon: 'moon',
+        path: '/appearance',
+      },
+    ],
+  },
+  {
     title: 'Set up Hearth',
     links: [
       {
@@ -58,12 +69,6 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
         description: 'Pair, review or revoke a display',
         icon: 'television',
         path: '/admin/televisions',
-      },
-      {
-        title: 'Appearance',
-        description: 'Light, dark and evening comfort',
-        icon: 'moon',
-        path: '/admin/appearance',
       },
     ],
   },

@@ -154,7 +154,7 @@ describe('Hearth v2 API', () => {
     expect(status.json()).toMatchObject({
       mode: 'test',
       generatedAt: '2026-08-02T23:42:00.000Z',
-      database: { state: 'ready', migrationVersion: 23 },
+      database: { state: 'ready', migrationVersion: 24 },
       backup: { state: 'ready', scheduled: true, retentionCount: 14 },
     });
 
@@ -474,6 +474,7 @@ describe('Hearth v2 API', () => {
         listSummary: true,
         notice: true,
         photo: false,
+        dailyVerse: true,
       },
     });
     expect(sections.statusCode).toBe(200);
@@ -484,7 +485,14 @@ describe('Hearth v2 API', () => {
     expect(today.json()).toMatchObject({
       notice: 'Bring library books tomorrow',
       photo: null,
-      sections: { dinner: false, listSummary: true, notice: true, photo: false },
+      dailyVerse: expect.objectContaining({ reference: 'Demo preview', translation: 'Demo' }),
+      sections: {
+        dinner: false,
+        listSummary: true,
+        notice: true,
+        photo: false,
+        dailyVerse: true,
+      },
     });
   });
 
@@ -1064,7 +1072,53 @@ describe('Hearth v2 API', () => {
     expect(JSON.stringify(read.json())).not.toContain(password);
     expect(child.statusCode).toBe(403);
 
-    const connectedCalendars = saved.json().connection.calendars as Array<{ id: string }>;
+    const refreshed = await app.inject({
+      method: 'POST',
+      url: `${root}/calendar-connection-selection-tests`,
+      headers,
+    });
+    const childRefresh = await app.inject({
+      method: 'POST',
+      url: `${root}/calendar-connection-selection-tests`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(refreshed.statusCode).toBe(200);
+    expect(refreshed.json().availableCalendars).toHaveLength(3);
+    expect(JSON.stringify(refreshed.json())).not.toContain(password);
+    expect(childRefresh.statusCode).toBe(403);
+    const refreshedCalendars = refreshed.json().availableCalendars as Array<{
+      id: string;
+      displayName: string;
+    }>;
+    const revisedSelection = await app.inject({
+      method: 'PUT',
+      url: `${root}/calendar-connection`,
+      headers,
+      payload: {
+        requestId: 'request_calendar_http_selection_update',
+        testId: refreshed.json().testId as string,
+        label: 'Family calendars',
+        calendars: refreshedCalendars.map((calendar) => ({
+          calendarId: calendar.id,
+          ownerMemberId:
+            calendar.displayName === 'Ezra'
+              ? 'member_ezra'
+              : calendar.displayName === 'Maya'
+                ? 'member_maya'
+                : null,
+        })),
+      },
+    });
+    expect(revisedSelection.statusCode).toBe(200);
+    expect(
+      revisedSelection
+        .json()
+        .connection.calendars.map((calendar: { displayName: string }) => calendar.displayName),
+    ).toEqual(['Family', 'Ezra', 'Maya']);
+
+    const connectedCalendars = revisedSelection.json().connection.calendars as Array<{
+      id: string;
+    }>;
     const mappedPayload = {
       requestId: 'request_calendar_http_mappings',
       calendars: connectedCalendars.map((calendar) => ({
@@ -1090,6 +1144,7 @@ describe('Hearth v2 API', () => {
       audit: { action: 'calendar.mappings.update' },
       connection: {
         calendars: [
+          { owner: { id: 'member_maya' }, color: '#c97900' },
           { owner: { id: 'member_maya' }, color: '#c97900' },
           { owner: { id: 'member_maya' }, color: '#c97900' },
         ],

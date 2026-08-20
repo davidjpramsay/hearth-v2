@@ -152,6 +152,12 @@ settings also owns weather location through suburb/postcode search or a
 one-time phone location request, a live current-conditions test, and migration
 `0022_weather_location.sql`. Environment coordinates remain fallback-only.
 
+Implementation extension (2026-08-20): an existing calendar connection now has
+a separate **Edit calendars** action. It performs an authenticated server-side
+rediscovery with the saved private credential, then saves an added/removed exact
+calendar selection without revealing or re-entering that credential. Account
+replacement remains a distinct recovery action.
+
 Implementation extension (2026-08-09): Calendar is now one primary television
 and phone destination with Week, Month and a dedicated responsive Agenda view.
 All three views share an explicit D-pad/keyboard switch and a direct source
@@ -165,7 +171,7 @@ on television, and duplicate pairing/settings wording has been removed.
 
 Implementation extension (2026-08-09): **Today & notices** now provides
 phone-first adult creation, editing and removal of expiring Standard/Important
-household notices plus independent Dinner, List summary, Notice and Family
+household notices plus independent Dinner, List summary, Notice, Daily Bible verse and Family
 photo visibility. Migration `0013_notices_and_today_sections.sql` persists the
 state; authenticated commands are validated, idempotent, audited and broadcast
 through `today.changed`. Today rebalances its remaining bands without exposing
@@ -180,6 +186,11 @@ details; Dinner, List summary and Family photo link to their real modules; and
 Notice opens the full announcement in a Back-safe dialog. Automated remote-only
 TV and phone flows prove focus restoration, responsive composition, accessibility
 and clean console behaviour.
+
+Implementation extension (2026-08-20): Daily Bible verse uses the same bounded Today preference
+contract. It is off by default, reads an ESV token only from a server secret file, caches a small
+attributed passage rotation and opens full text in a Back-safe dialog without becoming a general
+content-module system.
 
 Implementation extension (2026-08-10): **Today & notices** now previews the
 resulting TV and Phone compositions using current household content before an
@@ -401,9 +412,10 @@ Cross-cutting appearance extension (2026-08-05): Light, Dark and Automatic are
 implemented as per-display browser/WebView preferences, with Automatic following
 the device colour scheme. A separate evening-dimming switch reduces Hearth's
 rendered glare without invoking Home Assistant or claiming television-brightness
-control. More/Admin and the TV rail expose the same remote-safe controls. Unit,
-accessibility, persistence, system-change, D-pad/Back and five-viewport rendered
-checks pass; physical-TCL comfort assessment remains part of the household pilot.
+control. Companion More and the TV rail expose the same remote-safe controls without
+an administrator passkey because they write only to that device. Unit, accessibility,
+persistence, system-change, D-pad/Back and five-viewport rendered checks pass;
+physical-TCL comfort assessment remains part of the household pilot.
 
 ### Work
 

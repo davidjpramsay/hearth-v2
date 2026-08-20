@@ -42,6 +42,12 @@ transactional reconciliation. Removed sources become hidden and missing
 objects become tombstones. RFC 6578 sync tokens are deferred until live
 profiling shows they are useful.
 
+Timed CalDAV values with a usable `TZID` are projected from that declared
+timezone. Provider values without an absolute offset or resolvable timezone are
+treated as household-local wall time, never as the Synology container's local
+timezone. This keeps floating events stable across development and UTC
+production hosts before Hearth stores their normalized UTC instants.
+
 CalDAV is opt-in outside demo mode through `HEARTH_CALENDAR_CONFIG_PATH`. That
 variable points to a server-only JSON secret outside the repository containing
 the HTTPS server URL, account identifier, app-specific password, household
@@ -71,6 +77,14 @@ replaces the stored CalDAV credential. Browser presentation derives the colour
 from the assigned Hearth member (or the fixed Whole family colour), so later
 member colour/avatar edits flow through without reconnecting the provider.
 
+The selected-calendar allowlist is also editable independently of account
+replacement. An authenticated adult explicitly requests rediscovery; the server
+loads the existing credential from its private file, contacts the provider and
+returns only a ten-minute opaque test ID plus safe calendar descriptors. The
+adult saves a revised exact selection through the normal idempotent save command.
+The password and full server URL never return to the browser, while the external
+allowlist and safe SQLite projection are replaced together.
+
 Only authenticated CalDAV account connections are supported. Calendar web interfaces and
 alternate URL-ingestion paths remain outside the integration boundary.
 
@@ -94,13 +108,29 @@ The adapter requests only current temperature/condition and daily maximum temper
 normalizes WMO codes into Hearth's compact presentation contract and caches one successful response
 for 30 minutes. Concurrent reads share the same request. If a refresh fails, the last safe response
 remains available; if no safe response exists, Today shows **Forecast unavailable** and Week omits
-the weather cue without affecting calendars or household data. The current value and seven-day
-projection are labelled and linked to Open-Meteo beside the displayed data as required by its CC BY
-4.0 licence.
+the weather cue without affecting calendars or household data. Household-facing dashboards contain
+only the useful forecast. Open-Meteo attribution and link remain visible in the adult Weather
+settings surface alongside the location controls, satisfying the provider credit without adding
+technical branding to the family dashboard.
 
 Open-Meteo's official forecast contract documents `current`, `daily`, `timezone`, `past_days` and
 `forecast_days` at <https://open-meteo.com/en/docs>; attribution requirements are documented at
 <https://open-meteo.com/en/licence>.
+
+## Optional ESV daily verse
+
+Today can show one read-only ESV passage selected deterministically from a small approved rotation
+using the household-local date. It is disabled by default. Private mode reads the API token only
+from the external file named by `HEARTH_ESV_API_KEY_PATH`; the browser receives the quotation,
+reference, translation/source link and freshness only. Demo mode uses original fictional copy and
+does not contact ESV.
+
+The adapter calls only `GET https://api.esv.org/v3/passage/text/` with server-side Token
+authorization, requests the short ESV copyright marker, coalesces the result for the local day and
+stores only the bounded rotation in SQLite for outage fallback. Today remains usable when the token
+is absent or ESV is unavailable. The full reading dialog carries ESV attribution and the required
+copyright notice. Official contract and usage conditions: <https://api.esv.org/docs/>,
+<https://api.esv.org/docs/passage-text/> and <https://api.esv.org/>.
 
 ## Home Assistant
 
@@ -329,11 +359,11 @@ Do not attempt facial recognition or ingest every personal photo folder in the f
 The current Phase 7 product slice provides the typed managed-upload boundary, safe demo and private
 display/thumbnail derivatives, gallery, cached states and ambient exit. The optional folder adapter
 ignores symbolic links, bounds file count/depth/size, fingerprints files for incremental checks,
-corrects orientation and creates atomic WebP derivatives. The browser receives opaque, versioned
-asset routes and aggregate counts only. An adult companion may request an idempotent, audited
-folder check; an automatic quiet check runs after the configured interval. Selecting and mounting
-that folder remains an owner-approved deployment step and must not broaden beyond the configured
-collection.
+skips Synology's `@eaDir` metadata and `#recycle` directories, corrects orientation and creates
+atomic WebP derivatives. The browser receives opaque, versioned asset routes and aggregate counts
+only. An adult companion may request an idempotent, audited folder check; an automatic quiet check
+runs after the configured interval. Selecting and mounting that folder remains an owner-approved
+deployment step and must not broaden beyond the configured collection.
 
 ## Presence and IR
 

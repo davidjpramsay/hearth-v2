@@ -18,13 +18,14 @@ import { useCalendarConnectionQuery } from '../hooks/useConnectionQueries';
 import { useHearthRuntime } from '../runtime/context';
 
 type OwnerByCalendar = Record<string, string>;
+type CalendarEditMode = 'none' | 'selection' | 'connection';
 
 export function CalendarConnectionSettingsScreen() {
   const runtime = useHearthRuntime();
   const admin = useAdminQuery();
   const connection = useCalendarConnectionQuery();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
+  const [editMode, setEditMode] = useState<CalendarEditMode>('none');
   const [testResult, setTestResult] = useState<CalendarConnectionTestResult | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [owners, setOwners] = useState<OwnerByCalendar>({});
@@ -53,15 +54,52 @@ export function CalendarConnectionSettingsScreen() {
       setConfirmation('Connection worked. Choose the calendars Hearth may show.');
     },
   });
+  const refreshSelection = useMutation({
+    mutationFn: hearthApi.refreshCalendarSelection,
+    onSuccess: (result) => {
+      const connectedByName = new Map(
+        (connection.data?.calendars ?? []).map((calendar) => [calendar.displayName, calendar]),
+      );
+      const householdMembers = admin.data?.household.members ?? [];
+      setTestResult(result);
+      setSelected(
+        result.availableCalendars
+          .filter((calendar) => connectedByName.has(calendar.displayName))
+          .map((calendar) => calendar.id),
+      );
+      setOwners(
+        Object.fromEntries(
+          result.availableCalendars.map((calendar) => {
+            const connected = connectedByName.get(calendar.displayName);
+            const matchedMember = householdMembers.find(
+              (member) => member.displayName.toLowerCase() === calendar.displayName.toLowerCase(),
+            );
+            return [calendar.id, connected?.owner?.id ?? matchedMember?.id ?? ''];
+          }),
+        ),
+      );
+      setEditMode('selection');
+      setConfirmation('Calendars refreshed using the saved connection. Choose what Hearth shows.');
+    },
+  });
   const save = useMutation({
     mutationFn: hearthApi.saveCalendarConnection,
     onSuccess: (result) => {
       queryClient.setQueryData(queryKeys.calendarConnection, result.connection);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.admin });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
+        queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
+      ]);
       window.scrollTo({ top: 0, behavior: 'auto' });
-      setEditing(false);
+      const savedSelectionEdit = editMode === 'selection';
+      setEditMode('none');
       setTestResult(null);
-      setConfirmation('Calendar connection saved.');
+      setConfirmation(
+        savedSelectionEdit ? 'Calendar choices saved.' : 'Calendar connection saved.',
+      );
     },
   });
   const remove = useMutation({
@@ -71,7 +109,7 @@ export function CalendarConnectionSettingsScreen() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.admin });
       window.scrollTo({ top: 0, behavior: 'auto' });
       setConfirmRemove(false);
-      setEditing(false);
+      setEditMode('none');
       setTestResult(null);
       setConfirmation('Calendar connection removed. Saved event copies will age out safely.');
     },
@@ -95,8 +133,13 @@ export function CalendarConnectionSettingsScreen() {
   if (admin.isError) return <AdminError message={admin.error.message} />;
   if (connection.isError) return <AdminError message={connection.error.message} />;
 
-  const showForm = connection.data === null || editing;
-  const mutationError = testConnection.error ?? save.error ?? remove.error ?? updateMappings.error;
+  const showForm = connection.data === null || editMode !== 'none';
+  const mutationError =
+    testConnection.error ??
+    refreshSelection.error ??
+    save.error ??
+    remove.error ??
+    updateMappings.error;
 
   function submitTest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -115,7 +158,7 @@ export function CalendarConnectionSettingsScreen() {
     save.mutate({
       requestId: createRequestId('calendar_save'),
       testId: testResult.testId,
-      label: 'Family calendars',
+      label: connection.data?.label ?? 'Family calendars',
       calendars: selected.map((calendarId) => ({
         calendarId,
         ownerMemberId: owners[calendarId] || null,
@@ -240,12 +283,33 @@ export function CalendarConnectionSettingsScreen() {
           <p className="field-help">
             Last checked {formatCheckedAt(connection.data.lastCheckedAt)}
           </p>
+          <div className="calendar-family-note" role="note">
+            <span className="calendar-family-avatar" aria-hidden="true">
+              <Icon name="home" />
+            </span>
+            <p>
+              <strong>Whole family calendars</strong> use Hearth&apos;s green household mark and
+              family colour. Assign a calendar to one person to use their photo and colour instead.
+            </p>
+          </div>
           <div className="calendar-connection-actions">
+            <button
+              className="admin-secondary focusable"
+              data-focus-id="calendar-edit-selection"
+              disabled={refreshSelection.isPending}
+              onClick={() => {
+                setConfirmation(null);
+                refreshSelection.mutate();
+              }}
+              type="button"
+            >
+              {refreshSelection.isPending ? 'Refreshing calendars…' : 'Edit calendars'}
+            </button>
             <button
               className="admin-secondary focusable"
               data-focus-id="calendar-replace"
               onClick={() => {
-                setEditing(true);
+                setEditMode('connection');
                 setConfirmation(null);
               }}
               type="button"
@@ -345,10 +409,16 @@ export function CalendarConnectionSettingsScreen() {
               <button className="admin-submit" disabled={testConnection.isPending} type="submit">
                 {testConnection.isPending ? 'Testing securely…' : 'Test connection'}
               </button>
-              {editing ? (
+              {editMode !== 'none' ? (
                 <button
                   className="admin-secondary calendar-cancel"
-                  onClick={() => setEditing(false)}
+                  onClick={() => {
+                    setEditMode('none');
+                    setTestResult(null);
+                    setSelected([]);
+                    setOwners({});
+                    setConfirmation(null);
+                  }}
                   type="button"
                 >
                   Cancel
@@ -361,7 +431,9 @@ export function CalendarConnectionSettingsScreen() {
                 <Icon name="check" />
               </span>
               <div>
-                <strong>Connection tested</strong>
+                <strong>
+                  {editMode === 'selection' ? 'Calendars refreshed' : 'Connection tested'}
+                </strong>
                 <span>
                   {testResult.serverHost} · {testResult.accountHint}
                 </span>
@@ -369,6 +441,7 @@ export function CalendarConnectionSettingsScreen() {
               <button
                 className="admin-secondary"
                 onClick={() => {
+                  if (editMode === 'selection') setEditMode('none');
                   setTestResult(null);
                   setSelected([]);
                   setOwners({});
@@ -376,7 +449,7 @@ export function CalendarConnectionSettingsScreen() {
                 }}
                 type="button"
               >
-                Test another account
+                {editMode === 'selection' ? 'Cancel' : 'Test another account'}
               </button>
             </div>
           )}
@@ -386,10 +459,25 @@ export function CalendarConnectionSettingsScreen() {
               <header>
                 <div>
                   <h2 id="calendar-picker-title">Choose calendars</h2>
-                  <p>Only selected calendars will be read by Hearth.</p>
+                  <p>
+                    {editMode === 'selection'
+                      ? 'Add or remove calendars without changing the saved account.'
+                      : 'Only selected calendars will be read by Hearth.'}
+                  </p>
                 </div>
-                <span className="connection-badge connection-badge--healthy">Connection works</span>
+                <span className="connection-badge connection-badge--healthy">
+                  {editMode === 'selection' ? 'Saved sign-in' : 'Connection works'}
+                </span>
               </header>
+              <div className="calendar-family-note" role="note">
+                <span className="calendar-family-avatar" aria-hidden="true">
+                  <Icon name="home" />
+                </span>
+                <p>
+                  Choose <strong>Whole family</strong> for a shared calendar. Hearth shows the green
+                  household mark rather than one person&apos;s photo.
+                </p>
+              </div>
               <div className="calendar-picker__list">
                 {testResult.availableCalendars.map((calendar) => {
                   const checked = selected.includes(calendar.id);
@@ -448,7 +536,9 @@ export function CalendarConnectionSettingsScreen() {
               >
                 {save.isPending
                   ? 'Saving…'
-                  : `Save ${selected.length} calendar${selected.length === 1 ? '' : 's'}`}
+                  : editMode === 'selection'
+                    ? 'Save calendar choices'
+                    : `Save ${selected.length} calendar${selected.length === 1 ? '' : 's'}`}
               </button>
             </section>
           )}

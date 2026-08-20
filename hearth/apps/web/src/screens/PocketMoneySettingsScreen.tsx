@@ -28,9 +28,13 @@ export function PocketMoneySettingsScreen() {
   const runtime = useHearthRuntime();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedWeek = searchParams.get('week');
-  const weekStart = validMonday(requestedWeek) ? requestedWeek : runtime.weekStart;
+  const weekStart =
+    validMonday(requestedWeek) && requestedWeek <= runtime.weekStart
+      ? requestedWeek
+      : runtime.weekStart;
   const isCurrentWeek = weekStart === runtime.weekStart;
   const asOfDate = asOfForWeek(weekStart, runtime.localDate);
+  const reviewWeeks = buildReviewWeeks(runtime.weekStart, weekStart);
   const pocketMoney = usePocketMoneyQuery(weekStart, asOfDate);
   const queryClient = useQueryClient();
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -50,11 +54,13 @@ export function PocketMoneySettingsScreen() {
         requestId: createRequestId('pocket_money_settings'),
         weeklyAmountCents,
         payday,
-        weekStart,
-        asOfDate,
+        weekStart: runtime.weekStart,
+        asOfDate: runtime.localDate,
       }),
     onSuccess: async (result) => {
-      setConfirmation(`${result.child.member.displayName}’s weekly amount is saved.`);
+      setConfirmation(
+        `${result.child.member.displayName}’s settings are saved for every week until you change them.`,
+      );
       await refresh();
     },
   });
@@ -119,41 +125,8 @@ export function PocketMoneySettingsScreen() {
       backLabel="Back to Family planning"
       backTo="/admin/planning"
       title="Pocket money"
-      subtitle={`Weekly progress and payment records · ${pocketMoney.data.displayRange}`}
+      subtitle="Set the rules once, then review progress and payments"
     >
-      <nav aria-label="Pocket-money week" className="pocket-money-week-nav">
-        <button onClick={() => changeWeek(-7)} type="button">
-          <Icon name="chevron-left" /> Previous
-        </button>
-        <button disabled={weekStart === runtime.weekStart} onClick={goToCurrentWeek} type="button">
-          This week
-        </button>
-        <button onClick={() => changeWeek(7)} type="button">
-          Next <Icon name="chevron-right" />
-        </button>
-      </nav>
-      <div className="pocket-money-intro">
-        <Icon name="wallet" />
-        <div>
-          <strong>Chores decide the amount due</strong>
-          <p>
-            Hearth calculates each child’s share from chores due so far this week. Excused and
-            cancelled chores do not count against them; skipped chores remain incomplete.
-          </p>
-        </div>
-      </div>
-      {isCurrentWeek ? null : (
-        <div className="pocket-money-week-context" role="note">
-          <Icon name="calendar" />
-          <div>
-            <strong>Reviewing {pocketMoney.data.displayRange}</strong>
-            <span>
-              Progress uses the current weekly settings. Recorded payments retain their original
-              amount and chore snapshot.
-            </span>
-          </div>
-        </div>
-      )}
       {missingSettings.length === 0 ? null : (
         <div className="pocket-money-setup-warning" role="alert">
           <Icon name="warning" />
@@ -166,6 +139,32 @@ export function PocketMoneySettingsScreen() {
           </div>
         </div>
       )}
+      <section className="pocket-money-rules" aria-labelledby="pocket-money-rules-title">
+        <header>
+          <div>
+            <h2 id="pocket-money-rules-title">Weekly settings</h2>
+            <p>Set these once. They repeat every week until an adult changes them.</p>
+          </div>
+          <Icon name="wallet" />
+        </header>
+        {pocketMoney.data.children.length === 0 ? (
+          <div className="pocket-money-empty">
+            Add a child in People before setting up pocket money.
+          </div>
+        ) : (
+          <div className="pocket-money-rule-list">
+            {pocketMoney.data.children.map((child, childIndex) => (
+              <PocketMoneyRuleForm
+                child={child}
+                childIndex={childIndex}
+                key={`${child.member.id}:${child.weeklyAmountCents}:${child.payday ?? 'unset'}`}
+                onUpdate={update.mutate}
+                pending={update.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </section>
       {confirmation === null ? null : (
         <p className="save-confirmation" role="status">
           {confirmation}
@@ -179,25 +178,63 @@ export function PocketMoneySettingsScreen() {
           }
         />
       ) : null}
+      <section className="pocket-money-review" aria-labelledby="pocket-money-review-title">
+        <header className="pocket-money-review__header">
+          <div>
+            <h2 id="pocket-money-review-title">Weekly progress</h2>
+            <p>{shortWeek(weekStart)}</p>
+          </div>
+          <label>
+            Week to review
+            <select
+              onChange={(event) => selectReviewWeek(event.currentTarget.value)}
+              value={weekStart}
+            >
+              {reviewWeeks.map((week, index) => (
+                <option key={week} value={week}>
+                  {index === 0
+                    ? `This week · ${shortWeek(week)}`
+                    : index === 1
+                      ? `Last week · ${shortWeek(week)}`
+                      : shortWeek(week)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </header>
+        <div className="pocket-money-intro">
+          <Icon name="wallet" />
+          <div>
+            <strong>Chores decide the amount due</strong>
+            <p>
+              Hearth calculates each child’s share from chores due so far this week. Excused and
+              cancelled chores do not count against them; skipped chores remain incomplete.
+            </p>
+          </div>
+        </div>
+        {isCurrentWeek ? null : (
+          <div className="pocket-money-week-context" role="note">
+            <Icon name="calendar" />
+            <div>
+              <strong>Reviewing {shortWeek(weekStart)}</strong>
+              <span>
+                The settings above are your current standing rules. Past payments keep the amount
+                and chore progress recorded at the time.
+              </span>
+            </div>
+          </div>
+        )}
+      </section>
       <div className="pocket-money-admin-list">
-        {pocketMoney.data.children.map((child, childIndex) => (
+        {pocketMoney.data.children.map((child) => (
           <PocketMoneyChildCard
             child={child}
-            childIndex={childIndex}
             key={`${child.member.id}:${weekStart}`}
             onPay={pay.mutate}
-            onUpdate={update.mutate}
             paymentPending={pay.isPending}
-            settingsEditable={isCurrentWeek}
-            settingsPending={update.isPending}
           />
         ))}
       </div>
-      {pocketMoney.data.children.length === 0 ? (
-        <div className="pocket-money-empty">
-          Add a child in People before setting up pocket money.
-        </div>
-      ) : null}
       <PaymentHistory
         children={pocketMoney.data.children}
         onCancelVoid={() => setVoidingPaymentId(null)}
@@ -211,18 +248,10 @@ export function PocketMoneySettingsScreen() {
     </AdminPage>
   );
 
-  function changeWeek(dayCount: number): void {
-    const next = addLocalDays(weekStart, dayCount);
+  function selectReviewWeek(next: string): void {
     const params = new URLSearchParams(searchParams);
     if (next === runtime.weekStart) params.delete('week');
     else params.set('week', next);
-    setSearchParams(params, { replace: true });
-    setConfirmation(null);
-  }
-
-  function goToCurrentWeek(): void {
-    const params = new URLSearchParams(searchParams);
-    params.delete('week');
     setSearchParams(params, { replace: true });
     setConfirmation(null);
   }
@@ -236,22 +265,83 @@ export function PocketMoneySettingsScreen() {
   }
 }
 
-function PocketMoneyChildCard({
+function PocketMoneyRuleForm({
   child,
   childIndex,
-  onPay,
   onUpdate,
-  paymentPending,
-  settingsEditable,
-  settingsPending,
+  pending,
 }: {
   child: PocketMoneyChildSummary;
   childIndex: number;
-  onPay: (input: { memberId: string; amountCents: number; note: string | null }) => void;
   onUpdate: (input: { memberId: string; weeklyAmountCents: number; payday: Payday }) => void;
+  pending: boolean;
+}) {
+  return (
+    <article className="pocket-money-rule">
+      <header>
+        <Avatar member={child.member} />
+        <div>
+          <h3>{child.member.displayName}</h3>
+          <span>Repeats every week until changed</span>
+        </div>
+      </header>
+      <form
+        aria-label={`${child.member.displayName} pocket-money settings`}
+        className="pocket-money-settings-form"
+        onSubmit={(event) => submitSettings(event, child.member.id, onUpdate)}
+      >
+        <label>
+          Weekly amount
+          <span className="money-input">
+            <span>$</span>
+            <input
+              aria-label={`${child.member.displayName} weekly amount`}
+              data-focus-entry={childIndex === 0 ? 'true' : undefined}
+              data-focus-id={`pocket-amount-${child.member.id}`}
+              defaultValue={
+                child.weeklyAmountCents === null ? '' : (child.weeklyAmountCents / 100).toFixed(2)
+              }
+              inputMode="decimal"
+              min="1"
+              name="weeklyAmount"
+              placeholder="12.00"
+              required
+              step="0.50"
+              type="number"
+            />
+          </span>
+        </label>
+        <label>
+          Payday
+          <select
+            aria-label={`${child.member.displayName} payday`}
+            defaultValue={child.payday ?? 'friday'}
+            name="payday"
+            required
+          >
+            {PAYDAYS.map((day) => (
+              <option key={day.value} value={day.value}>
+                {day.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="admin-secondary" disabled={pending} type="submit">
+          {pending ? 'Saving…' : `Save ${child.member.displayName}`}
+        </button>
+      </form>
+    </article>
+  );
+}
+
+function PocketMoneyChildCard({
+  child,
+  onPay,
+  paymentPending,
+}: {
+  child: PocketMoneyChildSummary;
+  onPay: (input: { memberId: string; amountCents: number; note: string | null }) => void;
   paymentPending: boolean;
-  settingsEditable: boolean;
-  settingsPending: boolean;
 }) {
   const canRecord =
     child.weeklyAmountCents !== null &&
@@ -265,7 +355,7 @@ function PocketMoneyChildCard({
       <header>
         <Avatar member={child.member} />
         <div>
-          <h2>{child.member.displayName}</h2>
+          <h3>{child.member.displayName}</h3>
           <span>{statusLabel(child)}</span>
         </div>
         <strong>{child.completionPercentage}%</strong>
@@ -300,54 +390,6 @@ function PocketMoneyChildCard({
           <b>{formatMoney(child.weeklyAmountCents)}</b>
         </span>
       </div>
-      {settingsEditable ? (
-        <form
-          className="pocket-money-settings-form"
-          onSubmit={(event) => submitSettings(event, child.member.id, onUpdate)}
-        >
-          <label>
-            Weekly pocket money
-            <span className="money-input">
-              <span>$</span>
-              <input
-                data-focus-entry={childIndex === 0 ? 'true' : undefined}
-                data-focus-id={`pocket-amount-${child.member.id}`}
-                defaultValue={
-                  child.weeklyAmountCents === null ? '' : (child.weeklyAmountCents / 100).toFixed(2)
-                }
-                inputMode="decimal"
-                min="1"
-                name="weeklyAmount"
-                placeholder="12.00"
-                required
-                step="0.50"
-                type="number"
-              />
-            </span>
-          </label>
-          <label>
-            Payday
-            <select defaultValue={child.payday ?? 'friday'} name="payday" required>
-              {PAYDAYS.map((day) => (
-                <option key={day.value} value={day.value}>
-                  {day.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="admin-secondary" disabled={settingsPending} type="submit">
-            {settingsPending ? 'Saving…' : 'Save weekly settings'}
-          </button>
-        </form>
-      ) : (
-        <div className="pocket-money-settings-readonly">
-          <strong>Current weekly settings</strong>
-          <span>
-            {formatMoney(child.weeklyAmountCents)} · {paydayLabel(child.payday)} payday
-          </span>
-          <small>Return to This week to change these settings.</small>
-        </div>
-      )}
       <div className="pocket-payment">
         <div className="pocket-payment__summary">
           <strong>
@@ -577,6 +619,12 @@ function validMonday(value: string | null): value is string {
   return new Date(`${value}T12:00:00Z`).getUTCDay() === 1;
 }
 
+function buildReviewWeeks(currentWeek: string, selectedWeek: string): string[] {
+  const weeks = Array.from({ length: 8 }, (_, index) => addLocalDays(currentWeek, index * -7));
+  if (!weeks.includes(selectedWeek)) weeks.push(selectedWeek);
+  return weeks.sort((left, right) => right.localeCompare(left));
+}
+
 function asOfForWeek(weekStart: string, today: string): string {
   const offset = localDateOffset(weekStart, today);
   if (offset < 0) return weekStart;
@@ -587,13 +635,19 @@ function asOfForWeek(weekStart: string, today: string): string {
 function shortWeek(weekStart: string): string {
   const start = new Date(`${weekStart}T12:00:00Z`);
   const end = new Date(`${addLocalDays(weekStart, 6)}T12:00:00Z`);
-  const day = new Intl.DateTimeFormat('en-AU', { day: 'numeric', timeZone: 'UTC' }).format(start);
-  const endLabel = new Intl.DateTimeFormat('en-AU', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  }).format(end);
-  return `${day}–${endLabel}`;
+  const day = (date: Date) =>
+    new Intl.DateTimeFormat('en-AU', { day: 'numeric', timeZone: 'UTC' }).format(date);
+  const month = (date: Date) =>
+    new Intl.DateTimeFormat('en-AU', { month: 'short', timeZone: 'UTC' }).format(date);
+  const year = (date: Date) =>
+    new Intl.DateTimeFormat('en-AU', { year: 'numeric', timeZone: 'UTC' }).format(date);
+  if (year(start) !== year(end)) {
+    return `${day(start)} ${month(start)} ${year(start)}–${day(end)} ${month(end)} ${year(end)}`;
+  }
+  if (month(start) !== month(end)) {
+    return `${day(start)} ${month(start)}–${day(end)} ${month(end)}`;
+  }
+  return `${day(start)}–${day(end)} ${month(end)}`;
 }
 
 function formatDate(timestamp: string): string {

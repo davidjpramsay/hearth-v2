@@ -2,10 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import type { CalendarEvent, DemoScenario } from '@hearth/shared';
+import type { CalendarEvent, DailyVerseSummary, DemoScenario } from '@hearth/shared';
 
 import { demoApi as hearthApi } from '../api/demo';
 import { ChoreRow } from '../components/ChoreRow';
+import { DailyVerseDetailsDialog } from '../components/DailyVerseDetailsDialog';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { EventRow } from '../components/EventRow';
 import { Icon } from '../components/Icon';
@@ -14,7 +15,6 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { SummaryBand } from '../components/SummaryBand';
 import { TodayPhoto } from '../components/TodayPhoto';
-import { WeatherAttribution } from '../components/WeatherAttribution';
 import { useChoreMutation } from '../hooks/useChoreMutation';
 import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -35,6 +35,7 @@ export function TodayScreen({
   const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedNotice, setSelectedNotice] = useState<string | null>(null);
+  const [selectedDailyVerse, setSelectedDailyVerse] = useState<DailyVerseSummary | null>(null);
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
@@ -50,12 +51,14 @@ export function TodayScreen({
     today.sections.dinner,
     today.sections.listSummary,
     today.sections.notice,
+    today.sections.dailyVerse,
   ].filter(Boolean).length;
   const showPhoto = today.sections.photo && today.photo !== null;
   const summaryFocusIds = [
     today.sections.dinner ? 'today-summary-dinner' : null,
     today.sections.listSummary ? 'today-summary-list' : null,
     today.sections.notice && today.notice !== null ? 'today-summary-notice' : null,
+    today.sections.dailyVerse && today.dailyVerse !== null ? 'today-summary-daily-verse' : null,
   ].filter((focusId): focusId is string => focusId !== null);
   const lastEventFocusId = visibleEvents.at(-1)
     ? `today-event-${visibleEvents.at(-1)!.id}`
@@ -80,6 +83,7 @@ export function TodayScreen({
     (today.sections.dinner && today.dinner !== null) ||
     (today.sections.listSummary && today.listSummary !== null) ||
     (today.sections.notice && today.notice !== null) ||
+    today.sections.dailyVerse ||
     showPhoto;
   const empty = today.events.length === 0 && today.chores.length === 0 && !hasVisibleSummaryContent;
   if (empty) {
@@ -122,12 +126,7 @@ export function TodayScreen({
               <strong>
                 {today.weather === null ? '—' : `${today.weather.temperatureCelsius}°`}
               </strong>
-              <span>
-                {today.weather?.condition ?? 'Forecast unavailable'}
-                {today.weather === null ? null : (
-                  <WeatherAttribution source={today.weather.source} />
-                )}
-              </span>
+              <span>{today.weather?.condition ?? 'Forecast unavailable'}</span>
             </div>
           </div>
         }
@@ -282,6 +281,23 @@ export function TodayScreen({
                   </SummaryBand>
                 )
               ) : null}
+              {today.sections.dailyVerse ? (
+                today.dailyVerse === null ? (
+                  <SummaryBand icon="book-open" label="Daily verse">
+                    Add the private ESV key to show today’s verse
+                  </SummaryBand>
+                ) : (
+                  <SummaryBand
+                    ariaLabel={`Read ${today.dailyVerse.reference}`}
+                    focus={summaryFocus('today-summary-daily-verse')}
+                    icon="book-open"
+                    label="Daily verse"
+                    onActivate={() => setSelectedDailyVerse(today.dailyVerse)}
+                  >
+                    {today.dailyVerse.reference} · {today.dailyVerse.text}
+                  </SummaryBand>
+                )
+              ) : null}
             </div>
           )}
           {showPhoto && today.photo !== null ? (
@@ -309,6 +325,10 @@ export function TodayScreen({
         timezone={runtime.timezone}
       />
       <NoticeDetailsDialog message={selectedNotice} onClose={() => setSelectedNotice(null)} />
+      <DailyVerseDetailsDialog
+        onClose={() => setSelectedDailyVerse(null)}
+        verse={selectedDailyVerse}
+      />
     </div>
   );
 }

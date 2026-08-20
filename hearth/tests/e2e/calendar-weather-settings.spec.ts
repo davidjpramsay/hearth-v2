@@ -15,7 +15,7 @@ test.beforeEach(async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
-test('connected calendar assignments remain editable without calendar credentials', async ({
+test('connected calendar choices and assignments remain editable without calendar credentials', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1024, height: 900 });
@@ -23,12 +23,24 @@ test('connected calendar assignments remain editable without calendar credential
   await page.getByLabel('Apple Account email or CalDAV username').fill('fictional@example.com');
   await page.getByLabel('App-specific password').fill('fictional-app-password');
   await page.getByRole('button', { name: 'Test connection' }).click();
-  await page.getByRole('button', { name: 'Save 3 calendars' }).click();
+  await page.getByRole('checkbox', { name: 'Maya' }).uncheck();
+  await page.getByRole('button', { name: 'Save 2 calendars' }).click();
 
   await expect(page.getByText('Calendar name', { exact: true })).toBeVisible();
   await expect(page.getByText('Assigned person', { exact: true })).toBeVisible();
   await expect(page.getByText('Display colour', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App-specific password')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Edit calendars' }).click();
+  await expect(page.getByText('Calendars refreshed', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('App-specific password')).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: 'Family' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Ezra' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Maya' })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: 'Maya' }).check();
+  await page.getByRole('button', { name: 'Save calendar choices' }).click();
+  await expect(page.getByRole('status')).toContainText('Calendar choices saved');
+  await expect(page.getByLabel('Assigned person for Maya')).toHaveValue('member_maya');
 
   const familyAssignment = page.getByLabel('Assigned person for Family');
   await familyAssignment.selectOption('member_maya');

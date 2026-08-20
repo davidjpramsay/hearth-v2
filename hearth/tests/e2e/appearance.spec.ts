@@ -18,7 +18,7 @@ test.beforeEach(async ({ request }) => {
 
 test('theme choices persist and Automatic follows the device setting', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/admin/appearance');
+  await page.goto('/appearance');
 
   await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
   await expect(page.getByRole('radio', { name: /^Automatic/ })).toHaveAttribute(
@@ -41,9 +41,58 @@ test('theme choices persist and Automatic follows the device setting', async ({ 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
+test('a paired display changes its local appearance without administrator access', async ({
+  page,
+}) => {
+  let adminAuthRequests = 0;
+  await page.route('**/api/v1/runtime', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        mode: 'private',
+        generatedAt: '2026-08-20T10:15:00.000Z',
+        household: {
+          id: 'household_hearth_demo',
+          name: 'Private household',
+          timezone: 'Australia/Perth',
+          locale: 'en-AU',
+        },
+        timezone: 'Australia/Perth',
+        locale: 'en-AU',
+        localDate: '2026-08-20',
+        weekStart: '2026-08-17',
+        currentMonth: '2026-08',
+        requiresSetup: false,
+      }),
+    }),
+  );
+  await page.route('**/api/v1/auth/status', (route) => {
+    adminAuthRequests += 1;
+    return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        mode: 'private',
+        configured: true,
+        secureOrigin: true,
+        requiresSetup: false,
+        authenticated: false,
+        actor: null,
+      }),
+    });
+  });
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/appearance');
+  await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
+  await expect(page.getByText('Sign in to manage Hearth')).toHaveCount(0);
+  await page.getByRole('radio', { name: /^Dark/ }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(adminAuthRequests).toBe(0);
+});
+
 test('evening dimming is separate, persistent and family-readable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/admin/appearance');
+  await page.goto('/appearance');
   const dimming = page.getByRole('switch', { name: /Evening dimming/ });
 
   await expect(dimming).toHaveAttribute('aria-checked', 'false');
@@ -62,7 +111,7 @@ test('shared raised surfaces stay distinct in light and dark themes', async ({ p
   await page.setViewportSize({ width: 390, height: 844 });
 
   for (const theme of ['Light', 'Dark'] as const) {
-    await page.goto('/admin/appearance');
+    await page.goto('/appearance');
     await page.getByRole('radio', { name: new RegExp(`^${theme}`) }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.toLowerCase());
 
@@ -95,6 +144,49 @@ test('shared raised surfaces stay distinct in light and dark themes', async ({ p
   ).not.toBe('rgba(0, 0, 0, 0)');
 });
 
+test('dark phone Connections stays readable while a connection is focused', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'hearth.appearance.v1',
+      JSON.stringify({ theme: 'dark', eveningDimming: false }),
+    );
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/connections');
+
+  const calendar = page.locator('[data-focus-id="connection-calendar"]');
+  await expect(calendar).toBeFocused();
+  await expect(calendar).toHaveCSS('background-color', 'rgb(43, 52, 48)');
+  const focusedStyles = await calendar.evaluate((element) => {
+    const card = getComputedStyle(element);
+    const title = getComputedStyle(element.querySelector('strong')!);
+    const description = getComputedStyle(element.querySelector('p')!);
+    return {
+      background: card.backgroundColor,
+      title: title.color,
+      description: description.color,
+    };
+  });
+  expect(focusedStyles).toEqual({
+    background: 'rgb(43, 52, 48)',
+    title: 'rgb(241, 238, 231)',
+    description: 'rgb(182, 191, 187)',
+  });
+  await expect(page.locator('.phase-note p')).toHaveCSS('color', 'rgb(182, 191, 187)');
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  await captureEvidence(page, {
+    path: resolve(screenshotDirectory, 'dark-connections-phone.png'),
+    animations: 'disabled',
+    fullPage: true,
+  });
+});
+
 test('remote navigation reaches Appearance, changes dimming and restores focus on Back', async ({
   page,
 }) => {
@@ -105,7 +197,7 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
   for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/admin\/appearance$/);
+  await expect(page).toHaveURL(/\/appearance$/);
   await expect(page.locator('[data-focus-id="appearance-automatic"]')).toBeFocused();
 
   await page.keyboard.press('ArrowDown');
@@ -130,11 +222,11 @@ test('television rail opens the per-display Appearance control', async ({ page }
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/admin\/appearance$/);
+  await expect(page).toHaveURL(/\/appearance$/);
   await expect(page.locator('[data-focus-id="appearance-automatic"]')).toBeFocused();
 });
 
-for (const path of ['/today', '/admin/appearance']) {
+for (const path of ['/today', '/appearance']) {
   test(`@a11y dark ${path} has no serious accessibility violations`, async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem(
@@ -172,7 +264,7 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/admin/appearance');
+  await page.goto('/appearance');
   await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
   await captureEvidence(page, {
     path: resolve(screenshotDirectory, 'dark-appearance-phone.png'),

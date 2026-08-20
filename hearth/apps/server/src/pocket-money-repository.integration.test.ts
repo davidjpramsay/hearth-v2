@@ -106,6 +106,11 @@ describe('SQLite pocket money repository', () => {
     );
     const restarted = new PocketMoneyService(chores, admin, database);
     const persisted = await restarted.getOverview(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-03');
+    const followingWeek = await restarted.getOverview(
+      DEMO_HOUSEHOLD_ID,
+      '2026-08-10',
+      '2026-08-10',
+    );
     const corrected = await restarted.recordPayment(
       DEMO_HOUSEHOLD_ID,
       {
@@ -145,6 +150,10 @@ describe('SQLite pocket money repository', () => {
     });
     expect(persisted.children[0]?.payments).toHaveLength(2);
     expect(persisted.recentPayments).toHaveLength(2);
+    expect(followingWeek.children[0]).toMatchObject({
+      weeklyAmountCents: 1500,
+      payday: 'friday',
+    });
     expect(corrected.child).toMatchObject({ status: 'paid', paidAmountCents: 500 });
     await expect(
       restarted.recordPayment(

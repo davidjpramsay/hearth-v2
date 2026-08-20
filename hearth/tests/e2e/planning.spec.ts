@@ -305,12 +305,12 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   });
 
   await page.goto('/admin/pocket-money');
-  await page.getByLabel('Weekly pocket money').fill('15.00');
-  await page.getByLabel('Payday').selectOption('friday');
-  await page.getByRole('button', { name: 'Save weekly settings' }).click();
-  await expect(page.getByRole('status')).toContainText('weekly amount is saved');
+  await page.getByLabel('Ezra weekly amount').fill('15.00');
+  await page.getByLabel('Ezra payday').selectOption('friday');
+  await page.getByRole('button', { name: 'Save Ezra' }).click();
+  await expect(page.getByRole('status')).toContainText('saved for every week');
   await page.reload();
-  await expect(page.getByLabel('Weekly pocket money')).toHaveValue('15.00');
+  await expect(page.getByLabel('Ezra weekly amount')).toHaveValue('15.00');
 
   await page.goto('/chores');
   await page.locator('[data-focus-id="chore-primary"]').click();
@@ -340,15 +340,19 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await expect(history.getByText('Voided · Recorded from wrong account')).toBeVisible();
   await expect(page.getByText('$1.75 still to pay')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Previous' }).click();
+  const weekReview = page.getByLabel('Week to review');
+  await expect(weekReview.locator('option[value="2026-08-10"]')).toHaveCount(0);
+  await expect(weekReview.locator('option[value="2026-07-27"]')).toHaveText(
+    'Last week · 27 Jul–2 Aug',
+  );
+  await weekReview.selectOption('2026-07-27');
   await expect(page).toHaveURL(/week=2026-07-27/);
-  await expect(page.getByText('Reviewing 27–2 Aug')).toBeVisible();
-  await expect(page.getByText('Return to This week to change these settings.')).toBeVisible();
-  await expect(page.getByLabel('Weekly pocket money')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'This week' })).toBeEnabled();
-  await page.getByRole('button', { name: 'This week' }).click();
+  await expect(page.getByText('Reviewing 27 Jul–2 Aug')).toBeVisible();
+  await expect(page.getByLabel('Ezra weekly amount')).toHaveValue('15.00');
+  await expect(page.getByText('The settings above are your current standing rules.')).toBeVisible();
+  await weekReview.selectOption('2026-08-03');
   await expect(page).not.toHaveURL(/week=/);
-  await expect(page.getByLabel('Weekly pocket money')).toBeVisible();
+  await expect(page.getByLabel('Ezra weekly amount')).toHaveValue('15.00');
 });
 
 test('phone adults reason, skip, excuse and reassign today’s chores with visible history', async ({

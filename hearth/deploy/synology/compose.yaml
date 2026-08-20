@@ -17,6 +17,7 @@ services:
       HEARTH_DATABASE_PATH: /data/hearth.sqlite
       HEARTH_CALENDAR_CONFIG_PATH: /run/hearth-secrets/calendar.json
       HEARTH_HOME_ASSISTANT_CONFIG_PATH: /run/hearth-secrets/home-assistant.json
+      HEARTH_ESV_API_KEY_PATH: /run/hearth-secrets/esv-api-key
       HEARTH_WEATHER_LATITUDE: ${HEARTH_WEATHER_LATITUDE:-}
       HEARTH_WEATHER_LONGITUDE: ${HEARTH_WEATHER_LONGITUDE:-}
       HEARTH_PHOTO_SOURCE_DIR: ${HEARTH_PHOTO_SOURCE_DIR:-}

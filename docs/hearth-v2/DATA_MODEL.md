@@ -312,10 +312,15 @@ Hearth data directory protects the managed image files themselves.
 - archive, created and updated times
 
 `today_section_preferences` stores one row per household for Dinner, List
-summary, Notice and Family photo visibility. `announcements` is append/update/
+summary, Notice, Daily Bible verse and Family photo visibility. `announcements` is append/update/
 archive managed through adult commands; the active Today notice is the eligible
 Important notice first, then the most recently updated eligible notice. The
 browser never chooses priority ordering itself.
+
+Migration `0024_daily_bible_verse.sql` adds the off-by-default verse flag and
+`daily_verse_cache`. The cache is keyed by household and bounded passage reference and stores only
+attributed display text/source URL plus fetch time. The API token remains an external server secret
+and is never a database field.
 
 ## Home actions
 

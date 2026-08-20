@@ -346,6 +346,16 @@ export const TodaySectionVisibilitySchema = z.object({
   listSummary: z.boolean(),
   notice: z.boolean(),
   photo: z.boolean(),
+  dailyVerse: z.boolean(),
+});
+
+export const DailyVerseSummarySchema = z.object({
+  text: z.string().trim().min(1).max(1200),
+  reference: z.string().trim().min(1).max(120),
+  translation: z.enum(['ESV', 'Demo']),
+  sourceUrl: z.url().nullable(),
+  freshness: z.enum(['current', 'stale']),
+  statusMessage: z.string().max(180).nullable(),
 });
 
 export const HouseholdNoticeSchema = z.object({
@@ -387,6 +397,7 @@ export const TodaySummarySchema = z.object({
     .nullable(),
   notice: z.string().max(240).nullable(),
   photo: TodayPhotoSummarySchema.nullable(),
+  dailyVerse: DailyVerseSummarySchema.nullable(),
   sections: TodaySectionVisibilitySchema,
   integrations: z.array(IntegrationStateSchema),
 });
@@ -1781,6 +1792,7 @@ export type ChoreState = z.infer<typeof ChoreStateSchema>;
 export type RoutineTimeOfDay = z.infer<typeof RoutineTimeOfDaySchema>;
 export type ChoreOccurrence = z.infer<typeof ChoreOccurrenceSchema>;
 export type TodaySummary = z.infer<typeof TodaySummarySchema>;
+export type DailyVerseSummary = z.infer<typeof DailyVerseSummarySchema>;
 export type WeatherSummary = z.infer<typeof WeatherSummarySchema>;
 export type TodaySectionVisibility = z.infer<typeof TodaySectionVisibilitySchema>;
 export type HouseholdNotice = z.infer<typeof HouseholdNoticeSchema>;

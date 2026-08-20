@@ -27,6 +27,7 @@ const DEFAULT_SECTIONS: TodaySectionVisibility = {
   listSummary: true,
   notice: true,
   photo: true,
+  dailyVerse: false,
 };
 
 const DEMO_NOTICE: HouseholdNotice = {
@@ -258,13 +259,15 @@ export class TodayContentService implements TodayContentRepository {
           this.database
             .prepare(
               `INSERT INTO today_section_preferences
-                (household_id, show_dinner, show_list_summary, show_notice, show_photo, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?)
+                (household_id, show_dinner, show_list_summary, show_notice, show_photo,
+                 show_daily_verse, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(household_id) DO UPDATE SET
                  show_dinner = excluded.show_dinner,
                  show_list_summary = excluded.show_list_summary,
                  show_notice = excluded.show_notice,
                  show_photo = excluded.show_photo,
+                 show_daily_verse = excluded.show_daily_verse,
                  updated_at = excluded.updated_at`,
             )
             .run(
@@ -273,6 +276,7 @@ export class TodayContentService implements TodayContentRepository {
               Number(sections.listSummary),
               Number(sections.notice),
               Number(sections.photo),
+              Number(sections.dailyVerse),
               this.clock.now().toISOString(),
             );
       },
@@ -378,7 +382,7 @@ export class TodayContentService implements TodayContentRepository {
     if (this.database === undefined) return structuredClone(this.sections);
     const row = this.database
       .prepare(
-        `SELECT show_dinner, show_list_summary, show_notice, show_photo
+        `SELECT show_dinner, show_list_summary, show_notice, show_photo, show_daily_verse
          FROM today_section_preferences WHERE household_id = ?`,
       )
       .get(householdId) as
@@ -387,6 +391,7 @@ export class TodayContentService implements TodayContentRepository {
           show_list_summary: number;
           show_notice: number;
           show_photo: number;
+          show_daily_verse: number;
         }
       | undefined;
     if (row === undefined) return structuredClone(DEFAULT_SECTIONS);
@@ -395,6 +400,7 @@ export class TodayContentService implements TodayContentRepository {
       listSummary: row.show_list_summary === 1,
       notice: row.show_notice === 1,
       photo: row.show_photo === 1,
+      dailyVerse: row.show_daily_verse === 1,
     });
   }
 
@@ -483,8 +489,9 @@ export class TodayContentService implements TodayContentRepository {
   private seedDemo(): void {
     this.database!.prepare(
       `INSERT OR IGNORE INTO today_section_preferences
-          (household_id, show_dinner, show_list_summary, show_notice, show_photo, updated_at)
-         VALUES (?, 1, 1, 1, 1, ?)`,
+          (household_id, show_dinner, show_list_summary, show_notice, show_photo,
+           show_daily_verse, updated_at)
+         VALUES (?, 1, 1, 1, 1, 0, ?)`,
     ).run(DEMO_HOUSEHOLD_ID, DEMO_NOW);
     this.database!.prepare(
       `INSERT OR IGNORE INTO announcements

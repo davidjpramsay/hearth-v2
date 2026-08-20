@@ -25,6 +25,7 @@ export function TodayConfigurationPreview({
     sections.dinner ? 'Dinner' : null,
     sections.listSummary ? 'List summary' : null,
     sections.notice ? 'Notice' : null,
+    sections.dailyVerse ? 'Daily Bible verse' : null,
     sections.photo ? 'Family photo' : null,
   ].filter((name): name is string => name !== null);
   const modeLabel = mode === 'television' ? 'TV' : 'phone';
@@ -220,7 +221,7 @@ function PreviewPhoto({ photo }: { photo: TodayPreviewData['photo'] }) {
 
 function previewSummaryBands(data: TodayPreviewData, sections: TodaySectionVisibility) {
   const bands: Array<{
-    key: 'dinner' | 'list' | 'notice';
+    key: 'dinner' | 'list' | 'notice' | 'daily-verse';
     icon: IconName;
     label: string;
     value: string;
@@ -245,6 +246,13 @@ function previewSummaryBands(data: TodayPreviewData, sections: TodaySectionVisib
       icon: 'home',
       label: 'Notice',
       value: data.notice ?? 'No active notice',
+    });
+  if (sections.dailyVerse)
+    bands.push({
+      key: 'daily-verse',
+      icon: 'book-open',
+      label: 'Daily verse',
+      value: data.dailyVerse?.reference ?? 'ESV key needed',
     });
   return bands;
 }

@@ -33,7 +33,12 @@ const themeOptions: {
 export function AppearanceSettingsScreen() {
   const { preferences, resolvedTheme, setEveningDimming, setTheme } = useAppearance();
   return (
-    <AdminPage title="Appearance" subtitle="Make this display comfortable for your room">
+    <AdminPage
+      backLabel="Back to More"
+      backTo="/more"
+      title="Appearance"
+      subtitle="Make this display comfortable for your room"
+    >
       <section className="appearance-settings" aria-labelledby="theme-choice-heading">
         <div className="appearance-section-heading">
           <h2 id="theme-choice-heading">Theme</h2>

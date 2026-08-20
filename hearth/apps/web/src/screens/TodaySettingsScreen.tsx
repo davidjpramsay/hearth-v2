@@ -21,6 +21,11 @@ const sectionOptions: Array<{
   { key: 'listSummary', title: 'List summary', description: 'Items left on the main list' },
   { key: 'notice', title: 'Notice', description: 'The highest-priority active notice' },
   {
+    key: 'dailyVerse',
+    title: 'Daily Bible verse',
+    description: 'One ESV passage selected for the household’s local day',
+  },
+  {
     key: 'photo',
     title: 'Family photo',
     description: 'A substantial photo from the private Hearth collection',

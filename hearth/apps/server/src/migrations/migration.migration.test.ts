@@ -665,7 +665,10 @@ describe('0001 household core migration', () => {
     );
     database.exec(`
       INSERT INTO households VALUES ('household_notice', 'Notice home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
-      INSERT INTO today_section_preferences VALUES ('household_notice', 1, 0, 1, 0, 'now');
+      INSERT INTO today_section_preferences
+        (household_id, show_dinner, show_list_summary, show_notice, show_photo,
+         show_daily_verse, updated_at)
+      VALUES ('household_notice', 1, 0, 1, 0, 1, 'now');
       INSERT INTO announcements VALUES (
         'notice_test', 'household_notice', 'Bins tonight', 'important',
         '2026-08-03T00:00:00.000Z', '2026-08-04T00:00:00.000Z', NULL, 'now', 'now'
@@ -673,7 +676,10 @@ describe('0001 household core migration', () => {
     `);
     expect(() =>
       database.exec(
-        "INSERT INTO today_section_preferences VALUES ('household_notice', 2, 1, 1, 1, 'now');",
+        `INSERT INTO today_section_preferences
+          (household_id, show_dinner, show_list_summary, show_notice, show_photo,
+           show_daily_verse, updated_at)
+         VALUES ('household_notice', 2, 1, 1, 1, 0, 'now');`,
       ),
     ).toThrow(/UNIQUE|CHECK/);
     expect(() =>
@@ -686,6 +692,39 @@ describe('0001 household core migration', () => {
     ).toThrow(/CHECK/);
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
+  it('adds optional daily verse visibility and a bounded per-passage cache', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 24').get()).toEqual(
+      { name: 'daily_bible_verse' },
+    );
+    database.exec(`
+      INSERT INTO households VALUES
+        ('household_verse', 'Verse home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO today_section_preferences
+        (household_id, show_dinner, show_list_summary, show_notice, show_photo,
+         show_daily_verse, updated_at)
+      VALUES ('household_verse', 1, 1, 1, 1, 1, 'now');
+      INSERT INTO daily_verse_cache VALUES
+        ('household_verse', 'John 13:34', 'Love one another. (ESV)',
+         'https://www.esv.org/', 'now');
+    `);
+    expect(
+      database.prepare('SELECT show_daily_verse FROM today_section_preferences').get(),
+    ).toEqual({ show_daily_verse: 1 });
+    expect(() =>
+      database.exec(`
+        UPDATE today_section_preferences
+        SET show_daily_verse = 2
+        WHERE household_id = 'household_verse';
+      `),
+    ).toThrow(/CHECK/);
     database.close();
   });
 

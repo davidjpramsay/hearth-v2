@@ -70,6 +70,32 @@ describe('SynologyFolderPhotoSourceProvider', () => {
     await fixture.close();
   });
 
+  it('ignores protected Synology metadata and recycle directories', async () => {
+    const fixture = await photoFixture();
+    await writeFile(
+      join(fixture.source, 'family.jpg'),
+      await sharp({ create: { width: 900, height: 600, channels: 3, background: '#748c7a' } })
+        .jpeg()
+        .toBuffer(),
+    );
+    for (const directoryName of ['@eaDir', '#recycle']) {
+      const directory = join(fixture.source, directoryName);
+      await mkdir(directory);
+      await writeFile(join(directory, 'private-metadata.jpg'), 'not a family photo');
+    }
+
+    const snapshot = await fixture.provider.refreshApprovedPhotos('household_photo_test');
+
+    expect(snapshot.source.status).toBe('ready');
+    expect(snapshot.photos).toHaveLength(1);
+    expect(snapshot.index).toMatchObject({
+      indexedFileCount: 1,
+      visiblePhotoCount: 1,
+      corruptFileCount: 0,
+    });
+    await fixture.close();
+  });
+
   it('keeps versioned derivatives stable until a file changes and retains cache when unavailable', async () => {
     const fixture = await photoFixture();
     const path = join(fixture.source, 'family.png');

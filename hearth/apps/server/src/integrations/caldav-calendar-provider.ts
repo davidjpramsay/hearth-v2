@@ -323,7 +323,14 @@ function parseCalendarObject(
     }
     const recurrenceValue = component.getFirstPropertyValue('recurrence-id');
     const recurrenceTime = recurrenceValue instanceof ICAL.Time ? recurrenceValue : null;
-    const occurrenceStart = recurrenceTime?.toJSDate().toISOString() ?? null;
+    const occurrenceStart =
+      recurrenceTime === null
+        ? null
+        : calendarTimeInstant(
+            recurrenceTime,
+            householdTimezone,
+            propertyTimezone(component, 'recurrence-id'),
+          ).toISOString();
     const externalId = encodeExternalId({
       calendarUrl,
       objectUrl: object.url,
@@ -337,7 +344,13 @@ function parseCalendarObject(
     const allDay = event.startDate.isDate;
     const range = allDay
       ? allDayRange(event.startDate, event.endDate)
-      : timedRange(event.startDate, event.endDate, householdTimezone);
+      : timedRange(
+          event.startDate,
+          event.endDate,
+          householdTimezone,
+          propertyTimezone(component, 'dtstart'),
+          propertyTimezone(component, 'dtend'),
+        );
     events.push({
       externalId,
       calendarExternalId: calendarUrl,
@@ -371,9 +384,15 @@ function allDayRange(start: ICAL.Time, end: ICAL.Time) {
   };
 }
 
-function timedRange(start: ICAL.Time, end: ICAL.Time, householdTimezone: string) {
-  const startDate = start.toJSDate();
-  const endDate = end.toJSDate();
+function timedRange(
+  start: ICAL.Time,
+  end: ICAL.Time,
+  householdTimezone: string,
+  startTimezone: string | null,
+  endTimezone: string | null,
+) {
+  const startDate = calendarTimeInstant(start, householdTimezone, startTimezone);
+  const endDate = calendarTimeInstant(end, householdTimezone, endTimezone ?? startTimezone);
   if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
     throw new CalendarProviderError('UNAVAILABLE', 'Calendar returned an invalid event time.');
   }
@@ -384,6 +403,27 @@ function timedRange(start: ICAL.Time, end: ICAL.Time, householdTimezone: string)
     startLocalDate: localDateInTimezone(startDate.toISOString(), householdTimezone),
     endLocalDate: localDateInTimezone(inclusiveEnd.toISOString(), householdTimezone),
   };
+}
+
+function calendarTimeInstant(
+  time: ICAL.Time,
+  householdTimezone: string,
+  declaredTimezone: string | null,
+): Date {
+  if (time.zone?.tzid !== 'floating') return time.toJSDate();
+
+  const naive = Date.UTC(time.year, time.month - 1, time.day, time.hour, time.minute, time.second);
+  let candidate = naive;
+  const timezone = declaredTimezone ?? householdTimezone;
+  for (let index = 0; index < 3; index += 1) {
+    candidate = naive - timezoneOffsetMilliseconds(candidate, timezone);
+  }
+  return new Date(candidate);
+}
+
+function propertyTimezone(component: ICAL.Component, propertyName: string): string | null {
+  const timezone = component.getFirstProperty(propertyName)?.getParameter('tzid');
+  return typeof timezone === 'string' && timezone.trim().length > 0 ? timezone.trim() : null;
 }
 
 function componentTimestamp(component: ICAL.Component): string | null {

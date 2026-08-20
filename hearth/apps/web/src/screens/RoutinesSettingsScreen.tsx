@@ -15,6 +15,7 @@ import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
+import { RoutineDayPicker } from '../components/RoutineDayPicker';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useChoreTemplatesQuery } from '../hooks/useChoreQueries';
 import { useHearthRuntime } from '../runtime/context';
@@ -474,33 +475,7 @@ function RoutineFields({
           </select>
         </label>
       </div>
-      {repeat === 'weekly' ? (
-        <fieldset className="routine-days">
-          <legend>Repeat on</legend>
-          {(
-            [
-              ['MO', 'Monday'],
-              ['TU', 'Tuesday'],
-              ['WE', 'Wednesday'],
-              ['TH', 'Thursday'],
-              ['FR', 'Friday'],
-              ['SA', 'Saturday'],
-              ['SU', 'Sunday'],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value}>
-              <input
-                defaultChecked={activeDays.includes(value)}
-                name="repeatDays"
-                type="checkbox"
-                value={value}
-              />
-              {label.slice(0, 2)}
-              <span className="sr-only">{label}</span>
-            </label>
-          ))}
-        </fieldset>
-      ) : null}
+      {repeat === 'weekly' ? <RoutineDayPicker initialDays={activeDays} /> : null}
       <label>
         {repeat === 'once' ? 'Due date' : 'Starts'}
         <input

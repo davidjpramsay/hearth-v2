@@ -88,7 +88,12 @@ Before any approved Synology commissioning:
     Goodnight and Screen off. The browser receives only opaque choices and friendly labels; the
     resulting URL, token and raw entity IDs remain in `/run/hearth-secrets/home-assistant.json`.
 
-12. Keep `HEARTH_BACKUP_RETENTION=14` and `HEARTH_BACKUP_INTERVAL_HOURS=24` initially. The server
+12. Daily Bible verse is optional. After creating or rotating an ESV API token, put only the token
+    in `${HEARTH_SECRETS_DIR}/esv-api-key`, set mode `0600` and ownership to the Hearth service
+    UID/GID, then enable it in **Today & notices**. Never add the token to this Compose file, `.env`,
+    Git, an image layer, logs or screenshots.
+
+13. Keep `HEARTH_BACKUP_RETENTION=14` and `HEARTH_BACKUP_INTERVAL_HOURS=24` initially. The server
     writes consistent SQLite online backups under `/data/backups`; this directory is already inside
     the restricted data mount. Configure encrypted Synology Hyper Backup for the complete host data
     and secrets directories so a NAS-volume failure does not remove the database, managed photo

@@ -23,6 +23,11 @@ describe('calendar connection repository', () => {
     const service = new CalendarConnectionService(admin, new FakeCalendarConnectionVerifier(), {
       database,
       credentialStore: {
+        load: async () => {
+          const config = savedSecrets.at(-1);
+          if (config === undefined) throw new Error('Expected a saved credential first.');
+          return config;
+        },
         save: async (config) => {
           savedSecrets.push(config);
         },
@@ -82,6 +87,10 @@ describe('calendar connection repository', () => {
     const service = new CalendarConnectionService(admin, new FakeCalendarConnectionVerifier(), {
       database,
       credentialStore: {
+        load: async () => {
+          if (savedConfig === null) throw new Error('Expected a saved credential first.');
+          return savedConfig;
+        },
         save: async (config) => {
           savedConfig = config;
         },
@@ -124,5 +133,68 @@ describe('calendar connection repository', () => {
     expect(mappingUpdates).toEqual([
       [{ displayName: first.displayName, ownerMemberId: 'member_maya' }],
     ]);
+  });
+
+  it('edits selected calendars using the saved credential without returning the secret', async () => {
+    const database = await openHearthDatabase(':memory:');
+    const admin = new SqliteAdminRepository(database);
+    repositories.push(admin);
+    let savedConfig: CalDavRuntimeConfig | null = null;
+    let loadCount = 0;
+    const service = new CalendarConnectionService(admin, new FakeCalendarConnectionVerifier(), {
+      database,
+      credentialStore: {
+        load: async () => {
+          loadCount += 1;
+          if (savedConfig === null) throw new Error('Expected a saved credential first.');
+          return savedConfig;
+        },
+        save: async (config) => {
+          savedConfig = config;
+        },
+        updateMappings: async () => undefined,
+        remove: async () => undefined,
+      },
+      now: () => new Date('2026-08-08T10:00:00.000Z'),
+    });
+    const password = 'selection-edit-secret';
+    const tested = await service.test('household_hearth_demo', 'member_maya', {
+      serverUrl: 'https://caldav.icloud.com',
+      username: 'fictional@example.com',
+      appPassword: password,
+    });
+    const family = tested.availableCalendars[0];
+    if (family === undefined) throw new Error('Expected a family calendar');
+    await service.save('household_hearth_demo', 'member_maya', {
+      requestId: 'request_calendar_selection_setup',
+      testId: tested.testId,
+      label: 'Family calendars',
+      calendars: [{ calendarId: family.id, ownerMemberId: null }],
+    });
+
+    const refreshed = await service.refreshSelection('household_hearth_demo', 'member_maya');
+    const maya = refreshed.availableCalendars.find((calendar) => calendar.displayName === 'Maya');
+    if (maya === undefined) throw new Error('Expected the Maya calendar');
+    const updated = await service.save('household_hearth_demo', 'member_maya', {
+      requestId: 'request_calendar_selection_update',
+      testId: refreshed.testId,
+      label: 'Family calendars',
+      calendars: [
+        { calendarId: family.id, ownerMemberId: null },
+        { calendarId: maya.id, ownerMemberId: 'member_maya' },
+      ],
+    });
+
+    expect(loadCount).toBe(1);
+    expect(savedConfig).toMatchObject({ appPassword: password });
+    expect(updated.connection?.calendars.map((calendar) => calendar.displayName)).toEqual([
+      'Family',
+      'Maya',
+    ]);
+    expect(JSON.stringify(refreshed)).not.toContain(password);
+    const persisted = database.prepare('SELECT * FROM calendar_connection_settings').all();
+    const receipts = database.prepare('SELECT response_json FROM command_receipts').all();
+    const audits = database.prepare('SELECT safe_summary_json FROM audit_events').all();
+    expect(JSON.stringify({ persisted, receipts, audits })).not.toContain(password);
   });
 });

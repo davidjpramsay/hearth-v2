@@ -11,7 +11,6 @@ import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
-import { WeatherAttribution } from '../components/WeatherAttribution';
 import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
@@ -57,10 +56,7 @@ export function WeekScreen({
               <div>
                 <Icon name={forecastIcon(currentForecast.condition)} />
                 <strong>{currentForecast.temperatureCelsius}°</strong>
-                <span>
-                  {currentForecast.label}
-                  <WeatherAttribution source={currentForecast.source} />
-                </span>
+                <span>{currentForecast.label}</span>
               </div>
             )}
             <div>
@@ -194,6 +190,10 @@ function WeekColumn({
   timezone: string;
   onSelect: (event: CalendarEvent) => void;
 }) {
+  const allDayPositions = new Map(
+    events.filter((event) => event.allDay).map((event, index) => [event.id, index] as const),
+  );
+
   return (
     <section className={`week-column${day.isToday ? ' week-column--today' : ''}`}>
       <header>
@@ -212,7 +212,7 @@ function WeekColumn({
             return (
               <button
                 aria-label={`${timeLabel}, ${event.title}, ${event.sourceLabel}`}
-                className="week-event focusable"
+                className={`week-event focusable${event.allDay ? ' week-event--all-day' : ''}`}
                 data-focus-entry={event.id === primaryEventId ? 'true' : undefined}
                 data-focus-id={`week-event-${event.id}`}
                 data-focus-left={dayIndex === 0 ? 'nav-calendar' : undefined}
@@ -223,7 +223,7 @@ function WeekColumn({
                   next === undefined ? `week-event-${event.id}` : `week-event-${next.id}`
                 }
                 onClick={() => onSelect(event)}
-                style={timelineStyle(event, timezone)}
+                style={timelineStyle(event, timezone, allDayPositions.get(event.id) ?? 0)}
                 type="button"
                 key={event.id}
               >
@@ -247,12 +247,16 @@ function WeekColumn({
   );
 }
 
-function timelineStyle(event: CalendarEvent, timezone: string): React.CSSProperties {
+function timelineStyle(
+  event: CalendarEvent,
+  timezone: string,
+  allDayPosition: number,
+): React.CSSProperties {
   if (event.allDay) {
     return {
       ...eventColorVariables(event.color),
-      '--event-top': '0%',
-      '--event-height': '11.25%',
+      '--event-top': `${allDayPosition * 68}px`,
+      '--event-height': '60px',
     } as React.CSSProperties;
   }
   const start = clockMinutes(event.start, timezone);

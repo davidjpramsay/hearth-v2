@@ -22,6 +22,7 @@ export interface TodayPreviewData {
   dinner: string | null;
   listSummary: string | null;
   notice: string | null;
+  dailyVerse: TodaySummary['dailyVerse'];
   photo: TodaySummary['photo'];
 }
 
@@ -39,6 +40,7 @@ export function createTodayPreviewData(
       dinner: null,
       listSummary: null,
       notice: activeNotice,
+      dailyVerse: null,
       photo: null,
     };
   }
@@ -71,6 +73,7 @@ export function createTodayPreviewData(
         ? null
         : `${today.listSummary.name} · ${today.listSummary.remainingCount} left`,
     notice: activeNotice ?? today.notice,
+    dailyVerse: today.dailyVerse,
     photo: today.photo,
   };
 }

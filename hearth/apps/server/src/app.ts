@@ -165,6 +165,11 @@ import {
 import { RealtimeHub } from './realtime.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
+import {
+  FakeDailyVerseProvider,
+  UnconfiguredDailyVerseProvider,
+  type DailyVerseProvider,
+} from './integrations/daily-verse-provider.js';
 import { UnconfiguredPhotoSourceProvider } from './integrations/photo-source.js';
 import { MAX_MANAGED_PHOTO_BYTES } from './integrations/synology-photo-source.js';
 import { PhotoService, type PhotoRepository } from './photo-repository.js';
@@ -273,6 +278,7 @@ export interface BuildServerOptions {
   systemOperations?: SystemOperationsRepository;
   companionAuth?: CompanionAuthRepository;
   todayContentRepository?: TodayContentRepository;
+  dailyVerseProvider?: DailyVerseProvider;
   weatherLocationRepository?: WeatherLocationRepository;
   runtime?: RuntimeConfiguration;
   trustProxyHops?: number;
@@ -312,6 +318,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       clock: runtime.clock,
     });
   const todayContentRepository = options.todayContentRepository ?? new TodayContentService();
+  const dailyVerseProvider =
+    options.dailyVerseProvider ??
+    (demoMode ? new FakeDailyVerseProvider() : new UnconfiguredDailyVerseProvider());
   const weatherLocationRepository =
     options.weatherLocationRepository ??
     new WeatherLocationService(adminRepository, new FakeWeatherLocationVerifier(), {
@@ -326,6 +335,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         ? {}
         : {
             credentialStore: {
+              load: async () => {
+                throw new Error('Private calendar secret storage is not configured.');
+              },
               save: async () => {
                 throw new Error('Private calendar secret storage is not configured.');
               },
@@ -391,6 +403,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const dinner = meals.days[0]?.entries.find((entry) => entry.slot === 'dinner');
     const featuredPhoto =
       gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ?? null;
+    const dailyVerse = todayConfiguration.sections.dailyVerse
+      ? await dailyVerseProvider.getDailyVerse(householdId, localDate)
+      : null;
     return TodaySummarySchema.parse({
       ...today,
       household: { ...household, mode: today.household.mode },
@@ -400,6 +415,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ? today.listSummary
           : { name: primaryList.name, remainingCount: primaryList.remainingCount },
       notice: activeNotice?.message ?? null,
+      dailyVerse,
       sections: todayConfiguration.sections,
       photo: !todayConfiguration.sections.photo
         ? null
@@ -723,6 +739,22 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return connection === null ? null : CalendarConnectionSettingsSchema.parse(connection);
     });
   });
+
+  server.post(
+    '/api/v1/households/:householdId/calendar-connection-selection-tests',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      if (params === null) return reply;
+      return run(reply, async () =>
+        CalendarConnectionTestResultSchema.parse(
+          await calendarConnectionRepository.refreshSelection(
+            params.householdId,
+            actorId(request.headers, options),
+          ),
+        ),
+      );
+    },
+  );
 
   server.post(
     '/api/v1/households/:householdId/calendar-connection-tests',

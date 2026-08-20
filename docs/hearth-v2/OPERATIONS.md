@@ -159,6 +159,13 @@ service call and has no Jellyfin, Music Assistant or Cast control. If validation
 remove the connection through Admin and revoke the dedicated token. Take a fresh Home Assistant
 backup only after the verified mapping/hardware test.
 
+The optional Today daily verse remains inert unless `HEARTH_ESV_API_KEY_PATH` points to an
+owner-readable server file containing only an active ESV API token. In the Synology Compose layout,
+create `${HEARTH_SECRETS_DIR}/esv-api-key`, make it readable only by the configured Hearth UID/GID
+and enable **Daily Bible verse** in **Today & notices**. Never place the token in Compose, `.env`, a
+Vite variable, source, logs or screenshots. If a token is disclosed, revoke/regenerate it at
+<https://api.esv.org/account/> before commissioning.
+
 Weather is independent of Home Assistant. Use **Hearth settings → Household →
 Weather location** on a phone to search a suburb/postcode or use the phone's
 current location, test the displayed conditions and save. Suburb precision is
@@ -205,7 +212,7 @@ As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffol
 Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
 Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
 explicit two-hop DSM Reverse Proxy → nginx → Fastify trust boundary for client-address throttling,
-and an ignored runtime directory template. The server production build includes all 22 forward migrations
+and an ignored runtime directory template. The server production build includes all 24 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 
 Both native ARM64 development images and emulated `linux/amd64` images for the DS920+ were built and

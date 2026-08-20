@@ -145,7 +145,7 @@ test('adult can test, select, map, save and remove a read-only calendar connecti
   await page.getByRole('checkbox', { name: 'Maya' }).uncheck();
   await page.getByRole('button', { name: 'Save 2 calendars' }).click();
 
-  await expect(page.getByText('Family calendars')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Family calendars' })).toBeVisible();
   await expect(page.getByText('caldav.icloud.com · f•••@example.com')).toBeVisible();
   await expect(page.getByText('2 calendars connected · Read-only')).toBeVisible();
   await captureEvidence(page, {
@@ -153,7 +153,7 @@ test('adult can test, select, map, save and remove a read-only calendar connecti
     animations: 'disabled',
   });
   await page.reload();
-  await expect(page.getByText('Family calendars')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Family calendars' })).toBeVisible();
   await page.getByRole('button', { name: 'Remove connection' }).click();
   await page.getByRole('button', { name: 'Yes, remove' }).click();
   await expect(page.getByRole('button', { name: 'Test connection' })).toBeVisible();
@@ -335,7 +335,7 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 23 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 24 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(
     page.getByText('Provider tokens stay in the separate protected secrets folder.'),

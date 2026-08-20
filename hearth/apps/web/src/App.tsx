@@ -110,7 +110,7 @@ export function App() {
   const { scenario, preparing, error } = useScenario();
   useRealtimeInvalidation();
   const initialFocus =
-    location.pathname === '/admin/appearance' ? `appearance-${preferences.theme}` : 'screen-entry';
+    location.pathname === '/appearance' ? `appearance-${preferences.theme}` : 'screen-entry';
   useRemoteNavigation(initialFocus);
   return (
     <AppShell>
@@ -158,6 +158,8 @@ export function App() {
           />
           <Route path="/home" element={<HomeScreen preparing={preparing} scenario={scenario} />} />
           <Route path="/more" element={<MoreScreen />} />
+          <Route path="/appearance" element={<AppearanceSettingsScreen />} />
+          <Route path="/admin/appearance" element={<Navigate replace to="/appearance" />} />
           <Route
             element={
               <AdminAuthBoundary>
@@ -166,7 +168,6 @@ export function App() {
             }
           >
             <Route path="/admin" element={<AdminScreen />} />
-            <Route path="/admin/appearance" element={<AppearanceSettingsScreen />} />
             <Route path="/admin/household" element={<HouseholdSettingsScreen />} />
             <Route path="/admin/people" element={<PeopleSettingsScreen />} />
             <Route path="/admin/access" element={<AdultAccessScreen />} />

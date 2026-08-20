@@ -130,6 +130,58 @@ test('Week and Month events use their calendar colour as a card surface', async 
   await expect(monthEvent.locator('i')).toHaveCount(0);
 });
 
+test('multiple all-day Week events stack without overlapping and keep D-pad order', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.route(/\/api\/v1\/households\/[^/]+\/week\?start=/, async (route) => {
+    const response = await route.fetch();
+    const week = (await response.json()) as {
+      events: Array<Record<string, unknown>>;
+    };
+    const source = week.events[0];
+    if (source === undefined) throw new Error('Expected seeded calendar events');
+
+    week.events.push(
+      {
+        ...source,
+        id: 'event_uniform_due',
+        title: 'Formal uniform',
+        start: '2026-08-06T00:00:00+08:00',
+        end: '2026-08-06T23:59:00+08:00',
+        startLocalDate: '2026-08-06',
+        endLocalDate: '2026-08-06',
+        allDay: true,
+      },
+      {
+        ...source,
+        id: 'event_homework_due',
+        title: 'English HWK Due',
+        start: '2026-08-06T00:00:00+08:00',
+        end: '2026-08-06T23:59:00+08:00',
+        startLocalDate: '2026-08-06',
+        endLocalDate: '2026-08-06',
+        allDay: true,
+      },
+    );
+    await route.fulfill({ response, json: week });
+  });
+
+  await page.goto('/calendar/week');
+  const uniform = page.getByRole('button', { name: /All day, Formal uniform/ });
+  const homework = page.getByRole('button', { name: /All day, English HWK Due/ });
+  const uniformBox = await uniform.boundingBox();
+  const homeworkBox = await homework.boundingBox();
+  if (uniformBox === null || homeworkBox === null) {
+    throw new Error('Expected both all-day cards to be visible');
+  }
+
+  expect(uniformBox.y + uniformBox.height).toBeLessThan(homeworkBox.y);
+  await uniform.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(homework).toBeFocused();
+});
+
 test('phone Calendar exposes sources and More exposes family tools before settings', async ({
   page,
 }) => {

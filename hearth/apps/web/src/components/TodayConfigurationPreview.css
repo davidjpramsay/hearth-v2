@@ -313,6 +313,11 @@
   --preview-band-count: 3;
 }
 
+.today-configuration-preview__bands--count-4 {
+  --preview-band-count: 2;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
 .today-configuration-preview__band {
   min-width: 0;
   min-height: clamp(29px, 5.8vw, 57px);

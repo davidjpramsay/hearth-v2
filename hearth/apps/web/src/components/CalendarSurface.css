@@ -135,6 +135,14 @@
   overflow: hidden;
   text-align: center;
 }
+.week-event.week-event--all-day {
+  height: var(--event-height);
+  padding: 5px 8px;
+}
+.week-event.week-event--all-day strong {
+  min-width: 0;
+  margin-top: 0;
+}
 .week-event__meta {
   min-height: 27px;
   display: inline-flex;
@@ -608,6 +616,19 @@
   .week-event {
     height: max(68px, var(--event-height));
     padding: 6px 7px 7px 10px;
+  }
+  .week-event.week-event--all-day {
+    height: var(--event-height);
+    padding: 4px 6px;
+  }
+  .week-event--all-day .week-event__meta {
+    min-height: 24px;
+    gap: 4px;
+  }
+  .week-event--all-day .week-event__meta .avatar--small,
+  .week-event--all-day .week-event__family {
+    width: 22px;
+    height: 22px;
   }
   .week-event time {
     font-size: 14px;

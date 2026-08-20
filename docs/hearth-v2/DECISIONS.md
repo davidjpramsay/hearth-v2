@@ -274,8 +274,9 @@ Record durable choices here. New decisions should include date, status, context,
 - Choice: Store only `light`, `dark` or `automatic` plus an evening-dimming boolean in versioned
   local browser/WebView storage on each display. Automatic follows `prefers-color-scheme`; a small
   pre-render bootstrap applies the resolved theme before React starts. Dark uses a warm charcoal
-  token set, leaves layouts and family identity cues intact and is available through companion
-  More/Admin and a TV-rail utility. Evening dimming is a separate rendered overlay that also covers
+  token set, leaves layouts and family identity cues intact and is available without administrator
+  authentication through companion More and a TV-rail utility. The control changes only local
+  browser/WebView storage and cannot mutate household data. Evening dimming is a separate rendered overlay that also covers
   photos and ambient mode; it does not call Home Assistant or claim panel-brightness control.
 - Consequence: Each television and companion can choose what suits its room, no server contract,
   credential, migration or household audit event is required, and a corrupted/unavailable storage
@@ -821,3 +822,54 @@ Official platform references:
   Synology backup must include the complete Hearth data directory, including `/data/photo-uploads`
   and `/data/photo-derivatives`. D-025 and D-036 remain valid for the optional importer and opaque
   derivative rules, but no longer make that folder Hearth's primary authority or setup prerequisite.
+
+## D-053 — Pocket-money rules are standing settings, separate from week review
+
+- Date: 2026-08-20
+- Status: accepted
+- Context: The repository already stores one amount and payday per child, but placing those fields
+  inside a selected week's progress card and offering previous/current/next navigation implied that
+  adults had to configure pocket money again every week. Future-week navigation also exposed no
+  useful progress or payment action.
+- Choice: Present amount and payday in a dedicated **Weekly settings** section that explicitly
+  repeats until changed. Keep those controls available while reviewing history and always save them
+  as the child's current standing rule. Replace three directional week buttons with one labelled
+  **Week to review** selector containing the current week and recent past weeks only. Keep progress,
+  payments and immutable payment snapshots scoped to the selected week.
+- Consequence: Pocket money becomes set-and-forget while parents can still inspect and correct past
+  payment records. Future-week setup is unnecessary, and changing the review week cannot alter or
+  hide the standing amount/payday controls. D-035 still governs immutable disbursements and voids;
+  its week-navigation consequence is narrowed by this decision.
+
+## D-054 — Calendar selection edits reuse the private server-side credential
+
+- Date: 2026-08-20
+- Status: accepted
+- Context: After initial connection, adults could change presentation mappings but could not add or
+  remove provider calendars without replacing the connection and re-entering the app-specific
+  password. Calendar selection is an allowlist preference, not a credential change.
+- Choice: Add a separate adult-only **Edit calendars** action. The server loads the existing
+  credential from the external owner-only secret file, performs provider rediscovery and stages a
+  bounded ten-minute pending result. The browser receives only opaque option IDs, names, colours,
+  masked account metadata and a test ID. Saving reuses the authenticated idempotent connection-save
+  command to replace the exact allowlist and safe SQLite projection. **Replace connection** remains
+  solely for account, endpoint or password changes.
+- Consequence: Adults can evolve the selected source set without handling credential material. A
+  failed saved sign-in directs them to replacement, and no username, password or collection URL is
+  added to browser storage, SQLite, logs, receipts or audits.
+
+## D-055 — Daily Bible verse is an optional, attributed server integration
+
+- Date: 2026-08-20
+- Status: accepted
+- Context: The earlier Hearth had an ESV daily-verse module, and the household wants that calm
+  glanceable outcome without restoring the old layout system or exposing its API credential.
+- Choice: Add one off-by-default **Daily Bible verse** Today preference. Select one passage from a
+  fixed small rotation by household-local date, fetch it through ESV's server-side passage-text API,
+  retain the provider's short copyright marker and show full attribution in a Back-safe dialog.
+  Read the token only from `HEARTH_ESV_API_KEY_PATH`; cache the bounded passage text in SQLite for
+  stale fallback. Demo mode uses original fictional copy and contacts no provider.
+- Consequence: The feature can be enabled per household without changing Today layout code or
+  weakening secret boundaries. A missing key or ESV outage cannot take down Today. Migration
+  `0024_daily_bible_verse.sql` adds only one visibility flag and the bounded cache; live token
+  installation remains an owner-approved deployment action.

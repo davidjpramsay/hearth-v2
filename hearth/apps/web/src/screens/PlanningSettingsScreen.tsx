@@ -33,7 +33,7 @@ const planningAreas: Array<{
   },
   {
     title: 'Pocket money',
-    description: 'Weekly amounts, progress, payday and payments',
+    description: 'Set-and-forget amounts, weekly progress and payments',
     path: '/admin/pocket-money',
     icon: 'wallet',
     focusId: 'planning-pocket-money',

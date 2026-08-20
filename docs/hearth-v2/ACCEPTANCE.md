@@ -57,14 +57,19 @@ A change is complete only when:
   display colour. Reassigning a source updates Week/Month owner identity and
   member-derived colour without reconnecting or re-entering the CalDAV password;
   Whole family uses the family presentation.
+- An adult can add or remove selected calendars from an existing connection by
+  using **Edit calendars**. Hearth rediscovers the account with the server-side
+  credential and never returns or requests that credential in the browser; the
+  revised exact allowlist survives reload and restart.
 - An adult can search a suburb/postcode or use the phone's one-time location,
   inspect the resolved label and advanced coordinates, test current conditions,
   and save the location separately from timezone. The saved location survives
   restart and takes precedence over environment fallback coordinates.
 - With a tested weather location configured, Today shows current local conditions and
-  Week shows normalized daily forecasts with visible Open-Meteo attribution. Coordinates never
-  enter TV/forecast responses or logs. A provider outage retains the last safe forecast and a
-  first-load failure leaves calendar and household content usable with an unavailable weather cue.
+  Week shows normalized daily forecasts without provider branding on household-facing dashboards.
+  Provider attribution remains visible in adult Weather settings. Coordinates never enter
+  TV/forecast responses or logs. A provider outage retains the last safe forecast and a first-load
+  failure leaves calendar and household content usable with an unavailable weather cue.
 
 Phase 3 evidence as of 2026-08-03: the first five read/degraded-mode scenarios
 are automated against the fake adapter, SQLite cache and rendered Today/Week/Month
@@ -126,12 +131,12 @@ Chromium fallback produced the retained evidence.
   remain phone-first.
 - An adult can reverse an accidental completion with an audit trail.
 - A child cannot modify another person's history or household rules without permission.
-- Every participating child has a required weekly amount and payday in phone administration.
+- Every participating child has a required weekly amount and payday in phone administration. The setting persists across weeks and server restarts, repeats until an adult changes it and is visibly described as set-and-forget.
 - Chores shows each child's week-to-date completed/total count, percentage and proportional amount due without requiring scroll on the primary television layout.
 - On a day with no due occurrence, each child remains visible with weekly pocket-money progress and explicit unscheduled-day wording; private households never expose a demo-bootstrap action.
 - Completing and undoing a chore updates that running total through the same typed chore contract.
 - Excused and cancelled occurrences do not reduce the percentage; skipped occurrences remain incomplete.
-- Pocket-money administration can move to the previous, current or next Monday–Sunday week and exposes an immutable recent payment history.
+- Pocket-money administration defaults to the current Monday–Sunday week and uses one labelled selector for current and past-week review. Standing amount/payday settings remain separate from the selected review week, and no future-week control is shown.
 - A payment snapshots the counts, percentage and amount, supports an optional note and is idempotent on retry. Multiple partial disbursements are allowed, but their non-voided total cannot exceed the amount due.
 - Paid, partially paid and unpaid/building states are explicit. A missing weekly amount/payday produces a named setup warning for each affected child.
 - An adult can correct a mistaken payment only by recording a reasoned, audited void. The original payment and void remain visible after restart, and retrying the same void request does not create another correction.
@@ -171,11 +176,14 @@ Chromium fallback produced the retained evidence.
   second notice; each accepted write has an audit record.
 - The server, not the browser, selects the eligible Important/most-recent notice
   shown on Today, and expiry/removal reveals the next eligible notice.
-- Dinner, List summary, Notice and Family photo can be independently shown or
+- Dinner, List summary, Notice, Daily Bible verse and Family photo can be independently shown or
   hidden from the companion without hiding plans or chores or creating a layout
   editor.
-- The TV summary rebalances cleanly for one, two or three bands, with or without
+- The TV summary rebalances cleanly for one, two, three or four bands, with or without
   a photo; phone administration remains accessible and usable at 390×844.
+- When Daily Bible verse is enabled, demo mode shows fictional copy and private mode shows an
+  attributed ESV passage only when its server secret is configured. Select opens a Back-safe full
+  reading; a missing key or provider outage cannot take down Today, and cached text is marked stale.
 - Today & notices offers distinct TV and Phone previews using current household
   content. Switching optional sections updates the preview without navigating
   away, and two rapid changes cannot overwrite one another.
@@ -293,7 +301,8 @@ live-system commissioning tasks requiring owner approval.
 - Favourite and hidden state survives optional incremental Synology folder checks. A missing import
   folder does not disable managed phone uploads or remove their assets. Hidden photos remain available
   in adult administration with a safe derivative preview, while private filesystem paths never
-  reach any response or log.
+  reach any response or log. Synology metadata and recycle directories such as `@eaDir` and
+  `#recycle` are ignored rather than making the approved-folder check fail.
 
 Status as of 2026-08-20: the local browser/server slice passes a unique-image,
 orientation-selected full-screen collage with bounded tile geometry, visible 45-second occupant
@@ -315,6 +324,8 @@ acceptance section and Phase 7 remain incomplete.
 ### Appearance and evening comfort
 
 - Light, Dark and Automatic are selectable without touch and remembered separately on each display.
+- A paired display or signed-in household viewer can open Appearance and change this device without
+  an administrator passkey; all household-mutating Admin routes remain protected.
 - Automatic responds when that device's operating-system/browser colour scheme changes.
 - Dark preserves readable household/member colours, semantic states and a visible D-pad focus ring
   across Today, Week, Month, Chores, Lists, Meals, Photos, Home and Admin.

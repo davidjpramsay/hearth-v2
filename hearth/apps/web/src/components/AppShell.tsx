@@ -47,7 +47,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
       </main>
     );
   }
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname === '/appearance') {
     return (
       <div className="companion-shell">
         <HouseholdDateTime placement="companion" />
@@ -80,7 +80,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
             data-focus-left="nav-appearance"
             data-focus-right={`appearance-${preferences.theme}`}
             data-focus-up="nav-photos"
-            to="/admin/appearance"
+            to="/appearance"
           >
             <Icon name="moon" />
             <span>Appearance</span>
@@ -103,6 +103,7 @@ function PhoneNavigation() {
   const { pathname } = useLocation();
   const moreActive =
     pathname === '/more' ||
+    pathname === '/appearance' ||
     pathname.startsWith('/admin') ||
     ['/lists', '/meals', '/home', '/photos'].includes(pathname);
   return (

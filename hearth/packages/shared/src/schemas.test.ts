@@ -773,8 +773,15 @@ describe('shared wire schemas', () => {
         listSummary: true,
         notice: true,
         photo: false,
+        dailyVerse: false,
       }),
-    ).toEqual({ dinner: false, listSummary: true, notice: true, photo: false });
+    ).toEqual({
+      dinner: false,
+      listSummary: true,
+      notice: true,
+      photo: false,
+      dailyVerse: false,
+    });
   });
 
   it('keeps pairing codes compact and administrator capability adult-only', () => {
