@@ -26,6 +26,7 @@ describe('calendar connection repository', () => {
         save: async (config) => {
           savedSecrets.push(config);
         },
+        updateMappings: async () => undefined,
         remove: async () => undefined,
       },
       now: () => new Date('2026-08-08T10:00:00.000Z'),
@@ -70,5 +71,58 @@ describe('calendar connection repository', () => {
     const audits = database.prepare('SELECT safe_summary_json FROM audit_events').all();
     expect(JSON.stringify({ persisted, receipts, audits })).not.toContain(password);
     expect(JSON.stringify({ persisted, receipts, audits })).not.toContain('fictional@example.com');
+  });
+
+  it('updates person mappings without asking for or replacing the saved credential', async () => {
+    const database = await openHearthDatabase(':memory:');
+    const admin = new SqliteAdminRepository(database);
+    repositories.push(admin);
+    let savedConfig: CalDavRuntimeConfig | null = null;
+    const mappingUpdates: CalDavRuntimeConfig['calendars'][] = [];
+    const service = new CalendarConnectionService(admin, new FakeCalendarConnectionVerifier(), {
+      database,
+      credentialStore: {
+        save: async (config) => {
+          savedConfig = config;
+        },
+        updateMappings: async (calendars) => {
+          if (savedConfig === null) throw new Error('Expected a saved credential first.');
+          expect(savedConfig.appPassword).toBe('still-private');
+          mappingUpdates.push(calendars);
+        },
+        remove: async () => undefined,
+      },
+      now: () => new Date('2026-08-08T10:00:00.000Z'),
+    });
+    const tested = await service.test('household_hearth_demo', 'member_maya', {
+      serverUrl: 'https://caldav.icloud.com',
+      username: 'fictional@example.com',
+      appPassword: 'still-private',
+    });
+    const first = tested.availableCalendars[0];
+    if (first === undefined) throw new Error('Expected a fake calendar');
+    const saved = await service.save('household_hearth_demo', 'member_maya', {
+      requestId: 'request_calendar_mapping_setup',
+      testId: tested.testId,
+      label: 'Family calendars',
+      calendars: [{ calendarId: first.id, ownerMemberId: null }],
+    });
+    const connected = saved.connection?.calendars[0];
+    if (connected === undefined) throw new Error('Expected a connected calendar');
+    const input = {
+      requestId: 'request_calendar_mapping_update',
+      calendars: [{ calendarId: connected.id, ownerMemberId: 'member_maya' }],
+    };
+    const updated = await service.updateMappings('household_hearth_demo', 'member_maya', input);
+    const replay = await service.updateMappings('household_hearth_demo', 'member_maya', input);
+
+    expect(updated.connection?.calendars[0]).toMatchObject({
+      owner: { id: 'member_maya' },
+      color: '#c97900',
+    });
+    expect(replay.replayed).toBe(true);
+    expect(mappingUpdates).toEqual([
+      [{ displayName: first.displayName, ownerMemberId: 'member_maya' }],
+    ]);
   });
 });

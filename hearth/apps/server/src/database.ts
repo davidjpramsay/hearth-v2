@@ -54,6 +54,14 @@ const migrations = [
     version: 21,
     url: new URL('./migrations/0021_routine_time_of_day.sql', import.meta.url),
   },
+  {
+    version: 22,
+    url: new URL('./migrations/0022_weather_location.sql', import.meta.url),
+  },
+  {
+    version: 23,
+    url: new URL('./migrations/0023_managed_photo_uploads.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

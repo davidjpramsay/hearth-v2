@@ -61,6 +61,44 @@ describe('PhotoService', () => {
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
+  it('uploads through an adult-only idempotent command and creates a safe audit summary', async () => {
+    const service = new PhotoService(new FakePhotoSourceProvider(), {
+      adminRepository: new InMemoryAdminRepository(),
+    });
+    const actor = { id: 'member_maya', type: 'member', source: 'companion' } as const;
+    const input = {
+      bytes: new Uint8Array([1, 2, 3]),
+      mimeType: 'image/jpeg',
+      capturedAt: '2026-08-03T00:30:00.000Z',
+    };
+    const first = await service.uploadPhoto(
+      'household_hearth_demo',
+      input,
+      'request_photo_upload',
+      actor,
+    );
+    const replay = await service.uploadPhoto(
+      'household_hearth_demo',
+      input,
+      'request_photo_upload',
+      actor,
+    );
+
+    expect(first).toMatchObject({
+      replayed: false,
+      duplicate: false,
+      audit: { action: 'photo.upload', actorId: 'member_maya', source: 'companion' },
+    });
+    expect(replay).toMatchObject({ replayed: true, audit: { id: first.audit.id } });
+    await expect(
+      service.uploadPhoto('household_hearth_demo', input, 'request_photo_upload_tv', {
+        id: 'device_living_room_tv',
+        type: 'device',
+        source: 'tv',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
   it('curates photos idempotently, excludes hidden photos and resets the demo safely', async () => {
     const service = new PhotoService(new FakePhotoSourceProvider(), {
       adminRepository: new InMemoryAdminRepository(),

@@ -5,6 +5,7 @@ import { adminApi as hearthApi } from '../api/admin';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { WeatherLocationSettings } from '../components/WeatherLocationSettings';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 
 export function HouseholdSettingsScreen() {
@@ -63,6 +64,7 @@ export function HouseholdSettingsScreen() {
           {save.isPending ? 'Saving…' : 'Save household'}
         </button>
       </form>
+      <WeatherLocationSettings />
     </AdminPage>
   );
 }

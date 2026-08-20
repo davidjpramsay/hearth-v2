@@ -22,6 +22,7 @@ import {
 import {
   ManagedCalendarProvider,
   createCalendarRuntime,
+  readCalendarRuntimeConfig,
   removeCalendarRuntimeConfig,
   resolveCalendarRuntime,
   writeCalendarRuntimeConfig,
@@ -34,17 +35,13 @@ import {
   resolveHomeAssistantProvider,
   writeHomeAssistantRuntimeConfig,
 } from './integrations/home-assistant-runtime.js';
-import {
-  FakePhotoSourceProvider,
-  UnconfiguredPhotoSourceProvider,
-} from './integrations/photo-source.js';
+import { FakePhotoSourceProvider } from './integrations/photo-source.js';
 import {
   SynologyFolderPhotoSourceProvider,
   resolveSynologyPhotoSourceConfiguration,
 } from './integrations/synology-photo-source.js';
 import {
-  OpenMeteoWeatherProvider,
-  UnconfiguredWeatherProvider,
+  ManagedWeatherProvider,
   resolveOpenMeteoWeatherConfiguration,
 } from './integrations/weather-provider.js';
 import { HomeService } from './home-repository.js';
@@ -53,6 +50,12 @@ import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 import { TodayContentService } from './today-content-repository.js';
+import {
+  FakeWeatherLocationVerifier,
+  OpenMeteoWeatherLocationVerifier,
+  WeatherLocationService,
+  readStoredWeatherConfiguration,
+} from './weather-location-repository.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import { FixedClock, SystemClock } from './runtime-context.js';
 import {
@@ -102,11 +105,13 @@ const managedCalendarProvider = new ManagedCalendarProvider();
 if (calendarRuntime !== null) managedCalendarProvider.configure(calendarRuntime);
 const managedHomeAssistantProvider = new ManagedHomeAssistantProvider();
 if (homeAssistantRuntime !== null) managedHomeAssistantProvider.configure(homeAssistantRuntime);
-const weatherConfiguration = demoMode ? null : resolveOpenMeteoWeatherConfiguration(process.env);
-const weatherProvider =
-  weatherConfiguration === null
-    ? new UnconfiguredWeatherProvider()
-    : new OpenMeteoWeatherProvider(weatherConfiguration);
+const weatherFallback = demoMode ? null : resolveOpenMeteoWeatherConfiguration(process.env);
+const storedWeatherConfiguration = demoMode
+  ? null
+  : readStoredWeatherConfiguration(database, privateHouseholdId());
+const weatherProvider = new ManagedWeatherProvider();
+const initialWeatherConfiguration = storedWeatherConfiguration ?? weatherFallback;
+if (initialWeatherConfiguration !== null) weatherProvider.configure(initialWeatherConfiguration);
 const repository = new SqliteHearthRepository(
   database,
   demoMode
@@ -121,6 +126,16 @@ const repository = new SqliteHearthRepository(
 );
 const planningRepository = new SqlitePlanningRepository(database, { seedDemo: demoMode, clock });
 const todayContentRepository = new TodayContentService(database, { seedDemo: demoMode, clock });
+const weatherLocationRepository = new WeatherLocationService(
+  adminRepository,
+  demoMode ? new FakeWeatherLocationVerifier() : new OpenMeteoWeatherLocationVerifier(),
+  {
+    database,
+    now: () => clock.now(),
+    onSaved: (configuration) => weatherProvider.configure(configuration),
+    ...(weatherFallback === null ? {} : { fallback: weatherFallback }),
+  },
+);
 const homeRepository = new HomeService(
   demoMode ? new FakeHomeAssistantProvider() : managedHomeAssistantProvider,
   database,
@@ -129,9 +144,7 @@ const homeRepository = new HomeService(
 const photoConfiguration = demoMode ? null : resolveSynologyPhotoSourceConfiguration(process.env);
 const photoProvider = demoMode
   ? new FakePhotoSourceProvider()
-  : photoConfiguration === null
-    ? new UnconfiguredPhotoSourceProvider()
-    : new SynologyFolderPhotoSourceProvider(database, photoConfiguration, clock);
+  : new SynologyFolderPhotoSourceProvider(database, photoConfiguration!, clock);
 const photoRepository = new PhotoService(photoProvider, {
   adminRepository,
   database,
@@ -163,6 +176,15 @@ const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
         }
         await writeCalendarRuntimeConfig(calendarConfigPath, config);
         managedCalendarProvider.configure(createCalendarRuntime(config));
+      },
+      updateMappings: async (calendars, householdTimezone) => {
+        if (calendarConfigPath === undefined) {
+          throw new Error('HEARTH_CALENDAR_CONFIG_PATH is not configured.');
+        }
+        const current = await readCalendarRuntimeConfig(calendarConfigPath);
+        const updated = { ...current, calendars, householdTimezone };
+        await writeCalendarRuntimeConfig(calendarConfigPath, updated);
+        managedCalendarProvider.configure(createCalendarRuntime(updated));
       },
       remove: async () => {
         if (calendarConfigPath === undefined) return;
@@ -217,6 +239,7 @@ const server = buildServer({
   adminRepository,
   planningRepository,
   todayContentRepository,
+  weatherLocationRepository,
   repository,
   homeRepository,
   photoRepository,

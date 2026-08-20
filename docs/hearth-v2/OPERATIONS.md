@@ -136,6 +136,12 @@ app-specific password after validation if the deployment is not proceeding. No c
 method is present. This code path is covered against a deterministic CalDAV service, but the real
 iCloud account remains unverified until the owner performs the first credentialed test.
 
+After connection, change Calendar assignments directly on that same page. The
+mapping save does not request an app-specific password: it retains the existing
+credential, updates only the exact calendar/person allowlist and refreshes the
+projection. Use Whole family for shared sources; a named person automatically
+uses their current Hearth avatar and colour.
+
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.
 Do not place the URL, token or entity IDs in `.env`, Compose values, source, SQLite, logs, chat or a
@@ -153,12 +159,15 @@ service call and has no Jellyfin, Music Assistant or Cast control. If validation
 remove the connection through Admin and revoke the dedicated token. Take a fresh Home Assistant
 backup only after the verified mapping/hardware test.
 
-Weather is independent of Home Assistant. Set both `HEARTH_WEATHER_LATITUDE` and
-`HEARTH_WEATHER_LONGITUDE` in the private Compose environment to approximate household coordinates
-(suburb or city-centre precision is sufficient). Leaving both blank keeps the weather adapter off;
-setting only one or using an out-of-range value fails startup rather than guessing. The server makes
-outbound HTTPS requests only to Open-Meteo's fixed forecast endpoint and caches the last safe
-response. Do not put a street address into Hearth configuration.
+Weather is independent of Home Assistant. Use **Hearth settings → Household →
+Weather location** on a phone to search a suburb/postcode or use the phone's
+current location, test the displayed conditions and save. Suburb precision is
+sufficient; Hearth stores coordinates locally and does not need a street
+address. `HEARTH_WEATHER_LATITUDE` and `HEARTH_WEATHER_LONGITUDE` remain an
+optional backwards-compatible fallback only when no household location has
+been saved. Both fallback variables must still be set together and in range.
+The server calls Open-Meteo for search/forecast and uses Nominatim only for a
+direct user-triggered phone reverse-label request.
 
 Set `HEARTH_MODE=private` only with a dedicated private database path. If
 `HEARTH_DATABASE_PATH` is omitted, Hearth chooses `data/hearth-private.sqlite`
@@ -196,7 +205,7 @@ As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffol
 Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
 Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
 explicit two-hop DSM Reverse Proxy → nginx → Fastify trust boundary for client-address throttling,
-and an ignored runtime directory template. The server production build includes all 19 forward migrations
+and an ignored runtime directory template. The server production build includes all 22 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 
 Both native ARM64 development images and emulated `linux/amd64` images for the DS920+ were built and
@@ -268,16 +277,24 @@ provider is deliberately unreachable.
 
 ### Photos/media
 
-- Hearth photo derivatives are disposable; original approved photos remain governed by the Synology's existing backup strategy.
-- Mount only the explicitly approved family-photo folder into the server at `/photos-source` with
-  read-only permissions. Leave `HEARTH_PHOTO_SOURCE_DIR` blank until approval; never mount the
-  Synology photo-library root. Derivatives live under `/data/photo-derivatives` and may be rebuilt
-  with the adult Admin scan command.
-- Photo index responses, audit summaries and logs must remain free of host/container source paths.
-  A temporary NAS outage should preserve and serve the last safe derivative set as stale content.
+- Adult phone uploads are the primary photo path. The server writes normalized managed masters to
+  `/data/photo-uploads` and display/thumbnail WebPs to `/data/photo-derivatives`; both locations are
+  inside the restricted `HEARTH_DATA_DIR` mount. The browser never supplies a server destination.
+- Include the complete host `HEARTH_DATA_DIR` in encrypted Synology Hyper Backup. The in-app online
+  SQLite backup protects photo metadata and curation, not the managed image files; a valid photo
+  recovery drill must restore the database, managed masters and derivatives together to a clean
+  location and confirm the opaque asset routes still resolve.
+- Optionally mount one explicitly approved family-photo folder at `/photos-source` read-only for
+  bulk import. Leave `HEARTH_PHOTO_SOURCE_DIR` blank when it is not useful; never mount the Synology
+  photo-library root. Admin **Check folder** rebuilds imported derivatives without affecting managed
+  uploads.
+- Photo responses, command receipts, audit summaries and logs must remain free of client filenames
+  and host/container paths. A temporary optional-import outage should preserve and serve the last
+  safe derivative set while managed uploads continue to work.
 - Member profile-photo derivatives are identity settings stored inside Hearth SQLite and are covered
   by the normal database backup/restore drill. The chosen original file is not retained by Hearth.
-- Do not imply that Hearth backups protect the entire media library.
+- Do not imply that Hearth backups protect the entire media library or an optional import folder;
+  those originals remain governed by the Synology's existing backup strategy.
 
 ## Update and rollback
 

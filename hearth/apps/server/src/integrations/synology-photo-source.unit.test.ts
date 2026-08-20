@@ -95,7 +95,8 @@ describe('SynologyFolderPhotoSourceProvider', () => {
 
     await rm(fixture.source, { recursive: true });
     const unavailable = await fixture.provider.refreshApprovedPhotos('household_photo_test');
-    expect(unavailable.source.status).toBe('unavailable');
+    expect(unavailable.source.status).toBe('ready');
+    expect(unavailable.index.folderImport.status).toBe('unavailable');
     expect(unavailable.photos).toHaveLength(1);
     expect(JSON.stringify(unavailable)).not.toMatch(/ENOENT|hearth-photo-source|\/private\//);
     await fixture.close();
@@ -136,8 +137,60 @@ describe('SynologyFolderPhotoSourceProvider', () => {
     await fixture.close();
   });
 
+  it('stores managed uploads privately, preserves portrait orientation and deduplicates content', async () => {
+    const fixture = await photoFixture();
+    const bytes = await sharp({
+      create: { width: 600, height: 1000, channels: 3, background: '#8d6f83' },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const first = await fixture.provider.uploadPhoto('household_photo_test', {
+      bytes,
+      mimeType: 'image/jpeg',
+      capturedAt: '2026-08-08T04:30:00.000Z',
+      actorId: 'member_adult',
+    });
+    const duplicate = await fixture.provider.uploadPhoto('household_photo_test', {
+      bytes,
+      mimeType: 'image/jpeg',
+      capturedAt: '2026-08-08T04:30:00.000Z',
+      actorId: 'member_adult',
+    });
+
+    expect(first).toMatchObject({
+      duplicate: false,
+      photo: { orientation: 'portrait', width: 600, height: 1000 },
+      snapshot: {
+        index: { managedPhotoCount: 1, importedPhotoCount: 0 },
+        source: { kind: 'hearth-managed', status: 'ready' },
+      },
+    });
+    expect(duplicate).toMatchObject({ duplicate: true, photo: { id: first?.photo.id } });
+    expect(duplicate?.snapshot.curation).toHaveLength(1);
+    expect(JSON.stringify(first)).not.toContain(fixture.uploads);
+
+    await expect(
+      fixture.provider.uploadPhoto('household_photo_test', {
+        bytes: new Uint8Array([1, 2, 3]),
+        mimeType: 'image/jpeg',
+        capturedAt: null,
+        actorId: 'member_adult',
+      }),
+    ).resolves.toBeNull();
+
+    const rescanned = await fixture.provider.refreshApprovedPhotos('household_photo_test');
+    expect(rescanned.curation).toHaveLength(1);
+    expect(rescanned.index.managedPhotoCount).toBe(1);
+    await fixture.close();
+  });
+
   it('requires absolute, separate source and derivative locations', () => {
-    expect(resolveSynologyPhotoSourceConfiguration({})).toBeNull();
+    expect(resolveSynologyPhotoSourceConfiguration({})).toMatchObject({
+      sourceDirectory: null,
+      derivativeDirectory: '/data/photo-derivatives',
+      uploadDirectory: '/data/photo-uploads',
+    });
     expect(() =>
       resolveSynologyPhotoSourceConfiguration({
         HEARTH_PHOTO_SOURCE_DIR: '/photos',
@@ -158,6 +211,7 @@ async function photoFixture() {
   temporaryDirectories.push(directory);
   const source = join(directory, 'source');
   const derivatives = join(directory, 'derivatives');
+  const uploads = join(directory, 'uploads');
   await writeFile(join(directory, '.keep'), 'fixture');
   await mkdir(source);
   const database = new Database(join(directory, 'hearth.sqlite'));
@@ -174,6 +228,7 @@ async function photoFixture() {
     {
       sourceDirectory: source,
       derivativeDirectory: derivatives,
+      uploadDirectory: uploads,
       collectionName: 'Approved family photos',
       scanIntervalMs: 0,
     },
@@ -181,6 +236,7 @@ async function photoFixture() {
   );
   return {
     source,
+    uploads,
     provider,
     close: async () => {
       await provider.close();

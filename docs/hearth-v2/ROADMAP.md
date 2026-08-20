@@ -143,6 +143,15 @@ fully fake and inert. Migration `0011_calendar_connection_setup.sql` persists
 safe setup metadata only. A real iCloud credentialed read remains an explicitly
 owner-controlled deployment validation action and has not been performed.
 
+Implementation extension (2026-08-20): connected calendar ownership is now a
+permanent editable mapping rather than part of credential setup. The companion
+always shows calendar name, assigned person and derived Hearth colour/avatar;
+an idempotent command updates the external allowlist and SQLite projection
+without requesting or rewriting the saved app-specific password. Household
+settings also owns weather location through suburb/postcode search or a
+one-time phone location request, a live current-conditions test, and migration
+`0022_weather_location.sql`. Environment coordinates remain fallback-only.
+
 Implementation extension (2026-08-09): Calendar is now one primary television
 and phone destination with Week, Month and a dedicated responsive Agenda view.
 All three views share an explicit D-pad/keyboard switch and a direct source
@@ -359,23 +368,25 @@ new Hearth application phase.
 
 ## Phase 7 — Photos, ambient mode and production operations
 
-Status as of 2026-08-10: in progress. The browser/server Photos slice is
+Status as of 2026-08-20: in progress. The browser/server Photos slice is
 implemented with an injected fake/local source, opaque asset contracts, a
 forward-only photo migration, original mixed-orientation demo derivatives,
 responsive full-screen collage templates with no skinny leftover strips, calm
 45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
 slideshow, immediate remote exit, cached-source states and corrupt-image fallback. The private
-server now includes the concrete read-only Synology-folder indexer, incremental fingerprinting,
-orientation-correct display/thumbnail WebPs, opaque immutable asset routes, adult-only audited
-manual scans, aggregate Admin status and persistent favourite/hide/restore curation. Hidden assets
+server now includes direct adult companion uploads into private managed Synology storage, decoded
+format/size checks, content-hash deduplication, orientation-correct managed/display/thumbnail WebPs,
+opaque immutable asset routes, and an optional read-only Synology-folder bulk importer with
+incremental fingerprinting and adult-only audited checks. Admin shows aggregate managed/import
+status and persistent favourite/hide/restore curation. Hidden assets
 remain indexed but are excluded from Today, gallery and ambient projections. A production-oriented two-container Synology
 scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
 with same-origin proxying, non-root/read-only processes, readiness gating,
 forward migrations and clean shutdown verified locally. A three-job GitHub Actions gate mirrors
 the complete web/server/browser suite, Android TV shell and production container image builds and
 has passed on the release-checkpoint branch. Live Synology
-commissioning, hostname/TLS and real-device passkey enrolment/recovery validation, approved live photo-folder
-selection/mount and scan evidence,
+commissioning, hostname/TLS and real-device passkey enrolment/recovery validation, live managed
+upload/backup evidence and optional folder-import evidence,
 Home Assistant presence/quiet-hours coordination,
 restore evidence and the household pilot remain open; Phase 7 is not complete.
 
@@ -396,7 +407,9 @@ checks pass; physical-TCL comfort assessment remains part of the household pilot
 
 ### Work
 
-- Commission the implemented Synology photo source against one explicitly approved read-only folder.
+- Commission direct phone uploads against the private Synology data mount and confirm managed photos
+  survive a container rebuild plus encrypted backup/restore. Retain the existing read-only folder
+  only as an optional bulk-import path if the household finds it useful.
 - Add ambient slideshow and screen/presence coordination.
 - Commission the verified Docker/Compose scaffold on the approved private Synology HTTPS origin.
 - Commission the implemented System Health and online-backup service, configure Synology's

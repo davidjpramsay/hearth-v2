@@ -1,12 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 
-import type { CalendarConnectionTestResult } from '@hearth/shared';
+import {
+  FAMILY_CALENDAR_COLOR,
+  type CalendarConnectionTestResult,
+  type Member,
+} from '@hearth/shared';
 
 import { connectionsApi as hearthApi } from '../api/connections';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useCalendarConnectionQuery } from '../hooks/useConnectionQueries';
@@ -26,6 +31,7 @@ export function CalendarConnectionSettingsScreen() {
   const [appPassword, setAppPassword] = useState('');
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [mappingOwners, setMappingOwners] = useState<OwnerByCalendar>({});
 
   const testConnection = useMutation({
     mutationFn: hearthApi.testCalendarConnection,
@@ -70,13 +76,27 @@ export function CalendarConnectionSettingsScreen() {
       setConfirmation('Calendar connection removed. Saved event copies will age out safely.');
     },
   });
+  const updateMappings = useMutation({
+    mutationFn: hearthApi.updateCalendarMappings,
+    onSuccess: (result) => {
+      queryClient.setQueryData(queryKeys.calendarConnection, result.connection);
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
+        queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
+      ]);
+      setMappingOwners({});
+      setConfirmation('Calendar assignments saved. The TV will use the updated faces and colours.');
+    },
+  });
 
   if (admin.isPending || connection.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;
   if (connection.isError) return <AdminError message={connection.error.message} />;
 
   const showForm = connection.data === null || editing;
-  const mutationError = testConnection.error ?? save.error ?? remove.error;
+  const mutationError = testConnection.error ?? save.error ?? remove.error ?? updateMappings.error;
 
   function submitTest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,6 +119,21 @@ export function CalendarConnectionSettingsScreen() {
       calendars: selected.map((calendarId) => ({
         calendarId,
         ownerMemberId: owners[calendarId] || null,
+      })),
+    });
+  }
+
+  function saveMappings() {
+    const currentConnection = connection.data;
+    if (currentConnection == null) return;
+    updateMappings.mutate({
+      requestId: createRequestId('calendar_mappings'),
+      calendars: currentConnection.calendars.map((calendar) => ({
+        calendarId: calendar.id,
+        ownerMemberId:
+          mappingOwners[calendar.id] === undefined
+            ? (calendar.owner?.id ?? null)
+            : mappingOwners[calendar.id] || null,
       })),
     });
   }
@@ -144,15 +179,64 @@ export function CalendarConnectionSettingsScreen() {
             <span className="connection-badge connection-badge--healthy">Read-only</span>
           </header>
           <p className="calendar-connection-message">{connection.data.message}</p>
-          <div className="calendar-selected-list">
-            {connection.data.calendars.map((calendar) => (
-              <div className="calendar-selected-row" key={calendar.displayName}>
-                <span style={{ background: calendar.color }} />
-                <strong>{calendar.displayName}</strong>
-                <small>{calendar.owner?.displayName ?? 'Whole family'}</small>
-              </div>
-            ))}
+          <div className="calendar-mapping-heading" aria-hidden="true">
+            <span>Calendar name</span>
+            <span>Assigned person</span>
+            <span>Display colour</span>
           </div>
+          <div className="calendar-selected-list">
+            {connection.data.calendars.map((calendar) => {
+              const ownerId = mappingOwners[calendar.id] ?? calendar.owner?.id ?? '';
+              const owner = memberForId(admin.data.household.members, ownerId);
+              const color = owner?.color ?? FAMILY_CALENDAR_COLOR;
+              return (
+                <div className="calendar-selected-row" key={calendar.id}>
+                  <strong>{calendar.displayName}</strong>
+                  <div className="calendar-owner-preview">
+                    {owner === null ? (
+                      <span className="calendar-family-avatar" aria-hidden="true">
+                        <Icon name="home" />
+                      </span>
+                    ) : (
+                      <Avatar member={owner} size="small" />
+                    )}
+                    <label>
+                      <span className="sr-only">Assigned person for {calendar.displayName}</span>
+                      <select
+                        aria-label={`Assigned person for ${calendar.displayName}`}
+                        onChange={(event) =>
+                          setMappingOwners((current) => ({
+                            ...current,
+                            [calendar.id]: event.target.value,
+                          }))
+                        }
+                        value={ownerId}
+                      >
+                        <option value="">Whole family</option>
+                        {admin.data.household.members.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <span className="calendar-colour-preview">
+                    <i style={{ background: color }} />
+                    <span>{color.toUpperCase()}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            className="admin-submit calendar-mapping-save"
+            disabled={Object.keys(mappingOwners).length === 0 || updateMappings.isPending}
+            onClick={saveMappings}
+            type="button"
+          >
+            {updateMappings.isPending ? 'Saving assignments…' : 'Save calendar assignments'}
+          </button>
           <p className="field-help">
             Last checked {formatCheckedAt(connection.data.lastCheckedAt)}
           </p>
@@ -309,6 +393,11 @@ export function CalendarConnectionSettingsScreen() {
               <div className="calendar-picker__list">
                 {testResult.availableCalendars.map((calendar) => {
                   const checked = selected.includes(calendar.id);
+                  const owner = memberForId(
+                    admin.data.household.members,
+                    owners[calendar.id] ?? '',
+                  );
+                  const color = owner?.color ?? FAMILY_CALENDAR_COLOR;
                   return (
                     <div className="calendar-picker__row" key={calendar.id}>
                       <label className="calendar-picker__choice">
@@ -323,7 +412,7 @@ export function CalendarConnectionSettingsScreen() {
                           }
                           type="checkbox"
                         />
-                        <span style={{ background: calendar.color }} />
+                        <span style={{ background: color }} />
                         <strong>{calendar.displayName}</strong>
                       </label>
                       <label>
@@ -374,4 +463,8 @@ function formatCheckedAt(value: string): string {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function memberForId(members: readonly Member[], memberId: string): Member | null {
+  return members.find((member) => member.id === memberId) ?? null;
 }

@@ -529,6 +529,75 @@ describe('0001 household core migration', () => {
     database.close();
   });
 
+  it('adds one constrained weather location per household', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 22').get()).toEqual(
+      { name: 'weather_location' },
+    );
+    database.exec(`
+      INSERT INTO households VALUES ('household_weather', 'Weather', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO weather_locations VALUES (
+        'household_weather', 'Baldivis, WA', -32.328, 115.82, 'search', 'now', 'now'
+      );
+    `);
+    expect(() =>
+      database.exec(`
+        UPDATE weather_locations SET latitude = 95 WHERE household_id = 'household_weather';
+      `),
+    ).toThrow(/CHECK/);
+    expect(() =>
+      database.exec(`
+        UPDATE weather_locations SET source = 'guess' WHERE household_id = 'household_weather';
+      `),
+    ).toThrow(/CHECK/);
+    database.close();
+  });
+
+  it('adds managed photo uploads and optional folder import status with strict constraints', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 23').get()).toEqual(
+      { name: 'managed_photo_uploads' },
+    );
+    database.exec(`
+      INSERT INTO households VALUES
+        ('household_photo_upload', 'Photos', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO photo_sources VALUES
+        ('source_photo_upload', 'household_photo_upload', 'synology-folder', 'Family photos',
+         'environment:approved-photo-folder', 'ready', 'now', 'now', 'now');
+      INSERT INTO photo_assets VALUES
+        ('asset_photo_upload', 'source_photo_upload', 'managed:hash', 'hash-display.webp',
+         'hash-thumbnail.webp', 'Family photo', 1200, 800, 'landscape', 'now', 1, 0, 'ready',
+         NULL, 'now', 'hash');
+      INSERT INTO photo_managed_uploads VALUES
+        ('upload_photo', 'household_photo_upload', 'asset_photo_upload', 'hash-master.webp',
+         'hash', 1024, 'now', 'member_adult', 'companion');
+      INSERT INTO photo_folder_import_status VALUES
+        ('household_photo_upload', 'unconfigured', NULL, 0, 'now');
+    `);
+    expect(() =>
+      database.exec(`
+        UPDATE photo_managed_uploads SET byte_size = 0 WHERE id = 'upload_photo';
+      `),
+    ).toThrow(/CHECK/);
+    expect(() =>
+      database.exec(`
+        UPDATE photo_folder_import_status SET status = 'guess'
+        WHERE household_id = 'household_photo_upload';
+      `),
+    ).toThrow(/CHECK/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
+    database.close();
+  });
+
   it('adds public-key passkeys and hash-only companion sessions', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
     temporaryDirectories.push(directory);

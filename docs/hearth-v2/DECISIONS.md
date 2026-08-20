@@ -252,7 +252,7 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-025 — One dedicated Synology folder is Hearth's photo source
 
 - Date: 2026-08-05
-- Status: accepted
+- Status: superseded in part by D-052
 - Context: Hearth needs a private, predictable photo source that the Synology can expose to the
   server without granting access to the household's wider photo library.
 - Choice: Keep one explicitly approved Synology folder as Hearth's production source. Hearth
@@ -471,7 +471,7 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-036 — Synology photos use one read-only folder and opaque local derivatives
 
 - Date: 2026-08-09
-- Status: accepted
+- Status: superseded in part by D-052
 - Context: D-025 selected Synology as the family-photo authority but left the concrete private
   indexing and serving boundary open. The collage needs correct portrait/landscape geometry and
   slow automatic rotation without sending full originals, private NAS paths or a whole-library
@@ -752,7 +752,7 @@ Official platform references:
 ## D-049 — Weather uses a narrow server-side Open-Meteo adapter
 
 - Date: 2026-08-17
-- Status: accepted
+- Status: accepted; coordinate-configuration detail superseded by D-051
 - Context: Today and Week already had a browser-safe forecast contract, but private mode returned
   no forecast because only deterministic demo data existed. Routing weather through Home Assistant
   would widen its deliberately small allowlist and make a useful read-only cue depend on the Pi.
@@ -764,6 +764,60 @@ Official platform references:
   attribution link; never expose or persist coordinates. Leave weather unavailable when either
   coordinate is absent rather than guessing from an address or calendar.
 - Consequence: Weather works without credentials, a browser-side request or Home Assistant entity,
-  while calendar/household content remains independent during internet failure. Deployment needs
-  two non-secret coordinate values. A future provider change remains behind the same injected
+  while calendar/household content remains independent during internet failure. D-051 replaces the
+  deployment-only coordinate setup with a household setting. A future provider change remains behind the same injected
   adapter and public forecast schema.
+
+## D-050 — Calendar presentation mappings are editable independently of credentials
+
+- Date: 2026-08-20
+- Status: accepted
+- Context: Calendar ownership could be chosen only while first entering the CalDAV account. A later
+  reassignment incorrectly implied reconnecting and re-entering an app-specific password, while
+  provider colours did not consistently match Hearth people.
+- Choice: Permanently present every connected source as calendar name, assigned person and display
+  colour. Save the complete mapping through its own authenticated, idempotent and audited command.
+  Rewrite only the existing external allowlist owner mappings and the safe SQLite projection; retain
+  URL, username and app-specific password unchanged. Derive browser/event colour and avatar from the
+  current Hearth member, or use the fixed Whole family mark/colour for a null owner.
+- Consequence: Adults can fix or evolve ownership without reconnecting, and member colour/avatar
+  edits flow through Calendar identity. The command never receives credential material and remains
+  read-only with respect to provider events.
+
+## D-051 — Weather location is a tested household setting
+
+- Date: 2026-08-20
+- Status: accepted
+- Context: Environment-only coordinates made ordinary weather setup inaccessible and forced server
+  administration for a household preference. Weather geography and calendar timezone are related
+  but not interchangeable.
+- Choice: Keep timezone separate. Add an adult-only weather location section with Open-Meteo
+  suburb/postcode search, one-time browser geolocation, direct-user-action Nominatim reverse
+  labelling, Advanced coordinates, and a required live current-conditions test. Persist the chosen
+  label/coordinates/source in migration `0022_weather_location.sql`; reconfigure the managed
+  Open-Meteo provider immediately. Retain environment coordinates only as fallback when no row exists.
+- Consequence: Families can configure and verify weather from the companion without Home Assistant,
+  an API key or container editing. Coordinates appear only in adult settings and local SQLite, never
+  in Today/Week/TV contracts, logs or provider audit summaries.
+
+## D-052 — Managed phone uploads are the primary family-photo path
+
+- Date: 2026-08-20
+- Status: accepted
+- Context: Requiring adults to discover a special Synology shared folder, copy files into it and
+  manually request a scan made a normal household action feel like server administration. The
+  folder also failed to explain clearly whether Synology Photos or Apple Photos albums were linked.
+  Hearth already has an authenticated phone companion and a private writable data mount.
+- Choice: Make **Add photos from this phone** the primary adult flow. Accept one bounded supported
+  image per raw authenticated command, verify its decoded format, normalize an orientation-correct
+  managed master plus 4K display and thumbnail WebPs, deduplicate by content hash and store only
+  opaque keys under the private Hearth data mount. The browser may multi-select and upload files
+  sequentially with partial-success feedback. Keep the existing adult-approved `/photos-source`
+  mount only as an optional read-only bulk importer; an import failure must not mark managed storage
+  unavailable. Do not connect to Apple Photos, accept shared-album links or retain client filenames.
+- Consequence: Adults can add real photos entirely through Hearth, while local ownership remains on
+  the Synology. Migration `0023_managed_photo_uploads.sql` records path-free managed metadata and
+  optional import state. SQLite online copies protect metadata but not image files, so encrypted
+  Synology backup must include the complete Hearth data directory, including `/data/photo-uploads`
+  and `/data/photo-derivatives`. D-025 and D-036 remain valid for the optional importer and opaque
+  derivative rules, but no longer make that folder Hearth's primary authority or setup prerequisite.

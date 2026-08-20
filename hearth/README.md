@@ -20,8 +20,8 @@ Google TV emulator run is retained; the selected-TCL lifecycle run remains
 required before Phase 6 is complete. Phase 7 is in progress with an original
 responsive Photos gallery, an injected path-safe photo-source contract, mixed
 orientation demo derivatives, offline/cached/error states and an ambient
-slideshow that exits on any remote key, plus a read-only Synology folder indexer
-and Admin scan status. Live folder selection/mount and presence/quiet-hours
+slideshow that exits on any remote key, direct private phone photo uploads, plus an optional
+read-only Synology folder importer and Admin status. Live managed-upload backup evidence and presence/quiet-hours
 coordination remain unconfigured. Hearth also provides
 per-display Light, Dark and Automatic themes plus independent evening dimming;
 Automatic follows that device's system colour setting and does not invoke a

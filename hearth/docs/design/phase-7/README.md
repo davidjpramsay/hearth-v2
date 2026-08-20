@@ -14,4 +14,5 @@ record. The generated concept is never rendered inside the application.
 On a phone the same typed collection remains an orientation-aware collage beneath the stable
 Today/Calendar/Chores/More navigation; landscape retains only three substantial occupants. It is
 not a scaled television canvas. Private mode uses the same composition with opaque local WebP
-derivatives from one approved, read-only Synology folder.
+derivatives from private adult phone uploads, with one approved read-only Synology folder retained
+only as an optional bulk importer.

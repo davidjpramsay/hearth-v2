@@ -28,7 +28,7 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
   await expect(page.locator('[data-focus-id="nav-photos"]')).toBeFocused();
   await page.keyboard.press('Enter');
 
-  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   const breakfast = page.locator('[data-focus-id="photos-thumb-photo_family_breakfast"]');
   await expect(breakfast).toBeFocused();
   await page.keyboard.press('ArrowRight');
@@ -84,7 +84,7 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
   await expect(page).toHaveTitle(/Hearth/);
-  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   await expect(page.getByText('Automatic · every 45 seconds')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Pause automatic photo rotation' })).toBeVisible();
   await expect(page.locator('.photos-rotation-progress')).toBeVisible();
@@ -315,7 +315,7 @@ test('Photos has deliberate empty, cached-unavailable and failure/retry states',
   await page.goto('/photos?scenario=fail-next');
   await expect(page.getByRole('heading', { name: 'Hearth couldn’t load this view' })).toBeVisible();
   await page.getByRole('button', { name: /Try again/ }).click();
-  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   await expect(page.locator('.photos-grid img')).toHaveCount(5);
 });
 
@@ -358,23 +358,25 @@ test('a corrupt display derivative fails without revealing its URL', async ({ pa
   await expect(page.locator('body')).not.toContainText('bush-camping.webp');
 });
 
-test('@visual phone administration reports and refreshes the safe photo index', async ({
+test('@visual phone administration uploads and curates the private photo collection', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/photos');
-  await expect(page.getByRole('heading', { name: 'Photo source' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Scan now' })).toBeFocused();
-  await expect(page.getByText('Read-only Synology folder')).toBeVisible();
-  await expect(page.getByText('5 ready')).toBeVisible();
-  await expect(page.getByText('3 Aug 2026, 7:30 am')).toBeVisible();
-  await page.getByRole('button', { name: 'Scan now' }).click();
-  await expect(page.getByRole('status')).toContainText('Photo folder checked. 5 photos are ready.');
-  await expect(page.getByRole('heading', { name: 'Add images from Synology' })).toBeVisible();
-  await expect(page.getByText('hearth-photos')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Choose photos' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Add photos from this phone' })).toBeVisible();
+  await expect(page.getByText('Optional Synology folder import', { exact: true })).toBeVisible();
+  await expect(page.getByText('5 showing · 5 added in Hearth · 0 imported')).toBeVisible();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'family-photo.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+  });
+  await expect(page.getByRole('status')).toContainText('1 photo added.');
   await expect(page.getByRole('heading', { name: 'Choose family photos' })).toBeVisible();
-  await expect(page.getByText('5 showing')).toBeVisible();
-  await expect(page.getByText('0 hidden')).toBeVisible();
+  await expect(page.getByText('5 showing', { exact: true })).toBeVisible();
+  await expect(page.getByText('0 hidden', { exact: true })).toBeVisible();
   await expect(page.locator('body')).not.toContainText('/volume1');
   const results = await new AxeBuilder({ page }).analyze();
   expect(
@@ -403,7 +405,7 @@ test('@visual phone administration reports and refreshes the safe photo index', 
     animations: 'disabled',
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Scan now' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Choose photos' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(firstFavourite).toBeFocused();
   await page.keyboard.press('ArrowRight');
@@ -416,8 +418,8 @@ test('@visual phone administration reports and refreshes the safe photo index', 
       .getByRole('status')
       .filter({ hasText: 'Photo hidden from Today, Photos and ambient mode.' }),
   ).toBeVisible();
-  await expect(page.getByText('4 showing')).toBeVisible();
-  await expect(page.getByText('1 hidden')).toBeVisible();
+  await expect(page.getByText('4 showing', { exact: true })).toBeVisible();
+  await expect(page.getByText('1 hidden', { exact: true })).toBeVisible();
   const firstRestore = page.locator(
     '[data-focus-id="photo-curation-restore-photo_coastal_picnic"]',
   );
@@ -447,12 +449,12 @@ test('@visual phone administration reports and refreshes the safe photo index', 
   for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('link', { name: 'View family photos' })).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   await expect(page.locator('.photo-collage__tile')).toHaveCount(4);
   await expect(page.locator('[data-photo-id="photo_coastal_picnic"]')).toHaveCount(0);
 });
 
-test('phone administration explains an unavailable Synology folder without exposing paths', async ({
+test('phone administration explains an unavailable optional import without blocking uploads', async ({
   page,
 }) => {
   await page.route('**/api/v1/households/*/photo-source', async (route) => {
@@ -465,21 +467,25 @@ test('phone administration explains an unavailable Synology folder without expos
       collection: {
         source: { message: string; status: string };
       };
+      folderImport: {
+        configured: boolean;
+        status: string;
+        message: string;
+      };
     };
-    data.collection.source.status = 'unavailable';
-    data.collection.source.message =
-      'Saved photos remain available while Hearth checks the approved folder.';
+    data.folderImport.configured = true;
+    data.folderImport.status = 'unavailable';
+    data.folderImport.message =
+      'Hearth cannot read the optional import folder right now; managed uploads still work.';
     await route.fulfill({ response, json: data });
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/photos');
-  await expect(
-    page.getByRole('heading', { name: 'Connect the family photo folder' }),
-  ).toBeVisible();
-  await expect(page.getByText(/cannot read the dedicated Synology folder right now/)).toBeVisible();
-  await expect(page.getByText('Folder connection needs attention')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Scan now' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add photos from this phone' })).toBeVisible();
+  await expect(page.getByText(/cannot read the optional import folder right now/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Choose photos' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Check folder' })).toBeVisible();
   await expect(page.locator('body')).not.toContainText('/volume1');
   await expect(page.locator('body')).not.toContainText('/photos-source');
 });

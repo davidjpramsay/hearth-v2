@@ -76,4 +76,54 @@ describe('persistent photo curation', () => {
     await restartedService.close();
     admin.close();
   });
+
+  it('stores one upload receipt and path-free audit after a service restart', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-photo-upload-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    const admin = new SqliteAdminRepository(database);
+    const provider = new FakePhotoSourceProvider();
+    const options = {
+      adminRepository: admin,
+      database,
+      clock: new FixedClock('2026-08-10T01:20:00.000Z'),
+    };
+    const actor = { id: 'member_maya', type: 'member', source: 'companion' } as const;
+    const input = {
+      bytes: new Uint8Array([1, 2, 3]),
+      mimeType: 'image/jpeg',
+      capturedAt: '2026-08-09T00:00:00.000Z',
+    };
+    const first = await new PhotoService(provider, options).uploadPhoto(
+      'household_hearth_demo',
+      input,
+      'request_persistent_photo_upload',
+      actor,
+    );
+    const replay = await new PhotoService(provider, options).uploadPhoto(
+      'household_hearth_demo',
+      input,
+      'request_persistent_photo_upload',
+      actor,
+    );
+    const audit = database
+      .prepare(
+        `SELECT action_type, target_type, target_id, safe_summary_json
+         FROM audit_events WHERE action_type = 'photo.upload'`,
+      )
+      .all();
+
+    expect(first).toMatchObject({ replayed: false, audit: { action: 'photo.upload' } });
+    expect(replay).toMatchObject({ replayed: true, audit: { id: first.audit.id } });
+    expect(audit).toEqual([
+      {
+        action_type: 'photo.upload',
+        target_type: 'photo-asset',
+        target_id: first.photo.id,
+        safe_summary_json: '{"duplicate":false}',
+      },
+    ]);
+    expect(JSON.stringify(audit)).not.toMatch(/volume1|sourceDirectory|filename|token|password/i);
+    admin.close();
+  });
 });

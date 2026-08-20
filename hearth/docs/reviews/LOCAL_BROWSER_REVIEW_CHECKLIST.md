@@ -273,8 +273,9 @@ television rail. These preferences are deliberately saved on this display only.
 
 ## Photos and ambient mode — Phase 7 decisions
 
-- [ ] Decide which Synology photo source folder Hearth is allowed to index.
-- [x] Use only an explicitly approved folder; never scan all household photos by default.
+- [x] Use direct adult phone uploads as the normal family-photo path.
+- [ ] Decide whether an optional Synology bulk-import folder is useful for this household.
+- [x] If enabled, use only an explicitly approved read-only folder; never scan all household photos.
 - [ ] Decide how recent photos, favourites and exclusions should work.
 - [x] Contain portrait photos in the selected/ambient view rather than distorting them.
 - [x] Show family-readable captions in the gallery; dates and locations remain undecided.

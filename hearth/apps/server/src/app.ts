@@ -87,6 +87,7 @@ import {
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
+  PhotoUploadResultSchema,
   RefreshPhotoSourceRequestSchema,
   RestoreChoreTemplateRequestSchema,
   ReorderHouseholdListsRequestSchema,
@@ -114,11 +115,13 @@ import {
   SystemBackupCommandResultSchema,
   SystemStatusSchema,
   TodaySummarySchema,
+  TimestampSchema,
   TodayConfigurationCommandResultSchema,
   TodayConfigurationSchema,
   TvDeviceSessionSchema,
   TvPairingSessionSchema,
   UpdateHouseholdRequestSchema,
+  UpdateCalendarMappingsRequestSchema,
   UpdateHouseholdNoticeRequestSchema,
   UpdateChoreTemplateRequestSchema,
   UpdateHouseholdListRequestSchema,
@@ -132,6 +135,13 @@ import {
   UpdateTodaySectionsRequestSchema,
   VoidPocketMoneyPaymentRequestSchema,
   WeekScheduleSchema,
+  WeatherLocationCommandResultSchema,
+  WeatherLocationSchema,
+  WeatherLocationSearchRequestSchema,
+  WeatherLocationSearchResultsSchema,
+  WeatherLocationTestRequestSchema,
+  WeatherLocationTestResultSchema,
+  SaveWeatherLocationRequestSchema,
   UpsertMealPlanRequestSchema,
 } from '@hearth/shared';
 
@@ -156,10 +166,16 @@ import { RealtimeHub } from './realtime.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
 import { UnconfiguredPhotoSourceProvider } from './integrations/photo-source.js';
+import { MAX_MANAGED_PHOTO_BYTES } from './integrations/synology-photo-source.js';
 import { PhotoService, type PhotoRepository } from './photo-repository.js';
 import { InMemoryPlanningRepository, type PlanningRepository } from './planning-repository.js';
 import { PocketMoneyService, type PocketMoneyRepository } from './pocket-money-repository.js';
 import { TodayContentService, type TodayContentRepository } from './today-content-repository.js';
+import {
+  FakeWeatherLocationVerifier,
+  WeatherLocationService,
+  type WeatherLocationRepository,
+} from './weather-location-repository.js';
 import { InMemorySystemOperations, type SystemOperationsRepository } from './system-operations.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import {
@@ -193,6 +209,26 @@ const PhotoAssetParamsSchema = HouseholdParamsSchema.extend({
   assetId: OpaqueIdSchema,
   variant: z.enum(['display', 'thumbnail']),
 });
+const PhotoUploadHeadersSchema = z
+  .object({
+    'content-type': z.string().min(1).max(100),
+    'x-hearth-request-id': OpaqueIdSchema,
+    'x-hearth-photo-captured-at': TimestampSchema.optional(),
+  })
+  .passthrough();
+const PHOTO_UPLOAD_MIME_TYPES = new Set([
+  'image/avif',
+  'image/heic',
+  'image/heif',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/tif',
+  'image/tiff',
+  'image/webp',
+  'image/x-heic',
+  'image/x-heif',
+]);
 const PairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
 const TodayQuerySchema = z.object({ date: LocalDateSchema });
 const WeekQuerySchema = z.object({ start: LocalDateSchema });
@@ -237,6 +273,7 @@ export interface BuildServerOptions {
   systemOperations?: SystemOperationsRepository;
   companionAuth?: CompanionAuthRepository;
   todayContentRepository?: TodayContentRepository;
+  weatherLocationRepository?: WeatherLocationRepository;
   runtime?: RuntimeConfiguration;
   trustProxyHops?: number;
   readiness?: () => Promise<void> | void;
@@ -275,6 +312,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       clock: runtime.clock,
     });
   const todayContentRepository = options.todayContentRepository ?? new TodayContentService();
+  const weatherLocationRepository =
+    options.weatherLocationRepository ??
+    new WeatherLocationService(adminRepository, new FakeWeatherLocationVerifier(), {
+      now: () => runtime.clock.now(),
+    });
   const calendarConnectionRepository =
     options.calendarConnectionRepository ??
     new CalendarConnectionService(
@@ -285,6 +327,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         : {
             credentialStore: {
               save: async () => {
+                throw new Error('Private calendar secret storage is not configured.');
+              },
+              updateMappings: async () => {
                 throw new Error('Private calendar secret storage is not configured.');
               },
               remove: async () => undefined,
@@ -325,6 +370,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             level: process.env.HEARTH_LOG_LEVEL ?? 'info',
             redact: [...LOGGER_REDACT_PATHS],
           },
+  });
+  server.addContentTypeParser(/^image\/.*/i, { parseAs: 'buffer' }, (_request, body, done) => {
+    done(null, body);
   });
 
   const readToday = async (householdId: string, localDate: string) => {
@@ -711,6 +759,26 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
+  server.patch(
+    '/api/v1/households/:householdId/calendar-connection/mappings',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(UpdateCalendarMappingsRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = CalendarConnectionCommandResultSchema.parse(
+          await calendarConnectionRepository.updateMappings(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        );
+        realtime.publish(params.householdId, 'calendar.changed', result.audit.targetId);
+        return result;
+      });
+    },
+  );
+
   server.post(
     '/api/v1/households/:householdId/calendar-connection/removals',
     async (request, reply) => {
@@ -818,6 +886,68 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       );
       realtime.publish(params.householdId, 'household.changed', params.householdId);
       return overview;
+    });
+  });
+
+  server.get('/api/v1/households/:householdId/weather-location', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () => {
+      const location = await weatherLocationRepository.get(
+        params.householdId,
+        actorId(request.headers, options),
+      );
+      return location === null ? null : WeatherLocationSchema.parse(location);
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/weather-location-searches',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(WeatherLocationSearchRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        WeatherLocationSearchResultsSchema.parse(
+          await weatherLocationRepository.search(
+            params.householdId,
+            actorId(request.headers, options),
+            body.query,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.post('/api/v1/households/:householdId/weather-location-tests', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(WeatherLocationTestRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () =>
+      WeatherLocationTestResultSchema.parse(
+        await weatherLocationRepository.test(
+          params.householdId,
+          actorId(request.headers, options),
+          body,
+        ),
+      ),
+    );
+  });
+
+  server.put('/api/v1/households/:householdId/weather-location', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(SaveWeatherLocationRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const result = WeatherLocationCommandResultSchema.parse(
+        await weatherLocationRepository.save(
+          params.householdId,
+          actorId(request.headers, options),
+          body,
+        ),
+      );
+      realtime.publish(params.householdId, 'weather.changed', result.audit.targetId);
+      return result;
     });
   });
 
@@ -1222,6 +1352,47 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return result;
     });
   });
+
+  server.post(
+    '/api/v1/households/:householdId/photo-uploads',
+    { bodyLimit: MAX_MANAGED_PHOTO_BYTES },
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const headers = parse(PhotoUploadHeadersSchema, request.headers, reply);
+      if (params === null || headers === null) return reply;
+      const mimeType = headers['content-type'].split(';', 1)[0]!.trim().toLowerCase();
+      if (!PHOTO_UPLOAD_MIME_TYPES.has(mimeType) || !Buffer.isBuffer(request.body)) {
+        return reply.status(400).send(
+          ApiErrorSchema.parse({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Choose a supported family photo smaller than 25 MB.',
+              retryable: false,
+              requestId: headers['x-hearth-request-id'],
+            },
+          }),
+        );
+      }
+      return run(reply, async () => {
+        const actor = commandActor(request.headers, options, adminRepository);
+        await adminRepository.getOverview(params.householdId, actor.id);
+        const result = PhotoUploadResultSchema.parse(
+          await photoRepository.uploadPhoto(
+            params.householdId,
+            {
+              bytes: request.body as Buffer,
+              mimeType,
+              capturedAt: headers['x-hearth-photo-captured-at'] ?? null,
+            },
+            headers['x-hearth-request-id'],
+            actor,
+          ),
+        );
+        realtime.publish(params.householdId, 'photos.changed', result.photo.id);
+        return result;
+      });
+    },
+  );
 
   server.post(
     '/api/v1/households/:householdId/photo-assets/:assetId/curation-actions',
@@ -2163,6 +2334,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       homeAssistantConnectionRepository.reset();
       systemOperations.reset();
       todayContentRepository.reset();
+      weatherLocationRepository.reset();
       return reply.send({ reset: true });
     });
 
@@ -2187,6 +2359,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     homeAssistantConnectionRepository.close();
     systemOperations.close();
     todayContentRepository.close();
+    weatherLocationRepository.close();
   });
 
   return server;

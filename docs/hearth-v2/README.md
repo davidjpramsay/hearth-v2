@@ -55,17 +55,18 @@ These are intentionally deferred and should not block the first rendered prototy
   Cast entity and a dedicated least-privilege Jellyfin account for Music
   Assistant; the read-only Synology music-share fallback is used only if the
   best-effort Jellyfin provider fails household reliability testing
-- Exact dedicated Synology photo source folder and its display name
+- Whether the household wants to keep the optional read-only Synology bulk-import folder; everyday
+  photo additions now use the adult companion uploader and require no shared-folder setup
 - Final TV and audio purchase
 
 Use typed provider interfaces and seeded demo data until these choices are supplied. Do not invent live credentials or mutate a real calendar to unblock development. D-012 selects iCloud through CalDAV as the first read provider, but the adapter fails closed until an exact external allowlist is approved.
 
 ## Immediate next step
 
-Phase 7 is active: the path-safe Photos gallery, mixed-orientation demo source
-and immediate-exit ambient mode now run in the web product, while the exact
-approved Synology folder, live indexing, presence/quiet-hours coordination and
-live operations commissioning remain open. Configure the implemented backup service only inside
+Phase 7 is active: the path-safe Photos gallery, mixed-orientation source,
+direct adult phone uploads, optional Synology bulk import and immediate-exit
+ambient mode now run in the web product, while presence/quiet-hours coordination
+and live operations acceptance remain open. Configure the implemented backup service only inside
 the approved private Synology deployment, copy it off-device with encrypted Synology tooling and
 perform the clean-location restore drill. Repeat the Phase 6 launcher, pairing,
 D-pad/Back, app switching, standby/resume and outage-recovery checks on the

@@ -63,15 +63,32 @@ status and timestamps. The password and full server URL are held only in the
 short-lived in-process test result until save, then discarded. Demo mode uses a
 deterministic fake verifier and never contacts iCloud.
 
+Connected calendar assignments remain editable through a separate idempotent
+mapping command. That command rewrites only the allowlisted display-name/owner
+mapping inside the existing server-only secret, mirrors the safe mapping in
+SQLite and updates the local calendar projection. It never asks for, returns or
+replaces the stored CalDAV credential. Browser presentation derives the colour
+from the assigned Hearth member (or the fixed Whole family colour), so later
+member colour/avatar edits flow through without reconnecting the provider.
+
 Only authenticated CalDAV account connections are supported. Calendar web interfaces and
 alternate URL-ingestion paths remain outside the integration boundary.
 
 ## Weather
 
-Private mode uses the server-side Open-Meteo forecast API with an approximate household latitude
-and longitude supplied through `HEARTH_WEATHER_LATITUDE` and `HEARTH_WEATHER_LONGITUDE`. Both
-values must be present or weather stays explicitly unconfigured. The browser never receives the
-coordinates and there is no API key or Home Assistant weather-entity mapping.
+Private mode uses the server-side Open-Meteo forecast API with one household
+weather location. An adult normally configures it in **Household → Weather
+location** by searching a suburb/postcode through Open-Meteo's GeoNames-backed
+geocoder, or by allowing a one-time browser geolocation request. Phone
+coordinates are reverse-labelled through OpenStreetMap Nominatim as a direct
+user-triggered lookup. The chosen label and coordinates are shown to the adult,
+tested against current Open-Meteo conditions, then stored locally in SQLite.
+The forecast remains independent of Home Assistant and needs no API key.
+
+`HEARTH_WEATHER_LATITUDE` and `HEARTH_WEATHER_LONGITUDE` remain a deployment
+fallback for existing installations only. A saved household location takes
+precedence. The TV and normal forecast read models never receive coordinates;
+the adult-only settings contract exposes them only under an Advanced disclosure.
 
 The adapter requests only current temperature/condition and daily maximum temperature/condition,
 normalizes WMO codes into Hearth's compact presentation contract and caches one successful response
@@ -292,25 +309,31 @@ a new recorded decision.
 
 ## Photos
 
-Start with one approved Synology directory. The server:
+The primary path is explicit adult upload from the phone companion. The server:
 
-- indexes only that configured source
+- accepts one bounded supported image per authenticated, idempotent command
+- verifies the decoded format instead of trusting the filename or MIME header
+- normalizes an orientation-correct managed master, television derivative and thumbnail locally
+- deduplicates the household collection by content hash
 - stores opaque asset references
-- creates television-size derivatives and thumbnails
-- respects orientation
 - excludes hidden/unsupported/corrupt files
-- never exposes the parent filesystem
+- never stores the client filename or exposes private filesystem locations
+
+One explicitly approved Synology directory may additionally be mounted read-only as an optional
+bulk-import source. It is never a prerequisite for phone uploads and must not be the Synology Photos
+library root. Hearth does not connect to Apple Photos, accept shared-album links or browse either
+provider account.
 
 Do not attempt facial recognition or ingest every personal photo folder in the first release.
 
-The current Phase 7 product slice provides the typed source boundary, safe demo
-display/thumbnail derivatives, gallery, cached-source states and ambient exit. Private mode now
-provides a concrete read-only folder adapter: it ignores symbolic links, bounds file count/depth/
-size, fingerprints files for incremental rescans, corrects orientation and creates atomic WebP
-display/thumbnail derivatives. The browser receives opaque, versioned asset routes and aggregate
-scan counts only. An adult companion may request an idempotent, audited rescan; an automatic quiet
-rescan runs after the configured interval. Selecting and mounting the live Synology folder remains
-an owner-approved deployment step and must not broaden beyond the configured collection.
+The current Phase 7 product slice provides the typed managed-upload boundary, safe demo and private
+display/thumbnail derivatives, gallery, cached states and ambient exit. The optional folder adapter
+ignores symbolic links, bounds file count/depth/size, fingerprints files for incremental checks,
+corrects orientation and creates atomic WebP derivatives. The browser receives opaque, versioned
+asset routes and aggregate counts only. An adult companion may request an idempotent, audited
+folder check; an automatic quiet check runs after the configured interval. Selecting and mounting
+that folder remains an owner-approved deployment step and must not broaden beyond the configured
+collection.
 
 ## Presence and IR
 

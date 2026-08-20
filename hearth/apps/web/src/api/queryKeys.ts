@@ -40,6 +40,9 @@ export const queryKeys = {
   get calendarConnection() {
     return [householdId(getHearthRuntime()), 'calendar-connection'] as const;
   },
+  get weatherLocation() {
+    return [householdId(getHearthRuntime()), 'weather-location'] as const;
+  },
   get homeAssistantConnection() {
     return [householdId(getHearthRuntime()), 'home-assistant-connection'] as const;
   },

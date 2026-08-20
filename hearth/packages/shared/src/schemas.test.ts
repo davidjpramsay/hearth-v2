@@ -31,6 +31,7 @@ import {
   PhotoCurationCommandResultSchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
+  PhotoUploadResultSchema,
   UpdatePhotoCurationRequestSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentSchema,
@@ -52,6 +53,8 @@ import {
   CreateChoreTemplateRequestSchema,
   ROUTINE_TIME_OF_DAY_VALUES,
   RoutineTimeOfDaySchema,
+  UpdateCalendarMappingsRequestSchema,
+  WeatherLocationTestRequestSchema,
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
@@ -495,6 +498,43 @@ describe('shared wire schemas', () => {
     ).toBe(false);
   });
 
+  it('validates editable calendar assignments and tested weather coordinates', () => {
+    expect(
+      UpdateCalendarMappingsRequestSchema.safeParse({
+        requestId: 'request_calendar_mapping_valid',
+        calendars: [
+          { calendarId: 'calendar_mapping_family', ownerMemberId: null },
+          { calendarId: 'calendar_mapping_school', ownerMemberId: 'member_child' },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(
+      UpdateCalendarMappingsRequestSchema.safeParse({
+        requestId: 'request_calendar_mapping_duplicate',
+        calendars: [
+          { calendarId: 'calendar_mapping_family', ownerMemberId: null },
+          { calendarId: 'calendar_mapping_family', ownerMemberId: 'member_child' },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      WeatherLocationTestRequestSchema.safeParse({
+        label: 'Baldivis, WA',
+        latitude: -32.328,
+        longitude: 115.82,
+        source: 'search',
+      }).success,
+    ).toBe(true);
+    expect(
+      WeatherLocationTestRequestSchema.safeParse({
+        label: null,
+        latitude: -95,
+        longitude: 115.82,
+        source: 'device',
+      }).success,
+    ).toBe(false);
+  });
+
   it('keeps Today photo previews same-origin and filesystem-safe', () => {
     expect(
       TodayPhotoSummarySchema.parse({
@@ -579,6 +619,20 @@ describe('shared wire schemas', () => {
       hiddenPhotoCount: 0,
       unsupportedFileCount: 1,
       corruptFileCount: 1,
+      managedPhotoCount: 10,
+      importedPhotoCount: 2,
+      upload: {
+        enabled: true,
+        maxFileBytes: 25 * 1024 * 1024,
+        acceptedFormats: ['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'AVIF', 'WebP'],
+      },
+      folderImport: {
+        configured: true,
+        status: 'ready',
+        lastCheckedAt: '2026-08-09T10:00:00.000Z',
+        importedPhotoCount: 2,
+        message: '2 photos have been imported from the optional folder.',
+      },
       photos: [
         {
           id: 'photo_family_breakfast',
@@ -639,6 +693,24 @@ describe('shared wire schemas', () => {
     });
     expect(request.action).toBe('hide');
     expect(curated.photo.hidden).toBe(true);
+    const uploaded = PhotoUploadResultSchema.parse({
+      photo: status.photos[0],
+      status,
+      duplicate: false,
+      replayed: false,
+      audit: {
+        id: 'audit_photo_upload',
+        actorType: 'member',
+        actorId: 'member_adult',
+        source: 'companion',
+        action: 'photo.upload',
+        targetId: 'photo_family_breakfast',
+        occurredAt: '2026-08-09T10:06:00.000Z',
+        result: 'succeeded',
+      },
+    });
+    expect(uploaded.audit.action).toBe('photo.upload');
+    expect(JSON.stringify(uploaded)).not.toMatch(/filename|volume1|sourceDirectory/);
   });
 
   it('keeps native television media outside Hearth integration contracts', () => {

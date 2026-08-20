@@ -154,7 +154,7 @@ describe('Hearth v2 API', () => {
     expect(status.json()).toMatchObject({
       mode: 'test',
       generatedAt: '2026-08-02T23:42:00.000Z',
-      database: { state: 'ready', migrationVersion: 21 },
+      database: { state: 'ready', migrationVersion: 23 },
       backup: { state: 'ready', scheduled: true, retentionCount: 14 },
     });
 
@@ -638,6 +638,54 @@ describe('Hearth v2 API', () => {
     expect(missingDerivative.json().error.code).toBe('NOT_FOUND');
   });
 
+  it('accepts raw adult photo uploads with replay safety and rejects child and unsupported writes', async () => {
+    const app = server();
+    const url = '/api/v1/households/household_hearth_demo/photo-uploads';
+    const payload = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    const adultHeaders = {
+      'content-type': 'image/jpeg',
+      'x-hearth-demo-actor': 'member_maya',
+      'x-hearth-request-id': 'request_photo_upload_http',
+      'x-hearth-photo-captured-at': '2026-08-03T00:30:00.000Z',
+    };
+    const first = await app.inject({ method: 'POST', url, headers: adultHeaders, payload });
+    const replay = await app.inject({ method: 'POST', url, headers: adultHeaders, payload });
+    const child = await app.inject({
+      method: 'POST',
+      url,
+      headers: {
+        ...adultHeaders,
+        'x-hearth-demo-actor': 'member_ezra',
+        'x-hearth-request-id': 'request_photo_upload_child',
+      },
+      payload,
+    });
+    const unsupported = await app.inject({
+      method: 'POST',
+      url,
+      headers: {
+        ...adultHeaders,
+        'content-type': 'image/gif',
+        'x-hearth-request-id': 'request_photo_upload_gif',
+      },
+      payload,
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({
+      replayed: false,
+      audit: { action: 'photo.upload', actorId: 'member_maya' },
+    });
+    expect(replay.json()).toMatchObject({
+      replayed: true,
+      audit: { id: first.json().audit.id },
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(unsupported.statusCode).toBe(400);
+    expect(unsupported.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('favourites, hides and restores photos through adult-only replay-safe commands', async () => {
     const app = server();
     const base = '/api/v1/households/household_hearth_demo';
@@ -1016,6 +1064,39 @@ describe('Hearth v2 API', () => {
     expect(JSON.stringify(read.json())).not.toContain(password);
     expect(child.statusCode).toBe(403);
 
+    const connectedCalendars = saved.json().connection.calendars as Array<{ id: string }>;
+    const mappedPayload = {
+      requestId: 'request_calendar_http_mappings',
+      calendars: connectedCalendars.map((calendar) => ({
+        calendarId: calendar.id,
+        ownerMemberId: 'member_maya',
+      })),
+    };
+    const mapped = await app.inject({
+      method: 'PATCH',
+      url: `${root}/calendar-connection/mappings`,
+      headers,
+      payload: mappedPayload,
+    });
+    const mappedReplay = await app.inject({
+      method: 'PATCH',
+      url: `${root}/calendar-connection/mappings`,
+      headers,
+      payload: mappedPayload,
+    });
+    expect(mapped.statusCode).toBe(200);
+    expect(mapped.json()).toMatchObject({
+      replayed: false,
+      audit: { action: 'calendar.mappings.update' },
+      connection: {
+        calendars: [
+          { owner: { id: 'member_maya' }, color: '#c97900' },
+          { owner: { id: 'member_maya' }, color: '#c97900' },
+        ],
+      },
+    });
+    expect(mappedReplay.json()).toMatchObject({ replayed: true });
+
     const removed = await app.inject({
       method: 'POST',
       url: `${root}/calendar-connection/removals`,
@@ -1032,6 +1113,75 @@ describe('Hearth v2 API', () => {
       audit: { action: 'calendar.connection.remove', result: 'reversed' },
     });
     expect(after.json()).toBeNull();
+  });
+
+  it('searches, tests and saves a household weather location before using it', async () => {
+    const app = server();
+    const root = '/api/v1/households/household_hearth_demo';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const searched = await app.inject({
+      method: 'POST',
+      url: `${root}/weather-location-searches`,
+      headers,
+      payload: { query: '6171' },
+    });
+    expect(searched.statusCode).toBe(200);
+    expect(searched.json()).toMatchObject({ results: [{ label: 'Baldivis, WA' }] });
+    const place = searched.json().results[0] as {
+      label: string;
+      latitude: number;
+      longitude: number;
+    };
+    const tested = await app.inject({
+      method: 'POST',
+      url: `${root}/weather-location-tests`,
+      headers,
+      payload: {
+        label: place.label,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        source: 'search',
+      },
+    });
+    expect(tested.statusCode).toBe(200);
+    expect(tested.json()).toMatchObject({
+      location: { label: 'Baldivis, WA', source: 'search' },
+      current: { temperatureCelsius: 18, condition: 'Partly cloudy' },
+    });
+    const payload = {
+      requestId: 'request_weather_location_save',
+      testId: tested.json().testId as string,
+    };
+    const saved = await app.inject({
+      method: 'PUT',
+      url: `${root}/weather-location`,
+      headers,
+      payload,
+    });
+    const replay = await app.inject({
+      method: 'PUT',
+      url: `${root}/weather-location`,
+      headers,
+      payload,
+    });
+    const read = await app.inject({
+      method: 'GET',
+      url: `${root}/weather-location`,
+      headers,
+    });
+    const child = await app.inject({
+      method: 'GET',
+      url: `${root}/weather-location`,
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+    });
+    expect(saved.json()).toMatchObject({
+      replayed: false,
+      location: { label: 'Baldivis, WA', source: 'search' },
+      audit: { action: 'weather.location.update' },
+    });
+    expect(replay.json()).toMatchObject({ replayed: true });
+    expect(read.json()).toMatchObject(saved.json().location);
+    expect(child.statusCode).toBe(403);
   });
 
   it('returns stable calendar setup validation and sign-in errors', async () => {

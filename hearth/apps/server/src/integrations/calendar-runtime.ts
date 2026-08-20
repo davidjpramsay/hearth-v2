@@ -118,6 +118,10 @@ export async function resolveCalendarRuntime(input: {
 }
 
 export async function loadCalendarRuntime(configPath: string): Promise<CalendarRuntime> {
+  return createCalendarRuntime(await readCalendarRuntimeConfig(configPath));
+}
+
+export async function readCalendarRuntimeConfig(configPath: string): Promise<CalDavRuntimeConfig> {
   let value: unknown;
   try {
     value = JSON.parse(await readFile(configPath, 'utf8')) as unknown;
@@ -126,7 +130,7 @@ export async function loadCalendarRuntime(configPath: string): Promise<CalendarR
       typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
     throw new CalendarRuntimeReadError(missing);
   }
-  return createCalendarRuntime(value);
+  return CalDavRuntimeConfigSchema.parse(value);
 }
 
 function unconfiguredCalendarRuntime(): CalendarRuntime {

@@ -21,6 +21,7 @@ services:
       HEARTH_WEATHER_LONGITUDE: ${HEARTH_WEATHER_LONGITUDE:-}
       HEARTH_PHOTO_SOURCE_DIR: ${HEARTH_PHOTO_SOURCE_DIR:-}
       HEARTH_PHOTO_DERIVATIVE_DIR: /data/photo-derivatives
+      HEARTH_PHOTO_UPLOAD_DIR: /data/photo-uploads
       HEARTH_PHOTO_COLLECTION_NAME: ${HEARTH_PHOTO_COLLECTION_NAME:-Family photos}
       HEARTH_PHOTO_SCAN_MINUTES: ${HEARTH_PHOTO_SCAN_MINUTES:-15}
       HEARTH_BACKUP_DIR: /data/backups
@@ -43,7 +44,7 @@ services:
     volumes:
       - ${HEARTH_DATA_DIR:?Set HEARTH_DATA_DIR}:/data
       - ${HEARTH_SECRETS_DIR:?Set HEARTH_SECRETS_DIR}:/run/hearth-secrets
-      # Add only after an adult approves the exact source folder:
+      # Optional bulk import. Add only after an adult approves the exact source folder:
       # - ${HEARTH_PHOTO_HOST_DIR:?Set the approved photo folder}:/photos-source:ro
     healthcheck:
       test:

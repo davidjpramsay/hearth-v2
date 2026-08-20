@@ -113,7 +113,10 @@ Can understand the current household state and use clearly exposed room controls
 
 ### 6. Photos and ambient display
 
-- Rotate approved family photos from a designated Synology source.
+- Let an authenticated adult choose one or more family photos directly from the phone companion.
+  Hearth stores bounded, orientation-correct managed masters and display derivatives in its private
+  Synology data directory. A separately approved read-only Synology folder may bulk-import an
+  existing collection, but is not required for normal use.
 - Let an authenticated adult favourite, unfavourite, hide and restore indexed photos from companion
   administration. Favourites appear first; hidden photos remain indexed but never appear on Today,
   in the gallery or in ambient mode.
@@ -133,6 +136,11 @@ Member profile photos are separate from the ambient family-photo collection. An 
 can choose a portrait or landscape image in People, directly drag and pinch/scroll a square crop,
 replace it later or restore the member's original avatar. Hearth keeps only a bounded local
 derivative; it does not retain or expose the selected original file.
+
+Family-photo uploads are also distinct from Apple Photos or Synology Photos accounts. Hearth does
+not accept an Apple shared-album URL, browse a personal library or retain the client filename. The
+adult explicitly chooses the files to add and the managed collection is included in the private
+Hearth data backup boundary.
 
 ### 7. Notices and household summary
 
@@ -205,10 +213,12 @@ The first household release includes:
 - Household and member setup
 - Seeded demo mode plus migration to real household data
 - Today, Week, Month and Agenda calendar views
+- Read-only calendar connection plus editable person/avatar/colour assignments
 - Chores/routines, weekly pocket-money progress and payment history
 - Lists
 - Photo ambient mode
 - Responsive administration
+- Tested household weather location, configured separately from timezone
 - Home Assistant connection with a small allowlist
 - Voice completion of a chore
 - Android TV shell

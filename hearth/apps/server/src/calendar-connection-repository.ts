@@ -6,6 +6,7 @@ import {
   CalendarConnectionCommandResultSchema,
   CalendarConnectionSettingsSchema,
   CalendarConnectionTestResultSchema,
+  FAMILY_CALENDAR_COLOR,
   type AuditSummary,
   type CalendarConnectionCommandResult,
   type CalendarConnectionSettings,
@@ -13,6 +14,7 @@ import {
   type CalendarConnectionTestResult,
   type Member,
   type SaveCalendarConnectionRequest,
+  type UpdateCalendarMappingsRequest,
 } from '@hearth/shared';
 
 import type { AdminRepository } from './admin-repository.js';
@@ -62,6 +64,10 @@ export interface CalendarConnectionVerifier {
 
 export interface CalendarCredentialStore {
   save(config: CalDavRuntimeConfig): Promise<void>;
+  updateMappings(
+    calendars: CalDavRuntimeConfig['calendars'],
+    householdTimezone: string,
+  ): Promise<void>;
   remove(): Promise<void>;
 }
 
@@ -76,6 +82,11 @@ export interface CalendarConnectionRepository {
     householdId: string,
     actorId: string,
     input: SaveCalendarConnectionRequest,
+  ): Promise<CalendarConnectionCommandResult>;
+  updateMappings(
+    householdId: string,
+    actorId: string,
+    input: UpdateCalendarMappingsRequest,
   ): Promise<CalendarConnectionCommandResult>;
   remove(
     householdId: string,
@@ -318,6 +329,78 @@ export class CalendarConnectionService implements CalendarConnectionRepository {
     return result;
   }
 
+  async updateMappings(
+    householdId: string,
+    actorId: string,
+    input: UpdateCalendarMappingsRequest,
+  ): Promise<CalendarConnectionCommandResult> {
+    const overview = await this.adminRepository.getOverview(householdId, actorId);
+    const replay = this.readReceipt(householdId, input.requestId, 'calendar.mappings.update');
+    if (replay !== null) return { ...replay, replayed: true };
+    const row = this.readRow(householdId);
+    if (row === null) throw new RepositoryError('NOT_FOUND', 'No calendar connection is saved.');
+    const members = new Map(overview.household.members.map((member) => [member.id, member]));
+    const existing = JSON.parse(row.selected_calendars_json) as StoredCalendarSelection[];
+    const existingById = new Map(
+      existing.map((calendar) => [calendarMappingId(calendar.displayName), calendar]),
+    );
+    if (input.calendars.length !== existing.length) {
+      throw new RepositoryError('VALIDATION_ERROR', 'Assign every connected calendar.');
+    }
+    const selected = input.calendars.map((mapping) => {
+      const calendar = existingById.get(mapping.calendarId);
+      if (calendar === undefined) {
+        throw new RepositoryError('VALIDATION_ERROR', 'Choose a connected calendar.');
+      }
+      if (mapping.ownerMemberId !== null && !members.has(mapping.ownerMemberId)) {
+        throw new RepositoryError('VALIDATION_ERROR', 'Choose a person in this household.');
+      }
+      return { ...calendar, ownerMemberId: mapping.ownerMemberId };
+    });
+    if (new Set(input.calendars.map(({ calendarId }) => calendarId)).size !== existing.length) {
+      throw new RepositoryError('VALIDATION_ERROR', 'Assign every connected calendar once.');
+    }
+    if (this.options.credentialStore !== undefined) {
+      try {
+        await this.options.credentialStore.updateMappings(
+          selected.map(({ displayName, ownerMemberId }) => ({ displayName, ownerMemberId })),
+          overview.household.timezone,
+        );
+      } catch {
+        throw new RepositoryError(
+          'COMMAND_FAILED',
+          'Hearth could not update the calendar assignments securely.',
+          true,
+        );
+      }
+    }
+    const occurredAt = this.now().toISOString();
+    const updatedRow: CalendarConnectionRow = {
+      ...row,
+      selected_calendars_json: JSON.stringify(selected),
+      last_checked_at: occurredAt,
+    };
+    const audit = this.audit(actorId, 'calendar.mappings.update', row.id, 'succeeded', occurredAt);
+    const result = CalendarConnectionCommandResultSchema.parse({
+      connection: settingsFromRow(updatedRow, overview.household.members),
+      audit,
+      replayed: false,
+    });
+    this.commit(() => {
+      this.writeAudit(householdId, audit, input.requestId);
+      this.persistRow(householdId, updatedRow, occurredAt);
+      this.persistProjectionMappings(householdId, selected);
+      this.writeReceipt(
+        householdId,
+        input.requestId,
+        'calendar.mappings.update',
+        result,
+        occurredAt,
+      );
+    });
+    return result;
+  }
+
   reset(): void {
     this.pending.clear();
     this.receipts.clear();
@@ -384,6 +467,23 @@ export class CalendarConnectionService implements CalendarConnectionRepository {
         occurredAt,
         occurredAt,
       );
+  }
+
+  private persistProjectionMappings(
+    householdId: string,
+    selections: readonly StoredCalendarSelection[],
+  ): void {
+    if (this.options.database === undefined) return;
+    const statement = this.options.database.prepare(
+      `UPDATE calendars
+       SET owner_member_id = ?
+       WHERE display_name = ? AND connection_id IN (
+         SELECT id FROM calendar_connections WHERE household_id = ?
+       )`,
+    );
+    for (const selection of selections) {
+      statement.run(selection.ownerMemberId, selection.displayName, householdId);
+    }
   }
 
   private readReceipt(
@@ -482,8 +582,12 @@ function settingsFromRow(
     status: row.status,
     readOnly: true,
     calendars: selections.map((selection) => ({
+      id: calendarMappingId(selection.displayName),
       displayName: selection.displayName,
-      color: selection.color,
+      color:
+        selection.ownerMemberId === null
+          ? FAMILY_CALENDAR_COLOR
+          : (memberById.get(selection.ownerMemberId)?.color ?? FAMILY_CALENDAR_COLOR),
       owner:
         selection.ownerMemberId === null ? null : (memberById.get(selection.ownerMemberId) ?? null),
     })),
@@ -491,6 +595,10 @@ function settingsFromRow(
     lastSuccessfulAt: row.last_success_at,
     message: `${selections.length} calendar${selections.length === 1 ? '' : 's'} connected · Read-only`,
   });
+}
+
+function calendarMappingId(displayName: string): string {
+  return opaqueId('calendar_mapping', displayName);
 }
 
 function opaqueId(prefix: string, value: string): string {

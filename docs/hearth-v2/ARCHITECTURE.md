@@ -160,9 +160,13 @@ summaries and stable family-safe API errors. The implemented routes are:
 - adult-only `GET /api/v1/households/:id/home-assistant-connection`, separate connection-test and
   save commands, and an idempotent removal command for the bounded Home Assistant mapping workflow
 - `POST /api/v1/households/:id/assist/day-summary` and `/assist/chore-completions` for Home Assistant Assist
-- `GET /api/v1/households/:id/photos` for one approved, path-safe photo collection and its display/thumbnail derivatives
+- `GET /api/v1/households/:id/photos` for the private, path-safe photo collection and its display/thumbnail derivatives
+- adult-only, idempotent `POST /api/v1/households/:id/photo-uploads` with one raw supported image,
+  `X-Hearth-Request-Id` and optional capture timestamp; the server authenticates the companion,
+  validates/decode-bounds the image, normalizes it locally and returns no storage path or filename
 - adult-only `GET /api/v1/households/:id/photo-source` and idempotent
-  `POST /api/v1/households/:id/photo-source/refreshes` for safe index status and manual rescans
+  `POST /api/v1/households/:id/photo-source/refreshes` for aggregate managed/import status and
+  manual checks of the optional read-only folder import
 - adult-only, idempotent `POST /api/v1/households/:id/photo-assets/:assetId/curation-actions` for
   favourite, unfavourite, hide and unhide commands with command receipts and audit events
 - `GET /api/v1/households/:id/photo-assets/:assetId/:variant` for immutable, opaque WebP display
@@ -189,11 +193,12 @@ dates, provider version, recurrence-master identity and an explicit exception
 flag. `TodaySummary` may include one nullable same-origin photo derivative and
 family-readable alternative text. Phase 7 now selects that preview through the
 same injected photo-source adapter as the Photos gallery; demo mode returns
-fictional bundled derivatives. Private mode constructs the read-only Synology-folder adapter only
-when its server-only source environment is configured; otherwise the source remains explicitly
-unconfigured. The adapter ignores symlinks, incrementally fingerprints source files, applies EXIF
-orientation, writes bounded WebP derivatives atomically and preserves the last safe index while the
-NAS is unavailable. Each
+fictional bundled derivatives. Private mode always constructs the managed Synology adapter. Adult
+uploads are normalized to a private master plus bounded WebP display/thumbnail derivatives under
+`/data`, deduplicated by content hash and recorded with an opaque asset ID. The optional read-only
+folder import activates only when its server environment path is configured; it ignores symlinks,
+incrementally fingerprints files, applies EXIF orientation and preserves its last safe index if the
+import mount is unavailable. Import failure does not disable managed uploads or existing photos. Each
 `WeekSchedule` day also carries a nullable, presentation-safe daily forecast
 summary (condition code, family-readable label, Celsius temperature and safe provider identity). The
 existing query routes read calendar values from the durable SQLite projection
@@ -238,6 +243,18 @@ writes the private credential file before persisting safe connection metadata,
 and publishes `calendar.changed`. Removal deletes the credential file and
 disconnects the managed provider. No browser contract returns a username,
 password, collection URL or event payload from discovery.
+
+Calendar-owner edits use a fourth idempotent mapping command. It requires the
+complete connected source set, validates every member against the household,
+updates the safe projection and external allowlist atomically, and leaves the
+existing URL/account/password fields untouched.
+
+Weather location setup is a separate adult-only repository boundary with
+search, test and save routes. Search and phone reverse-labelling are server
+proxies so provider policy and error mapping remain outside the browser. Save
+requires a live test ID, writes migration-0022 household coordinates, creates an
+audit event/receipt, reconfigures the managed Open-Meteo provider in memory and
+publishes `weather.changed` without restarting Hearth.
 
 Home Assistant setup follows the same two-step boundary. A test calls only the supported
 `/api/config` and `/api/states` REST endpoints, keeps the URL, token and raw discovered entity IDs
@@ -297,12 +314,14 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0021` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0023` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
 management history, snapshotted chore windows/order, credential-free Home Assistant connection
-metadata, named-adult passkey recovery, and canonical chore time-of-day grouping. The live demo server uses the SQLite
+metadata, named-adult passkey recovery, canonical chore time-of-day grouping,
+the tested household weather location, managed photo-upload metadata and optional folder-import
+status. The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.

@@ -23,6 +23,20 @@ export interface PhotoSourceIndexSnapshot {
   hiddenPhotoCount: number;
   unsupportedFileCount: number;
   corruptFileCount: number;
+  managedPhotoCount: number;
+  importedPhotoCount: number;
+  upload: {
+    enabled: boolean;
+    maxFileBytes: number;
+    acceptedFormats: ['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'AVIF', 'WebP'];
+  };
+  folderImport: {
+    configured: boolean;
+    status: 'ready' | 'unconfigured' | 'unavailable';
+    lastCheckedAt: string | null;
+    importedPhotoCount: number;
+    message: string;
+  };
 }
 
 export type PhotoDerivativeVariant = 'display' | 'thumbnail';
@@ -33,9 +47,23 @@ export interface PhotoDerivativeAsset {
   cacheKey: string;
 }
 
+export interface PhotoUploadInput {
+  bytes: Uint8Array;
+  mimeType: string;
+  capturedAt: string | null;
+  actorId: string;
+}
+
+export interface PhotoSourceUpload {
+  snapshot: PhotoSourceSnapshot;
+  photo: PhotoCurationAsset;
+  duplicate: boolean;
+}
+
 export interface PhotoSourceProvider {
   listApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
   refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
+  uploadPhoto(householdId: string, input: PhotoUploadInput): Promise<PhotoSourceUpload | null>;
   curatePhoto(
     householdId: string,
     assetId: string,
@@ -136,6 +164,11 @@ export class FakePhotoSourceProvider implements PhotoSourceProvider {
     return this.listApprovedPhotos(householdId);
   }
 
+  async uploadPhoto(householdId: string): Promise<PhotoSourceUpload> {
+    const snapshot = await this.listApprovedPhotos(householdId);
+    return { snapshot, photo: snapshot.curation[0]!, duplicate: false };
+  }
+
   async curatePhoto(
     householdId: string,
     assetId: string,
@@ -201,6 +234,10 @@ export class UnconfiguredPhotoSourceProvider implements PhotoSourceProvider {
     return this.listApprovedPhotos(householdId);
   }
 
+  async uploadPhoto(): Promise<null> {
+    return null;
+  }
+
   async curatePhoto(): Promise<null> {
     return null;
   }
@@ -224,6 +261,20 @@ function readyIndex(indexed: number, hidden = 0): PhotoSourceIndexSnapshot {
     hiddenPhotoCount: hidden,
     unsupportedFileCount: 0,
     corruptFileCount: 0,
+    managedPhotoCount: indexed,
+    importedPhotoCount: 0,
+    upload: {
+      enabled: true,
+      maxFileBytes: 25 * 1024 * 1024,
+      acceptedFormats: ['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'AVIF', 'WebP'],
+    },
+    folderImport: {
+      configured: false,
+      status: 'unconfigured',
+      lastCheckedAt: null,
+      importedPhotoCount: 0,
+      message: 'Optional Synology folder import is not connected.',
+    },
   };
 }
 

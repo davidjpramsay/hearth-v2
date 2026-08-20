@@ -180,10 +180,15 @@ the phone More hub.
   mode leaves the collage static.
 - Optional minimal overlay: time, next event and discreet notification badge.
 - Immediate remote exit.
-- Photo source/error state should never reveal filesystem paths or technical details to the household.
-- Phone-first Photo source administration shows orientation-safe thumbnails, capture date when
-  available and clear Favourite, Hide and Restore actions. Every action is D-pad reachable, reports
-  its result inline and preserves focus when a card moves between visible and hidden ordering.
+- Photo storage/import errors should never reveal filesystem paths or technical details to the household.
+- Phone-first Photos administration begins with **Add photos from this phone**, opens the native
+  multi-select photo picker and reports added, duplicate and failed counts without sending client
+  filenames to the server. Each file is limited to 25 MB and uploads run sequentially so a partial
+  failure does not discard successful additions.
+- The same surface shows orientation-safe thumbnails, capture date when available and clear
+  Favourite, Hide and Restore actions. Every action is D-pad reachable, reports its result inline
+  and preserves focus when a card moves between visible and hidden ordering. An optional Synology
+  folder-import row is secondary and absent as a prerequisite for normal phone uploads.
 
 ### Home
 
@@ -206,7 +211,16 @@ the phone More hub.
   discovered names, select the exact calendars, optionally map each to a person,
   then save. Clear the password field immediately after testing. Connected state
   shows only hostname, masked account, selected calendars, owner cues and
-  read-only status; replacement and removal require explicit actions.
+  read-only status. Every connected source permanently presents **Calendar
+  name → Assigned person → Display colour**. An adult may change those
+  assignments at any time without reconnecting or re-entering a password; a
+  person assignment uses that member's current avatar and Hearth colour, while
+  Whole family uses the family mark and colour. Account replacement and removal
+  remain separate explicit actions.
+- Household keeps timezone and weather location as separate settings. Weather
+  setup searches by suburb/postcode or requests this phone's location once,
+  shows a family-readable place label, hides coordinates under **Advanced**,
+  and requires a successful current-conditions test before Save is enabled.
 - Phone More is a genuine hub rather than a direct jump into settings: family
   tools appear first, followed by Hearth setup destinations. The administration
   root is named Hearth settings so it cannot be confused with the Home Assistant

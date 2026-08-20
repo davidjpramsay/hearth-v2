@@ -36,6 +36,19 @@ export const connectionsApi = {
       headers: demoAdminHeaders,
       body: JSON.stringify(input),
     }),
+  updateCalendarMappings: (input: {
+    requestId: string;
+    calendars: Array<{ calendarId: string; ownerMemberId: string | null }>;
+  }) =>
+    request(
+      `${householdApiBase()}/calendar-connection/mappings`,
+      CalendarConnectionCommandResultSchema,
+      {
+        method: 'PATCH',
+        headers: demoAdminHeaders,
+        body: JSON.stringify(input),
+      },
+    ),
   removeCalendarConnection: (requestId: string) =>
     request(
       `${householdApiBase()}/calendar-connection/removals`,

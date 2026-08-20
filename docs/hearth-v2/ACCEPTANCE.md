@@ -53,9 +53,17 @@ A change is complete only when:
   assign optional people, save, reload and remove the connection from the phone
   companion. Passwords and raw collection URLs never appear in responses,
   SQLite, screenshots or logs; child and unauthenticated setup are rejected.
-- With both server-only weather coordinates configured, Today shows current local conditions and
+- Every connected source permanently shows calendar name, assigned person and
+  display colour. Reassigning a source updates Week/Month owner identity and
+  member-derived colour without reconnecting or re-entering the CalDAV password;
+  Whole family uses the family presentation.
+- An adult can search a suburb/postcode or use the phone's one-time location,
+  inspect the resolved label and advanced coordinates, test current conditions,
+  and save the location separately from timezone. The saved location survives
+  restart and takes precedence over environment fallback coordinates.
+- With a tested weather location configured, Today shows current local conditions and
   Week shows normalized daily forecasts with visible Open-Meteo attribution. Coordinates never
-  enter browser responses, logs or SQLite. A provider outage retains the last safe forecast and a
+  enter TV/forecast responses or logs. A provider outage retains the last safe forecast and a
   first-load failure leaves calendar and household content usable with an unavailable weather cue.
 
 Phase 3 evidence as of 2026-08-03: the first five read/degraded-mode scenarios
@@ -273,24 +281,34 @@ live-system commissioning tasks requiring owner approval.
 - Remote/voice input exits ambient mode immediately.
 - The same static dashboard is not left illuminated overnight.
 - Missing/corrupt photos fail gracefully.
+- An authenticated adult can choose multiple supported phone photos without first configuring a
+  shared folder. Each image is capped at 25 MB, decoded server-side, orientation-corrected and
+  stored with opaque paths; duplicate content is reported without creating another asset. A child,
+  television credential, invalid format and duplicate request ID cannot create an unintended write.
+- A batch may partially succeed and reports added, duplicate and failed counts. Client filenames,
+  original bytes and private paths do not enter browser-safe responses, receipts, audits or logs.
 - An authenticated adult can favourite, unfavourite, hide and restore an indexed photo using touch
   or D-pad only. Commands are validated, idempotent and audited; a hidden photo disappears from
   Today, the gallery and ambient mode without deleting its index or original.
-- Favourite and hidden state survives incremental Synology rescans. Hidden photos remain available
+- Favourite and hidden state survives optional incremental Synology folder checks. A missing import
+  folder does not disable managed phone uploads or remove their assets. Hidden photos remain available
   in adult administration with a safe derivative preview, while private filesystem paths never
   reach any response or log.
 
-Status as of 2026-08-10: the local browser/server slice passes a unique-image,
+Status as of 2026-08-20: the local browser/server slice passes a unique-image,
 orientation-selected full-screen collage with bounded tile geometry, visible 45-second occupant
 rotation and a reduced-motion pause, mixed landscape and portrait rendering, path-safe typed
 responses, D-pad gallery selection,
 immediate keyboard/Back-equivalent ambient exit, real offline cached content,
 empty/unavailable/failure-retry states and a corrupt-derivative fallback at TV
-and phone viewports. The private folder adapter additionally passes local mixed-orientation,
+and phone viewports. Managed upload tests cover portrait normalization, content deduplication,
+decoded-format rejection, adult role enforcement, command replay, path-free audit creation and
+persistence across service restart. The optional folder adapter additionally passes local mixed-orientation,
 unsupported/corrupt/symlink, incremental-change, opaque-route and cached-unavailable tests, with an
 adult-only audited manual scan contract. Adult favourite, unfavourite, hide and restore commands
 additionally pass role rejection, validation, duplicate-request replay, audit projection, rescan
-persistence, hidden-photo projection and D-pad/focus-restoration checks. Live Synology folder selection/mount/scan, voice exit, physical-TCL rendering
+persistence, hidden-photo projection and D-pad/focus-restoration checks. Live managed upload,
+encrypted data-directory restore, optional Synology folder check, voice exit and physical-TCL rendering
 and Home Assistant presence/quiet-hours coordination are not run, so this
 acceptance section and Phase 7 remain incomplete.
 

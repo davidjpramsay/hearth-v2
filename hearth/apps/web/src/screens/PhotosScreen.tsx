@@ -115,6 +115,7 @@ export function PhotosScreen({
     )
       return;
     const timer = window.setTimeout(() => {
+      if (document.visibilityState !== 'visible') return;
       setSelectedId((current) =>
         nextPhotoId(
           gallery.photos,
@@ -178,8 +179,8 @@ export function PhotosScreen({
         <Icon name="image" />
         <h1 id="photos-empty-title">No family photos selected</h1>
         <p>
-          Connect the dedicated Synology photo folder in companion administration. Hearth will never
-          scan every personal folder by default.
+          Add photos from companion administration. Hearth keeps private copies on your Synology and
+          never scans personal folders by default.
         </p>
         {scenario === 'empty' ? (
           <button

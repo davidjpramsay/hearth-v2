@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { PhotoCurationAction, PhotoCurationAsset } from '@hearth/shared';
+import type { PhotoCurationAction, PhotoCurationAsset, PhotoUploadResult } from '@hearth/shared';
 import { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -18,6 +18,7 @@ export function PhotosSettingsScreen() {
   const source = usePhotoSourceQuery();
   const queryClient = useQueryClient();
   const pendingCurationFocus = useRef<string | null>(null);
+  const uploadInput = useRef<HTMLInputElement>(null);
   const refresh = useMutation({
     mutationFn: () => hearthApi.refreshPhotoSource(createRequestId('photo_scan')),
     onSuccess: async (result) => {
@@ -41,6 +42,34 @@ export function PhotosSettingsScreen() {
       ]);
     },
   });
+  const upload = useMutation({
+    mutationFn: async (files: File[]) => {
+      const results = [];
+      const failures: string[] = [];
+      for (const file of files) {
+        if (file.size > 25 * 1024 * 1024) {
+          failures.push(`${file.name} is larger than 25 MB.`);
+          continue;
+        }
+        try {
+          results.push(await hearthApi.uploadPhoto(file, createRequestId('photo_upload')));
+        } catch (error) {
+          failures.push(error instanceof Error ? error.message : 'A photo could not be added.');
+        }
+      }
+      return { results, failures };
+    },
+    onSuccess: async ({ results }) => {
+      const latest = results.at(-1);
+      if (latest !== undefined) queryClient.setQueryData(queryKeys.photoSource, latest.status);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.photoSource }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
+      ]);
+    },
+  });
 
   useLayoutEffect(() => {
     if (
@@ -56,46 +85,64 @@ export function PhotosSettingsScreen() {
 
   const data = source.data;
   const status = data.collection.source.status;
-  const canScan = status !== 'unconfigured';
+  const canScan = data.folderImport.configured;
   const firstCurationFocus = data.photos[0]
     ? primaryCurationFocusId(data.photos[0])
     : 'photo-settings-view';
   const lastCurationFocus = data.photos.at(-1)
     ? primaryCurationFocusId(data.photos.at(-1)!)
-    : 'photo-source-refresh';
+    : 'photo-upload-select';
   return (
-    <AdminPage title="Photo source" subtitle="Control what may appear on the family screen">
+    <AdminPage title="Photos" subtitle="Add and choose what appears on the family screen">
       <section
-        aria-labelledby="photo-source-guide-title"
+        aria-labelledby="photo-upload-title"
         className={`photo-source-guide photo-source-guide--${status}`}
       >
         <div className="photo-source-guide__heading">
           <span className="admin-setting-row__icon">
-            <Icon name={status === 'ready' ? 'image' : 'warning'} />
+            <Icon name="image" />
           </span>
           <div>
-            <h2 id="photo-source-guide-title">
-              {status === 'ready' ? 'Add images from Synology' : 'Connect the family photo folder'}
-            </h2>
-            <p>{photoSourceStatusMessage(status)}</p>
+            <h2 id="photo-upload-title">Add photos from this phone</h2>
+            <p>
+              Choose several photos at once. Hearth makes private, orientation-correct copies on
+              your Synology and adds them to the television immediately.
+            </p>
           </div>
         </div>
-        <ol>
-          <li>
-            In Synology File Station, add images to the shared folder named{' '}
-            <strong>hearth-photos</strong>.
-          </li>
-          <li>
-            Return here and choose <strong>Scan now</strong>.
-          </li>
-          <li>
-            Favourite the photos you want Hearth to show first, or hide any you do not want shown.
-          </li>
-        </ol>
+        <input
+          accept="image/jpeg,image/png,image/heic,image/heif,image/tiff,image/avif,image/webp,.heic,.heif"
+          aria-hidden="true"
+          className="photo-upload-input"
+          disabled={upload.isPending || !data.upload.enabled}
+          multiple
+          onChange={(event) => {
+            const files = Array.from(event.currentTarget.files ?? []);
+            event.currentTarget.value = '';
+            if (files.length > 0) upload.mutate(files);
+          }}
+          ref={uploadInput}
+          tabIndex={-1}
+          type="file"
+        />
+        <button
+          className="admin-primary-action photo-upload-button focusable"
+          data-focus-down={canScan ? 'photo-source-refresh' : firstCurationFocus}
+          data-focus-entry="true"
+          data-focus-id="photo-upload-select"
+          disabled={upload.isPending || !data.upload.enabled}
+          onClick={() => uploadInput.current?.click()}
+          type="button"
+        >
+          <Icon name="image" />
+          {upload.isPending ? 'Adding photos…' : 'Choose photos'}
+        </button>
         <p className="photo-source-guide__formats">
-          Supported: JPEG, PNG, HEIC, HEIF, TIFF, AVIF and WebP. Subfolders are included.
+          Up to 25 MB each · JPEG, PNG, HEIC, HEIF, TIFF, AVIF and WebP
         </p>
       </section>
+      {upload.isSuccess ? <UploadResult result={upload.data} /> : null}
+      {upload.isError ? <AdminError message={upload.error.message} /> : null}
       <div className="connection-list photo-source-options">
         <article className="connection-row">
           <span className="admin-setting-row__icon">
@@ -104,7 +151,8 @@ export function PhotosSettingsScreen() {
           <div>
             <strong>{data.collection.name}</strong>
             <p>
-              {data.visiblePhotoCount} ready · {data.collection.source.message}
+              {data.visiblePhotoCount} showing · {data.managedPhotoCount} added in Hearth ·{' '}
+              {data.importedPhotoCount} imported
             </p>
           </div>
           <span
@@ -118,19 +166,19 @@ export function PhotosSettingsScreen() {
             <Icon name="shield" />
           </span>
           <div>
-            <strong>Read-only Synology folder</strong>
+            <strong>Optional Synology folder import</strong>
             <p>
-              Hearth indexes only the approved folder. Originals and its private path never appear
-              in the browser.
+              {data.folderImport.message} This is useful for adding a large existing folder, but it
+              is not required for everyday phone uploads.
             </p>
             <dl className="photo-source-stats">
               <div>
-                <dt>Last scan</dt>
-                <dd>{formatScanTime(data.collection.updatedAt)}</dd>
+                <dt>Last check</dt>
+                <dd>{formatScanTime(data.folderImport.lastCheckedAt)}</dd>
               </div>
               <div>
-                <dt>Indexed</dt>
-                <dd>{data.indexedFileCount}</dd>
+                <dt>Imported</dt>
+                <dd>{data.importedPhotoCount}</dd>
               </div>
               <div>
                 <dt>Skipped</dt>
@@ -147,7 +195,6 @@ export function PhotosSettingsScreen() {
           {canScan ? (
             <button
               className="photo-source-refresh focusable"
-              data-focus-entry="true"
               data-focus-down={firstCurationFocus}
               data-focus-id="photo-source-refresh"
               disabled={refresh.isPending || data.scanInProgress}
@@ -155,7 +202,7 @@ export function PhotosSettingsScreen() {
               type="button"
             >
               <Icon name="refresh" />
-              {refresh.isPending || data.scanInProgress ? 'Scanning…' : 'Scan now'}
+              {refresh.isPending || data.scanInProgress ? 'Checking…' : 'Check folder'}
             </button>
           ) : null}
         </article>
@@ -163,7 +210,7 @@ export function PhotosSettingsScreen() {
       {refresh.isError ? <AdminError message={refresh.error.message} /> : null}
       {refresh.isSuccess ? (
         <p className="save-confirmation" role="status">
-          Photo folder checked. {refresh.data.status.visiblePhotoCount} photos are ready.
+          Optional folder checked. {refresh.data.status.importedPhotoCount} photos are imported.
         </p>
       ) : null}
       <section className="photo-curation" aria-labelledby="photo-curation-title">
@@ -187,7 +234,7 @@ export function PhotosSettingsScreen() {
         {data.photos.length === 0 ? (
           <div className="photo-curation__empty">
             <Icon name="image" />
-            <p>Photos will appear here after the approved folder has been scanned.</p>
+            <p>Choose photos from this phone to start the family collection.</p>
           </div>
         ) : (
           <div className="photo-curation__grid">
@@ -205,7 +252,9 @@ export function PhotosSettingsScreen() {
                 priorFocus={
                   data.photos[index - 1]
                     ? primaryCurationFocusId(data.photos[index - 1]!)
-                    : 'photo-source-refresh'
+                    : canScan
+                      ? 'photo-source-refresh'
+                      : 'photo-upload-select'
                 }
               />
             ))}
@@ -219,8 +268,12 @@ export function PhotosSettingsScreen() {
         </p>
       ) : null}
       <div className="phase-note">
-        <strong>{photoSourceNoteTitle(status)}</strong>
-        <p>{photoSourceNote(status)}</p>
+        <strong>Private Synology storage</strong>
+        <p>
+          Hearth keeps managed photo masters and television copies inside its private data folder.
+          Filesystem paths and original upload names never appear in the browser. Include the Hearth
+          data folder in encrypted Synology backup.
+        </p>
       </div>
       <Link
         className="admin-primary-action focusable"
@@ -235,30 +288,36 @@ export function PhotosSettingsScreen() {
   );
 }
 
-function photoSourceStatusMessage(status: 'ready' | 'unavailable' | 'unconfigured'): string {
-  if (status === 'ready') {
-    return 'Hearth can read the dedicated Synology folder and will keep it private on this server.';
-  }
-  if (status === 'unavailable') {
-    return 'Your files are safe, but Hearth cannot read the dedicated Synology folder right now. Its read-only server connection needs to be repaired before a scan can succeed.';
-  }
-  return 'The Hearth server has not yet been given read-only access to the dedicated Synology folder.';
-}
-
-function photoSourceNoteTitle(status: 'ready' | 'unavailable' | 'unconfigured'): string {
-  if (status === 'ready') return 'Local and private';
-  if (status === 'unavailable') return 'Folder connection needs attention';
-  return 'One server setup step remains';
-}
-
-function photoSourceNote(status: 'ready' | 'unavailable' | 'unconfigured'): string {
-  if (status === 'ready') {
-    return 'Hearth makes orientation-correct TV copies and thumbnails locally, then checks the dedicated folder quietly in the background.';
-  }
-  if (status === 'unavailable') {
-    return 'An administrator needs to reconnect the hearth-photos share to the Hearth server as read-only. After that, Scan now will index the images already in the folder.';
-  }
-  return 'An administrator needs to connect the hearth-photos share to the Hearth server as read-only. Hearth will never browse the rest of Synology Photos.';
+function UploadResult({
+  result,
+}: {
+  result: { results: PhotoUploadResult[]; failures: string[] };
+}) {
+  const added = result.results.filter((item) => !item.duplicate).length;
+  const duplicates = result.results.length - added;
+  return (
+    <div
+      className={`photo-upload-result${result.failures.length > 0 ? ' photo-upload-result--partial' : ''}`}
+      role="status"
+    >
+      <Icon name={result.failures.length > 0 ? 'warning' : 'check'} />
+      <div>
+        <strong>
+          {added > 0
+            ? `${added} ${added === 1 ? 'photo' : 'photos'} added.`
+            : 'No new photos added.'}
+        </strong>
+        <p>
+          {duplicates > 0
+            ? `${duplicates} ${duplicates === 1 ? 'duplicate was' : 'duplicates were'} already in Hearth. `
+            : ''}
+          {result.failures.length > 0
+            ? `${result.failures.length} ${result.failures.length === 1 ? 'photo could' : 'photos could'} not be added.`
+            : 'The family collection is ready.'}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function PhotoCurationCard({

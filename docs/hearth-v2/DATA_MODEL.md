@@ -92,9 +92,23 @@ The browser-safe `WeekSchedule` day model may include a nullable compact daily
 forecast containing a normalized condition code, family-readable label and
 Celsius temperature plus a bounded `demo` or `open-meteo` source identity for
 correct display attribution. Phase 1 demo forecasts remain deterministic seeded
-data. Private forecasts are transient server-cache projections from Open-Meteo;
-coordinates remain server environment configuration and neither coordinates nor
-provider payloads become a new SQLite system of record.
+data. Private forecasts are transient server-cache projections from Open-Meteo.
+The selected household weather location is a small SQLite-owned setting; raw
+forecast/provider payloads are not persisted.
+
+### Weather location
+
+- one row per household
+- family-readable place label
+- latitude and longitude constrained to WGS84 ranges
+- source (`search` or `device`)
+- created/updated timestamps
+
+Saving requires a successful short-lived test result and uses an idempotent
+command receipt plus safe audit event. The adult settings response may return
+the coordinates under an Advanced disclosure; Today, Week, TV and public
+forecast contracts never include them. Environment coordinates are fallback
+configuration only and do not overwrite a saved household row.
 
 The browser-safe `MonthSchedule` is a read projection rather than a new stored
 calendar model. It contains a Monday-first 42-day grid window, normalized events
@@ -255,6 +269,7 @@ Recipe/ingredient modelling is deferred. Grocery linkage should use explicit gen
 - favourite/hidden state
 - last shown time
 - source fingerprint, asset readiness and index time
+- whether the asset is a managed upload or optional folder import (server-side only)
 
 Do not expose Synology filesystem paths to clients. Derivatives should avoid repeatedly sending original multi-megabyte files to the television.
 
@@ -264,14 +279,29 @@ returns the approved collection summary, source readiness, freshness, one
 nullable featured opaque ID and orientation-aware assets containing only safe
 same-origin display/thumbnail URLs. Phase 7 selects the Today preview through
 that same injected adapter. Demo mode uses fictional bundled derivatives;
-private mode returns an unconfigured empty collection until one approved
-Synology source is selected. Adult-only `PhotoSourceIndexStatus` adds aggregate ready, hidden,
-unsupported and corrupt counts, scan state and path-safe curation rows for ready assets. Those rows
+private mode always exposes the managed collection and upload capability. Adult-only
+`PhotoSourceIndexStatus` adds aggregate managed/imported/ready/hidden/unsupported/corrupt counts,
+the optional folder-import state and path-safe curation rows for ready assets. Those rows
 contain only opaque IDs, same-origin derivative URLs, presentation metadata and favourite/hidden
 flags. Neither response exposes its Synology path.
 Migration `0015_synology_photo_index.sql` adds the source fingerprint and scan-status index used for
 incremental refresh; the first adapter uses filesystem modification time as `capturedAt` after
 orientation correction rather than claiming EXIF capture-date fidelity.
+
+### Managed photo upload
+
+- opaque upload and asset IDs
+- household and authenticated adult actor
+- content hash and byte size for deduplication/limits
+- opaque private master key
+- upload time and fixed companion source channel
+
+Migration `0023_managed_photo_uploads.sql` adds one managed-upload row per asset, unique
+household/content hashes and a path-free `photo_folder_import_status` projection. Managed master
+WebPs live under `/data/photo-uploads`; display/thumbnail WebPs live under
+`/data/photo-derivatives`. Neither a client filename nor an original host path is persisted. The
+database online-copy feature protects metadata, while encrypted Synology backup of the complete
+Hearth data directory protects the managed image files themselves.
 
 ### Announcement
 
@@ -463,6 +493,14 @@ for fast isolated contract tests.
 Migration `0021_routine_time_of_day.sql` normalizes historical free-text routine labels into the
 five supported time-of-day values. Browser commands and read models use the same enum while the
 existing `routine_label` column names remain for forward-compatible storage.
+
+Migration `0022_weather_location.sql` adds the single constrained household
+weather-location row. It stores no browser permission state, street address,
+provider response or API credential.
+
+Migration `0023_managed_photo_uploads.sql` links each private managed master to its opaque photo
+asset, authenticated adult, content hash and bounded byte size, and persists path-free optional
+folder-import health. Client filenames, source paths and image bytes do not enter SQLite.
 
 The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administration
 on the same SQLite connection. Voice list commands resolve a normalized list

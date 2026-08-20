@@ -6,6 +6,7 @@ import { sortByStart } from '@hearth/core';
 import {
   CalendarEventSchema,
   CalendarSourceSchema,
+  FAMILY_CALENDAR_COLOR,
   MemberSchema,
   type CalendarEvent,
   type CalendarSource,
@@ -271,7 +272,7 @@ export class CalendarProjectionService {
        ON CONFLICT(connection_id, external_id) DO UPDATE SET
          display_name = excluded.display_name,
          colour = excluded.colour,
-         owner_member_id = COALESCE(excluded.owner_member_id, calendars.owner_member_id),
+         owner_member_id = excluded.owner_member_id,
          visible = 1`,
     );
     for (const calendar of calendars) {
@@ -452,7 +453,7 @@ export class CalendarProjectionService {
       CalendarSourceSchema.parse({
         id: row.id,
         displayName: row.display_name,
-        color: row.colour,
+        color: row.member_colour ?? FAMILY_CALENDAR_COLOR,
         owner: memberFromCalendarRow(row),
         access: row.write_allowed === 1 ? 'read-write' : 'read-only',
       }),

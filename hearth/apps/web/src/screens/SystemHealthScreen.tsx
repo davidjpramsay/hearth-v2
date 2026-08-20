@@ -232,7 +232,7 @@ export function SystemHealthScreen() {
         <ul>
           <li>The local copy contains Hearth household data and audit history.</li>
           <li>Provider tokens stay in the separate protected secrets folder.</li>
-          <li>Photo originals remain in the approved Synology photo folder.</li>
+          <li>Managed photo masters remain in Hearth’s private data folder.</li>
           <li>Home Assistant keeps its own independent backup on the Pi and Synology.</li>
         </ul>
       </section>
@@ -360,8 +360,8 @@ function photoLabel(query: PhotoQuery): string {
 }
 
 function photoDetail(query: PhotoQuery): string {
-  if (query.isPending) return 'Checking the approved photo source.';
-  if (query.isError) return 'Hearth could not read photo source status just now.';
+  if (query.isPending) return 'Checking the private family photo collection.';
+  if (query.isError) return 'Hearth could not read photo collection status just now.';
   return `${query.data.collection.name} · ${query.data.visiblePhotoCount} ready`;
 }
 

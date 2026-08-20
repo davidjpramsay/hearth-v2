@@ -16,6 +16,7 @@ export const LocalTimeSchema = z
 
 export const TimestampSchema = z.iso.datetime({ offset: true });
 export const TimezoneSchema = z.string().min(1).max(80);
+export const FAMILY_CALENDAR_COLOR = '#2f766d' as const;
 
 export const CapabilitySchema = z.enum([
   'household.admin',
@@ -277,10 +278,24 @@ export const PhotoCurationAssetSchema = PhotoAssetSchema.extend({
 });
 
 export const PhotoSourceSummarySchema = z.object({
-  kind: z.enum(['demo', 'synology-folder']),
+  kind: z.enum(['demo', 'hearth-managed', 'synology-folder']),
   label: z.string().min(1).max(100),
   status: z.enum(['ready', 'unconfigured', 'unavailable']),
   message: z.string().min(1).max(180).nullable(),
+});
+
+export const PhotoUploadCapabilitySchema = z.object({
+  enabled: z.boolean(),
+  maxFileBytes: z.number().int().positive(),
+  acceptedFormats: z.array(z.enum(['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'AVIF', 'WebP'])),
+});
+
+export const PhotoFolderImportStatusSchema = z.object({
+  configured: z.boolean(),
+  status: z.enum(['ready', 'unconfigured', 'unavailable']),
+  lastCheckedAt: TimestampSchema.nullable(),
+  importedPhotoCount: z.number().int().nonnegative(),
+  message: z.string().min(1).max(180),
 });
 
 export const PhotoCollectionSchema = z.object({
@@ -309,6 +324,20 @@ export const PhotoSourceIndexStatusSchema = z.object({
   hiddenPhotoCount: z.number().int().nonnegative(),
   unsupportedFileCount: z.number().int().nonnegative(),
   corruptFileCount: z.number().int().nonnegative(),
+  managedPhotoCount: z.number().int().nonnegative().default(0),
+  importedPhotoCount: z.number().int().nonnegative().default(0),
+  upload: PhotoUploadCapabilitySchema.default({
+    enabled: false,
+    maxFileBytes: 25 * 1024 * 1024,
+    acceptedFormats: ['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'AVIF', 'WebP'],
+  }),
+  folderImport: PhotoFolderImportStatusSchema.default({
+    configured: false,
+    status: 'unconfigured',
+    lastCheckedAt: null,
+    importedPhotoCount: 0,
+    message: 'Optional Synology folder import is not connected.',
+  }),
   photos: z.array(PhotoCurationAssetSchema),
 });
 
@@ -1041,10 +1070,13 @@ export const AuditSummarySchema = z.object({
     'pocket-money.payment.record',
     'pocket-money.payment.void',
     'calendar.connection.save',
+    'calendar.mappings.update',
     'calendar.connection.remove',
+    'weather.location.update',
     'home-assistant.connection.save',
     'home-assistant.connection.remove',
     'system.backup.create',
+    'photo.upload',
     'photo.source.refresh',
     'photo.favourite',
     'photo.unfavourite',
@@ -1126,6 +1158,14 @@ export const PhotoCurationCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
+export const PhotoUploadResultSchema = z.object({
+  photo: PhotoCurationAssetSchema,
+  status: PhotoSourceIndexStatusSchema,
+  duplicate: z.boolean(),
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
 export const TodayConfigurationCommandResultSchema = z.object({
   configuration: TodayConfigurationSchema,
   audit: AuditSummarySchema,
@@ -1193,6 +1233,7 @@ export const RealtimeEventSchema = z.object({
     'chore-template.changed',
     'home.changed',
     'calendar.changed',
+    'weather.changed',
     'today.changed',
     'photos.changed',
   ]),
@@ -1265,6 +1306,7 @@ export const ActivityFeedSchema = z.object({
 });
 
 export const CalendarConnectionCalendarSchema = z.object({
+  id: OpaqueIdSchema,
   displayName: z.string().trim().min(1).max(80),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   owner: MemberSchema.nullable(),
@@ -1334,8 +1376,77 @@ export const SaveCalendarConnectionRequestSchema = CommandRequestSchema.extend({
 
 export const RemoveCalendarConnectionRequestSchema = CommandRequestSchema;
 
+const CalendarMappingSchema = z.object({
+  calendarId: OpaqueIdSchema,
+  ownerMemberId: OpaqueIdSchema.nullable(),
+});
+
+export const UpdateCalendarMappingsRequestSchema = CommandRequestSchema.extend({
+  calendars: z.array(CalendarMappingSchema).min(1).max(40),
+}).superRefine((value, context) => {
+  const ids = value.calendars.map(({ calendarId }) => calendarId);
+  if (new Set(ids).size !== ids.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['calendars'],
+      message: 'Choose each calendar only once',
+    });
+  }
+});
+
 export const CalendarConnectionCommandResultSchema = z.object({
   connection: CalendarConnectionSettingsSchema.nullable(),
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+export const WeatherLocationSourceSchema = z.enum(['search', 'device', 'environment']);
+
+export const WeatherLocationSchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+  source: WeatherLocationSourceSchema,
+  updatedAt: TimestampSchema.nullable(),
+});
+
+export const WeatherLocationSearchRequestSchema = z
+  .object({ query: z.string().trim().min(2).max(100) })
+  .strict();
+
+export const WeatherLocationSearchResultSchema = z.object({
+  id: OpaqueIdSchema,
+  label: z.string().trim().min(1).max(120),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+});
+
+export const WeatherLocationSearchResultsSchema = z.object({
+  results: z.array(WeatherLocationSearchResultSchema).max(10),
+});
+
+export const WeatherLocationTestRequestSchema = z
+  .object({
+    label: z.string().trim().min(1).max(120).nullable(),
+    latitude: z.number().finite().min(-90).max(90),
+    longitude: z.number().finite().min(-180).max(180),
+    source: z.enum(['search', 'device']),
+  })
+  .strict();
+
+export const WeatherLocationTestResultSchema = z.object({
+  testId: OpaqueIdSchema,
+  location: WeatherLocationSchema,
+  current: WeatherSummarySchema,
+  expiresAt: TimestampSchema,
+});
+
+export const SaveWeatherLocationRequestSchema = CommandRequestSchema.extend({
+  testId: OpaqueIdSchema,
+});
+
+export const WeatherLocationCommandResultSchema = z.object({
+  location: WeatherLocationSchema,
   audit: AuditSummarySchema,
   replayed: z.boolean(),
 });
@@ -1687,10 +1798,13 @@ export type PhotoSourceSummary = z.infer<typeof PhotoSourceSummarySchema>;
 export type PhotoCollection = z.infer<typeof PhotoCollectionSchema>;
 export type PhotoGallery = z.infer<typeof PhotoGallerySchema>;
 export type PhotoSourceIndexStatus = z.infer<typeof PhotoSourceIndexStatusSchema>;
+export type PhotoUploadCapability = z.infer<typeof PhotoUploadCapabilitySchema>;
+export type PhotoFolderImportStatus = z.infer<typeof PhotoFolderImportStatusSchema>;
 export type RefreshPhotoSourceRequest = z.infer<typeof RefreshPhotoSourceRequestSchema>;
 export type PhotoSourceRefreshResult = z.infer<typeof PhotoSourceRefreshResultSchema>;
 export type UpdatePhotoCurationRequest = z.infer<typeof UpdatePhotoCurationRequestSchema>;
 export type PhotoCurationCommandResult = z.infer<typeof PhotoCurationCommandResultSchema>;
+export type PhotoUploadResult = z.infer<typeof PhotoUploadResultSchema>;
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 export type WeekDay = z.infer<typeof WeekDaySchema>;
 export type WeekSchedule = z.infer<typeof WeekScheduleSchema>;
@@ -1793,6 +1907,16 @@ export type CalendarConnectionTestResult = z.infer<typeof CalendarConnectionTest
 export type SaveCalendarConnectionRequest = z.infer<typeof SaveCalendarConnectionRequestSchema>;
 export type RemoveCalendarConnectionRequest = z.infer<typeof RemoveCalendarConnectionRequestSchema>;
 export type CalendarConnectionCommandResult = z.infer<typeof CalendarConnectionCommandResultSchema>;
+export type UpdateCalendarMappingsRequest = z.infer<typeof UpdateCalendarMappingsRequestSchema>;
+export type WeatherLocationSource = z.infer<typeof WeatherLocationSourceSchema>;
+export type WeatherLocation = z.infer<typeof WeatherLocationSchema>;
+export type WeatherLocationSearchRequest = z.infer<typeof WeatherLocationSearchRequestSchema>;
+export type WeatherLocationSearchResult = z.infer<typeof WeatherLocationSearchResultSchema>;
+export type WeatherLocationSearchResults = z.infer<typeof WeatherLocationSearchResultsSchema>;
+export type WeatherLocationTestRequest = z.infer<typeof WeatherLocationTestRequestSchema>;
+export type WeatherLocationTestResult = z.infer<typeof WeatherLocationTestResultSchema>;
+export type SaveWeatherLocationRequest = z.infer<typeof SaveWeatherLocationRequestSchema>;
+export type WeatherLocationCommandResult = z.infer<typeof WeatherLocationCommandResultSchema>;
 export type HomeAssistantConnectionSettings = z.infer<typeof HomeAssistantConnectionSettingsSchema>;
 export type HomeAssistantConnectionTestRequest = z.infer<
   typeof HomeAssistantConnectionTestRequestSchema

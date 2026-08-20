@@ -54,6 +54,26 @@ export class UnconfiguredWeatherProvider implements WeatherProvider {
   }
 }
 
+export class ManagedWeatherProvider implements WeatherProvider {
+  private provider: WeatherProvider = new UnconfiguredWeatherProvider();
+
+  get configured(): boolean {
+    return this.provider.configured;
+  }
+
+  configure(configuration: OpenMeteoWeatherConfiguration): void {
+    this.provider = new OpenMeteoWeatherProvider(configuration);
+  }
+
+  disconnect(): void {
+    this.provider = new UnconfiguredWeatherProvider();
+  }
+
+  read(timezone: string): Promise<WeatherForecastSnapshot> {
+    return this.provider.read(timezone);
+  }
+}
+
 export class OpenMeteoWeatherProvider implements WeatherProvider {
   readonly configured = true;
   private cache: {

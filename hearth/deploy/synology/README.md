@@ -73,13 +73,14 @@ Before any approved Synology commissioning:
 9. Configure DSM Reverse Proxy from that HTTPS origin to `http://127.0.0.1:8432`, preserving `Host`
    and `X-Forwarded-Proto`. Do not create a router port-forward or public DNS exposure.
 
-10. For family photos, first create or approve one dedicated Synology folder. Only after that
-    explicit selection, uncomment the `/photos-source:ro` volume in `compose.yaml`, set
-    `HEARTH_PHOTO_HOST_DIR` to the exact host folder and set
-    `HEARTH_PHOTO_SOURCE_DIR=/photos-source`. The server ignores symlinks, creates orientation-
-    corrected WebP display copies and thumbnails under `/data/photo-derivatives`, and returns only
-    opaque asset URLs. It never sends the mounted path or original bytes to the browser. Leave
-    `HEARTH_PHOTO_SOURCE_DIR` blank to keep Photos safely unconfigured.
+10. Family photos require no shared-folder setup. Authenticated adults use **More → Admin → Photos
+    → Choose photos**; Hearth writes normalized managed masters under `/data/photo-uploads` and
+    display/thumbnail WebPs under `/data/photo-derivatives`, both inside `HEARTH_DATA_DIR`. To bulk
+    import an existing collection only, approve one exact Synology folder, uncomment the
+    `/photos-source:ro` volume, set `HEARTH_PHOTO_HOST_DIR` to that host folder and set
+    `HEARTH_PHOTO_SOURCE_DIR=/photos-source`. The optional importer ignores symlinks and returns
+    only opaque asset URLs. Never mount the Synology Photos library root. Leaving the source blank
+    disables only optional folder import, not managed phone uploads.
 
 11. Leave Home Assistant unconfigured until its current backup and rollback path are verified. An
     adult can then use **More → Connections → Home Assistant** to test the private root address and
@@ -89,10 +90,11 @@ Before any approved Synology commissioning:
 
 12. Keep `HEARTH_BACKUP_RETENTION=14` and `HEARTH_BACKUP_INTERVAL_HOURS=24` initially. The server
     writes consistent SQLite online backups under `/data/backups`; this directory is already inside
-    the restricted data mount. Configure encrypted Synology Hyper Backup for the host data and
-    secrets directories so a NAS-volume failure does not remove both the live database and every
-    local copy. The Hearth backup button does not copy provider secrets, photo originals or the
-    separate Home Assistant appliance.
+    the restricted data mount. Configure encrypted Synology Hyper Backup for the complete host data
+    and secrets directories so a NAS-volume failure does not remove the database, managed photo
+    files and every local copy. The Hearth backup button itself copies only SQLite: it does not copy
+    managed image files, provider secrets, optional folder-import originals or the separate Home
+    Assistant appliance.
 
 The hostname and certificate mechanism are intentionally unresolved deployment inputs. The passkey
 contract is implemented, but enrolment remains inert until those values and the first-use code file
@@ -120,7 +122,8 @@ private database, secrets or approved photo mount into a demo or local developme
 ## Updating the commissioned private instance
 
 Private household state is not stored in an image or source checkout. Rebuilding `hearth-v2`
-preserves `/volume1/hearth-v2-private` and the read-only `/volume1/hearth-photos` mount.
+preserves `/volume1/hearth-v2-private`, including managed photo files, and any optional read-only
+`/volume1/hearth-photos` import mount.
 
 After a commit has passed the repository verification workflow, run this from the repository root:
 
@@ -194,9 +197,9 @@ Expected checks:
 - the private origin displays adult/household first-use setup, creates a named passkey and never
   seeds Ezra or Maya.
 - stopping the service sends `SIGTERM` and closes Fastify/SQLite cleanly within 30 seconds.
-- Admin → Photos reports the approved folder index without revealing its path; “Scan now” creates
-  an adult audit event and the gallery keeps its last safe derivatives if the NAS is temporarily
-  unavailable.
+- Admin → Photos accepts adult multi-select phone uploads, reports added/duplicate/failed counts and
+  never reveals a client filename or storage path. If the optional folder is configured, **Check
+  folder** creates an adult audit event and an import outage does not block managed uploads.
 - Admin → Connections can test and save Home Assistant without returning the token, URL or raw
   entity IDs to the browser, SQLite, receipts or audit summaries.
 - Admin → System Health reports migration, version and recovery-copy state; “Create backup now”
