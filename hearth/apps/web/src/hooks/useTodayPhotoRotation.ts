@@ -109,7 +109,9 @@ function toTodayPhoto(photo: PhotoAsset | null): TodayPhotoSummary | null {
   if (photo === null) return null;
   return {
     alt: photo.alt,
+    height: photo.height,
     orientation: photo.orientation,
     url: photo.displayUrl,
+    width: photo.width,
   };
 }

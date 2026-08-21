@@ -429,6 +429,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
                 url: featuredPhoto.displayUrl,
                 alt: featuredPhoto.alt,
                 orientation: featuredPhoto.orientation,
+                width: featuredPhoto.width,
+                height: featuredPhoto.height,
               },
       calendars: today.calendars.map((calendar) => ({
         ...calendar,

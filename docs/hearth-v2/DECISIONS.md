@@ -920,7 +920,7 @@ Official platform references:
   dead space, pushed useful content below the television viewport and made Today behave like a web
   page that needed scrolling.
 - Choice: Make television Today a deterministic single-viewport composition. Add normalized photo
-  orientation to the browser-safe `TodaySummary` photo contract. Portrait photos occupy a substantial
+  orientation and optional source dimensions to the browser-safe `TodaySummary` photo contract. Portrait photos occupy a substantial
   right-side rail spanning the dashboard; landscape and square photos use a shorter wide lower panel;
   no-photo layouts return the full width to one-to-four compact summary tiles. Keep the three-row
   event/chore cap and existing focus graph. Do not expose layout controls or carry the non-scrolling
@@ -938,16 +938,17 @@ Official platform references:
   support photo into the remaining rectangles. Real portrait photos were consequently displayed in
   landscape-shaped cells and lost important content to `cover` cropping, while portrait-heavy sets
   produced narrow strips merely to preserve a fixed five-photo count.
-- Choice: Select and place visible occupants using each photo's normalized orientation. Mixed
-  television galleries use no more than two full-height portrait rails with `contain` fitting and
-  fill the remaining area with wide landscape/square bands. Show fewer than five occupants when the
-  available mix cannot form honest regions; an all-portrait gallery uses four equal rails. Phone
-  portrait uses orientation-aware dense spans, while phone landscape keeps three substantial
-  occupants. Preserve automatic rotation, selection, ambient mode and geometry-derived D-pad links.
+- Choice: Select and place visible occupants using each photo's stored pixel dimensions. Keep the
+  selected image as a full-height anchor and search one to three support-column groupings for the
+  composition closest to the television stage. Each image leaf retains its exact native ratio;
+  negative page space is preferable to crop, stretch, a persistent frame, shadow or backing card.
+  Phone portrait flattens the same occupants into orientation-aware spans, while phone landscape
+  keeps three substantial occupants. Preserve automatic rotation, selection, ambient mode and
+  geometry-derived D-pad links.
 - Consequence: Portrait files remain legible without being cut into landscape frames, landscape
   files do not become ribbons and each supported television composition stays within one viewport.
-  The visible count can vary with content; rotation remains responsible for bringing every approved
-  photo through over time rather than squeezing every file into each arrangement.
+  Up to five photos can remain visible even for portrait-heavy sets because the layout is derived
+  from real ratios rather than a fixed set of portrait and landscape slots.
 
 ## D-060 — Today photo rotation is slow and display-local
 

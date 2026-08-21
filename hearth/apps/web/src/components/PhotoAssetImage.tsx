@@ -8,14 +8,18 @@ export function PhotoAssetImage({
   alt,
   className,
   fetchPriority = 'auto',
+  height,
   loading = 'lazy',
   src,
+  width,
 }: {
   alt: string;
   className: string;
   fetchPriority?: 'auto' | 'high' | 'low';
+  height?: number;
   loading?: 'eager' | 'lazy';
   src: string;
+  width?: number;
 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
@@ -38,9 +42,11 @@ export function PhotoAssetImage({
       className={className}
       decoding="async"
       fetchPriority={fetchPriority}
+      height={height}
       loading={loading}
       onError={() => setFailed(true)}
       src={src}
+      width={width}
     />
   );
 }

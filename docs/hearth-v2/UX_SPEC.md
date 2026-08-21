@@ -75,6 +75,8 @@ an unexplained empty column. Television Today is a single non-scrolling dashboar
 vertical document. It selects a bounded composition from the enabled band count and the featured
 photo's typed orientation: portrait photos use a substantial right-side rail, landscape and square
 photos use a shorter wide panel, and no-photo layouts return the full lower width to summary bands.
+The preview contract carries source dimensions when available, and the image itself sizes from that
+native ratio with no persistent frame, crop, shadow or backing panel.
 One to four bands become compact tiles without reserving empty rows. The phone keeps its natural
 single-column scroll because it is an editing and companion surface rather than a wall appliance.
 When more than one approved family photo is available, the Today preview advances after about five
@@ -182,11 +184,11 @@ the phone More hub.
 - Full-screen ambient slideshow.
 - The normal Photos screen is an orientation-aware full-screen collage rather than a large image
   plus a duplicated thumbnail. The selected or automatically advanced photo remains present while
-  Hearth chooses the visible occupants and geometry from every photo's stored orientation. Portrait
-  files use substantial full-height rails with `contain` fitting, landscape/square files use wide
-  bands, and mixed sets show fewer than five photos when five honest regions would create a skinny
-  portrait strip or shallow landscape ribbon. Four or more portrait-only files use four equal tall
-  rails. Phone portrait uses a dense orientation-aware mosaic so landscape files span both columns
+  Hearth chooses the visible occupants and geometry from every photo's stored width and height.
+  The selected photo is a substantial full-height anchor and up to four supports form ratio-derived
+  vertical columns. Each leaf retains its exact native ratio; the gallery accepts calm negative
+  space instead of cropping, stretching or placing photos in framed cards. A focus halo exists only
+  while navigating. Phone portrait uses an orientation-aware mosaic so landscape files span both columns
   while portraits remain tall, rather than stacking several narrow strips. Phone
   landscape shows three substantial images at a time and lets rotation bring the remaining photos
   through, rather than squeezing the five-image television composition into shallow ribbons.

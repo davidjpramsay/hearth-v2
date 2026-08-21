@@ -1,5 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import './PhotosScreen.css';
@@ -18,13 +26,14 @@ import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   arrangePhotoCollage,
-  mirroredPlacement,
+  buildPhotoMosaic,
+  fitMosaicInBox,
   nextPhotoId,
   PHOTO_COLLAGE_ROTATION_MS,
   photoCollageFeatureSide,
-  photoCollageMode,
   type PhotoCollageItem,
-  type PhotoCollageFeatureSide,
+  type PhotoMosaicNode,
+  type PhotoMosaicRect,
 } from './photoCollage';
 
 export function PhotosScreen({
@@ -50,6 +59,8 @@ export function PhotosScreen({
     () => window.matchMedia('(max-width: 900px) and (orientation: landscape)').matches,
   );
   const wasAmbient = useRef(false);
+  const pendingAutomaticFocusId = useRef<string | null>(null);
+  const [collageRef, collageSize] = useElementSize<HTMLDivElement>();
   const householdTime = useHouseholdClock();
 
   const gallery = query.data;
@@ -63,19 +74,20 @@ export function PhotosScreen({
     gallery?.photos[0] ??
     null;
   const collageItems = arrangePhotoCollage(gallery?.photos ?? [], selected?.id ?? null);
-  const collageMode =
-    collageItems[0] === undefined ? 'landscape' : photoCollageMode(collageItems[0].photo);
   const collageFeatureSide = photoCollageFeatureSide(
     gallery?.photos ?? [],
     collageItems[0]?.photo.id ?? null,
     gallery?.featuredPhotoId ?? gallery?.photos[0]?.id ?? null,
   );
   const visibleCollageItems = compactLandscape ? collageItems.slice(0, 3) : collageItems;
-  const collagePlacement = visibleCollageItems[0]?.placement;
-  const collagePortraitCount = visibleCollageItems.reduce(
-    (count, item) => count + Number(item.photo.orientation === 'portrait'),
-    0,
+  const visiblePortraitCount = visibleCollageItems.filter(
+    ({ photo }) => photo.orientation === 'portrait',
+  ).length;
+  const mosaic = useMemo(
+    () => buildPhotoMosaic(visibleCollageItems, collageFeatureSide),
+    [collageFeatureSide, visibleCollageItems],
   );
+  const mosaicBox = fitMosaicInBox(mosaic?.root.ratio ?? 1, collageSize.width, collageSize.height);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -121,16 +133,21 @@ export function PhotosScreen({
       return;
     const timer = window.setTimeout(() => {
       if (document.visibilityState !== 'visible') return;
-      setSelectedId((current) =>
-        nextPhotoId(
-          gallery.photos,
-          current ?? gallery.featuredPhotoId ?? gallery.photos[0]?.id ?? null,
-        ),
+      const upcomingId = nextPhotoId(
+        gallery.photos,
+        selectedId ?? gallery.featuredPhotoId ?? gallery.photos[0]?.id ?? null,
       );
+      const activeElement = document.activeElement;
+      pendingAutomaticFocusId.current =
+        activeElement instanceof HTMLElement && collageRef.current?.contains(activeElement)
+          ? (activeElement.dataset.focusId ?? `photos-thumb-${upcomingId}`)
+          : null;
+      setSelectedId(upcomingId);
     }, PHOTO_COLLAGE_ROTATION_MS);
     return () => window.clearTimeout(timer);
   }, [
     ambient,
+    collageRef,
     gallery,
     manualSelectionRevision,
     pageVisible,
@@ -138,6 +155,15 @@ export function PhotosScreen({
     rotationPaused,
     selectedId,
   ]);
+
+  useLayoutEffect(() => {
+    const requestedFocusId = pendingAutomaticFocusId.current;
+    if (requestedFocusId === null) return;
+    pendingAutomaticFocusId.current = null;
+    if (!focusById(requestedFocusId, { scroll: false }) && selected !== null) {
+      focusById(`photos-thumb-${selected.id}`, { scroll: false });
+    }
+  }, [selected]);
 
   useEffect(() => {
     if (!ambient) return;
@@ -292,25 +318,19 @@ export function PhotosScreen({
       <div className="photos-layout">
         <div
           aria-label="Family photos. The featured photo and collage arrangement change about once every 45 seconds."
-          className={`photos-grid photos-collage photos-collage--${collageMode} photos-collage--feature-${collageFeatureSide} photos-collage--count-${visibleCollageItems.length}`}
-          data-portrait-count={collagePortraitCount}
-          style={
-            {
-              '--photo-collage-columns': collagePlacement?.columns ?? 12,
-              '--photo-collage-rows': collagePlacement?.rows ?? 4,
-            } as CSSProperties
-          }
+          className={`photos-grid photos-collage photos-collage--${selected?.orientation ?? 'landscape'} photos-collage--feature-${collageFeatureSide} photos-collage--count-${visibleCollageItems.length} photos-collage--portrait-count-${visiblePortraitCount}`}
+          ref={collageRef}
         >
-          {visibleCollageItems.map((item) => (
-            <PhotoThumbnail
-              item={item}
+          {mosaic === null ? null : (
+            <PhotoMosaic
+              focusRects={mosaic.rects}
               items={visibleCollageItems}
-              key={item.slot}
-              onSelect={() => selectPhoto(item.photo.id)}
-              selected={item.photo.id === selected?.id}
-              featureSide={collageFeatureSide}
+              node={mosaic.root}
+              onSelect={selectPhoto}
+              rootBox={mosaicBox}
+              selectedId={selected?.id ?? null}
             />
-          ))}
+          )}
         </div>
       </div>
       {ambient && selected !== null ? (
@@ -352,21 +372,22 @@ function galleryMeta(photoCount: number, favouriteCount: number, sourceLabel: st
 }
 
 function PhotoThumbnail({
+  focusRects,
+  flexGrow,
   item,
   items,
   onSelect,
   selected,
-  featureSide,
 }: {
+  focusRects: Readonly<Record<string, PhotoMosaicRect>>;
+  flexGrow: number;
   item: PhotoCollageItem;
   items: PhotoCollageItem[];
   onSelect: () => void;
   selected: boolean;
-  featureSide: PhotoCollageFeatureSide;
 }) {
   const { photo, slot } = item;
-  const links = collageFocusLinks(item, items, featureSide);
-  const placement = mirroredPlacement(item.placement, featureSide);
+  const links = collageFocusLinks(photo.id, items, focusRects);
   const featured = slot === 'feature';
   return (
     <button
@@ -381,11 +402,16 @@ function PhotoThumbnail({
       data-focus-up={links.up}
       data-photo-id={photo.id}
       data-photo-orientation={photo.orientation}
+      data-photo-ratio={(photo.width / photo.height).toFixed(4)}
       onClick={onSelect}
-      style={{
-        gridColumn: `${placement.column} / span ${placement.columnSpan}`,
-        gridRow: `${placement.row} / span ${placement.rowSpan}`,
-      }}
+      style={
+        {
+          '--photo-native-ratio': photo.width / photo.height,
+          '--photo-mosaic-grow': flexGrow,
+          flexBasis: 0,
+          flexGrow,
+        } as CSSProperties
+      }
       type="button"
     >
       <PhotoAssetImage
@@ -394,9 +420,11 @@ function PhotoThumbnail({
           featured ? 'photo-thumbnail__image photos-hero__image' : 'photo-thumbnail__image'
         }
         fetchPriority={featured ? 'high' : 'low'}
+        height={photo.height}
         key={`${photo.id}-${slot}`}
         loading={featured ? 'eager' : 'lazy'}
         src={featured ? photo.displayUrl : photo.thumbnailUrl}
+        width={photo.width}
       />
       <span className="sr-only">{photo.orientation} photo</span>
     </button>
@@ -404,20 +432,28 @@ function PhotoThumbnail({
 }
 
 function collageFocusLinks(
-  item: PhotoCollageItem,
+  photoId: string,
   items: PhotoCollageItem[],
-  featureSide: PhotoCollageFeatureSide,
+  rects: Readonly<Record<string, PhotoMosaicRect>>,
 ): { up: string; down: string; left: string; right: string } {
-  const current = mirroredPlacement(item.placement, featureSide);
-  const currentId = `photos-thumb-${item.photo.id}`;
+  const current = rects[photoId];
+  const currentId = `photos-thumb-${photoId}`;
+  if (current === undefined) {
+    return { down: currentId, left: 'nav-photos', right: currentId, up: 'photos-start-ambient' };
+  }
   const center = placementCenter(current);
   const candidates = items
-    .filter((candidate) => candidate.photo.id !== item.photo.id)
+    .filter((candidate) => candidate.photo.id !== photoId)
     .map((candidate, index) => ({
-      center: placementCenter(mirroredPlacement(candidate.placement, featureSide)),
+      center: placementCenter(rects[candidate.photo.id]),
       focusId: `photos-thumb-${candidate.photo.id}`,
       index,
-      placement: mirroredPlacement(candidate.placement, featureSide),
+      placement: rects[candidate.photo.id],
+    }))
+    .filter((candidate) => candidate.placement !== undefined)
+    .map((candidate) => ({
+      ...candidate,
+      center: placementCenter(candidate.placement),
     }));
 
   function nearest(direction: 'up' | 'down' | 'left' | 'right'): string | null {
@@ -426,17 +462,15 @@ function collageFocusLinks(
       candidates
         .filter((candidate) => {
           if (direction === 'up') {
-            return candidate.placement.row + candidate.placement.rowSpan <= current.row + 0.01;
+            return candidate.center.y < center.y - 0.01;
           }
           if (direction === 'down') {
-            return candidate.placement.row >= current.row + current.rowSpan - 0.01;
+            return candidate.center.y > center.y + 0.01;
           }
           if (direction === 'left') {
-            return (
-              candidate.placement.column + candidate.placement.columnSpan <= current.column + 0.01
-            );
+            return candidate.center.x < center.x - 0.01;
           }
-          return candidate.placement.column >= current.column + current.columnSpan - 0.01;
+          return candidate.center.x > center.x + 0.01;
         })
         .map((candidate) => {
           const primary = vertical
@@ -452,16 +486,105 @@ function collageFocusLinks(
   }
 
   return {
-    up: nearest('up') ?? 'photos-start-ambient',
+    up: current.height >= 0.8 ? 'photos-start-ambient' : (nearest('up') ?? 'photos-start-ambient'),
     down: nearest('down') ?? currentId,
     left: nearest('left') ?? 'nav-photos',
     right: nearest('right') ?? currentId,
   };
 }
 
-function placementCenter(placement: PhotoCollageItem['placement']): { x: number; y: number } {
+function placementCenter(placement: PhotoMosaicRect | undefined): { x: number; y: number } {
+  if (placement === undefined) return { x: 0, y: 0 };
   return {
-    x: placement.column + placement.columnSpan / 2,
-    y: placement.row + placement.rowSpan / 2,
+    x: placement.x + placement.width / 2,
+    y: placement.y + placement.height / 2,
   };
+}
+
+function PhotoMosaic({
+  focusRects,
+  flexGrow = 1,
+  items,
+  node,
+  onSelect,
+  rootBox,
+  selectedId,
+}: {
+  focusRects: Readonly<Record<string, PhotoMosaicRect>>;
+  flexGrow?: number;
+  items: PhotoCollageItem[];
+  node: PhotoMosaicNode;
+  onSelect: (photoId: string) => void;
+  rootBox: { height: number; width: number };
+  selectedId: string | null;
+}) {
+  if (node.kind === 'photo') {
+    return (
+      <PhotoThumbnail
+        flexGrow={flexGrow}
+        focusRects={focusRects}
+        item={node.item}
+        items={items}
+        onSelect={() => onSelect(node.item.photo.id)}
+        selected={node.item.photo.id === selectedId}
+      />
+    );
+  }
+
+  const root = node.kind === 'row' && node.ratio > 0 && flexGrow === 1;
+  const childWeights = node.children.map((child) =>
+    node.kind === 'row' ? child.ratio : 1 / child.ratio,
+  );
+  const childWeightTotal = childWeights.reduce((sum, weight) => sum + weight, 0);
+  return (
+    <div
+      className={`photo-mosaic-node photo-mosaic-node--${node.kind}${root ? ' photo-mosaic-node--root' : ''}`}
+      style={{
+        flexBasis: root ? undefined : 0,
+        flexGrow: root ? undefined : flexGrow,
+        height: root && rootBox.height > 0 ? rootBox.height : undefined,
+        width: root && rootBox.width > 0 ? rootBox.width : undefined,
+      }}
+    >
+      {node.children.map((child, index) => (
+        <PhotoMosaic
+          flexGrow={(childWeights[index] ?? 1) / childWeightTotal}
+          focusRects={focusRects}
+          items={items}
+          key={`${child.kind}-${index}-${child.kind === 'photo' ? child.item.photo.id : child.ratio}`}
+          node={child}
+          onSelect={onSelect}
+          rootBox={rootBox}
+          selectedId={selectedId}
+        />
+      ))}
+    </div>
+  );
+}
+
+function useElementSize<T extends HTMLElement>(): [
+  RefObject<T | null>,
+  { height: number; width: number },
+] {
+  const ref = useRef<T>(null);
+  const [size, setSize] = useState({ height: 0, width: 0 });
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (element === null) return;
+    const update = () => {
+      const rect = element.getBoundingClientRect();
+      setSize((current) =>
+        current.height === rect.height && current.width === rect.width
+          ? current
+          : { height: rect.height, width: rect.width },
+      );
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, size];
 }

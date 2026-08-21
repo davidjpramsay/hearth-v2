@@ -543,6 +543,8 @@ describe('shared wire schemas', () => {
         url: '/demo/family-breakfast.webp',
         alt: 'Two fictional household members set the breakfast table together.',
         orientation: 'landscape',
+        width: 1536,
+        height: 1024,
       }).url,
     ).toBe('/demo/family-breakfast.webp');
     expect(

@@ -409,6 +409,8 @@ describe('Hearth v2 API', () => {
       url: '/demo/family-breakfast.webp',
       alt: 'Ezra and Maya set the breakfast table together.',
       orientation: 'landscape',
+      width: 1200,
+      height: 800,
     });
     expect(week.json().days).toHaveLength(7);
     expect(week.json().days[0].forecast).toEqual({

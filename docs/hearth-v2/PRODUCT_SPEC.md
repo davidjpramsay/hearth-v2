@@ -123,12 +123,15 @@ Can understand the current household state and use clearly exposed room controls
   also be permanently deleted after explicit confirmation. Hearth must never delete an original
   from the optional read-only Synology import folder: remove that original in Synology and run
   **Check folder**, or hide its Hearth projection instead.
-- Preserve aspect ratio and use tasteful cropping/background treatment.
+- Preserve each image's native aspect ratio. Normal gallery and Today previews must not crop,
+  stretch, frame or place a contrasting panel behind the photograph; rounded clipping and a
+  temporary focus halo are allowed.
 - Present the browsable Photos screen as a full-screen orientation-aware collage with no duplicate
-  image and no narrow leftover strips. Choose the composition from the visible photo orientations:
-  a portrait anchors a mixed five-photo set beside a 2×2 landscape grid, while an all-landscape set
-  uses a balanced large-feature mosaic. Cycle occupants and selection calmly about every 45
-  seconds without replacing a suitable portrait anchor with a skinny column; pause automatic
+  image and no narrow leftover strips. Compose the selected photo and up to four supports from their
+  stored pixel dimensions: the selected image remains a substantial full-height anchor while the
+  remaining images form one to three ratio-derived columns. Natural page background may remain as
+  negative space when the source shapes cannot form the viewport exactly. Cycle occupants and
+  selection calmly about every 45 seconds without turning portraits into landscape cells; pause automatic
   changes when the display requests reduced motion. On a phone held sideways, show three
   substantial rotating occupants instead of compressing all five into shallow strips.
 - Overlay only minimal next-event or household information in ambient mode.

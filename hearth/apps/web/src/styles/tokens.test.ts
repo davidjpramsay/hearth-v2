@@ -11,7 +11,10 @@ const runtimeTokens = new Set([
   '--member-colour',
   '--photo-collage-columns',
   '--photo-collage-rows',
+  '--photo-mosaic-grow',
+  '--photo-native-ratio',
   '--photo-rotation-duration',
+  '--today-photo-ratio',
 ]);
 
 describe('design tokens', () => {

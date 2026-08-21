@@ -274,7 +274,8 @@ Recipe/ingredient modelling is deferred. Grocery linkage should use explicit gen
 Do not expose Synology filesystem paths to clients. Derivatives should avoid repeatedly sending original multi-megabyte files to the television.
 
 `TodaySummary` may carry one nullable, same-origin photo preview containing only
-a safe derivative URL and family-readable alternative text. `PhotoGallery`
+a safe derivative URL, family-readable alternative text, normalized orientation and optional source
+dimensions used for exact-ratio layout. `PhotoGallery`
 returns the approved collection summary, source readiness, freshness, one
 nullable featured opaque ID and orientation-aware assets containing only safe
 same-origin display/thumbnail URLs. Phase 7 selects the Today preview through

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   arrangePhotoCollage,
+  buildPhotoMosaic,
+  fitMosaicInBox,
   nextPhotoId,
   photoCollageFeatureSide,
   photoCollageMode,
@@ -62,7 +64,7 @@ describe('photo collage arrangement', () => {
     }
   });
 
-  it('uses fewer larger tiles when a portrait-heavy set cannot form a truthful five-photo mosaic', () => {
+  it('keeps five portrait-heavy photos available for a ratio-driven mosaic', () => {
     const portraitHeavy = [
       photo('portrait-1', 'portrait'),
       photo('portrait-2', 'portrait'),
@@ -72,32 +74,52 @@ describe('photo collage arrangement', () => {
     ];
 
     const selectedPortrait = arrangePhotoCollage(portraitHeavy, 'portrait-1');
-    expect(selectedPortrait).toHaveLength(3);
-    expect(selectedPortrait.map((item) => item.photo.orientation).sort()).toEqual([
-      'landscape',
-      'portrait',
-      'portrait',
-    ]);
+    expect(selectedPortrait).toHaveLength(5);
+    expect(selectedPortrait.filter((item) => item.photo.orientation === 'portrait')).toHaveLength(
+      4,
+    );
     expect(selectedPortrait[0]?.photo.id).toBe('portrait-1');
 
     const selectedLandscape = arrangePhotoCollage(portraitHeavy, 'landscape-1');
-    expect(selectedLandscape).toHaveLength(3);
+    expect(selectedLandscape).toHaveLength(5);
     expect(selectedLandscape[0]?.photo.id).toBe('landscape-1');
     expect(selectedLandscape.filter((item) => item.photo.orientation === 'portrait')).toHaveLength(
-      2,
+      4,
     );
   });
 
-  it('uses four equal portrait rails when every available photo is portrait', () => {
+  it('uses five true-ratio portrait tiles when every available photo is portrait', () => {
     const allPortrait = Array.from({ length: 6 }, (_, index) =>
       photo(`portrait-${index + 1}`, 'portrait'),
     );
     const arranged = arrangePhotoCollage(allPortrait, 'portrait-5');
 
-    expect(arranged).toHaveLength(4);
+    expect(arranged).toHaveLength(5);
     expect(arranged[0]?.photo.id).toBe('portrait-5');
-    expect(arranged.every((item) => item.placement.rowSpan === 4)).toBe(true);
-    expect(arranged.every((item) => item.placement.columnSpan === 3)).toBe(true);
+    const mosaic = buildPhotoMosaic(arranged, 'start');
+    expect(mosaic).not.toBeNull();
+    expect(Object.keys(mosaic!.rects)).toHaveLength(5);
+  });
+
+  it('preserves every native image ratio in the generated mosaic geometry', () => {
+    const arranged = arrangePhotoCollage(
+      [...photos, photo('portrait-2', 'portrait')],
+      'portrait-1',
+    );
+    const mosaic = buildPhotoMosaic(arranged, 'start');
+    expect(mosaic).not.toBeNull();
+
+    for (const item of arranged) {
+      const rect = mosaic!.rects[item.photo.id];
+      expect(rect).toBeDefined();
+      const renderedRatio = (rect!.width * mosaic!.root.ratio) / rect!.height;
+      expect(renderedRatio).toBeCloseTo(item.photo.width / item.photo.height, 6);
+    }
+  });
+
+  it('fits a mosaic into the available stage without changing its ratio', () => {
+    expect(fitMosaicInBox(2, 1000, 400)).toEqual({ height: 400, width: 800 });
+    expect(fitMosaicInBox(2, 600, 400)).toEqual({ height: 300, width: 600 });
   });
 
   it('uses the selected landscape as the large anchor when no portrait exists', () => {

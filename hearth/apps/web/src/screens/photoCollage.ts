@@ -22,6 +22,30 @@ export interface PhotoCollageItem {
   slot: PhotoCollageSlot;
 }
 
+export interface PhotoMosaicRect {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+}
+
+export type PhotoMosaicNode =
+  | {
+      item: PhotoCollageItem;
+      kind: 'photo';
+      ratio: number;
+    }
+  | {
+      children: PhotoMosaicNode[];
+      kind: 'column' | 'row';
+      ratio: number;
+    };
+
+export interface PhotoMosaicLayout {
+  rects: Readonly<Record<string, PhotoMosaicRect>>;
+  root: PhotoMosaicNode;
+}
+
 type Placement = Omit<PhotoCollagePlacement, 'columns' | 'rows'>;
 
 const SUPPORT_SLOTS: PhotoCollageSlot[] = ['support-1', 'support-2', 'support-3', 'support-4'];
@@ -83,29 +107,143 @@ export function mirroredPlacement(
 }
 
 function selectBalancedPhotos(ordered: PhotoAsset[]): PhotoAsset[] {
-  const selected = ordered[0];
-  if (selected === undefined) return [];
-
-  const portraits = ordered.filter((photo) => photo.orientation === 'portrait');
-  const wide = ordered.filter((photo) => photo.orientation !== 'portrait');
-  if (wide.length === 0) return portraits.slice(0, Math.min(4, portraits.length));
-
-  const portraitTarget = 2;
-  const chosen: PhotoAsset[] = [selected];
-  addUnique(chosen, portraits, portraitTarget - Number(selected.orientation === 'portrait'));
-  addUnique(chosen, wide, PHOTO_COLLAGE_SIZE - chosen.length);
-
-  // Do not fill remaining cells with extra portraits. Two honest portrait rails
-  // plus wide bands are preferable to squeezing every available file into view.
-  return chosen;
+  return ordered.slice(0, PHOTO_COLLAGE_SIZE);
 }
 
-function addUnique(target: PhotoAsset[], source: PhotoAsset[], count: number): void {
-  for (const photo of source) {
-    if (count <= 0) return;
-    if (target.some((candidate) => candidate.id === photo.id)) continue;
-    target.push(photo);
-    count -= 1;
+export function buildPhotoMosaic(
+  items: PhotoCollageItem[],
+  featureSide: PhotoCollageFeatureSide,
+  targetRatio = 2.55,
+): PhotoMosaicLayout | null {
+  const feature = items[0];
+  if (feature === undefined) return null;
+
+  const featureNode = photoNode(feature);
+  const supportItems = items.slice(1);
+  const supportColumns = bestSupportColumns(supportItems, featureNode.ratio, targetRatio);
+  const children = [featureNode, ...supportColumns];
+  if (featureSide === 'end') children.reverse();
+  const root = rowNode(children);
+  return { root, rects: mosaicRects(root) };
+}
+
+export function fitMosaicInBox(
+  ratio: number,
+  boxWidth: number,
+  boxHeight: number,
+): { height: number; width: number } {
+  if (ratio <= 0 || boxWidth <= 0 || boxHeight <= 0) return { height: 0, width: 0 };
+  const boxRatio = boxWidth / boxHeight;
+  return boxRatio > ratio
+    ? { height: boxHeight, width: boxHeight * ratio }
+    : { height: boxWidth / ratio, width: boxWidth };
+}
+
+function bestSupportColumns(
+  items: PhotoCollageItem[],
+  featureRatio: number,
+  targetRatio: number,
+): PhotoMosaicNode[] {
+  if (items.length === 0) return [];
+
+  let best: { columns: PhotoMosaicNode[]; score: number } | null = null;
+  const maxColumns = Math.min(items.length, 3);
+  for (let columnCount = 1; columnCount <= maxColumns; columnCount += 1) {
+    for (const groups of columnAssignments(items, columnCount)) {
+      const columns = groups.map((group) => columnNode(group.map(photoNode)));
+      const rootRatio = featureRatio + columns.reduce((sum, column) => sum + column.ratio, 0);
+      const smallestColumn = Math.min(...columns.map((column) => column.ratio));
+      const score =
+        Math.abs(Math.log(rootRatio / targetRatio)) +
+        Math.max(0, 0.34 - smallestColumn) * 0.75 +
+        Math.abs(columnCount - 2) * 0.015;
+      if (best === null || score < best.score) best = { columns, score };
+    }
+  }
+  return best?.columns ?? [columnNode(items.map(photoNode))];
+}
+
+function columnAssignments(items: PhotoCollageItem[], columnCount: number): PhotoCollageItem[][][] {
+  if (columnCount === 1) return [[items]];
+  const results: PhotoCollageItem[][][] = [];
+  const assignments = Array.from({ length: items.length }, () => 0);
+
+  function visit(index: number) {
+    if (index === items.length) {
+      const groups = Array.from({ length: columnCount }, () => [] as PhotoCollageItem[]);
+      assignments.forEach((column, itemIndex) => {
+        const item = items[itemIndex];
+        if (item !== undefined) groups[column]?.push(item);
+      });
+      if (groups.every((group) => group.length > 0)) results.push(groups);
+      return;
+    }
+    for (let column = 0; column < columnCount; column += 1) {
+      assignments[index] = column;
+      visit(index + 1);
+    }
+  }
+
+  visit(0);
+  return results;
+}
+
+function photoNode(item: PhotoCollageItem): PhotoMosaicNode {
+  return { item, kind: 'photo', ratio: photoRatio(item.photo) };
+}
+
+function rowNode(children: PhotoMosaicNode[]): PhotoMosaicNode {
+  return {
+    children,
+    kind: 'row',
+    ratio: children.reduce((sum, child) => sum + child.ratio, 0),
+  };
+}
+
+function columnNode(children: PhotoMosaicNode[]): PhotoMosaicNode {
+  const inverseRatio = children.reduce((sum, child) => sum + 1 / child.ratio, 0);
+  return { children, kind: 'column', ratio: 1 / inverseRatio };
+}
+
+function photoRatio(photo: PhotoAsset): number {
+  return photo.width / photo.height;
+}
+
+function mosaicRects(root: PhotoMosaicNode): Readonly<Record<string, PhotoMosaicRect>> {
+  const rects: Record<string, PhotoMosaicRect> = {};
+  visitNode(root, { height: 1, width: root.ratio, x: 0, y: 0 }, rects);
+  for (const rect of Object.values(rects)) {
+    rect.x /= root.ratio;
+    rect.width /= root.ratio;
+  }
+  return rects;
+}
+
+function visitNode(
+  node: PhotoMosaicNode,
+  rect: PhotoMosaicRect,
+  rects: Record<string, PhotoMosaicRect>,
+): void {
+  if (node.kind === 'photo') {
+    rects[node.item.photo.id] = { ...rect };
+    return;
+  }
+
+  if (node.kind === 'row') {
+    let x = rect.x;
+    for (const child of node.children) {
+      const width = rect.height * child.ratio;
+      visitNode(child, { height: rect.height, width, x, y: rect.y }, rects);
+      x += width;
+    }
+    return;
+  }
+
+  let y = rect.y;
+  for (const child of node.children) {
+    const height = rect.width / child.ratio;
+    visitNode(child, { height, width: rect.width, x: rect.x, y }, rects);
+    y += height;
   }
 }
 

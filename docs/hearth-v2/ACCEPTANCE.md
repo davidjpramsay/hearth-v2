@@ -186,7 +186,8 @@ Chromium fallback produced the retained evidence.
 - At 1920×1080 and 1366×768, every supported Today combination remains inside one television
   viewport with no page or content-panel scrolling. Portrait photos use the right-side composition,
   landscape/square photos use the wide composition, no-photo summaries reclaim the available width,
-  and each source remains fully visible without distortion.
+  and each source remains fully visible at its native pixel ratio without distortion, crop or a
+  persistent photo frame.
 - With multiple approved photos, Today advances the preview after five visible minutes and recomposes
   for the next photo's stored orientation. Photos Pause/Resume also governs Today for that display
   session; reduced motion and hidden documents prevent automatic advancement.
@@ -288,10 +289,10 @@ live-system commissioning tasks requiring owner approval.
 - Automatic collage rotation can be paused and resumed using only the remote or touch, does not
   advance while the document is hidden, and remains still when reduced motion is requested.
 - The normal gallery shows each visible photo once and chooses a stable composition from every
-  visible photo's stored orientation. Portraits render in substantial tall rails without cropping;
-  landscape/square photos render in wide bands. A mixed set may intentionally show fewer than five
-  occupants when five truthful regions would create a skinny portrait strip or shallow landscape
-  ribbon. A portrait-only set exposes four equal tall rails. Rotation occurs every
+  visible photo's stored pixel dimensions. The selected image remains a substantial full-height
+  anchor and up to four supports form ratio-derived columns. Every leaf renders at its exact native
+  ratio without crop, stretch, persistent frame, shadow or backing card; natural page background may
+  remain as negative space. Rotation occurs every
   45 seconds, exposes subtle visible progress to the next composition and remains static under
   reduced motion. The television page has no horizontal or vertical overflow; phone portrait uses
   orientation-aware spans and phone landscape shows three substantial rotating occupants rather

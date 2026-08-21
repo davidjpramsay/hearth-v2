@@ -258,6 +258,8 @@ export const TodayPhotoSummarySchema = z.object({
   url: SameOriginAssetUrlSchema,
   alt: z.string().min(1).max(180),
   orientation: PhotoOrientationSchema,
+  width: z.number().int().positive().max(20_000).optional(),
+  height: z.number().int().positive().max(20_000).optional(),
 });
 
 export const PhotoAssetSchema = z.object({

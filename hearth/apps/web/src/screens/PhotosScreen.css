@@ -88,40 +88,53 @@
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(var(--photo-collage-columns, 12), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--photo-collage-rows, 4), minmax(0, 1fr));
-  gap: 13px;
+  place-items: center;
+}
+.photo-mosaic-node {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+}
+.photo-mosaic-node--root {
+  max-width: 100%;
+  max-height: 100%;
+}
+.photo-mosaic-node--row {
+  flex-direction: row;
+}
+.photo-mosaic-node--column {
+  flex-direction: column;
 }
 .photo-thumbnail {
   position: relative;
   min-width: 0;
   min-height: 0;
   padding: 0;
-  border: 2px solid transparent;
+  border: 0;
   border-radius: 17px;
   overflow: hidden;
-  background: var(--surface);
-  box-shadow: 0 5px 15px rgb(48 50 47 / 7%);
+  background: transparent;
   cursor: pointer;
 }
 .photo-thumbnail--selected {
-  border-color: var(--eucalyptus);
-  box-shadow: 0 0 0 3px rgb(63 114 81 / 17%);
+  border-color: transparent;
+  box-shadow: none;
+}
+.photo-thumbnail:focus-visible {
+  outline: 4px solid var(--sky);
+  outline-offset: 5px;
 }
 .photo-thumbnail__image {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   animation: photo-collage-arrive 1.8s ease both;
 }
-.photo-thumbnail--portrait .photo-thumbnail__image,
-.photo-thumbnail--square .photo-thumbnail__image {
-  object-fit: contain;
-}
 .photos-hero__image {
-  filter: drop-shadow(0 10px 17px rgb(45 49 47 / 12%));
+  filter: none;
 }
 @keyframes photo-collage-arrive {
   from {
@@ -204,7 +217,10 @@
     height: clamp(460px, 62vh, 560px);
   }
   .photos-collage {
-    gap: 10px;
+    padding-inline: 2px;
+  }
+  .photo-mosaic-node {
+    gap: 9px;
   }
 }
 
@@ -214,8 +230,13 @@
   }
   .photos-screen .screen-header {
     align-items: flex-start;
+    gap: 12px;
+  }
+  .photos-screen .screen-header > div:first-child {
+    min-width: 0;
   }
   .photos-screen .screen-header__actions {
+    flex: 0 0 auto;
     display: block;
   }
   .photos-header-actions {
@@ -223,12 +244,14 @@
   }
   .photos-rotation-action,
   .photos-ambient-action {
+    width: 50px;
     min-height: 50px;
-    padding: 0 14px;
+    padding: 0;
     border-width: 1px;
     border-radius: 12px;
     gap: 7px;
-    font-size: 16px;
+    justify-content: center;
+    font-size: 0;
   }
   .photos-rotation-action svg,
   .photos-ambient-action svg {
@@ -253,27 +276,35 @@
   .photos-collage {
     height: auto;
     min-height: 515px;
-    grid-auto-flow: dense;
-    grid-auto-rows: 135px;
+    align-items: start;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: none;
     gap: 9px;
   }
-  .photo-collage__tile {
-    grid-column: auto !important;
-    grid-row: auto !important;
-  }
-  .photo-thumbnail--landscape,
-  .photo-thumbnail--square {
-    grid-column: span 2 !important;
-    grid-row: span 1 !important;
-  }
-  .photo-thumbnail--portrait {
-    grid-column: span 1 !important;
-    grid-row: span 2 !important;
+  .photo-mosaic-node {
+    display: contents;
   }
   .photo-thumbnail {
-    border-radius: 13px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: var(--photo-native-ratio);
+    flex: none !important;
+  }
+  .photos-screen .photo-thumbnail.focusable:focus-visible {
+    outline: 0;
+    box-shadow: none;
+    transform: none;
+  }
+  .photo-thumbnail--landscape {
+    grid-column: span 2;
+  }
+  .photo-thumbnail--portrait,
+  .photo-thumbnail--square {
+    grid-column: span 1;
+  }
+  .photos-collage--portrait-count-1 .photo-thumbnail--portrait {
+    width: min(58%, 230px);
+    grid-column: 1 / -1;
+    justify-self: center;
   }
   .photo-ambient__overlay {
     left: 16px;
@@ -296,24 +327,26 @@
     padding-bottom: 88px;
   }
   .photos-layout {
-    height: 230px;
-    min-height: 230px;
+    height: 150px;
+    min-height: 150px;
   }
   .photos-source-line {
     display: none;
   }
   .photos-collage {
-    height: 230px;
-    min-height: 230px;
+    height: 150px;
+    min-height: 150px;
     display: flex;
     align-items: stretch;
+    justify-content: center;
   }
-  .photo-thumbnail--landscape,
-  .photo-thumbnail--square {
-    flex: 1.3 1 0;
+  .photo-mosaic-node {
+    display: flex;
   }
-  .photo-thumbnail--portrait {
-    flex: 0.7 1 0;
+  .photo-thumbnail {
+    height: 100%;
+    aspect-ratio: auto;
+    flex: var(--photo-mosaic-grow) 1 0 !important;
   }
 }
 
