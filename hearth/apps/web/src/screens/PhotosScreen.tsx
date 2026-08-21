@@ -12,6 +12,7 @@ import { PhotoAssetImage } from '../components/PhotoAssetImage';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
+import { usePhotoRotationPreference } from '../hooks/usePhotoRotationPreference';
 import { usePhotosQuery } from '../hooks/usePhotoQueries';
 import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -40,7 +41,7 @@ export function PhotosScreen({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [manualSelectionRevision, setManualSelectionRevision] = useState(0);
   const [ambient, setAmbient] = useState(false);
-  const [rotationPaused, setRotationPaused] = useState(false);
+  const { rotationPaused, togglePhotoRotation } = usePhotoRotationPreference();
   const [pageVisible, setPageVisible] = useState(() => document.visibilityState === 'visible');
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -173,7 +174,7 @@ export function PhotosScreen({
   }
 
   function toggleRotation() {
-    setRotationPaused((paused) => !paused);
+    togglePhotoRotation();
     setManualSelectionRevision((current) => current + 1);
   }
 

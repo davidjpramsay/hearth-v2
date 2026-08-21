@@ -187,6 +187,9 @@ Chromium fallback produced the retained evidence.
   viewport with no page or content-panel scrolling. Portrait photos use the right-side composition,
   landscape/square photos use the wide composition, no-photo summaries reclaim the available width,
   and each source remains fully visible without distortion.
+- With multiple approved photos, Today advances the preview after five visible minutes and recomposes
+  for the next photo's stored orientation. Photos Pause/Resume also governs Today for that display
+  session; reduced motion and hidden documents prevent automatic advancement.
 - When Daily Bible verse is enabled, demo mode shows fictional copy and private mode shows an
   attributed ESV passage only when its server secret is configured. Select opens a Back-safe full
   reading; a missing key or provider outage cannot take down Today, and cached text is marked stale.

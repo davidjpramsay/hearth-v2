@@ -77,6 +77,10 @@ photo's typed orientation: portrait photos use a substantial right-side rail, la
 photos use a shorter wide panel, and no-photo layouts return the full lower width to summary bands.
 One to four bands become compact tiles without reserving empty rows. The phone keeps its natural
 single-column scroll because it is an editing and companion surface rather than a wall appliance.
+When more than one approved family photo is available, the Today preview advances after about five
+minutes of visible screen time. The Photos screen Pause/Resume control governs this preview for the
+current display session as well as the gallery. A hidden document does not consume the interval, and
+reduced-motion devices keep the preview static. A reload starts a fresh automatic display session.
 
 The settings surface includes live TV and Phone previews built from the current household summary.
 They show the real composition produced by the section switches, not a draggable editor or a static

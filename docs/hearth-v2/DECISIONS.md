@@ -948,3 +948,20 @@ Official platform references:
   files do not become ribbons and each supported television composition stays within one viewport.
   The visible count can vary with content; rotation remains responsible for bringing every approved
   photo through over time rather than squeezing every file into each arrangement.
+
+## D-060 — Today photo rotation is slow and display-local
+
+- Date: 2026-08-21
+- Status: accepted
+- Context: A single Today photo could remain unchanged indefinitely even though the approved family
+  collection contained other useful images. Reusing the gallery's 45-second cadence would make the
+  household overview feel active and distracting, while a separate unexplained pause setting would
+  make the two photo surfaces disagree on the same display.
+- Choice: Advance Today after five minutes of visible screen time when at least two approved photos
+  exist. Recompose Today from each next asset's normalized orientation. Share one in-memory
+  Pause/Resume state with the Photos gallery for the current display session; do not persist it as
+  household or device configuration. Stop the timer while the document is hidden and leave the
+  preview static when reduced motion is requested. A reload begins a fresh automatic session.
+- Consequence: Today gently circulates family photos without behaving like ambient mode. Pausing the
+  gallery predictably freezes Today, hidden time cannot cause an immediate surprise change on return,
+  and no database migration or browser contract is required.

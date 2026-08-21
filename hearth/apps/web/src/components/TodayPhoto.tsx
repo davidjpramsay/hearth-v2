@@ -7,6 +7,7 @@ export function TodayPhoto({ photo }: { photo: TodayPhotoData }) {
     <figure
       className={`today-photo today-photo--${photo.orientation}`}
       data-photo-orientation={photo.orientation}
+      data-photo-url={photo.url}
     >
       <img
         alt={photo.alt}

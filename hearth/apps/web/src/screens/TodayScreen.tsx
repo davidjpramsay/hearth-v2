@@ -16,6 +16,9 @@ import { EmptyState, FailureState, LoadingState, StatusBanner } from '../compone
 import { SummaryBand } from '../components/SummaryBand';
 import { TodayPhoto } from '../components/TodayPhoto';
 import { useChoreMutation } from '../hooks/useChoreMutation';
+import { usePhotoRotationPreference } from '../hooks/usePhotoRotationPreference';
+import { usePhotosQuery } from '../hooks/usePhotoQueries';
+import { useTodayPhotoRotation } from '../hooks/useTodayPhotoRotation';
 import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
@@ -28,6 +31,14 @@ export function TodayScreen({
   preparing: boolean;
 }) {
   const query = useTodayQuery(!preparing);
+  const todayPhoto = query.data?.sections.photo === true ? query.data.photo : null;
+  const photosQuery = usePhotosQuery(!preparing && todayPhoto !== null);
+  const { rotationPaused } = usePhotoRotationPreference();
+  const rotatingPhoto = useTodayPhotoRotation({
+    fallbackPhoto: todayPhoto ?? null,
+    gallery: todayPhoto === null ? undefined : photosQuery.data,
+    paused: rotationPaused,
+  });
   const runtime = useHearthRuntime();
   const mutation = useChoreMutation();
   const online = useOnlineStatus(scenario === 'offline');
@@ -53,8 +64,8 @@ export function TodayScreen({
     today.sections.notice,
     today.sections.dailyVerse,
   ].filter(Boolean).length;
-  const showPhoto = today.sections.photo && today.photo !== null;
-  const photoOrientation = showPhoto && today.photo !== null ? today.photo.orientation : 'none';
+  const showPhoto = today.sections.photo && rotatingPhoto !== null;
+  const photoOrientation = showPhoto && rotatingPhoto !== null ? rotatingPhoto.orientation : 'none';
   const dashboardDensity =
     eventOverflowCount > 0 || choreOverflowCount > 0 || visibleSummaryCount >= 3
       ? 'dense'
@@ -313,7 +324,7 @@ export function TodayScreen({
                 ) : null}
               </div>
             )}
-            {showPhoto && today.photo !== null ? (
+            {showPhoto && rotatingPhoto !== null ? (
               <Link
                 aria-label="Open family photos"
                 className="today-photo-action focusable"
@@ -324,7 +335,7 @@ export function TodayScreen({
                 data-focus-up={choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId}
                 to="/photos"
               >
-                <TodayPhoto photo={today.photo} />
+                <TodayPhoto photo={rotatingPhoto} />
               </Link>
             ) : null}
           </div>

@@ -201,7 +201,7 @@ The default Today screen should include, in order of prominence:
 4. Dinner and the most relevant list summary.
 5. One concise household notice.
 6. Home-scene shortcuts in the navigation rail/dock.
-7. One optional, orientation-safe preview from the approved family photo source. It should be large enough to appreciate from the sofa while remaining secondary to plans and chores; Today does not become a slideshow or replace ambient mode.
+7. One optional, orientation-safe preview from the approved family photo source. It should be large enough to appreciate from the sofa while remaining secondary to plans and chores. When multiple approved photos exist, the preview may advance at a calm five-minute visible-screen cadence; Today does not become a rapid slideshow or replace ambient mode.
 
 It must not become a grid of tiny widgets. Information can be prioritised and paged rather than simultaneously exposed.
 When a television column contains more plans or chores than its calm visible limit, Today shows an

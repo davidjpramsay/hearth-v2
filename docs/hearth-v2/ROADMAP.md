@@ -396,6 +396,9 @@ responsive content-dependent collage placement with uncropped portrait rails, wi
 bands, fewer larger tiles when a mixed set cannot truthfully fill five regions, calm
 45-second automatic and reduced-motion-safe occupant rotation, a three-image phone-landscape adaptation, ambient
 slideshow, immediate remote exit, cached-source states and corrupt-image fallback. The private
+Today preview independently advances at a calm five-minute visible-screen cadence, uses the next
+asset's normalized orientation to recompute its bounded composition, and shares the display-session
+Pause/Resume state with Photos; hidden and reduced-motion displays remain static. The private
 server now includes direct adult companion uploads into private managed Synology storage, decoded
 format/size checks, content-hash deduplication, orientation-correct managed/display/thumbnail WebPs,
 opaque immutable asset routes, and an optional read-only Synology-folder bulk importer with
