@@ -765,6 +765,52 @@ describe('Hearth v2 API', () => {
     });
   });
 
+  it('permanently removes managed photos through an adult-only replay-safe command', async () => {
+    const app = server();
+    const url =
+      '/api/v1/households/household_hearth_demo/photo-assets/photo_family_breakfast/deletions';
+    const headers = { 'x-hearth-demo-actor': 'member_maya' };
+    const first = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: { requestId: 'request_photo_delete_http' },
+    });
+    const replay = await app.inject({
+      method: 'POST',
+      url,
+      headers,
+      payload: { requestId: 'request_photo_delete_http' },
+    });
+    const child = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/photo-assets/photo_coastal_picnic/deletions',
+      headers: { 'x-hearth-demo-actor': 'member_ezra' },
+      payload: { requestId: 'request_photo_delete_child' },
+    });
+    const invalid = await app.inject({ method: 'POST', url, headers, payload: {} });
+    const gallery = await app.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/photos',
+    });
+
+    expect(first.json()).toMatchObject({
+      replayed: false,
+      deletedAssetId: 'photo_family_breakfast',
+      status: { visiblePhotoCount: 4, managedPhotoCount: 4 },
+      audit: { action: 'photo.delete', actorId: 'member_maya' },
+    });
+    expect(replay.json()).toMatchObject({
+      replayed: true,
+      audit: { id: first.json().audit.id },
+    });
+    expect(child.statusCode).toBe(403);
+    expect(child.json().error.code).toBe('FORBIDDEN');
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe('VALIDATION_ERROR');
+    expect(gallery.json().photos).toHaveLength(4);
+  });
+
   it('serves only immutable same-origin photo derivatives with safe response headers', async () => {
     const provider = new DerivativePhotoSourceProvider();
     const app = buildServer({ logger: false, photoRepository: new PhotoService(provider) });

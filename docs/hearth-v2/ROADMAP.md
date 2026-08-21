@@ -403,7 +403,9 @@ server now includes direct adult companion uploads into private managed Synology
 format/size checks, content-hash deduplication, orientation-correct managed/display/thumbnail WebPs,
 opaque immutable asset routes, and an optional read-only Synology-folder bulk importer with
 incremental fingerprinting and adult-only audited checks. Admin shows aggregate managed/import
-status and persistent favourite/hide/restore curation. Hidden assets
+status and persistent favourite/hide/restore curation. The phone administration surface now adds
+source badges, bulk selection, bulk hide/restore and confirmed permanent deletion for managed
+uploads only; optional-folder originals remain protected by the read-only adapter. Hidden assets
 remain indexed but are excluded from Today, gallery and ambient projections. A production-oriented two-container Synology
 scaffold now builds and runs as both ARM64 and the DS920+ `linux/amd64` target,
 with same-origin proxying, non-root/read-only processes, readiness gating,
@@ -441,9 +443,10 @@ physical-TCL comfort assessment remains part of the household pilot.
 
 ### Work
 
-- Commission direct phone uploads against the private Synology data mount and confirm managed photos
-  survive a container rebuild plus encrypted backup/restore. Retain the existing read-only folder
-  only as an optional bulk-import path if the household finds it useful.
+- Confirm direct phone uploads and managed-photo deletion against the private Synology data mount,
+  then confirm the remaining managed photos survive a container rebuild plus encrypted
+  backup/restore. Retain the existing read-only folder only as an optional bulk-import path if the
+  household finds it useful.
 - Add ambient slideshow and screen/presence coordination.
 - Commission the verified Docker/Compose scaffold on the approved private Synology HTTPS origin.
 - Commission the implemented System Health and online-backup service, configure Synology's

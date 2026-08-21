@@ -313,6 +313,11 @@ live-system commissioning tasks requiring owner approval.
   in adult administration with a safe derivative preview, while private filesystem paths never
   reach any response or log. Synology metadata and recycle directories such as `@eaDir` and
   `#recycle` are ignored rather than making the approved-folder check fail.
+- Adult administration identifies managed uploads and optional-folder imports, supports bulk
+  selection for hide/restore and permanently deletes one or more managed uploads only after an
+  explicit confirmation. The managed master, display and thumbnail files disappear, the command is
+  idempotent and one path-free audit event remains. Imported originals cannot be deleted through
+  Hearth and the UI explains the source-folder plus **Check folder** workflow.
 
 Status as of 2026-08-21: the local browser/server slice passes a unique-image,
 content-dependent orientation-aware collage with bounded tile geometry, uncropped portrait rails,

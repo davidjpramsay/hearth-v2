@@ -589,6 +589,80 @@ test('phone administration explains an unavailable optional import without block
   await expect(page.locator('body')).not.toContainText('/photos-source');
 });
 
+test('@visual phone administration bulk-selects and permanently removes managed photos', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/photos');
+  await page.getByRole('button', { name: 'Select photos' }).click();
+  const first = page.locator('[data-focus-id="photo-curation-select-photo_coastal_picnic"]');
+  const second = page.locator('[data-focus-id="photo-curation-select-photo_family_breakfast"]');
+  await first.scrollIntoViewIfNeeded();
+  await first.click();
+  await second.click();
+  await expect(page.getByText('2 selected', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete uploads (2)' })).toBeEnabled();
+  await captureEvidence(page, {
+    path: resolve(evidence, 'photos-bulk-selection-phone.png'),
+    animations: 'disabled',
+  });
+
+  await page.getByRole('button', { name: 'Delete uploads (2)' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete 2 Hearth photos?' });
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keep photos' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('button', { name: 'Delete permanently' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: '2 photos deleted.' })).toBeVisible();
+  await expect(page.getByText('3 showing', { exact: true })).toBeVisible();
+  await expect(page.locator('.photo-curation-card')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Select photos' })).toBeFocused();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+});
+
+test('folder-imported photos can be hidden but not permanently deleted in Hearth', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/households/*/photo-source', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const data = (await response.json()) as {
+      photos: Array<{
+        id: string;
+        source: 'demo' | 'hearth-upload' | 'synology-folder';
+        canDeletePermanently: boolean;
+      }>;
+    };
+    const first = data.photos.find((photo) => photo.id === 'photo_coastal_picnic');
+    if (first !== undefined) {
+      first.source = 'synology-folder';
+      first.canDeletePermanently = false;
+    }
+    await route.fulfill({ response, json: data });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/photos');
+  await page.getByRole('button', { name: 'Select photos' }).click();
+  await page.locator('[data-focus-id="photo-curation-select-photo_coastal_picnic"]').click();
+  await expect(page.getByText('NAS folder', { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText(/from the NAS folder can be hidden but not deleted here/),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete uploads (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Hide (1)' })).toBeEnabled();
+});
+
 test('@visual photo curation remains calm in dark phone landscape', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 844, height: 390 });

@@ -35,6 +35,7 @@ export type IconName =
   | 'star'
   | 'television'
   | 'today'
+  | 'trash'
   | 'users'
   | 'wallet'
   | 'warning';
@@ -193,6 +194,12 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <rect x="3" y="4" width="18" height="17" rx="2" />
       <path d="M8 2v4M16 2v4M3 9h18M8 13h3v3H8z" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
     </>
   ),
   users: (

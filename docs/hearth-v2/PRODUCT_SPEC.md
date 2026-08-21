@@ -117,9 +117,12 @@ Can understand the current household state and use clearly exposed room controls
   Hearth stores bounded, orientation-correct managed masters and display derivatives in its private
   Synology data directory. A separately approved read-only Synology folder may bulk-import an
   existing collection, but is not required for normal use.
-- Let an authenticated adult favourite, unfavourite, hide and restore indexed photos from companion
-  administration. Favourites appear first; hidden photos remain indexed but never appear on Today,
-  in the gallery or in ambient mode.
+- Let an authenticated adult select one or more indexed photos in companion administration, then
+  favourite, unfavourite, hide or restore them. Favourites appear first; hidden photos remain
+  indexed but never appear on Today, in the gallery or in ambient mode. Phone-managed uploads may
+  also be permanently deleted after explicit confirmation. Hearth must never delete an original
+  from the optional read-only Synology import folder: remove that original in Synology and run
+  **Check folder**, or hide its Hearth projection instead.
 - Preserve aspect ratio and use tasteful cropping/background treatment.
 - Present the browsable Photos screen as a full-screen orientation-aware collage with no duplicate
   image and no narrow leftover strips. Choose the composition from the visible photo orientations:

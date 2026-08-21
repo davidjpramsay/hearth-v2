@@ -5,6 +5,7 @@ import type Database from 'better-sqlite3';
 import {
   AuditSummarySchema,
   PhotoCurationCommandResultSchema,
+  PhotoDeletionCommandResultSchema,
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
@@ -12,6 +13,7 @@ import {
   type DemoScenario,
   type PhotoCurationAction,
   type PhotoCurationCommandResult,
+  type PhotoDeletionCommandResult,
   type PhotoGallery,
   type PhotoSourceIndexStatus,
   type PhotoSourceRefreshResult,
@@ -51,6 +53,12 @@ export interface PhotoRepository {
     requestId: string,
     actor: CommandActor,
   ): Promise<PhotoCurationCommandResult>;
+  deleteManagedPhoto(
+    householdId: string,
+    assetId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<PhotoDeletionCommandResult>;
   getDerivative(
     householdId: string,
     assetId: string,
@@ -70,6 +78,7 @@ interface PhotoServiceOptions {
 const REFRESH_COMMAND_TYPE = 'photo-source:refresh';
 const CURATION_COMMAND_TYPE = 'photo-asset:curation';
 const UPLOAD_COMMAND_TYPE = 'photo-asset:upload';
+const DELETE_COMMAND_TYPE = 'photo-asset:delete';
 const CURATION_AUDIT_ACTION = {
   favourite: 'photo.favourite',
   unfavourite: 'photo.unfavourite',
@@ -86,6 +95,8 @@ export class PhotoService implements PhotoRepository {
   private readonly curations = new Map<string, Promise<PhotoCurationCommandResult>>();
   private readonly uploadReceipts = new Map<string, PhotoUploadResult>();
   private readonly uploads = new Map<string, Promise<PhotoUploadResult>>();
+  private readonly deletionReceipts = new Map<string, PhotoDeletionCommandResult>();
+  private readonly deletions = new Map<string, Promise<PhotoDeletionCommandResult>>();
   private readonly adminRepository: AdminRepository | undefined;
   private readonly database: InstanceType<typeof Database> | undefined;
   private readonly clock: HearthClock;
@@ -186,6 +197,34 @@ export class PhotoService implements PhotoRepository {
     });
     this.curations.set(receiptKey, curation);
     return curation;
+  }
+
+  async deleteManagedPhoto(
+    householdId: string,
+    assetId: string,
+    requestId: string,
+    actor: CommandActor,
+  ): Promise<PhotoDeletionCommandResult> {
+    if (actor.type !== 'member' || actor.source !== 'companion') {
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Only an adult using the companion can permanently remove family photos.',
+      );
+    }
+    await this.adminRepository?.getOverview(householdId, actor.id);
+    const receiptKey = `${householdId}:${DELETE_COMMAND_TYPE}:${requestId}`;
+    const active = this.deletions.get(receiptKey);
+    if (active !== undefined) {
+      const result = await active;
+      return { ...structuredClone(result), replayed: true };
+    }
+    const deletion = this.runDeletion(householdId, assetId, requestId, actor, receiptKey).finally(
+      () => {
+        if (this.deletions.get(receiptKey) === deletion) this.deletions.delete(receiptKey);
+      },
+    );
+    this.deletions.set(receiptKey, deletion);
+    return deletion;
   }
 
   async uploadPhoto(
@@ -291,6 +330,48 @@ export class PhotoService implements PhotoRepository {
     return structuredClone(result);
   }
 
+  private async runDeletion(
+    householdId: string,
+    assetId: string,
+    requestId: string,
+    actor: CommandActor,
+    receiptKey: string,
+  ): Promise<PhotoDeletionCommandResult> {
+    const receipt =
+      this.readDeletionReceipt(householdId, requestId) ?? this.deletionReceipts.get(receiptKey);
+    if (receipt !== undefined) return { ...structuredClone(receipt), replayed: true };
+
+    const deletion = await this.provider.deleteManagedPhoto(householdId, assetId);
+    if (deletion === null) {
+      throw new RepositoryError('NOT_FOUND', 'That family photo could not be found.');
+    }
+    if (deletion.kind === 'not-managed') {
+      throw new RepositoryError(
+        'CONFLICT',
+        'This photo comes from the Synology import folder. Remove the original there, then choose Check folder, or hide it in Hearth.',
+      );
+    }
+    const audit = AuditSummarySchema.parse({
+      id: `audit_${randomUUID()}`,
+      actorType: actor.type,
+      actorId: actor.id,
+      source: actor.source,
+      action: 'photo.delete',
+      targetId: assetId,
+      occurredAt: this.clock.now().toISOString(),
+      result: 'succeeded',
+    });
+    const result = PhotoDeletionCommandResultSchema.parse({
+      deletedAssetId: assetId,
+      status: statusFromSnapshot(householdId, deletion.snapshot),
+      audit,
+      replayed: false,
+    });
+    if (this.database === undefined) this.deletionReceipts.set(receiptKey, result);
+    else this.writeDeletionReceipt(householdId, requestId, result);
+    return structuredClone(result);
+  }
+
   private async runRefresh(
     householdId: string,
     requestId: string,
@@ -338,6 +419,8 @@ export class PhotoService implements PhotoRepository {
     this.curations.clear();
     this.uploadReceipts.clear();
     this.uploads.clear();
+    this.deletionReceipts.clear();
+    this.deletions.clear();
     this.provider.reset?.();
   }
 
@@ -453,6 +536,59 @@ export class PhotoService implements PhotoRepository {
         requestId,
         result.audit.result,
         JSON.stringify({ favourite: result.photo.favourite, hidden: result.photo.hidden }),
+      );
+    })();
+  }
+
+  private readDeletionReceipt(
+    householdId: string,
+    requestId: string,
+  ): PhotoDeletionCommandResult | undefined {
+    if (this.database === undefined) return undefined;
+    const row = this.database
+      .prepare(
+        `SELECT response_json FROM command_receipts
+         WHERE household_id = ? AND request_id = ? AND command_type = ?`,
+      )
+      .get(householdId, requestId, DELETE_COMMAND_TYPE) as { response_json: string } | undefined;
+    return row === undefined
+      ? undefined
+      : PhotoDeletionCommandResultSchema.parse(JSON.parse(row.response_json));
+  }
+
+  private writeDeletionReceipt(
+    householdId: string,
+    requestId: string,
+    result: PhotoDeletionCommandResult,
+  ): void {
+    this.database!.transaction(() => {
+      this.database!.prepare(
+        `INSERT INTO command_receipts
+          (household_id, request_id, command_type, response_json, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run(
+        householdId,
+        requestId,
+        DELETE_COMMAND_TYPE,
+        JSON.stringify(result),
+        this.clock.now().toISOString(),
+      );
+      this.database!.prepare(
+        `INSERT INTO audit_events
+          (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
+           target_type, target_id, request_id, result, safe_summary_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'photo-asset', ?, ?, ?, '{"permanent":true}')`,
+      ).run(
+        result.audit.id,
+        result.audit.occurredAt,
+        householdId,
+        result.audit.actorType,
+        result.audit.actorId,
+        result.audit.source,
+        result.audit.action,
+        result.audit.targetId,
+        requestId,
+        result.audit.result,
       );
     })();
   }

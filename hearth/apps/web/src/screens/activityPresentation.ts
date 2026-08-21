@@ -73,6 +73,7 @@ const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> 
   'photo.unfavourite': family('Family photo removed from favourites', 'star'),
   'photo.hide': family('Family photo hidden', 'image'),
   'photo.unhide': family('Family photo restored', 'image'),
+  'photo.delete': family('Family photo permanently removed', 'trash'),
   'auth.passkey.register': system('Adult passkey registered', 'shield'),
   'auth.passkey.revoke': system('Adult passkey removed', 'shield'),
   'auth.recovery-code.rotate': system('Recovery code renewed', 'shield'),

@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { PhotoCurationAction, PhotoCurationAsset, PhotoUploadResult } from '@hearth/shared';
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import './PhotosSettingsScreen.css';
@@ -19,6 +19,9 @@ export function PhotosSettingsScreen() {
   const queryClient = useQueryClient();
   const pendingCurationFocus = useRef<string | null>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [confirmDeletion, setConfirmDeletion] = useState(false);
   const refresh = useMutation({
     mutationFn: () => hearthApi.refreshPhotoSource(createRequestId('photo_scan')),
     onSuccess: async (result) => {
@@ -40,6 +43,63 @@ export function PhotosSettingsScreen() {
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
       ]);
+    },
+  });
+  const bulkCuration = useMutation({
+    mutationFn: async ({
+      photos,
+      action,
+    }: {
+      photos: PhotoCurationAsset[];
+      action: 'hide' | 'unhide';
+    }) => {
+      const results = [];
+      const failures: string[] = [];
+      for (const photo of photos) {
+        try {
+          results.push(
+            await hearthApi.updatePhotoCuration(
+              photo.id,
+              action,
+              createRequestId(`photo_bulk_${action}`),
+            ),
+          );
+        } catch (error) {
+          failures.push(error instanceof Error ? error.message : 'A photo could not be updated.');
+        }
+      }
+      return { action, results, failures };
+    },
+    onSuccess: async ({ results }) => {
+      const latest = results.at(-1);
+      if (latest !== undefined) queryClient.setQueryData(queryKeys.photoSource, latest.status);
+      setSelectedIds(new Set());
+      await invalidatePhotoQueries(queryClient);
+    },
+  });
+  const deletion = useMutation({
+    mutationFn: async (photos: PhotoCurationAsset[]) => {
+      const results = [];
+      const failures: string[] = [];
+      for (const photo of photos) {
+        try {
+          results.push(
+            await hearthApi.deleteManagedPhoto(photo.id, createRequestId('photo_delete')),
+          );
+        } catch (error) {
+          failures.push(error instanceof Error ? error.message : 'A photo could not be removed.');
+        }
+      }
+      return { results, failures };
+    },
+    onSuccess: async ({ results }) => {
+      const latest = results.at(-1);
+      if (latest !== undefined) queryClient.setQueryData(queryKeys.photoSource, latest.status);
+      setConfirmDeletion(false);
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+      pendingCurationFocus.current = 'photo-selection-toggle';
+      await invalidatePhotoQueries(queryClient);
     },
   });
   const upload = useMutation({
@@ -73,24 +133,29 @@ export function PhotosSettingsScreen() {
 
   useLayoutEffect(() => {
     if (
-      curation.isSuccess &&
+      (curation.isSuccess || deletion.isSuccess) &&
       pendingCurationFocus.current !== null &&
       focusById(pendingCurationFocus.current)
     ) {
       pendingCurationFocus.current = null;
     }
-  }, [curation.isSuccess, source.data]);
+  }, [curation.isSuccess, deletion.isSuccess, source.data]);
   if (source.isPending) return <AdminLoading />;
   if (source.isError) return <AdminError message={source.error.message} />;
 
   const data = source.data;
   const status = data.collection.source.status;
   const canScan = data.folderImport.configured;
+  const selectedPhotos = data.photos.filter((photo) => selectedIds.has(photo.id));
+  const hideablePhotos = selectedPhotos.filter((photo) => !photo.hidden);
+  const restorablePhotos = selectedPhotos.filter((photo) => photo.hidden);
+  const deletablePhotos = selectedPhotos.filter((photo) => photo.canDeletePermanently);
+  const importedSelections = selectedPhotos.length - deletablePhotos.length;
   const firstCurationFocus = data.photos[0]
-    ? primaryCurationFocusId(data.photos[0])
+    ? primaryCurationFocusId(data.photos[0], selectionMode)
     : 'photo-settings-view';
   const lastCurationFocus = data.photos.at(-1)
-    ? primaryCurationFocusId(data.photos.at(-1)!)
+    ? primaryCurationFocusId(data.photos.at(-1)!, selectionMode)
     : 'photo-upload-select';
   return (
     <AdminPage title="Photos" subtitle="Add and choose what appears on the family screen">
@@ -222,15 +287,71 @@ export function PhotosSettingsScreen() {
               collage or in ambient mode.
             </p>
           </div>
-          <div className="photo-curation__counts" aria-label="Photo visibility summary">
-            <span>
-              <strong>{data.visiblePhotoCount}</strong> showing
-            </span>
-            <span>
-              <strong>{data.hiddenPhotoCount}</strong> hidden
-            </span>
+          <div className="photo-curation__header-actions">
+            <div className="photo-curation__counts" aria-label="Photo visibility summary">
+              <span>
+                <strong>{data.visiblePhotoCount}</strong> showing
+              </span>
+              <span>
+                <strong>{data.hiddenPhotoCount}</strong> hidden
+              </span>
+            </div>
+            <button
+              aria-pressed={selectionMode}
+              className="photo-selection-toggle focusable"
+              data-focus-down={firstCurationFocus}
+              data-focus-id="photo-selection-toggle"
+              data-focus-up={canScan ? 'photo-source-refresh' : 'photo-upload-select'}
+              onClick={() => {
+                setSelectionMode((current) => !current);
+                setSelectedIds(new Set());
+              }}
+              type="button"
+            >
+              <Icon name="check" />
+              {selectionMode ? 'Done selecting' : 'Select photos'}
+            </button>
           </div>
         </header>
+        {selectionMode ? (
+          <div className="photo-bulk-actions" role="group" aria-label="Selected photo actions">
+            <div>
+              <strong>{selectedPhotos.length} selected</strong>
+              <span>
+                {importedSelections > 0
+                  ? `${importedSelections} from the NAS folder can be hidden but not deleted here.`
+                  : 'Choose one or more photos below.'}
+              </span>
+            </div>
+            <button
+              className="photo-bulk-action focusable"
+              disabled={hideablePhotos.length === 0 || bulkCuration.isPending}
+              onClick={() => bulkCuration.mutate({ photos: hideablePhotos, action: 'hide' })}
+              type="button"
+            >
+              <Icon name="eye-off" />
+              Hide ({hideablePhotos.length})
+            </button>
+            <button
+              className="photo-bulk-action focusable"
+              disabled={restorablePhotos.length === 0 || bulkCuration.isPending}
+              onClick={() => bulkCuration.mutate({ photos: restorablePhotos, action: 'unhide' })}
+              type="button"
+            >
+              <Icon name="eye" />
+              Restore ({restorablePhotos.length})
+            </button>
+            <button
+              className="photo-bulk-action photo-bulk-action--danger focusable"
+              disabled={deletablePhotos.length === 0 || deletion.isPending}
+              onClick={() => setConfirmDeletion(true)}
+              type="button"
+            >
+              <Icon name="trash" />
+              Delete uploads ({deletablePhotos.length})
+            </button>
+          </div>
+        ) : null}
         {data.photos.length === 0 ? (
           <div className="photo-curation__empty">
             <Icon name="image" />
@@ -240,32 +361,56 @@ export function PhotosSettingsScreen() {
           <div className="photo-curation__grid">
             {data.photos.map((photo, index) => (
               <PhotoCurationCard
-                busy={curation.isPending}
+                busy={curation.isPending || bulkCuration.isPending || deletion.isPending}
                 key={photo.id}
                 nextFocus={
                   data.photos[index + 1]
-                    ? primaryCurationFocusId(data.photos[index + 1]!)
+                    ? primaryCurationFocusId(data.photos[index + 1]!, selectionMode)
                     : 'photo-settings-view'
                 }
                 onAction={(action) => curation.mutate({ assetId: photo.id, action })}
+                onToggleSelection={() => {
+                  setSelectedIds((current) => {
+                    const next = new Set(current);
+                    if (next.has(photo.id)) next.delete(photo.id);
+                    else next.add(photo.id);
+                    return next;
+                  });
+                }}
                 photo={photo}
                 priorFocus={
                   data.photos[index - 1]
-                    ? primaryCurationFocusId(data.photos[index - 1]!)
-                    : canScan
-                      ? 'photo-source-refresh'
-                      : 'photo-upload-select'
+                    ? primaryCurationFocusId(data.photos[index - 1]!, selectionMode)
+                    : 'photo-selection-toggle'
                 }
+                selected={selectedIds.has(photo.id)}
+                selectionMode={selectionMode}
               />
             ))}
           </div>
         )}
       </section>
       {curation.isError ? <AdminError message={curation.error.message} /> : null}
+      {bulkCuration.isError ? <AdminError message={bulkCuration.error.message} /> : null}
+      {deletion.isError ? <AdminError message={deletion.error.message} /> : null}
       {curation.isSuccess ? (
         <p className="save-confirmation" role="status">
           {curationConfirmation(curation.data.audit.action)}
         </p>
+      ) : null}
+      {bulkCuration.isSuccess ? (
+        <BulkPhotoResult
+          action={bulkCuration.data.action}
+          changed={bulkCuration.data.results.length}
+          failures={bulkCuration.data.failures}
+        />
+      ) : null}
+      {deletion.isSuccess ? (
+        <BulkPhotoResult
+          action="delete"
+          changed={deletion.data.results.length}
+          failures={deletion.data.failures}
+        />
       ) : null}
       <div className="phase-note">
         <strong>Private Synology storage</strong>
@@ -284,6 +429,13 @@ export function PhotosSettingsScreen() {
         <Icon name="image" />
         View family photos
       </Link>
+      <PhotoDeleteDialog
+        count={deletablePhotos.length}
+        onCancel={() => setConfirmDeletion(false)}
+        onConfirm={() => deletion.mutate(deletablePhotos)}
+        open={confirmDeletion}
+        pending={deletion.isPending}
+      />
     </AdminPage>
   );
 }
@@ -326,18 +478,27 @@ function PhotoCurationCard({
   priorFocus,
   nextFocus,
   onAction,
+  selectionMode,
+  selected,
+  onToggleSelection,
 }: {
   photo: PhotoCurationAsset;
   busy: boolean;
   priorFocus: string;
   nextFocus: string;
   onAction: (action: PhotoCurationAction) => void;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelection: () => void;
 }) {
   const favouriteFocus = `photo-curation-favourite-${photo.id}`;
   const hideFocus = `photo-curation-hide-${photo.id}`;
   const restoreFocus = `photo-curation-restore-${photo.id}`;
+  const selectFocus = `photo-curation-select-${photo.id}`;
   return (
-    <article className={`photo-curation-card${photo.hidden ? ' photo-curation-card--hidden' : ''}`}>
+    <article
+      className={`photo-curation-card${photo.hidden ? ' photo-curation-card--hidden' : ''}${selected ? ' photo-curation-card--selected' : ''}`}
+    >
       <div className="photo-curation-card__preview">
         <PhotoAssetImage
           alt={photo.alt}
@@ -348,6 +509,7 @@ function PhotoCurationCard({
           <Icon name={photo.hidden ? 'eye-off' : photo.favourite ? 'star' : 'eye'} />
           {photo.hidden ? 'Hidden' : photo.favourite ? 'Favourite' : 'In rotation'}
         </span>
+        <span className="photo-curation-card__source">{photoSourceLabel(photo.source)}</span>
       </div>
       <div className="photo-curation-card__copy">
         <strong>{photo.alt}</strong>
@@ -356,7 +518,24 @@ function PhotoCurationCard({
         </span>
       </div>
       <div className="photo-curation-card__actions">
-        {photo.hidden ? (
+        {selectionMode ? (
+          <button
+            aria-label={`${selected ? 'Deselect' : 'Select'} photo: ${photo.alt}`}
+            aria-pressed={selected}
+            className="photo-curation-action photo-curation-action--select focusable"
+            data-focus-down={nextFocus}
+            data-focus-id={selectFocus}
+            data-focus-left={selectFocus}
+            data-focus-right={selectFocus}
+            data-focus-up={priorFocus}
+            disabled={busy}
+            onClick={onToggleSelection}
+            type="button"
+          >
+            <Icon name="check" />
+            {selected ? 'Selected' : 'Select'}
+          </button>
+        ) : photo.hidden ? (
           <button
             aria-label={`Restore photo: ${photo.alt}`}
             className="photo-curation-action photo-curation-action--restore focusable"
@@ -412,10 +591,130 @@ function PhotoCurationCard({
   );
 }
 
-function primaryCurationFocusId(photo: PhotoCurationAsset): string {
+function primaryCurationFocusId(photo: PhotoCurationAsset, selectionMode = false): string {
+  if (selectionMode) return `photo-curation-select-${photo.id}`;
   return photo.hidden
     ? `photo-curation-restore-${photo.id}`
     : `photo-curation-favourite-${photo.id}`;
+}
+
+function BulkPhotoResult({
+  action,
+  changed,
+  failures,
+}: {
+  action: 'hide' | 'unhide' | 'delete';
+  changed: number;
+  failures: string[];
+}) {
+  const verb = action === 'hide' ? 'hidden' : action === 'unhide' ? 'restored' : 'deleted';
+  return (
+    <div
+      className={`photo-upload-result${failures.length > 0 ? ' photo-upload-result--partial' : ''}`}
+      role="status"
+    >
+      <Icon name={failures.length > 0 ? 'warning' : 'check'} />
+      <div>
+        <strong>
+          {changed} {changed === 1 ? 'photo' : 'photos'} {verb}.
+        </strong>
+        {failures.length > 0 ? (
+          <p>
+            {failures.length} {failures.length === 1 ? 'photo needs' : 'photos need'} another try.
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PhotoDeleteDialog({
+  open,
+  count,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  count: number;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open) {
+      if (document.activeElement instanceof HTMLElement) openerRef.current = document.activeElement;
+      cancelRef.current?.focus();
+      return;
+    }
+    openerRef.current?.focus();
+    openerRef.current = null;
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div
+      aria-labelledby="photo-delete-title"
+      aria-modal="true"
+      className="photo-delete-dialog"
+      role="dialog"
+    >
+      <div className="photo-delete-dialog__panel">
+        <span className="photo-delete-dialog__icon">
+          <Icon name="trash" />
+        </span>
+        <p>Permanent removal</p>
+        <h2 id="photo-delete-title">
+          Delete {count} Hearth {count === 1 ? 'photo' : 'photos'}?
+        </h2>
+        <p>
+          This removes the private managed {count === 1 ? 'original' : 'originals'} and television
+          copies. It cannot be undone. Photos imported from the NAS folder are not affected.
+        </p>
+        <div className="photo-delete-dialog__actions">
+          <button
+            className="admin-secondary focusable"
+            data-back-dismiss="true"
+            data-focus-id="photo-delete-cancel"
+            data-focus-right="photo-delete-confirm"
+            disabled={pending}
+            onClick={onCancel}
+            ref={cancelRef}
+            type="button"
+          >
+            Keep photos
+          </button>
+          <button
+            className="admin-primary-action photo-delete-confirm focusable"
+            data-focus-id="photo-delete-confirm"
+            data-focus-left="photo-delete-cancel"
+            disabled={pending}
+            onClick={onConfirm}
+            type="button"
+          >
+            <Icon name="trash" />
+            {pending ? 'Deleting…' : 'Delete permanently'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function invalidatePhotoQueries(queryClient: QueryClient): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.photoSource }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
+  ]);
+}
+
+function photoSourceLabel(source: PhotoCurationAsset['source']): string {
+  if (source === 'hearth-upload') return 'Added in Hearth';
+  if (source === 'synology-folder') return 'NAS folder';
+  return 'Demo photo';
 }
 
 function orientationLabel(orientation: PhotoCurationAsset['orientation']): string {

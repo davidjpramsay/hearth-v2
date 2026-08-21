@@ -274,8 +274,12 @@ export const PhotoAssetSchema = z.object({
 
 export const PhotoCurationActionSchema = z.enum(['favourite', 'unfavourite', 'hide', 'unhide']);
 
+export const PhotoAssetSourceSchema = z.enum(['hearth-upload', 'synology-folder', 'demo']);
+
 export const PhotoCurationAssetSchema = PhotoAssetSchema.extend({
   hidden: z.boolean(),
+  source: PhotoAssetSourceSchema,
+  canDeletePermanently: z.boolean(),
 });
 
 export const PhotoSourceSummarySchema = z.object({
@@ -1094,6 +1098,7 @@ export const AuditSummarySchema = z.object({
     'photo.unfavourite',
     'photo.hide',
     'photo.unhide',
+    'photo.delete',
     'auth.passkey.register',
     'auth.passkey.revoke',
     'auth.recovery-code.rotate',
@@ -1157,6 +1162,8 @@ export const UpdatePhotoCurationRequestSchema = CommandRequestSchema.extend({
   action: PhotoCurationActionSchema,
 });
 
+export const DeleteManagedPhotoRequestSchema = CommandRequestSchema;
+
 export const PhotoSourceRefreshResultSchema = z.object({
   status: PhotoSourceIndexStatusSchema,
   audit: AuditSummarySchema,
@@ -1165,6 +1172,13 @@ export const PhotoSourceRefreshResultSchema = z.object({
 
 export const PhotoCurationCommandResultSchema = z.object({
   photo: PhotoCurationAssetSchema,
+  status: PhotoSourceIndexStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
+export const PhotoDeletionCommandResultSchema = z.object({
+  deletedAssetId: OpaqueIdSchema,
   status: PhotoSourceIndexStatusSchema,
   audit: AuditSummarySchema,
   replayed: z.boolean(),
@@ -1806,6 +1820,7 @@ export type TodayPhotoSummary = z.infer<typeof TodayPhotoSummarySchema>;
 export type PhotoOrientation = z.infer<typeof PhotoOrientationSchema>;
 export type PhotoAsset = z.infer<typeof PhotoAssetSchema>;
 export type PhotoCurationAction = z.infer<typeof PhotoCurationActionSchema>;
+export type PhotoAssetSource = z.infer<typeof PhotoAssetSourceSchema>;
 export type PhotoCurationAsset = z.infer<typeof PhotoCurationAssetSchema>;
 export type PhotoSourceSummary = z.infer<typeof PhotoSourceSummarySchema>;
 export type PhotoCollection = z.infer<typeof PhotoCollectionSchema>;
@@ -1816,7 +1831,9 @@ export type PhotoFolderImportStatus = z.infer<typeof PhotoFolderImportStatusSche
 export type RefreshPhotoSourceRequest = z.infer<typeof RefreshPhotoSourceRequestSchema>;
 export type PhotoSourceRefreshResult = z.infer<typeof PhotoSourceRefreshResultSchema>;
 export type UpdatePhotoCurationRequest = z.infer<typeof UpdatePhotoCurationRequestSchema>;
+export type DeleteManagedPhotoRequest = z.infer<typeof DeleteManagedPhotoRequestSchema>;
 export type PhotoCurationCommandResult = z.infer<typeof PhotoCurationCommandResultSchema>;
+export type PhotoDeletionCommandResult = z.infer<typeof PhotoDeletionCommandResultSchema>;
 export type PhotoUploadResult = z.infer<typeof PhotoUploadResultSchema>;
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 export type WeekDay = z.infer<typeof WeekDaySchema>;

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -208,6 +208,46 @@ describe('SynologyFolderPhotoSourceProvider', () => {
     const rescanned = await fixture.provider.refreshApprovedPhotos('household_photo_test');
     expect(rescanned.curation).toHaveLength(1);
     expect(rescanned.index.managedPhotoCount).toBe(1);
+    expect(first?.photo).toMatchObject({
+      source: 'hearth-upload',
+      canDeletePermanently: true,
+    });
+    expect(await readdir(fixture.uploads)).toHaveLength(1);
+    expect(await readdir(fixture.derivatives)).toHaveLength(2);
+
+    const deleted = await fixture.provider.deleteManagedPhoto(
+      'household_photo_test',
+      first!.photo.id,
+    );
+    expect(deleted).toMatchObject({
+      kind: 'deleted',
+      snapshot: { index: { managedPhotoCount: 0 }, curation: [] },
+    });
+    expect(await readdir(fixture.uploads)).toHaveLength(0);
+    expect(await readdir(fixture.derivatives)).toHaveLength(0);
+    await fixture.close();
+  });
+
+  it('keeps imported originals source-controlled while allowing Hearth curation', async () => {
+    const fixture = await photoFixture();
+    await writeFile(
+      join(fixture.source, 'family.jpg'),
+      await sharp({ create: { width: 900, height: 600, channels: 3, background: '#748c7a' } })
+        .jpeg()
+        .toBuffer(),
+    );
+    const indexed = await fixture.provider.refreshApprovedPhotos('household_photo_test');
+    expect(indexed.curation[0]).toMatchObject({
+      source: 'synology-folder',
+      canDeletePermanently: false,
+    });
+
+    const deletion = await fixture.provider.deleteManagedPhoto(
+      'household_photo_test',
+      indexed.curation[0]!.id,
+    );
+    expect(deletion).toEqual({ kind: 'not-managed' });
+    expect(await readdir(fixture.source)).toEqual(['family.jpg']);
     await fixture.close();
   });
 
@@ -262,6 +302,7 @@ async function photoFixture() {
   );
   return {
     source,
+    derivatives,
     uploads,
     provider,
     close: async () => {

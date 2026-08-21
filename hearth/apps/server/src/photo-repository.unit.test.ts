@@ -174,4 +174,40 @@ describe('PhotoService', () => {
     service.reset();
     expect((await service.getSourceStatus('household_hearth_demo')).hiddenPhotoCount).toBe(0);
   });
+
+  it('permanently removes only managed photos through an adult idempotent command', async () => {
+    const service = new PhotoService(new FakePhotoSourceProvider(), {
+      adminRepository: new InMemoryAdminRepository(),
+    });
+    const actor = { id: 'member_maya', type: 'member', source: 'companion' } as const;
+    const first = await service.deleteManagedPhoto(
+      'household_hearth_demo',
+      'photo_family_breakfast',
+      'request_photo_delete',
+      actor,
+    );
+    const replay = await service.deleteManagedPhoto(
+      'household_hearth_demo',
+      'photo_family_breakfast',
+      'request_photo_delete',
+      actor,
+    );
+
+    expect(first).toMatchObject({
+      replayed: false,
+      deletedAssetId: 'photo_family_breakfast',
+      status: { managedPhotoCount: 4, visiblePhotoCount: 4 },
+      audit: { action: 'photo.delete' },
+    });
+    expect(replay).toMatchObject({ replayed: true, audit: { id: first.audit.id } });
+    expect((await service.getGallery('household_hearth_demo')).photos).toHaveLength(4);
+    await expect(
+      service.deleteManagedPhoto(
+        'household_hearth_demo',
+        'photo_coastal_picnic',
+        'request_photo_delete_tv',
+        { id: 'device_living_room_tv', type: 'device', source: 'tv' },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
 });

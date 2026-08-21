@@ -169,6 +169,9 @@ summaries and stable family-safe API errors. The implemented routes are:
   manual checks of the optional read-only folder import
 - adult-only, idempotent `POST /api/v1/households/:id/photo-assets/:assetId/curation-actions` for
   favourite, unfavourite, hide and unhide commands with command receipts and audit events
+- adult-only, idempotent `POST /api/v1/households/:id/photo-assets/:assetId/deletions` for permanent
+  removal of a Hearth-managed upload and its derivatives. Optional-folder imports return a stable
+  conflict instead of allowing Hearth to mutate the read-only source
 - `GET /api/v1/households/:id/photo-assets/:assetId/:variant` for immutable, opaque WebP display
   and thumbnail derivatives; source paths and originals never cross this boundary
 - `GET /api/v1/auth/status`, first-use registration options/verification, discoverable-passkey
@@ -199,7 +202,11 @@ uploads are normalized to a private master plus bounded WebP display/thumbnail d
 `/data`, deduplicated by content hash and recorded with an opaque asset ID. The optional read-only
 folder import activates only when its server environment path is configured; it ignores symlinks,
 incrementally fingerprints files, applies EXIF orientation and preserves its last safe index if the
-import mount is unavailable. Import failure does not disable managed uploads or existing photos. Each
+import mount is unavailable. Adult curation receives only a bounded source kind and deletion
+capability, never a path. The provider deletes only a managed upload after the service authenticates
+an adult, persists an idempotent receipt and records a path-free audit event. The optional import
+remains source-authoritative and read-only. Import failure does not disable managed uploads or
+existing photos. Each
 `WeekSchedule` day also carries a nullable, presentation-safe daily forecast
 summary (condition code, family-readable label, Celsius temperature and safe provider identity). The
 existing query routes read calendar values from the durable SQLite projection

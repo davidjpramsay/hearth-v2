@@ -126,4 +126,49 @@ describe('persistent photo curation', () => {
     expect(JSON.stringify(audit)).not.toMatch(/volume1|sourceDirectory|filename|token|password/i);
     admin.close();
   });
+
+  it('stores one permanent-removal receipt and path-free audit after restart', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-photo-delete-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    const admin = new SqliteAdminRepository(database);
+    const provider = new FakePhotoSourceProvider();
+    const options = {
+      adminRepository: admin,
+      database,
+      clock: new FixedClock('2026-08-10T01:25:00.000Z'),
+    };
+    const actor = { id: 'member_maya', type: 'member', source: 'companion' } as const;
+    const first = await new PhotoService(provider, options).deleteManagedPhoto(
+      'household_hearth_demo',
+      'photo_family_breakfast',
+      'request_persistent_photo_delete',
+      actor,
+    );
+    const replay = await new PhotoService(provider, options).deleteManagedPhoto(
+      'household_hearth_demo',
+      'photo_family_breakfast',
+      'request_persistent_photo_delete',
+      actor,
+    );
+    const audit = database
+      .prepare(
+        `SELECT action_type, target_type, target_id, safe_summary_json
+         FROM audit_events WHERE action_type = 'photo.delete'`,
+      )
+      .all();
+
+    expect(first).toMatchObject({ replayed: false, audit: { action: 'photo.delete' } });
+    expect(replay).toMatchObject({ replayed: true, audit: { id: first.audit.id } });
+    expect(audit).toEqual([
+      {
+        action_type: 'photo.delete',
+        target_type: 'photo-asset',
+        target_id: 'photo_family_breakfast',
+        safe_summary_json: '{"permanent":true}',
+      },
+    ]);
+    expect(JSON.stringify(audit)).not.toMatch(/volume1|sourceDirectory|filename|token|password/i);
+    admin.close();
+  });
 });

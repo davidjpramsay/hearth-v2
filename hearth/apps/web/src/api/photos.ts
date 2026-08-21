@@ -1,11 +1,13 @@
 import {
   PhotoCurationCommandResultSchema,
+  PhotoDeletionCommandResultSchema,
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
   PhotoUploadResultSchema,
   type PhotoCurationAction,
   type PhotoCurationCommandResult,
+  type PhotoDeletionCommandResult,
   type PhotoSourceIndexStatus,
   type PhotoSourceRefreshResult,
   type PhotoUploadResult,
@@ -54,6 +56,16 @@ export const photosApi = {
         method: 'POST',
         headers: demoAdminHeaders,
         body: JSON.stringify({ requestId, action }),
+      },
+    ),
+  deleteManagedPhoto: (assetId: string, requestId: string): Promise<PhotoDeletionCommandResult> =>
+    request(
+      `${householdApiBase()}/photo-assets/${assetId}/deletions`,
+      PhotoDeletionCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
       },
     ),
 };

@@ -10,9 +10,9 @@ export function eventColorVariables(color: string): Record<string, string> {
   );
   return {
     '--event-color': color,
-    '--event-background': `rgba(${red}, ${green}, ${blue}, 0.22)`,
-    '--event-background-dark': `rgba(${red}, ${green}, ${blue}, 0.28)`,
-    '--event-border': `rgba(${red}, ${green}, ${blue}, 0.55)`,
+    '--event-background': `rgba(${red}, ${green}, ${blue}, 0.36)`,
+    '--event-background-dark': `rgba(${red}, ${green}, ${blue}, 0.44)`,
+    '--event-border': `rgba(${red}, ${green}, ${blue}, 0.74)`,
     '--event-foreground-dark': `rgb(${darkForeground.join(', ')})`,
   };
 }

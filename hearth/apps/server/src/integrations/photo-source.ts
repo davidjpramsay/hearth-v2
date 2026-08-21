@@ -60,6 +60,9 @@ export interface PhotoSourceUpload {
   duplicate: boolean;
 }
 
+export type PhotoSourceDeletion =
+  { kind: 'deleted'; snapshot: PhotoSourceSnapshot } | { kind: 'not-managed' };
+
 export interface PhotoSourceProvider {
   listApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
   refreshApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot>;
@@ -69,6 +72,7 @@ export interface PhotoSourceProvider {
     assetId: string,
     action: PhotoCurationAction,
   ): Promise<PhotoSourceSnapshot | null>;
+  deleteManagedPhoto(householdId: string, assetId: string): Promise<PhotoSourceDeletion | null>;
   getDerivative(
     householdId: string,
     assetId: string,
@@ -138,6 +142,7 @@ const DEMO_PHOTOS: PhotoAsset[] = [
 
 export class FakePhotoSourceProvider implements PhotoSourceProvider {
   private readonly curation = new Map<string, Map<string, PhotoCurationAsset>>();
+  private readonly deleted = new Map<string, Set<string>>();
 
   async listApprovedPhotos(householdId: string): Promise<PhotoSourceSnapshot> {
     const curation = this.curationFor(householdId);
@@ -156,7 +161,7 @@ export class FakePhotoSourceProvider implements PhotoSourceProvider {
         photos.find((photo) => photo.id === 'photo_family_breakfast')?.id ?? photos[0]?.id ?? null,
       photos: photos.map(withoutHidden),
       curation,
-      index: readyIndex(DEMO_PHOTOS.length, curation.length - photos.length),
+      index: readyIndex(curation.length, curation.length - photos.length),
     };
   }
 
@@ -177,10 +182,26 @@ export class FakePhotoSourceProvider implements PhotoSourceProvider {
     const original = DEMO_PHOTOS.find((photo) => photo.id === assetId);
     if (original === undefined) return null;
     const household = this.curation.get(householdId) ?? new Map<string, PhotoCurationAsset>();
-    const current = household.get(assetId) ?? { ...original, hidden: false };
+    const current = household.get(assetId) ?? {
+      ...original,
+      hidden: false,
+      source: 'demo' as const,
+      canDeletePermanently: true,
+    };
     household.set(assetId, applyCurationAction(current, action));
     this.curation.set(householdId, household);
     return this.listApprovedPhotos(householdId);
+  }
+
+  async deleteManagedPhoto(
+    householdId: string,
+    assetId: string,
+  ): Promise<PhotoSourceDeletion | null> {
+    if (!DEMO_PHOTOS.some((photo) => photo.id === assetId)) return null;
+    const deleted = this.deleted.get(householdId) ?? new Set<string>();
+    deleted.add(assetId);
+    this.deleted.set(householdId, deleted);
+    return { kind: 'deleted', snapshot: await this.listApprovedPhotos(householdId) };
   }
 
   async getDerivative(
@@ -195,19 +216,25 @@ export class FakePhotoSourceProvider implements PhotoSourceProvider {
 
   reset(): void {
     this.curation.clear();
+    this.deleted.clear();
   }
 
   private curationFor(householdId: string): PhotoCurationAsset[] {
     const household = this.curation.get(householdId);
-    return DEMO_PHOTOS.map((photo) => ({
-      ...photo,
-      hidden: household?.get(photo.id)?.hidden ?? false,
-      favourite: household?.get(photo.id)?.favourite ?? photo.favourite,
-    })).sort(
-      (left, right) =>
-        Number(left.hidden) - Number(right.hidden) ||
-        Number(right.favourite) - Number(left.favourite),
-    );
+    const deleted = this.deleted.get(householdId);
+    return DEMO_PHOTOS.filter((photo) => !deleted?.has(photo.id))
+      .map((photo) => ({
+        ...photo,
+        hidden: household?.get(photo.id)?.hidden ?? false,
+        favourite: household?.get(photo.id)?.favourite ?? photo.favourite,
+        source: 'demo' as const,
+        canDeletePermanently: true,
+      }))
+      .sort(
+        (left, right) =>
+          Number(left.hidden) - Number(right.hidden) ||
+          Number(right.favourite) - Number(left.favourite),
+      );
   }
 }
 
@@ -239,6 +266,10 @@ export class UnconfiguredPhotoSourceProvider implements PhotoSourceProvider {
   }
 
   async curatePhoto(): Promise<null> {
+    return null;
+  }
+
+  async deleteManagedPhoto(): Promise<null> {
     return null;
   }
 
@@ -279,7 +310,12 @@ function readyIndex(indexed: number, hidden = 0): PhotoSourceIndexSnapshot {
 }
 
 function withoutHidden(photo: PhotoCurationAsset): PhotoAsset {
-  const { hidden: _hidden, ...visible } = photo;
+  const {
+    hidden: _hidden,
+    source: _source,
+    canDeletePermanently: _canDeletePermanently,
+    ...visible
+  } = photo;
   return visible;
 }
 

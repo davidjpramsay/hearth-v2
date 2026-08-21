@@ -965,3 +965,21 @@ Official platform references:
 - Consequence: Today gently circulates family photos without behaving like ambient mode. Pausing the
   gallery predictably freezes Today, hidden time cannot cause an immediate surprise change on return,
   and no database migration or browser contract is required.
+
+## D-061 — Managed uploads and folder imports have different deletion authority
+
+- Date: 2026-08-21
+- Status: accepted
+- Context: Adults need an efficient way to remove obsolete family photos. Treating the optional NAS
+  folder as Hearth's only store would weaken the primary phone-upload path, while allowing Hearth to
+  delete through a bulk-import mount would make source ownership and backup behaviour unsafe.
+- Choice: Keep phone uploads as Hearth-managed assets and the optional Synology folder as a read-only
+  secondary bulk source. Adult Photos administration identifies each source and supports bulk
+  selection. Any asset may be hidden or restored, but only a managed upload may be permanently
+  deleted by Hearth after explicit confirmation. Imported originals are removed in Synology and then
+  reconciled with **Check folder**. Deletion uses the typed authenticated command, idempotent receipt
+  and path-free audit contract.
+- Consequence: Adults can curate large collections quickly without risking NAS originals. Managed
+  deletion removes the private master and derivatives, while historical receipts and audits remain.
+  Backups may retain an earlier copy according to their normal retention policy; the active library
+  no longer serves the deleted asset.

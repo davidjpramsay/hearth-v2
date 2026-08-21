@@ -351,6 +351,12 @@ provider is deliberately unreachable.
   bulk import. Leave `HEARTH_PHOTO_SOURCE_DIR` blank when it is not useful; never mount the Synology
   photo-library root. Admin **Check folder** rebuilds imported derivatives without affecting managed
   uploads.
+- Admin Photos identifies **Added in Hearth** and **NAS folder** assets. Selection mode can hide or
+  restore either source in bulk. **Delete uploads** permanently removes only Hearth-managed masters
+  and derivatives after confirmation. To remove an imported asset, delete its original from the
+  approved Synology folder and run **Check folder**; Hearth must not receive write access to that
+  source. Existing backup snapshots can retain deleted managed photos until their configured
+  retention expires, even though the active library no longer serves them.
 - Photo responses, command receipts, audit summaries and logs must remain free of client filenames
   and host/container paths. A temporary optional-import outage should preserve and serve the last
   safe derivative set while managed uploads continue to work.

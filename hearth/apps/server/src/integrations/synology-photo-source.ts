@@ -17,6 +17,7 @@ import type {
   PhotoDerivativeAsset,
   PhotoDerivativeVariant,
   PhotoSourceIndexSnapshot,
+  PhotoSourceDeletion,
   PhotoSourceProvider,
   PhotoSourceSnapshot,
   PhotoSourceUpload,
@@ -128,6 +129,13 @@ interface PhotoAssetRow {
   captured_at: string | null;
   favourite: number;
   hidden: number;
+  managed_master_key: string | null;
+}
+
+interface ManagedDeletionRow {
+  derivative_key: string;
+  thumbnail_key: string;
+  master_key: string | null;
 }
 
 export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
@@ -357,6 +365,62 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
         : 'UPDATE photo_assets SET hidden = ? WHERE id = ?';
     this.database.prepare(statement).run(value, assetId);
     return this.snapshot(householdId);
+  }
+
+  async deleteManagedPhoto(
+    householdId: string,
+    assetId: string,
+  ): Promise<PhotoSourceDeletion | null> {
+    const row = this.database
+      .prepare(
+        `SELECT a.derivative_key, a.thumbnail_key, u.master_key
+         FROM photo_assets a
+         JOIN photo_sources s ON s.id = a.source_id
+         LEFT JOIN photo_managed_uploads u ON u.asset_id = a.id
+         WHERE s.household_id = ? AND a.id = ? AND a.asset_status = 'ready'`,
+      )
+      .get(householdId, assetId) as ManagedDeletionRow | undefined;
+    if (row === undefined) return null;
+    if (row.master_key === null) return { kind: 'not-managed' };
+
+    const suffix = `delete-${randomUUID()}`;
+    const moves = [
+      {
+        original: this.managedPath(row.master_key),
+        quarantined: this.managedPath(`${row.master_key}.${suffix}`),
+      },
+      {
+        original: this.derivativePath(row.derivative_key),
+        quarantined: this.derivativePath(`${row.derivative_key}.${suffix}`),
+      },
+      {
+        original: this.derivativePath(row.thumbnail_key),
+        quarantined: this.derivativePath(`${row.thumbnail_key}.${suffix}`),
+      },
+    ];
+    const moved: typeof moves = [];
+    try {
+      for (const move of moves) {
+        if (await renameIfPresent(move.original, move.quarantined)) moved.push(move);
+      }
+      this.database.transaction(() => {
+        const deleted = this.database
+          .prepare(
+            `DELETE FROM photo_assets
+             WHERE id = ?
+               AND source_id IN (SELECT id FROM photo_sources WHERE household_id = ?)`,
+          )
+          .run(assetId, householdId);
+        if (deleted.changes !== 1) throw new Error('Managed photo changed during deletion.');
+      })();
+    } catch (error) {
+      await Promise.all(
+        moved.map((move) => rename(move.quarantined, move.original).catch(() => undefined)),
+      );
+      throw error;
+    }
+    await Promise.all(moved.map((move) => rm(move.quarantined, { force: true })));
+    return { kind: 'deleted', snapshot: this.snapshot(householdId) };
   }
 
   async getDerivative(
@@ -590,11 +654,12 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
     const sourceId = source?.id ?? sourceIdFor(householdId);
     const rows = this.database
       .prepare(
-        `SELECT id, derivative_key, thumbnail_key, alternative_text, width, height, orientation,
-                captured_at, favourite, hidden
-         FROM photo_assets
-         WHERE source_id = ? AND asset_status = 'ready'
-         ORDER BY hidden, favourite DESC, captured_at DESC, id`,
+        `SELECT a.id, a.derivative_key, a.thumbnail_key, a.alternative_text, a.width, a.height,
+                a.orientation, a.captured_at, a.favourite, a.hidden, u.master_key AS managed_master_key
+         FROM photo_assets a
+         LEFT JOIN photo_managed_uploads u ON u.asset_id = a.id
+         WHERE a.source_id = ? AND a.asset_status = 'ready'
+         ORDER BY a.hidden, a.favourite DESC, a.captured_at DESC, a.id`,
       )
       .all(sourceId) as PhotoAssetRow[];
     const curation = rows.map((row): PhotoCurationAsset => {
@@ -610,6 +675,8 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
         capturedAt: row.captured_at,
         favourite: row.favourite === 1,
         hidden: row.hidden === 1,
+        source: row.managed_master_key === null ? 'synology-folder' : 'hearth-upload',
+        canDeletePermanently: row.managed_master_key !== null,
       };
     });
     const photos = curation.filter((photo) => !photo.hidden).map(withoutHidden);
@@ -798,7 +865,10 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
   }
 
   private managedPath(key: string): string {
-    if (!MASTER_KEY_PATTERN.test(key) && !/^[a-f0-9]{64}-master\.webp\.tmp-[a-f0-9-]+$/.test(key)) {
+    if (
+      !MASTER_KEY_PATTERN.test(key) &&
+      !/^[a-f0-9]{64}-master\.webp\.(tmp|delete)-[a-f0-9-]+$/.test(key)
+    ) {
       throw new Error('Managed photo key is invalid.');
     }
     const root = resolve(this.configuration.uploadDirectory);
@@ -825,7 +895,12 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
 }
 
 function withoutHidden(photo: PhotoCurationAsset): PhotoAsset {
-  const { hidden: _hidden, ...visible } = photo;
+  const {
+    hidden: _hidden,
+    source: _source,
+    canDeletePermanently: _canDeletePermanently,
+    ...visible
+  } = photo;
   return visible;
 }
 
@@ -1011,4 +1086,14 @@ function isMissingFile(error: unknown): boolean {
 
 function ignoreMissing(error: unknown): void {
   if (!isMissingFile(error)) throw error;
+}
+
+async function renameIfPresent(original: string, destination: string): Promise<boolean> {
+  try {
+    await rename(original, destination);
+    return true;
+  } catch (error) {
+    if (isMissingFile(error)) return false;
+    throw error;
+  }
 }

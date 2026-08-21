@@ -48,6 +48,7 @@ import {
   CreateChoreTemplateRequestSchema,
   CreateHouseholdListRequestSchema,
   CreateSavedMealRequestSchema,
+  DeleteManagedPhotoRequestSchema,
   DemoScenarioRequestSchema,
   ExecuteHomeActionRequestSchema,
   ExchangeTvPairingRequestSchema,
@@ -84,6 +85,7 @@ import {
   PasskeySessionSchema,
   PasskeySignOutResultSchema,
   PhotoCurationCommandResultSchema,
+  PhotoDeletionCommandResultSchema,
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
@@ -1444,6 +1446,29 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             params.householdId,
             params.assetId,
             body.action,
+            body.requestId,
+            actor,
+          ),
+        );
+        realtime.publish(params.householdId, 'photos.changed', params.assetId);
+        return result;
+      });
+    },
+  );
+
+  server.post(
+    '/api/v1/households/:householdId/photo-assets/:assetId/deletions',
+    async (request, reply) => {
+      const params = parse(PhotoCurationParamsSchema, request.params, reply);
+      const body = parse(DeleteManagedPhotoRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const actor = commandActor(request.headers, options, adminRepository);
+        await adminRepository.getOverview(params.householdId, actor.id);
+        const result = PhotoDeletionCommandResultSchema.parse(
+          await photoRepository.deleteManagedPhoto(
+            params.householdId,
+            params.assetId,
             body.requestId,
             actor,
           ),

@@ -41,6 +41,22 @@ rotation, adult favourite/hide/restore commands, focus restoration, offline cach
 failure/corrupt-image handling, dark mode, responsive captures and automated accessibility checks.
 `git diff --check` also passed.
 
+## Managed-photo deletion verification on 2026-08-21
+
+The in-app Browser inspected phone selection mode, the bulk-action surface and the protected
+permanent-delete dialog at 390×844. **Keep photos** receives initial focus; D-pad Right reaches
+**Delete permanently**, and Back-safe dismissal was verified without mutating the interactive demo.
+Separate provider, service, route and Playwright tests permanently removed only managed uploads,
+proved master/display/thumbnail cleanup, replayed duplicate request IDs safely and retained one
+path-free audit event. A routed optional-folder asset remained hideable but could not be deleted.
+Week and Month renders at 1920×1080 and 1366×768 were inspected in light and dark themes after
+deepening the event-card fills; titles, person identity and focus treatment remained readable.
+
+The final `pnpm verify` gate passed formatting, lint, strict type checking, 157 unit tests, 102
+API/integration tests, 23 migration tests, deployment validation, web/server production builds and
+all 236 Playwright Chromium flows. The retained evidence includes
+`screenshots/photos-bulk-selection-phone.png` plus refreshed Week and Month calendar captures.
+
 ## Display optimisation verification on 2026-08-17
 
 The current `pnpm verify` gate passed formatting, lint, strict type checking, 134 unit tests, 92

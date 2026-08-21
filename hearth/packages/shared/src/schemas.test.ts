@@ -29,10 +29,12 @@ import {
   UpdateMemberAvatarRequestSchema,
   PhotoGallerySchema,
   PhotoCurationCommandResultSchema,
+  PhotoDeletionCommandResultSchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
   PhotoUploadResultSchema,
   UpdatePhotoCurationRequestSchema,
+  DeleteManagedPhotoRequestSchema,
   PocketMoneyOverviewSchema,
   PocketMoneyPaymentSchema,
   RecordPocketMoneyPaymentRequestSchema,
@@ -650,6 +652,8 @@ describe('shared wire schemas', () => {
           capturedAt: '2026-08-02T23:30:00.000Z',
           favourite: true,
           hidden: false,
+          source: 'hearth-upload',
+          canDeletePermanently: true,
         },
       ],
     });
@@ -713,6 +717,26 @@ describe('shared wire schemas', () => {
       },
     });
     expect(uploaded.audit.action).toBe('photo.upload');
+    const deletionRequest = DeleteManagedPhotoRequestSchema.parse({
+      requestId: 'request_photo_delete',
+    });
+    const deleted = PhotoDeletionCommandResultSchema.parse({
+      deletedAssetId: 'photo_family_breakfast',
+      status: { ...status, indexedFileCount: 13, visiblePhotoCount: 11, photos: [] },
+      replayed: false,
+      audit: {
+        id: 'audit_photo_delete',
+        actorType: 'member',
+        actorId: 'member_adult',
+        source: 'companion',
+        action: 'photo.delete',
+        targetId: 'photo_family_breakfast',
+        occurredAt: '2026-08-09T10:07:00.000Z',
+        result: 'succeeded',
+      },
+    });
+    expect(deletionRequest.requestId).toBe('request_photo_delete');
+    expect(deleted.audit.action).toBe('photo.delete');
     expect(JSON.stringify(uploaded)).not.toMatch(/filename|volume1|sourceDirectory/);
   });
 

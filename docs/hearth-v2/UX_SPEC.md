@@ -106,7 +106,7 @@ dialog. Back restores the exact originating row, overflow action or summary band
   days. It never includes past dates or days beyond that window and therefore has no earlier/later
   period controls.
 - **Today:** expanded day with person lanes where useful.
-- **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact event titles on readable calendar-colour tinted backgrounds and a deterministic `+N more` summary when the day is dense; faces and solid source colours appear once in a persistent Calendar key. Week event cards use the same tinted-surface language rather than relying on a narrow edge stripe. The six Month rows grow to use the available television height, and the Earlier/current/Later month bar stays at the bottom with the same geometry as Week navigation. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
+- **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact event titles on substantial, readable calendar-colour tinted backgrounds and a deterministic `+N more` summary when the day is dense; faces and solid source colours appear once in a persistent Calendar key. Week event cards use the same deeper tinted-surface language rather than relying on a narrow edge stripe, while text and focus contrast remain accessible in both themes. The six Month rows grow to use the available television height, and the Earlier/current/Later month bar stays at the bottom with the same geometry as Week navigation. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
 
 Event cards must express start time, title, owner/source and conflicts. Location and notes appear in a focused detail surface.
 
@@ -205,9 +205,14 @@ the phone More hub.
   filenames to the server. Each file is limited to 25 MB and uploads run sequentially so a partial
   failure does not discard successful additions.
 - The same surface shows orientation-safe thumbnails, capture date when available and clear
-  Favourite, Hide and Restore actions. Every action is D-pad reachable, reports its result inline
-  and preserves focus when a card moves between visible and hidden ordering. An optional Synology
-  folder-import row is secondary and absent as a prerequisite for normal phone uploads.
+  Favourite, Hide and Restore actions. Selection mode supports bulk hide, restore and managed-upload
+  deletion without turning ordinary browsing into a destructive surface. Cards identify whether
+  the photo was **Added in Hearth** or came from the **NAS folder**. Permanent deletion is available
+  only for Hearth-managed uploads, requires a focused confirmation dialog and removes the managed
+  master plus its derivatives. Imported originals remain read-only: the surface explains that they
+  must be removed from the approved Synology folder and followed by **Check folder**, or hidden in
+  Hearth. Every action is D-pad reachable, reports its result inline and restores focus. The optional
+  Synology folder-import row is secondary and absent as a prerequisite for normal phone uploads.
 
 ### Home
 

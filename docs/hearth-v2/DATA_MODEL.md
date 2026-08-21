@@ -269,7 +269,7 @@ Recipe/ingredient modelling is deferred. Grocery linkage should use explicit gen
 - favourite/hidden state
 - last shown time
 - source fingerprint, asset readiness and index time
-- whether the asset is a managed upload or optional folder import (server-side only)
+- bounded source kind and permanent-deletion capability for adult curation; never a source path
 
 Do not expose Synology filesystem paths to clients. Derivatives should avoid repeatedly sending original multi-megabyte files to the television.
 
@@ -281,9 +281,10 @@ same-origin display/thumbnail URLs. Phase 7 selects the Today preview through
 that same injected adapter. Demo mode uses fictional bundled derivatives;
 private mode always exposes the managed collection and upload capability. Adult-only
 `PhotoSourceIndexStatus` adds aggregate managed/imported/ready/hidden/unsupported/corrupt counts,
-the optional folder-import state and path-safe curation rows for ready assets. Those rows
-contain only opaque IDs, same-origin derivative URLs, presentation metadata and favourite/hidden
-flags. Neither response exposes its Synology path.
+the optional folder-import state and path-safe curation rows for ready assets. Those rows contain
+only opaque IDs, same-origin derivative URLs, presentation metadata, favourite/hidden flags, the
+bounded `hearth-upload | synology-folder | demo` source kind and whether permanent deletion is
+supported. Neither response exposes its Synology path.
 Migration `0015_synology_photo_index.sql` adds the source fingerprint and scan-status index used for
 incremental refresh; the first adapter uses filesystem modification time as `capturedAt` after
 orientation correction rather than claiming EXIF capture-date fidelity.
@@ -302,6 +303,12 @@ WebPs live under `/data/photo-uploads`; display/thumbnail WebPs live under
 `/data/photo-derivatives`. Neither a client filename nor an original host path is persisted. The
 database online-copy feature protects metadata, while encrypted Synology backup of the complete
 Hearth data directory protects the managed image files themselves.
+
+Permanent deletion removes the managed master and its display/thumbnail derivatives, deletes the
+`photo_assets` row and lets its `photo_managed_uploads` row cascade. The idempotent command receipt
+and path-free `photo.delete` audit event remain. An optional-folder asset can be hidden but never
+deleted through this command; its original remains governed by the mounted Synology folder and is
+removed from Hearth only after the source is removed and the folder is checked again.
 
 ### Announcement
 
