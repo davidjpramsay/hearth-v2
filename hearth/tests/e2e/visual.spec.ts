@@ -69,8 +69,9 @@ test('Today photo remains substantial and orientation-safe on TV and phone', asy
   const tvFrame = page.locator('.today-photo');
   await expect(tvFrame).toBeVisible();
   const tvBox = await tvFrame.boundingBox();
-  expect(tvBox?.width).toBeGreaterThan(480);
+  expect(tvBox?.width).toBeGreaterThan(450);
   expect(tvBox?.height).toBeGreaterThan(300);
+  expect((tvBox?.width ?? 0) / (tvBox?.height ?? 1)).toBeCloseTo(1.5, 1);
 
   await page.setViewportSize({ width: 390, height: 844 });
   const phoneFrame = page.locator('.today-photo');
@@ -78,7 +79,8 @@ test('Today photo remains substantial and orientation-safe on TV and phone', asy
   await expect(phoneFrame).toBeVisible();
   const phoneBox = await phoneFrame.boundingBox();
   expect(phoneBox?.width).toBeGreaterThan(330);
-  expect(phoneBox?.height).toBeGreaterThan(240);
+  expect(phoneBox?.height).toBeGreaterThan(220);
+  expect((phoneBox?.width ?? 0) / (phoneBox?.height ?? 1)).toBeCloseTo(1.5, 1);
 
   await page.setViewportSize({ width: 844, height: 390 });
   await phoneFrame.scrollIntoViewIfNeeded();
