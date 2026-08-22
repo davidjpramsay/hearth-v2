@@ -76,13 +76,21 @@ EOF
 
 run_ssh /bin/sh <<EOF
 set -eu
+write_release_marker() {
+  marker_path=\$1
+  marker_value=\$2
+  marker_temp="\${marker_path}.tmp.\$\$"
+  umask 022
+  printf '%s\n' "\$marker_value" > "\$marker_temp"
+  mv -f "\$marker_temp" "\$marker_path"
+}
 current_version=\$(sed -n 's/^HEARTH_VERSION=//p' '$remote_environment')
 if [ -n "\$current_version" ] && [ "\$current_version" != '$release_commit' ]; then
-  printf '%s\n' "\$current_version" > '/volume1/docker/hearth-v2/previous-source-version'
+  write_release_marker '/volume1/docker/hearth-v2/previous-source-version' "\$current_version"
 fi
 sed -i.bak 's/^HEARTH_VERSION=.*/HEARTH_VERSION=$release_commit/' '$remote_environment'
 rm -f -- '$remote_environment.bak'
-printf '%s\n' '$release_commit' > '/volume1/docker/hearth-v2/active-source-version'
+write_release_marker '/volume1/docker/hearth-v2/active-source-version' '$release_commit'
 rm -f -- '/volume1/docker/hearth-v2/staged-source-version'
 EOF
 

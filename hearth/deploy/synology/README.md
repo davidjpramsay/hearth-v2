@@ -194,9 +194,10 @@ Compose into the preserved private project. The staging guard also refuses a rel
 file omits the server-side ESV secret path. It then pulls both images while the old containers are
 still serving, recreates the project with the requested full commit and waits for the loopback
 readiness route. Only a ready release becomes the recorded active version; the former active version
-is then retained as the rollback image version. An image-authentication or download failure occurs
-before replacement, so it does not deliberately stop the working release. Confirm the private
-routes too:
+is then retained as the rollback image version. Release markers are replaced atomically by the
+deployment account, which also repairs markers left root-owned by older releases. An
+image-authentication or download failure occurs before replacement, so it does not deliberately
+stop the working release. Confirm the private routes too:
 
 ```sh
 curl --fail --silent --show-error \

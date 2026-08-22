@@ -313,8 +313,9 @@ hearth/deploy/synology/activate-private-release.sh <full-verified-commit>
 The activation script stages that exact source/Compose revision and pulls both images while the
 existing containers remain running. It recreates the project with an explicit full immutable commit
 tag, waits up to 60 seconds for the loopback readiness route, and only then records the new active
-version plus the previous rollback version in the runtime metadata. Synology may ask for the
-administrator password; the script neither reads nor stores it. The database, managed photos,
+version plus the previous rollback version in atomically replaced runtime metadata. This also
+repairs release markers created with root ownership by older deployment paths. Synology may ask for
+the administrator password; the script neither reads nor stores it. The database, managed photos,
 optional read-only import and integration secrets stay in their existing external mounts.
 
 `stage-private-release.sh` remains available when an operator deliberately wants to stage without
