@@ -270,6 +270,16 @@ result used by initial setup and never returns credential material. Saving the
 revised set reuses the idempotent calendar save contract, so adding or removing
 an allowed calendar does not require replacing the connection.
 
+Calendar-bearing browser queries follow an appliance refresh policy. Today,
+Week and Month fetch immediately when mounted, refetch every five minutes while
+the document is visible and refetch immediately when browser connectivity
+returns. Saving, remapping or removing a calendar connection invalidates all
+three projections immediately; the existing `calendar.changed` SSE event does
+the same for changes made by another connected device. The interval is a
+recovery backstop rather than a replacement for SSE. A failed provider refresh
+continues to return the durable SQLite projection with stale integration state,
+so previously synced events remain visible instead of becoming a blank screen.
+
 Weather location setup is a separate adult-only repository boundary with
 search, test and save routes. Search and phone reverse-labelling are server
 proxies so provider policy and error mapping remain outside the browser. Save
@@ -457,6 +467,7 @@ is deliberately excluded as brittle.
 ## Offline and degraded operation
 
 - Cache the latest calendar projection and selected Home Assistant household/power-safety state in Hearth.
+- Refresh visible calendar surfaces every five minutes and immediately after browser reconnect or calendar settings changes; retain the last successful browser query data while a request is in flight or fails.
 - Continue to show local chores, lists, meals, photos and cached events when external services fail.
 - Queue only safe, explicitly designed local commands. Do not blindly replay ambiguous calendar edits.
 - Mark stale data with a quiet, comprehensible indicator.

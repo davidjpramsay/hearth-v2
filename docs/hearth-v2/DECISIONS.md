@@ -922,9 +922,12 @@ Official platform references:
 - Choice: Make television Today a deterministic single-viewport composition. Add normalized photo
   orientation and optional source dimensions to the browser-safe `TodaySummary` photo contract. Portrait photos occupy a substantial
   right-side rail spanning the dashboard; landscape and square photos use a shorter wide lower panel;
-  no-photo layouts return the full width to one-to-four compact summary tiles. Keep the three-row
-  event/chore cap and existing focus graph. Do not expose layout controls or carry the non-scrolling
-  constraint into the phone companion.
+  no-photo layouts return the full width to one-to-four compact summary tiles. Upcoming and due
+  chores share equal content columns, heading baselines and first-row rails. Portrait media starts
+  on the same upper rail; landscape/square media starts on the same lower rail as the optional bands.
+  Optional bands follow the actual core content rather than being pinned to the viewport bottom.
+  Keep the three-row event/chore cap and existing focus graph. Do not expose layout controls or carry
+  the non-scrolling constraint into the phone companion.
 - Consequence: Today responds to real enabled content without becoming a layout editor, keeps every
   module visible on supported television viewports and preserves undistorted photography. New photo
   producers must supply normalized orientation, while old private state needs no database migration
@@ -984,3 +987,21 @@ Official platform references:
   deletion removes the private master and derivatives, while historical receipts and audits remain.
   Backups may retain an earlier copy according to their normal retention policy; the active library
   no longer serves the deleted asset.
+
+## D-062 — Calendar refresh combines realtime invalidation with a five-minute safety cycle
+
+- Date: 2026-08-22
+- Status: accepted; supersedes only D-015's statement that open screens refresh without polling
+- Context: SSE refreshes an open display promptly after Hearth-owned settings or household changes,
+  but it cannot detect every provider-side iCloud change and a dropped realtime connection must not
+  leave an appliance display stale indefinitely. Requiring a manual reload is not dependable.
+- Choice: Today, Week and Month fetch immediately when mounted, every five minutes while visible and
+  immediately after browser connectivity returns. Calendar connection saves, source-selection
+  changes, owner remaps and removal invalidate all three projections immediately. Keep the existing
+  `calendar.changed` SSE invalidation for cross-device responsiveness. Each server read attempts the
+  bounded provider sync and falls back to the durable SQLite projection when iCloud is unavailable;
+  the browser also retains its last successful query data during a failed background request.
+- Consequence: Provider-side changes appear within five minutes without user action, Hearth-owned
+  settings changes remain immediate, reconnect recovery is deterministic and a temporary iCloud
+  outage does not blank the family calendar. The five-minute interval is a resilience backstop, not
+  a general high-frequency polling architecture, and it pauses when the document is hidden.

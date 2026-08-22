@@ -119,6 +119,11 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     path: resolve(evidence, 'photos-adaptive-mixed-tv-1080.png'),
   });
 
+  await page.getByRole('button', { name: 'Pause automatic photo rotation' }).click();
+  await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
+    'aria-label',
+    /Automatic photo rotation paused\./,
+  );
   for (const photoId of photoIds) {
     await page.locator(`[data-photo-id="${photoId}"]`).click();
     await expect(page.locator('.photo-collage__tile--feature')).toHaveAttribute(
@@ -135,11 +140,32 @@ test('the collage uses each photo once, fits both orientations and rotates calml
     const boxes = await tiles.evaluateAll((elements) =>
       elements.map((element) => {
         const rect = element.getBoundingClientRect();
-        return { height: rect.height, width: rect.width };
+        return {
+          height: rect.height,
+          nativeRatio: Number((element as HTMLElement).dataset.photoRatio),
+          objectFit: window.getComputedStyle(element.querySelector('img')!).objectFit,
+          photoId: (element as HTMLElement).dataset.photoId,
+          width: rect.width,
+        };
       }),
     );
-    expect(boxes.every((box) => box.width >= 180 && box.height >= 160)).toBe(true);
+    for (const box of boxes) {
+      expect(
+        Math.min(box.width, box.height),
+        `${photoId}: ${box.photoId} should not collapse into a thin strip`,
+      ).toBeGreaterThanOrEqual(130);
+      expect(box.objectFit, `${photoId}: ${box.photoId} should never be cropped`).toBe('contain');
+      expect(
+        box.nativeRatio >= 1 ? box.width / box.height : box.height / box.width,
+        `${photoId}: ${box.photoId} should retain its native orientation`,
+      ).toBeGreaterThan(1.1);
+    }
   }
+  await page.getByRole('button', { name: 'Resume automatic photo rotation' }).click();
+  await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
+    'aria-label',
+    /Photos change automatically every 45 seconds\./,
+  );
 
   const overflow = await page.locator('.photos-collage').evaluate((element) => ({
     clientWidth: element.clientWidth,

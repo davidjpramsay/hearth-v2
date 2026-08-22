@@ -8,6 +8,9 @@ export const queryKeys = {
   get weekRoot() {
     return [householdId(getHearthRuntime()), 'week'] as const;
   },
+  get monthRoot() {
+    return [householdId(getHearthRuntime()), 'month'] as const;
+  },
   week: (start = getHearthRuntime().weekStart) =>
     [householdId(getHearthRuntime()), 'week', start] as const,
   month: (month = getHearthRuntime().currentMonth) =>

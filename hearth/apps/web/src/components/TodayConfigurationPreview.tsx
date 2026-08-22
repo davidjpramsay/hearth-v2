@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 
 import type { TodaySectionVisibility } from '@hearth/shared';
 
@@ -94,7 +95,7 @@ export function TodayConfigurationPreview({
               </div>
               {summaryBands.length === 0 && !showPhoto ? null : (
                 <div
-                  className={`today-configuration-preview__summary${showPhoto ? '' : ' today-configuration-preview__summary--without-photo'}`}
+                  className={`today-configuration-preview__summary today-configuration-preview__summary--count-${summaryBands.length}${showPhoto ? '' : ' today-configuration-preview__summary--without-photo'}${summaryBands.length === 0 ? ' today-configuration-preview__summary--photo-only' : ''}`}
                 >
                   {summaryBands.length === 0 ? null : (
                     <div
@@ -221,6 +222,12 @@ function PreviewPerson({ person }: { person: PreviewPerson }) {
 }
 
 function PreviewPhoto({ photo }: { photo: TodayPreviewData['photo'] }) {
+  const ratio =
+    photo === null
+      ? null
+      : photo.width === undefined || photo.height === undefined
+        ? { landscape: 3 / 2, portrait: 2 / 3, square: 1 }[photo.orientation]
+        : photo.width / photo.height;
   return photo === null ? (
     <div className="today-configuration-preview__photo today-configuration-preview__photo--empty">
       <Icon name="image" />
@@ -230,8 +237,10 @@ function PreviewPhoto({ photo }: { photo: TodayPreviewData['photo'] }) {
     <img
       alt=""
       className={`today-configuration-preview__photo today-configuration-preview__photo--${photo.orientation}`}
+      data-photo-ratio={ratio?.toFixed(4)}
       loading="lazy"
       src={photo.url}
+      style={{ '--today-preview-photo-ratio': ratio } as CSSProperties}
     />
   );
 }

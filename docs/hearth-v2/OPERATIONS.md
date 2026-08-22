@@ -142,6 +142,16 @@ credential, updates only the exact calendar/person allowlist and refreshes the
 projection. Use Whole family for shared sources; a named person automatically
 uses their current Hearth avatar and colour.
 
+Open Today, Week and Month screens request current calendar data immediately,
+then every five minutes while visible. They also refresh as soon as the browser
+reconnects and whenever an adult saves, remaps or removes calendar settings.
+The server attempts the bounded read-only CalDAV sync for each request. If
+iCloud is temporarily unavailable, Hearth serves the last durable projection,
+marks it stale and keeps the saved events on screen. Do not remove and recreate
+the connection merely to force a refresh; first allow the next automatic cycle
+or reconnect, then inspect the Calendar status and server logs if stale state
+persists.
+
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.
 Do not place the URL, token or entity IDs in `.env`, Compose values, source, SQLite, logs, chat or a
@@ -261,13 +271,17 @@ The temporary fictional NAS demo was then stopped and removed at the owner's req
 enrolment, second-adult recovery validation, an encrypted off-device backup, an actual clean-location
 restore drill and a focused security review remain operational acceptance work.
 
-### One-time private image-registry setup
+### Image-registry visibility and one-time private setup
 
-The two GHCR packages remain private. GitHub Actions publishes them with its short-lived
-`GITHUB_TOKEN`; no repository secret is required and the workflow cannot contact the Synology.
-The NAS needs one separately revocable Personal Access Token (classic) with only
-`read:packages`, as currently required by GitHub Container Registry. Do not make the packages public
-and do not grant `write:packages`, `delete:packages` or unrelated account scopes.
+Repository visibility and GHCR package visibility are independent. The source repository became
+public on 2026-08-21, but that did not make the existing server and web packages public. GitHub
+Actions publishes those packages with its short-lived `GITHUB_TOKEN`; no repository secret is
+required and the workflow cannot contact the Synology.
+
+When the packages are private, the NAS needs one separately revocable Personal Access Token
+(classic) with only `read:packages`, as currently required by GitHub Container Registry. Keep them
+private unless the owner separately approves publishing the image artifacts. Never grant
+`write:packages`, `delete:packages` or unrelated account scopes merely to deploy Hearth.
 
 From an interactive administrator SSH session on the NAS, run the Container Manager Docker client
 and enter the GitHub username plus the token only at its password prompt:
@@ -281,6 +295,11 @@ runs Compose through `sudo`. Never put it in `.env`, Compose, a shell argument, 
 GitHub workflow. Revoke the token in GitHub and run `docker logout ghcr.io` on the NAS if the reader
 is retired. This one-time persistent-access setup requires explicit owner confirmation when it is
 performed.
+
+Public packages need no NAS registry credential. Publishing them is reasonable only when the exact
+images have been verified to contain no household data, credentials, private URLs or commissioned
+configuration. The production images are designed to satisfy that boundary; private state is
+mounted at runtime rather than baked into an image.
 
 ### Normal private release
 
@@ -302,6 +321,40 @@ optional read-only import and integration secrets stay in their existing externa
 restarting. Do not choose Container Manager **Build** for a normal update: production Compose has no
 build context. If GHCR is unavailable and an operator explicitly accepts a slow NAS recovery build,
 combine `compose.yaml` with `compose.build.yaml`; never silently fall back to compilation.
+
+### Why deployment needs one privileged step
+
+The NAS no longer compiles Hearth during a normal release. GitHub Actions builds both `linux/amd64`
+images, and the Synology only downloads and recreates containers. The remaining friction comes from
+two intentional boundaries: Docker on DSM is root-controlled, and private GHCR packages require a
+root-owned registry login. Codex must not read, type or store the DSM password or registry token.
+
+The preferred path is therefore a visible interactive terminal: the owner enters the DSM password
+once when `activate-private-release.sh` invokes `sudo`, then the script completes and verifies the
+release. A public source repository does not remove the registry step while its packages remain
+private.
+
+If the interactive password prompt is unavailable, the supported Safari fallback is:
+
+1. Stage the exact green commit and transfer a short, inspectable release script to the NAS.
+2. Create a **disabled**, root-owned DSM Task Scheduler task that runs only that file.
+3. Let the owner submit the DSM password when DSM saves the task, then run it manually.
+4. Verify the exact container image tags, loopback readiness and private origin.
+5. Delete the task, release script and task log after verification.
+
+Do not paste a long release program into DSM's script text area: browser editing has previously
+mutated shell text. Do not leave a reusable root deployment task behind. A permanent privileged
+helper would reduce clicks, but it materially expands persistent access and needs its own security
+review plus explicit owner approval.
+
+### Additional household Synology installations
+
+A second household may use the same verified public source and container images, but it is a new
+commissioned instance—not a clone of the first household. Give it a distinct HTTPS origin, service
+identity, runtime path, database, photo store, secrets, passkeys/recovery material and registry
+reader if packages remain private. Never copy another household's database, calendar credentials,
+Home Assistant token, photos or authentication material. Confirm the NAS architecture, Container
+Manager version, storage paths and private LAN/Tailscale reachability before activation.
 
 ## Backup design
 

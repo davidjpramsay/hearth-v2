@@ -5,6 +5,10 @@
 playwright-report/
 test-results/
 .codex-deploy/
+hearth/output/
+hearth/deploy/synology/.codex-deploy-*.sh
+hearth/deploy/synology/hearth-deploy-*.sh
+hearth/deploy/synology/hearth-brother-deploy-*.sh
 
 # Hearth v2 web/server workspace
 node_modules/

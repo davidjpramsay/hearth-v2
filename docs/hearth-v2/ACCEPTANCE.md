@@ -50,6 +50,10 @@ A change is complete only when:
 - Events created in a daylight-saving region display at the correct Perth time.
 - Recurrence exceptions and cancellations do not resurrect.
 - An unavailable provider leaves cached events visible and clearly marked stale.
+- Today, Week and Month fetch on entry, refresh every five visible minutes and
+  refresh immediately after browser reconnect or calendar settings changes.
+  A failed refresh retains the last successful event data while showing the
+  provider's stale/unavailable state.
 - A write conflict is explained and never silently overwrites the provider.
 - An adult can test a private HTTPS CalDAV account, select exact calendars,
   assign optional people, save, reload and remove the connection from the phone
@@ -188,6 +192,12 @@ Chromium fallback produced the retained evidence.
   landscape/square photos use the wide composition, no-photo summaries reclaim the available width,
   and each source remains fully visible at its native pixel ratio without distortion, crop or a
   persistent photo frame.
+- Automated layout coverage exercises all sixteen Dinner/List/Notice/Daily verse subsets against
+  no photo, landscape, square and portrait media at both television viewports; representative sparse
+  and dense compositions are retained for visual inspection.
+- Upcoming and due chores use equal-width columns with matching heading and first-row rails. Portrait
+  photos share the core upper rail; landscape/square photos share the optional-summary lower rail,
+  and hidden optional modules leave no reserved track or unexplained bottom anchoring.
 - With multiple approved photos, Today advances the preview after five visible minutes and recomposes
   for the next photo's stored orientation. Photos Pause/Resume also governs Today for that display
   session; reduced motion and hidden documents prevent automatic advancement.

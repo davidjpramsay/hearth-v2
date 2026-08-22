@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { RealtimeEventSchema } from '@hearth/shared';
 
+import { invalidateCalendarDisplays } from '../api/calendarCache';
 import { queryKeys } from '../api/queryKeys';
 import { getRealtimeUrl } from '../api/realtime';
 
@@ -74,6 +75,10 @@ export function useRealtimeInvalidation(): void {
         ]);
         return;
       }
+      if (parsed.data.kind === 'calendar.changed') {
+        void invalidateCalendarDisplays(queryClient);
+        return;
+      }
       if (parsed.data.kind === 'photos.changed') {
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
@@ -85,7 +90,7 @@ export function useRealtimeInvalidation(): void {
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
-        queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.monthRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
       ]);

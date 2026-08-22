@@ -157,11 +157,13 @@ Private household state is not stored in an image or source checkout. Recreating
 preserves `/volume1/hearth-v2-private`, including managed photo files, and the narrow read-only
 `/volume1/hearth-photos` import mount.
 
-### One-time GHCR authentication
+### GHCR visibility and one-time private authentication
 
-The verified server and web packages are private. Create a separately revocable GitHub Personal
-Access Token (classic) with only `read:packages`. In an interactive NAS administrator SSH session,
-run the command below and enter the GitHub username and token only at its prompts:
+The GitHub source repository is public, but GHCR package visibility is configured separately. The
+existing verified server and web packages remain private until the owner explicitly changes them.
+For private packages, create a separately revocable GitHub Personal Access Token (classic) with only
+`read:packages`. In an interactive NAS administrator SSH session, run the command below and enter
+the GitHub username and token only at its prompts:
 
 ```sh
 sudo /var/packages/ContainerManager/target/usr/bin/docker login ghcr.io
@@ -169,8 +171,10 @@ sudo /var/packages/ContainerManager/target/usr/bin/docker login ghcr.io
 
 Docker retains that reader under root's access-restricted configuration because private releases
 run Compose through `sudo`. Never place it in `.env`, Compose, Git, a command argument, chat or a
-screenshot. Do not make the packages public. Registry sign-in grants persistent package access and
-therefore requires explicit owner confirmation when performed.
+screenshot. Keep the packages private unless publishing the image artifacts is separately approved.
+Registry sign-in grants persistent package access and therefore requires explicit owner
+confirmation when performed. Public packages need no NAS registry credential; images may be public
+only after confirming they contain no household data, secrets, private URLs or commissioned config.
 
 ### Normal pull-only update
 
@@ -210,6 +214,33 @@ contains no build context.
 wants to stage without restarting. If the private registry is unavailable, a deliberately slow
 source recovery build remains possible by combining `compose.yaml` and `compose.build.yaml`. This
 is an explicit fallback only and must not occur automatically on the DS920+.
+
+### Privilege boundary and DSM browser fallback
+
+A normal release is pull-only: GitHub Actions builds the images and the Synology does not compile
+Hearth. It still requires one privileged operation because DSM restricts Docker and a private GHCR
+login belongs to root. The preferred update is a visible terminal where the owner enters the DSM
+password once for `activate-private-release.sh`; the script must never capture or store it.
+
+When that password prompt cannot be surfaced, use DSM Task Scheduler only as a temporary fallback:
+
+1. Stage the exact green commit and transfer a short release script as a file.
+2. Create a disabled root-owned user-defined task that runs that file.
+3. Have the owner submit the DSM password while saving, then run the task manually.
+4. Verify exact image tags, readiness and the private origin.
+5. Delete the temporary task, script and logs.
+
+Do not paste a long script into DSM's text editor, use Container Manager **Build**, leave a reusable
+root task behind or store a DSM/GitHub credential in the task. A permanent least-privilege release
+helper is a separate security decision and requires explicit approval.
+
+### Commissioning another household
+
+Reuse the verified code and images, not the commissioned household. A second NAS needs its own
+origin, service identity, runtime/data paths, database, managed photos, integration secrets,
+passkeys/recovery material and registry reader if packages remain private. Never copy the first
+household's private directory or credentials. Verify CPU architecture, Container Manager, storage
+and LAN/Tailscale access before activation.
 
 ## Backup verification and clean-location restore
 

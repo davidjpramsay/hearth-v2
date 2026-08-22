@@ -75,8 +75,15 @@ an unexplained empty column. Television Today is a single non-scrolling dashboar
 vertical document. It selects a bounded composition from the enabled band count and the featured
 photo's typed orientation: portrait photos use a substantial right-side rail, landscape and square
 photos use a shorter wide panel, and no-photo layouts return the full lower width to summary bands.
+The two core columns remain equal and share heading and first-card rails. Portrait media begins at
+that core upper rail; landscape/square media and the enabled summary bands share one lower rail.
+Collapsed modules reserve no track, and the lower content follows the actual core height rather than
+floating at the bottom of a taller display.
 The preview contract carries source dimensions when available, and the image itself sizes from that
 native ratio with no persistent frame, crop, shadow or backing panel.
+Landscape media receives a band-count-aware share of the lower rail: it grows when fewer summaries
+need horizontal room and remains height-bounded on shorter televisions. Square media stays compact
+enough to preserve the core dashboard, while portrait media continues to use the upper right rail.
 One to four bands become compact tiles without reserving empty rows. The phone keeps its natural
 single-column scroll because it is an editing and companion surface rather than a wall appliance.
 When more than one approved family photo is available, the Today preview advances after about five

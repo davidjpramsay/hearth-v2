@@ -15,6 +15,7 @@ const runtimeTokens = new Set([
   '--photo-native-ratio',
   '--photo-rotation-duration',
   '--today-photo-ratio',
+  '--today-preview-photo-ratio',
 ]);
 
 describe('design tokens', () => {

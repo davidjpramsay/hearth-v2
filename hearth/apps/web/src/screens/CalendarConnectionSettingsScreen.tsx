@@ -8,6 +8,7 @@ import {
 } from '@hearth/shared';
 
 import { connectionsApi as hearthApi } from '../api/connections';
+import { invalidateCalendarDisplays } from '../api/calendarCache';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
@@ -88,9 +89,7 @@ export function CalendarConnectionSettingsScreen() {
       queryClient.setQueryData(queryKeys.calendarConnection, result.connection);
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
-        queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
+        invalidateCalendarDisplays(queryClient),
         queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
       ]);
       window.scrollTo({ top: 0, behavior: 'auto' });
@@ -106,7 +105,11 @@ export function CalendarConnectionSettingsScreen() {
     mutationFn: () => hearthApi.removeCalendarConnection(createRequestId('calendar_remove')),
     onSuccess: () => {
       queryClient.setQueryData(queryKeys.calendarConnection, null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.admin });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
+        invalidateCalendarDisplays(queryClient),
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
+      ]);
       window.scrollTo({ top: 0, behavior: 'auto' });
       setConfirmRemove(false);
       setEditMode('none');
@@ -119,9 +122,7 @@ export function CalendarConnectionSettingsScreen() {
     onSuccess: (result) => {
       queryClient.setQueryData(queryKeys.calendarConnection, result.connection);
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
-        queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'month'] }),
+        invalidateCalendarDisplays(queryClient),
         queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
       ]);
       setMappingOwners({});

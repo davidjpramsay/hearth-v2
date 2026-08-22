@@ -834,30 +834,30 @@
 }
 .today-photo-action {
   min-width: 0;
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius-photo);
   color: inherit;
   display: grid;
-  place-items: center;
+  place-items: start center;
   text-decoration: none;
 }
-.today-photo-action .today-photo {
-  height: 100%;
-}
 .today-photo {
+  width: 100%;
   min-width: 0;
   min-height: 0;
   margin: 0;
+  aspect-ratio: var(--today-photo-ratio);
+  border-radius: var(--radius-photo);
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
 }
 .today-photo__image {
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
-  border-radius: var(--radius-panel);
+  border-radius: inherit;
   display: block;
   object-fit: contain;
   filter: none;
@@ -879,14 +879,24 @@
     min-height: 0;
     flex: 1 1 auto;
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
-    gap: 16px;
+    grid-template-rows: auto auto;
+    align-content: start;
+    gap: 18px;
   }
   .today-dashboard .today-columns {
     min-height: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 24px;
+  }
+  .today-dashboard .today-section {
+    display: grid;
+    grid-template-rows: 44px auto;
   }
   .today-dashboard .section-heading {
     min-height: 44px;
+    height: 44px;
+    padding-inline: 6px;
   }
   .today-dashboard .event-list,
   .today-dashboard .chore-list {
@@ -917,6 +927,7 @@
   .today-dashboard .summary-row {
     min-height: 0;
     margin: 0;
+    align-self: start;
     align-items: stretch;
   }
   .today-dashboard .summary-details {
@@ -965,31 +976,54 @@
     font-size: 21px;
     -webkit-line-clamp: 3;
   }
-  .today-dashboard .today-photo-action,
-  .today-dashboard .today-photo {
-    min-height: 0;
-    height: 100%;
-  }
   .today-dashboard .today-photo-action {
+    min-height: 0;
+    align-self: start;
     overflow: visible;
   }
-  .today-dashboard .today-photo__image {
-    max-height: 100%;
+  .today-dashboard--photo-landscape .summary-row {
+    grid-template-columns: minmax(0, 1fr) 46%;
+    align-items: start;
   }
-  .today-dashboard--photo-landscape .summary-row,
+  .today-dashboard--photo-landscape[data-summary-count='1'] .summary-row {
+    grid-template-columns: minmax(0, 1fr) 50%;
+  }
+  .today-dashboard--photo-landscape[data-summary-count='2'] .summary-row {
+    grid-template-columns: minmax(0, 1fr) 48%;
+  }
+  .today-dashboard--photo-landscape[data-summary-count='4'] .summary-row {
+    grid-template-columns: minmax(0, 1fr) 42%;
+  }
   .today-dashboard--photo-square .summary-row {
-    height: clamp(220px, 30vh, 310px);
-    grid-template-columns: minmax(0, 1.5fr) clamp(360px, 36%, 620px);
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 32%, 410px);
+    align-items: start;
   }
-  .today-dashboard--photo-landscape .today-photo__image,
-  .today-dashboard--photo-square .today-photo__image {
-    width: 100%;
+  .today-dashboard--photo-landscape .today-photo-action,
+  .today-dashboard--photo-square .today-photo-action {
+    justify-items: end;
+  }
+  .today-dashboard--photo-landscape .today-photo {
+    width: min(100%, calc(46vh * var(--today-photo-ratio)));
     height: auto;
-    object-position: center;
+    max-width: 100%;
+  }
+  .today-dashboard--photo-square .today-photo {
+    width: min(100%, 38vh);
+    height: auto;
+    max-width: 100%;
+  }
+  .today-dashboard--photo-landscape .summary-details--count-3 {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(3, minmax(104px, auto));
+  }
+  .today-dashboard--photo-landscape .summary-details--count-4,
+  .today-dashboard--photo-square .summary-details--count-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(104px, auto));
   }
   .today-dashboard--photo-portrait {
-    grid-template-columns: minmax(0, 1fr) clamp(300px, 28%, 440px);
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 26%, 400px);
+    grid-template-rows: auto auto;
     column-gap: 18px;
   }
   .today-dashboard--photo-portrait .today-columns {
@@ -1006,11 +1040,11 @@
   .today-dashboard--photo-portrait .today-photo-action {
     grid-column: 2;
     grid-row: 1 / 3;
+    align-self: start;
+    justify-items: stretch;
   }
-  .today-dashboard--photo-portrait .today-photo__image {
-    width: auto;
-    height: 100%;
-    object-position: center;
+  .today-dashboard--photo-portrait .today-photo {
+    align-self: start;
   }
   .today-dashboard--photo-none .summary-row {
     grid-template-columns: minmax(0, 1fr);
@@ -1019,8 +1053,16 @@
     min-height: 112px;
   }
   .today-dashboard .summary-row--photo-only {
-    grid-template-columns: minmax(420px, 720px);
+    width: min(100%, 920px);
+    grid-template-columns: minmax(0, 1fr);
+    justify-self: center;
     justify-content: center;
+  }
+  .today-dashboard .summary-row--photo-only .today-photo-action {
+    justify-items: center;
+  }
+  .today-dashboard--photo-landscape[data-summary-count='0'] .today-photo {
+    width: min(100%, calc(48vh * var(--today-photo-ratio)));
   }
 }
 
@@ -2838,6 +2880,12 @@
   .summary-row {
     margin-top: 18px;
   }
+  .today-dashboard--photo-landscape .today-photo {
+    width: min(100%, calc(40vh * var(--today-photo-ratio)));
+  }
+  .today-dashboard--photo-landscape[data-summary-count='0'] .today-photo {
+    width: min(100%, calc(40vh * var(--today-photo-ratio)));
+  }
   .summary-band {
     min-height: 88px;
     padding: 14px 18px;
@@ -2845,15 +2893,12 @@
   .summary-band p {
     font-size: 21px;
   }
-  .today-photo {
-    min-height: 264px;
-  }
   .today-dashboard--photo-portrait {
     grid-template-columns: minmax(0, 1fr) clamp(240px, 24%, 300px);
     column-gap: 14px;
   }
   .today-dashboard--photo-portrait .today-columns {
-    gap: 18px;
+    gap: 16px;
   }
   .today-dashboard--photo-portrait .chore-row {
     padding-inline: 12px;
@@ -3078,7 +3123,7 @@
     width: 100%;
     height: auto;
     max-height: none;
-    border-radius: 14px;
+    border-radius: inherit;
   }
   .phone-tabs {
     position: fixed;

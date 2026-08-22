@@ -100,6 +100,32 @@ describe('TodayConfigurationPreview', () => {
     expect(container.querySelector('.today-configuration-preview__photo--portrait')).toBeVisible();
   });
 
+  it('mirrors the runtime band-count composition and native photo ratio', () => {
+    const ratioData: TodayPreviewData = {
+      ...data,
+      photo: {
+        url: '/demo/family.webp',
+        alt: 'Wide family breakfast',
+        orientation: 'landscape',
+        width: 1600,
+        height: 900,
+      },
+    };
+    const { container } = render(
+      <TodayConfigurationPreview
+        data={ratioData}
+        sections={{ ...allSections, dailyVerse: false }}
+      />,
+    );
+
+    expect(container.querySelector('.today-configuration-preview__summary--count-3')).toBeVisible();
+    expect(container.querySelector('.today-configuration-preview__bands--count-3')).toBeVisible();
+    expect(container.querySelector('.today-configuration-preview__photo')).toHaveAttribute(
+      'data-photo-ratio',
+      '1.7778',
+    );
+  });
+
   it('removes optional regions without hiding the stable plans and chores core', () => {
     const { container } = render(
       <TodayConfigurationPreview

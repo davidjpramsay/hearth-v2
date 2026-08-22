@@ -168,6 +168,15 @@ test('@visual and @a11y Today notice administration and customised television ov
   await page.getByRole('button', { name: 'TV' }).click();
   const wideTvPreview = page.getByRole('img', { name: /TV Today preview/ });
   await wideTvPreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  const previewBandsBox = await wideTvPreview
+    .locator('.today-configuration-preview__bands')
+    .boundingBox();
+  const previewPhotoBox = await wideTvPreview
+    .locator('.today-configuration-preview__photo')
+    .boundingBox();
+  expect(previewBandsBox).not.toBeNull();
+  expect(previewPhotoBox).not.toBeNull();
+  expect(Math.abs(previewBandsBox!.y - previewPhotoBox!.y)).toBeLessThanOrEqual(1);
   await captureEvidence(page, {
     path: resolve(evidence, 'today-preview-tv-admin-1366.png'),
     animations: 'disabled',
