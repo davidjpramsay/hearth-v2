@@ -222,7 +222,10 @@ test('@visual Today aligns landscape media with the optional-summary rail', asyn
 test('Today covers every optional-module subset across representative native photo ratios', async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  // This deliberately exercises 192 complete render/navigation cycles. GitHub's
+  // shared runners need more headroom than the local Chromium run, while each
+  // individual assertion retains the normal five-second expectation timeout.
+  test.setTimeout(360_000);
   const sectionKeys = ['dinner', 'listSummary', 'notice', 'dailyVerse'] as const;
   const photoShapes = [
     { name: 'none', orientation: 'none', width: 0, height: 0 },
