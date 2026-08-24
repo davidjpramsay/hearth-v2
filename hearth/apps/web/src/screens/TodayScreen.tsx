@@ -21,6 +21,7 @@ import { usePhotosQuery } from '../hooks/usePhotoQueries';
 import { useTodayPhotoRotation } from '../hooks/useTodayPhotoRotation';
 import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { getTodayRailCapacity, useTodayViewportClass } from '../layout/todayRailCapacity';
 import { useHearthRuntime } from '../runtime/context';
 
 export function TodayScreen({
@@ -47,17 +48,11 @@ export function TodayScreen({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedNotice, setSelectedNotice] = useState<string | null>(null);
   const [selectedDailyVerse, setSelectedDailyVerse] = useState<DailyVerseSummary | null>(null);
+  const viewportClass = useTodayViewportClass();
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const today = query.data;
-  const visibleEvents = today.events.slice(0, 3);
-  const visibleChores = today.chores.slice(0, 3);
-  const eventOverflowCount = Math.max(0, today.events.length - visibleEvents.length);
-  const choreOverflowCount = Math.max(0, today.chores.length - visibleChores.length);
-  const primaryChoreId =
-    today.chores.find((chore) => chore.state === 'pending' && !chore.locked)?.id ??
-    today.chores[0]?.id;
   const visibleSummaryCount = [
     today.sections.dinner,
     today.sections.listSummary,
@@ -66,6 +61,14 @@ export function TodayScreen({
   ].filter(Boolean).length;
   const showPhoto = today.sections.photo && rotatingPhoto !== null;
   const photoOrientation = showPhoto && rotatingPhoto !== null ? rotatingPhoto.orientation : 'none';
+  const railCapacity = getTodayRailCapacity({ photoOrientation, viewportClass });
+  const visibleEvents = today.events.slice(0, railCapacity);
+  const visibleChores = today.chores.slice(0, railCapacity);
+  const eventOverflowCount = Math.max(0, today.events.length - visibleEvents.length);
+  const choreOverflowCount = Math.max(0, today.chores.length - visibleChores.length);
+  const primaryChoreId =
+    today.chores.find((chore) => chore.state === 'pending' && !chore.locked)?.id ??
+    today.chores[0]?.id;
   const dashboardDensity =
     eventOverflowCount > 0 || choreOverflowCount > 0 || visibleSummaryCount >= 3
       ? 'dense'
@@ -76,6 +79,13 @@ export function TodayScreen({
     today.sections.notice && today.notice !== null ? 'today-summary-notice' : null,
     today.sections.dailyVerse && today.dailyVerse !== null ? 'today-summary-daily-verse' : null,
   ].filter((focusId): focusId is string => focusId !== null);
+  const portraitSummaryShelf = photoOrientation === 'portrait' && summaryFocusIds.length > 0;
+  const portraitChoreSummaryIndex = Math.min(
+    Math.max(Math.ceil(summaryFocusIds.length / 2), 1),
+    summaryFocusIds.length - 1,
+  );
+  const portraitChoreSummaryFocusId =
+    summaryFocusIds[portraitChoreSummaryIndex] ?? summaryFocusIds[0];
   const lastEventFocusId = visibleEvents.at(-1)
     ? `today-event-${visibleEvents.at(-1)!.id}`
     : 'nav-today';
@@ -83,6 +93,11 @@ export function TodayScreen({
     ? `today-chore-${visibleChores.at(-1)!.id}`
     : 'nav-today';
   const firstBottomFocusId = summaryFocusIds[0] ?? (showPhoto ? 'today-photo' : 'nav-today');
+  const choreBottomFocusId = portraitSummaryShelf
+    ? (portraitChoreSummaryFocusId ?? 'today-photo')
+    : showPhoto
+      ? 'today-photo'
+      : (summaryFocusIds[0] ?? lastChoreFocusId);
   const eventAfterRowsFocusId =
     eventOverflowCount > 0
       ? 'today-event-overflow'
@@ -90,11 +105,7 @@ export function TodayScreen({
         ? lastEventFocusId
         : firstBottomFocusId;
   const choreAfterRowsFocusId =
-    choreOverflowCount > 0
-      ? 'today-chore-overflow'
-      : showPhoto
-        ? 'today-photo'
-        : (summaryFocusIds[0] ?? lastChoreFocusId);
+    choreOverflowCount > 0 ? 'today-chore-overflow' : choreBottomFocusId;
   const hasVisibleSummaryContent =
     (today.sections.dinner && today.dinner !== null) ||
     (today.sections.listSummary && today.listSummary !== null) ||
@@ -116,6 +127,22 @@ export function TodayScreen({
 
   function summaryFocus(focusId: string) {
     const index = summaryFocusIds.indexOf(focusId);
+    if (portraitSummaryShelf) {
+      const horizontalPosition = (index + 0.5) / summaryFocusIds.length;
+      const upTarget =
+        horizontalPosition < 0.5
+          ? lastEventFocusId
+          : horizontalPosition < 0.78
+            ? lastChoreFocusId
+            : 'today-photo';
+      return {
+        'data-focus-id': focusId,
+        'data-focus-up': upTarget,
+        'data-focus-down': focusId,
+        'data-focus-left': summaryFocusIds[index - 1] ?? 'nav-today',
+        'data-focus-right': summaryFocusIds[index + 1] ?? focusId,
+      };
+    }
     return {
       'data-focus-id': focusId,
       'data-focus-up':
@@ -159,6 +186,7 @@ export function TodayScreen({
         className={`today-dashboard today-dashboard--photo-${photoOrientation}`}
         data-density={dashboardDensity}
         data-photo-orientation={photoOrientation}
+        data-rail-capacity={railCapacity}
         data-summary-count={visibleSummaryCount}
       >
         <div className="today-columns">
@@ -216,7 +244,7 @@ export function TodayScreen({
                 <Link
                   aria-label={`View ${choreOverflowCount} more ${choreOverflowCount === 1 ? 'chore' : 'chores'}`}
                   className="today-section-more focusable"
-                  data-focus-down={showPhoto ? 'today-photo' : firstBottomFocusId}
+                  data-focus-down={choreBottomFocusId}
                   data-focus-id="today-chore-overflow"
                   data-focus-left={
                     eventOverflowCount > 0 ? 'today-event-overflow' : lastEventFocusId
@@ -328,9 +356,13 @@ export function TodayScreen({
               <Link
                 aria-label="Open family photos"
                 className="today-photo-action focusable"
-                data-focus-down="today-photo"
+                data-focus-down={
+                  portraitSummaryShelf ? (summaryFocusIds.at(-1) ?? 'today-photo') : 'today-photo'
+                }
                 data-focus-id="today-photo"
-                data-focus-left={summaryFocusIds.at(-1) ?? 'nav-today'}
+                data-focus-left={
+                  portraitSummaryShelf ? lastChoreFocusId : (summaryFocusIds.at(-1) ?? 'nav-today')
+                }
                 data-focus-right="today-photo"
                 data-focus-up={choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId}
                 to="/photos"

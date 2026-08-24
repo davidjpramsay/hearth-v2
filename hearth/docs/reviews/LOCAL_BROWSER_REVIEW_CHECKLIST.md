@@ -90,7 +90,7 @@ Recommended browser viewport checks:
 - [ ] Decide whether weather belongs here, should be smaller or should be removed.
 - [ ] Are upcoming events ordered and grouped as you expect?
 - [ ] Are event time, title, owner and colour easy to distinguish?
-- [ ] Are three events the right number before the Week screen becomes necessary?
+- [ ] Does the adaptive three-to-five-row limit feel right: four beside landscape photos at 1080p, three at compact TV height/phone, and five only where the composition supports it?
 - [ ] Do long event titles truncate gracefully without losing essential meaning?
 - [ ] Is “Due now & today” the right label for chores?
 - [ ] Is it obvious which person owns each chore?

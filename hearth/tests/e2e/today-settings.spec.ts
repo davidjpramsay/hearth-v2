@@ -90,6 +90,7 @@ test('@visual @a11y daily verse is optional and Back restores its television foc
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowLeft');
   const verseBand = page.locator('[data-focus-id="today-summary-daily-verse"]');
   await expect(verseBand).toBeFocused();

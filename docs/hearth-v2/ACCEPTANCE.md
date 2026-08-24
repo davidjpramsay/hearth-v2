@@ -209,9 +209,11 @@ Chromium fallback produced the retained evidence.
   away, and two rapid changes cannot overwrite one another.
 - A failed secondary preview read is family-readable and does not prevent an
   adult from changing or saving section visibility.
-- Today displays no more than three event and three chore rows on television and
-  exposes the exact hidden count through focusable links to Calendar Agenda and
-  Chores; no returned item is silently concealed.
+- Today displays three to five event and chore rows on television according to photo orientation
+  and available height, keeps the full dashboard inside one viewport, and exposes the exact hidden
+  count through focusable links to Calendar Agenda and Chores. A landscape photo permits four only
+  at full television height; its compact-height counterpart and the phone remain capped at three.
+  No returned item is silently concealed.
 - A visible event opens family-readable details, Dinner/List/Photo open their
   real modules, an active Notice opens its full text, and Back restores the exact
   originating control using only remote-equivalent input.

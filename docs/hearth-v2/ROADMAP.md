@@ -183,13 +183,13 @@ a layout editor. Demo reset isolation, SQLite restart, phone accessibility and
 customised 1080p rendering are automated; live household copy remains a pilot
 tuning decision.
 
-Implementation extension (2026-08-10): Today now caps its calm television
-columns at three event and three chore rows while exposing exact, focusable
-overflow counts into Calendar Agenda and Chores. Event rows open calendar
-details; Dinner, List summary and Family photo link to their real modules; and
-Notice opens the full announcement in a Back-safe dialog. Automated remote-only
-TV and phone flows prove focus restoration, responsive composition, accessibility
-and clean console behaviour.
+Implementation extension (updated 2026-08-24): Today now derives a calm three-to-five-row television
+capacity from display height and photo orientation: full-height landscape compositions use four,
+their compact-height counterpart uses three, and phone remains at three. Exact, focusable
+overflow counts lead into Calendar Agenda and Chores. Event rows open calendar details; Dinner, List
+summary and Family photo link to their real modules; and Notice opens the full announcement in a
+Back-safe dialog. Automated remote-only TV and phone flows prove focus restoration, responsive
+composition, accessibility and clean console behaviour.
 
 Implementation extension (2026-08-21): Today now treats television height as a hard appliance
 constraint. Its typed photo orientation and enabled summary count select a deterministic portrait,

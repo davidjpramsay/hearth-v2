@@ -914,7 +914,7 @@ Official platform references:
 ## D-058 — Today composition is derived from content and photo orientation
 
 - Date: 2026-08-21
-- Status: accepted
+- Status: accepted; the fixed row-cap clause is superseded by D-063
 - Context: A fixed lower row reserved excessive height for empty or short summary modules and placed
   portrait and landscape photos in the same geometry. Real household combinations therefore left
   dead space, pushed useful content below the television viewport and made Today behave like a web
@@ -926,8 +926,9 @@ Official platform references:
   chores share equal content columns, heading baselines and first-row rails. Portrait media starts
   on the same upper rail; landscape/square media starts on the same lower rail as the optional bands.
   Optional bands follow the actual core content rather than being pinned to the viewport bottom.
-  Keep the three-row event/chore cap and existing focus graph. Do not expose layout controls or carry
-  the non-scrolling constraint into the phone companion.
+  Begin with a three-row event/chore cap and existing focus graph. D-063 later makes that cap
+  composition-aware. Do not expose layout controls or carry the non-scrolling constraint into the
+  phone companion.
 - Consequence: Today responds to real enabled content without becoming a layout editor, keeps every
   module visible on supported television viewports and preserves undistorted photography. New photo
   producers must supply normalized orientation, while old private state needs no database migration
@@ -1005,3 +1006,20 @@ Official platform references:
   settings changes remain immediate, reconnect recovery is deterministic and a temporary iCloud
   outage does not blank the family calendar. The five-minute interval is a resilience backstop, not
   a general high-frequency polling architecture, and it pauses when the document is hidden.
+
+## D-063 — Today row capacity follows the photo composition
+
+- Date: 2026-08-24
+- Status: accepted; supersedes only D-058's fixed three-row cap
+- Context: Three rows leave useful vertical capacity unused beside portrait photography and when no
+  photo is enabled. Raising every layout to five instead pushes landscape photography and optional
+  modules beyond supported television viewports or makes the family image unacceptably small.
+- Choice: Derive one shared Upcoming/Chores capacity from the active display and normalized photo
+  orientation. Phones show three rows. A landscape-photo television shows four rows at full height
+  and three on a compact 768-pixel display. Portrait and no-photo television compositions may show
+  five; a square image shows five at full TV height and three on the compact display. The Admin
+  TV/Phone preview uses the same policy. Slice the typed data
+  before rendering so exact overflow counts and D-pad links describe only controls that are visible.
+- Consequence: Busy portrait/no-photo dashboards expose more useful work without scrolling, while
+  landscape images remain substantial. Photo rotation can recompose the row count together with the
+  image orientation, and every hidden item remains reachable through the existing overflow action.

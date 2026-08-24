@@ -98,14 +98,19 @@ another switch's older value. If overview data cannot load, the preview says so 
 visibility controls usable. The TV preview models the Today content viewport after the navigation
 rail has been reserved, rather than squeezing that content into a physical 16:9 display frame. The
 Phone preview models the real phone shell and its scrollable single-column Today document. Both
-previews use the same three-event and three-chore visibility bounds as the rendered Today screen.
+previews use the same orientation-aware row capacity as the rendered Today screen, while the Phone
+preview keeps the companion's concise three-row bound.
 
 The first focus should usually be the most relevant actionable item, not the navigation chrome.
-Today keeps at most three event rows and three chore rows visible on television. A deterministic,
-focusable `+N more` action reports the complete hidden count and opens the Calendar agenda or Chores
-screen. Event rows open the same detail dialog as the calendar views. Dinner, List summary and the
-photo preview link to Meals, Lists and Photos; an active Notice opens its full text in a Back-safe
-dialog. Back restores the exact originating row, overflow action or summary band.
+Today derives the visible event/chore capacity from the rendered composition. Full-height
+landscape-photo television layouts may use four rows, while their compact-height counterpart and
+compact-square television layouts retain three. Portrait, full-height square and no-photo television
+layouts may use up to five when the complete dashboard remains inside one viewport. The phone keeps
+three. A deterministic, focusable `+N more` action reports the complete hidden count and
+opens the Calendar agenda or Chores screen. Event rows open the same detail dialog as the calendar
+views. Dinner, List summary and the photo preview link to Meals, Lists and Photos; an active Notice
+opens its full text in a Back-safe dialog. Back restores the exact originating row, overflow action
+or summary band.
 
 ### Calendar
 

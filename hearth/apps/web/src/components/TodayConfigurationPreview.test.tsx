@@ -97,7 +97,50 @@ describe('TodayConfigurationPreview', () => {
     expect(
       container.querySelector('.today-configuration-preview__canvas--photo-portrait'),
     ).toBeVisible();
+    expect(
+      container.querySelector('.today-configuration-preview__canvas--photo-portrait'),
+    ).toHaveAttribute('data-summary-count', '4');
     expect(container.querySelector('.today-configuration-preview__photo--portrait')).toBeVisible();
+  });
+
+  it('mirrors adaptive television capacity while keeping the phone preview concise', () => {
+    const portraitData: TodayPreviewData = {
+      ...data,
+      events: Array.from({ length: 6 }, (_, index) => ({
+        ...data.events[0]!,
+        id: `event_${index}`,
+        title: `Plan ${index + 1}`,
+      })),
+      chores: Array.from({ length: 6 }, (_, index) => ({
+        ...data.chores[0]!,
+        id: `chore_${index}`,
+        title: `Chore ${index + 1}`,
+      })),
+      photo: {
+        url: '/demo/photos/garden-morning.webp',
+        alt: 'Family garden',
+        orientation: 'portrait',
+      },
+    };
+    const { container } = render(
+      <TodayConfigurationPreview data={portraitData} sections={allSections} />,
+    );
+
+    expect(container.querySelector('.today-configuration-preview__canvas')).toHaveAttribute(
+      'data-rail-capacity',
+      '5',
+    );
+    expect(container.querySelectorAll('.today-configuration-preview__event')).toHaveLength(5);
+    expect(container.querySelectorAll('.today-configuration-preview__chore')).toHaveLength(5);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Phone' }));
+
+    expect(container.querySelector('.today-configuration-preview__canvas')).toHaveAttribute(
+      'data-rail-capacity',
+      '3',
+    );
+    expect(container.querySelectorAll('.today-configuration-preview__event')).toHaveLength(3);
+    expect(container.querySelectorAll('.today-configuration-preview__chore')).toHaveLength(3);
   });
 
   it('mirrors the runtime band-count composition and native photo ratio', () => {

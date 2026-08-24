@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 
 import type { TodaySectionVisibility } from '@hearth/shared';
 
+import { getTodayRailCapacity } from '../layout/todayRailCapacity';
 import { Icon, type IconName } from './Icon';
 import type { PreviewPerson, TodayPreviewData } from './todayPreviewData';
 import './TodayConfigurationPreview.css';
@@ -23,6 +24,10 @@ export function TodayConfigurationPreview({
   const summaryBands = previewSummaryBands(data, sections);
   const showPhoto = sections.photo;
   const photoOrientation = showPhoto ? (data.photo?.orientation ?? 'landscape') : 'none';
+  const railCapacity = getTodayRailCapacity({
+    photoOrientation,
+    viewportClass: mode === 'television' ? 'full-tv' : 'companion',
+  });
   const enabledNames = [
     sections.dinner ? 'Dinner' : null,
     sections.listSummary ? 'List summary' : null,
@@ -87,11 +92,13 @@ export function TodayConfigurationPreview({
             <div
               aria-hidden="true"
               className={`today-configuration-preview__canvas today-configuration-preview__canvas--photo-${photoOrientation}`}
+              data-rail-capacity={railCapacity}
+              data-summary-count={summaryBands.length}
             >
               <PreviewHeader data={data} />
               <div className="today-configuration-preview__core">
-                <PreviewEvents events={data.events} />
-                <PreviewChores chores={data.chores} />
+                <PreviewEvents events={data.events.slice(0, railCapacity)} />
+                <PreviewChores chores={data.chores.slice(0, railCapacity)} />
               </div>
               {summaryBands.length === 0 && !showPhoto ? null : (
                 <div

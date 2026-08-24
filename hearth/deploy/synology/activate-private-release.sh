@@ -17,6 +17,8 @@ remote_runtime=/volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/p
 remote_project="$remote_runtime/docker-compose.yml"
 remote_environment="$remote_runtime/.env"
 remote_compose=/var/packages/ContainerManager/target/usr/bin/docker-compose
+remote_firewall_helper=/volume1/docker/hearth-v2/source/hearth/deploy/synology/ensure-docker-firewall.sh
+remote_boot_hook=/usr/local/etc/rc.d/S99hearth-docker-firewall.sh
 
 if [ -n "$deploy_hostname" ]; then
   case "$deploy_hostname" in
@@ -48,7 +50,7 @@ run_ssh_tty() {
 printf 'Pulling verified images before replacing the running containers.\n'
 printf 'Synology may ask for the administrator password; it is not stored by Hearth.\n'
 run_ssh_tty \
-  "sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' pull && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' up -d --remove-orphans && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' ps"
+  "sudo install -o root -g root -m 0755 '$remote_firewall_helper' '$remote_boot_hook' && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' pull && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' up -d --remove-orphans && sudo '$remote_boot_hook' start && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' ps"
 
 run_ssh /bin/sh <<EOF
 set -eu
@@ -74,7 +76,7 @@ echo 'Hearth did not become ready within 60 seconds.' >&2
 exit 1
 EOF
 
-run_ssh /bin/sh <<EOF
+run_ssh_tty "sudo /bin/sh -s" <<EOF
 set -eu
 write_release_marker() {
   marker_path=\$1

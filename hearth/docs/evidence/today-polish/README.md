@@ -10,12 +10,12 @@ summary region.
 | Area         | Finding                                                                                                                                                                                     |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Copy         | Existing `Today`, `Upcoming` and `Due now & today` language is retained. Compact `+N more` actions state exact hidden counts and use family destinations rather than technical paging copy. |
-| Composition  | The accepted two-column TV hierarchy remains intact. Three calm rows per column protect the summary/photo area; phone keeps a single readable stack.                                        |
+| Composition  | The accepted two-column TV hierarchy remains intact. Full-height landscape layouts use four calm rows, compact landscape uses three, and phone keeps a single readable stack.               |
 | Typography   | Local Source Sans 3, the existing header scale and sofa-readable row labels remain unchanged. Overflow actions are prominent without competing with section headings.                       |
 | Palette      | Warm ivory, eucalyptus and sky focus colours remain consistent with the accepted Hearth tokens.                                                                                             |
 | Icons/assets | Existing direct local SVG icons and original fictional household assets are reused; no concept screenshot is shipped as interface.                                                          |
 | Focus        | Overflow, event details, summary bands, notice details and photo preview all combine outline, halo, elevation and colour. Back restores the exact origin.                                   |
-| Responsive   | TV retains the accepted overview; phone shows honest overflow before the fixed navigation and keeps summary/photo content full width below the core rows.                                   |
+| Responsive   | TV exposes three to five rows according to photo orientation and screen height without scrolling; phone stays at three and keeps summary/photo content full width below the core rows.      |
 | Behaviour    | Events and notices expose details; overflow opens Agenda/Chores; Dinner, List and Photo open their real modules. No returned plans or chores disappear silently.                            |
 
 No fixable copy, composition, typography, palette, focus or responsive mismatch remained in the

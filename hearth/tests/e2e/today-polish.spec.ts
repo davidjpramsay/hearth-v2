@@ -31,10 +31,11 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
 
   await expect(page).toHaveTitle(/Hearth/);
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'View 2 more plans in Calendar' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'View 5 more chores' })).toBeVisible();
-  await expect(page.locator('.event-row')).toHaveCount(3);
-  await expect(page.locator('.chore-row')).toHaveCount(3);
+  await expect(page.locator('.today-dashboard')).toHaveAttribute('data-rail-capacity', '4');
+  await expect(page.getByRole('link', { name: 'View 1 more plan in Calendar' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View 4 more chores' })).toBeVisible();
+  await expect(page.locator('.event-row')).toHaveCount(4);
+  await expect(page.locator('.chore-row')).toHaveCount(4);
 
   const firstEvent = page.getByRole('button', { name: /8:15 am, School drop-off/ });
   await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
@@ -50,6 +51,7 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await page.keyboard.press('Escape');
   await expect(firstEvent).toBeFocused();
 
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -118,6 +120,7 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await expect(page.locator('.today-dashboard')).toHaveAttribute('data-rail-capacity', '3');
   await expect(page.getByRole('link', { name: 'View 2 more plans in Calendar' })).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'today-overflow-phone-portrait.png'),
@@ -150,10 +153,35 @@ for (const viewport of [
 
     const dashboard = page.locator('.today-dashboard');
     await expect(dashboard).toHaveAttribute('data-photo-orientation', 'portrait');
+    await expect(dashboard).toHaveAttribute('data-rail-capacity', '5');
     await expect(
       page.getByAltText('Ezra and Maya water herbs in the family garden.'),
     ).toBeVisible();
     expect(await hasTelevisionOverflow(page)).toBe(false);
+    expect(
+      await page.locator('.event-row').evaluateAll((rows) =>
+        rows.every((row) => {
+          const rowBox = row.getBoundingClientRect();
+          const rowCenter = (rowBox.top + rowBox.bottom) / 2;
+          const alignedParts = [
+            row.querySelector('.event-row__time'),
+            row.querySelector('.event-row__rule'),
+            row.querySelector('.event-row__body'),
+            row.querySelector('.avatar, .family-avatar'),
+          ];
+          return alignedParts.every((part) => {
+            if (part === null) return false;
+            const partBox = part.getBoundingClientRect();
+            const partCenter = (partBox.top + partBox.bottom) / 2;
+            return (
+              Math.abs(partCenter - rowCenter) <= 1 &&
+              partBox.top >= rowBox.top &&
+              partBox.bottom <= rowBox.bottom
+            );
+          });
+        }),
+      ),
+    ).toBe(true);
     expect(
       await page.locator('.chore-row').evaluateAll((rows) =>
         rows.every((row) => {
@@ -166,6 +194,7 @@ for (const viewport of [
     ).toBe(true);
 
     const columnsBox = await page.locator('.today-columns').boundingBox();
+    const dashboardBox = await dashboard.boundingBox();
     const photoBox = await page.locator('.today-photo-action').boundingBox();
     const summariesBox = await page.locator('.summary-details').boundingBox();
     const headings = await page.locator('.today-columns .section-heading').all();
@@ -174,6 +203,7 @@ for (const viewport of [
       page.locator('.chore-list').boundingBox(),
     ]);
     expect(columnsBox).not.toBeNull();
+    expect(dashboardBox).not.toBeNull();
     expect(photoBox).not.toBeNull();
     expect(summariesBox).not.toBeNull();
     expect(headings).toHaveLength(2);
@@ -184,8 +214,29 @@ for (const viewport of [
     expect(Math.abs(rowRails[0]!.y - rowRails[1]!.y)).toBeLessThanOrEqual(1);
     expect(photoBox!.x).toBeGreaterThan(columnsBox!.x + columnsBox!.width);
     expect(Math.abs(photoBox!.y - columnsBox!.y)).toBeLessThanOrEqual(1);
-    expect(summariesBox!.y).toBeGreaterThanOrEqual(columnsBox!.y + columnsBox!.height + 12);
-    expect(photoBox!.height).toBeGreaterThan(summariesBox!.height * 2);
+    expect(summariesBox!.y).toBeGreaterThanOrEqual(
+      Math.max(columnsBox!.y + columnsBox!.height, photoBox!.y + photoBox!.height) + 12,
+    );
+    expect(summariesBox!.width).toBeGreaterThan(dashboardBox!.width * 0.97);
+    expect(photoBox!.height).toBeGreaterThan(summariesBox!.height * 1.5);
+
+    const lastChore = page.locator('.chore-row').last();
+    await expect(lastChore).toHaveAttribute('data-focus-down', 'today-chore-overflow');
+    await lastChore.focus();
+    await expect(lastChore).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    const choreOverflow = page.locator('[data-focus-id="today-chore-overflow"]');
+    await expect(choreOverflow).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-focus-id="today-summary-notice"]')).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('[data-focus-id="today-summary-list"]')).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('[data-focus-id="today-summary-notice"]')).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await expect(page.locator('[data-focus-id="today-photo"]')).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(lastChore).toBeFocused();
 
     await captureEvidence(page, {
       path: resolve(evidence, `today-adaptive-portrait-${viewport.name}.png`),
@@ -294,6 +345,10 @@ test('Today covers every optional-module subset across representative native pho
         const dashboard = page.locator('.today-dashboard');
         await expect(dashboard).toHaveAttribute('data-summary-count', String(summaryCount));
         await expect(dashboard).toHaveAttribute('data-photo-orientation', photo.orientation);
+        await expect(dashboard).toHaveAttribute(
+          'data-rail-capacity',
+          String(expectedRailCapacity(viewport, photo.orientation)),
+        );
         await expect(page.locator('.summary-band')).toHaveCount(summaryCount);
         await expect(page.locator('.summary-row')).toHaveCount(
           summaryCount === 0 && photo.orientation === 'none' ? 0 : 1,
@@ -471,4 +526,14 @@ async function hasTelevisionOverflow(page: Page): Promise<boolean> {
       (todayScreen !== null && todayScreen.scrollHeight > todayScreen.clientHeight + 1)
     );
   });
+}
+
+function expectedRailCapacity(
+  viewport: { height: number; width: number },
+  photoOrientation: 'landscape' | 'none' | 'portrait' | 'square',
+): number {
+  if (viewport.width <= 900) return 3;
+  if (photoOrientation === 'landscape') return viewport.height >= 900 ? 4 : 3;
+  if (photoOrientation === 'square' && viewport.height < 900) return 3;
+  return 5;
 }

@@ -219,6 +219,22 @@ points `HEARTH_DATA_DIR` to `/volume1/hearth-v2-private/data` and `HEARTH_SECRET
 in `hearth/deploy/synology/.env.example` are only for a new isolated deployment. Live secrets
 never return to the workspace.
 
+### NAS firewall compatibility
+
+If Synology network hardening inserts a `FORWARD_FIREWALL` chain before Docker's own forwarding
+chains, it must allow only traffic whose source and destination are the current
+`hearth-v2_default` Docker subnet. A blanket Docker or LAN exception would weaken the external
+boundary. The repository helper `hearth/deploy/synology/ensure-docker-firewall.sh` discovers that
+subnet and adds an idempotent same-subnet `RETURN` rule; it does not open a host port or permit
+WAN traffic. The commissioned NAS installs it as the root-owned
+`/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`, which reapplies the rule after Docker/firewall
+startup. The private release activator refreshes that hook from the verified source release.
+
+This compatibility rule is required because Docker's normal same-bridge allow rules are evaluated
+after the custom hardening chain. Without it, Hearth's static web shell can load while nginx's API
+proxy times out connecting to the server container. After any firewall change, verify both the
+container-to-container readiness request and the public `/api/v1/readiness` route.
+
 For pre-commission television testing, `compose.demo.yaml` provides a separate LAN-bound pilot with
 fictional data only. It does not mount the secrets directory, calendar/Home Assistant configuration
 or a Synology photo source. Its bind address must be the NAS's exact private LAN address; never add a

@@ -128,6 +128,14 @@ Before any approved Synology commissioning:
     managed image files, provider secrets, optional folder-import originals or the separate Home
     Assistant appliance.
 
+14. If Synology network hardening uses a `FORWARD_FIREWALL` chain before Docker's forwarding chains,
+    keep the exact Hearth bridge exception installed by
+    `ensure-docker-firewall.sh`. It allows only source-and-destination traffic inside the current
+    `hearth-v2_default` Docker subnet and does not expose a host port or permit WAN traffic. The
+    private release activator installs it as
+    `/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`; verify `/api/v1/readiness` after a firewall
+    reload or Docker network recreation.
+
 The hostname and certificate mechanism are intentionally unresolved deployment inputs. The passkey
 contract is implemented, but enrolment remains inert until those values and the first-use code file
 are supplied. Changing the WebAuthn relying-party origin later invalidates the intended trust

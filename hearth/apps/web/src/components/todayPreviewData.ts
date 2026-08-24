@@ -58,14 +58,14 @@ export function createTodayPreviewData(
             temperature: `${today.weather.temperatureCelsius}°`,
             condition: today.weather.condition,
           },
-    events: today.events.slice(0, 3).map((event) => ({
+    events: today.events.map((event) => ({
       id: event.id,
       title: event.title,
       time: formatEventTime(event, today.household.timezone),
       color: event.color,
       person: previewPerson(event.owner?.displayName ?? 'Family', event.owner?.avatarUrl ?? ''),
     })),
-    chores: today.chores.slice(0, 3).map((chore) => ({
+    chores: today.chores.map((chore) => ({
       id: chore.id,
       title: chore.title,
       person: previewPerson(chore.assignee.displayName, chore.assignee.avatarUrl),
