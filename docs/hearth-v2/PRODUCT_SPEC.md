@@ -247,7 +247,7 @@ Meal planning may follow the first vertical release if schedule or quality would
 - Audio or video playback inside Hearth
 - Social feeds, web browsing or advertising
 - Public multi-tenant SaaS
-- Native iOS application before the responsive web companion proves insufficient
+- Full native iOS household administration before the responsive web companion proves insufficient; bounded native Apple integration proofs may establish where iOS provides a necessary capability
 - Local general-purpose LLM as a launch requirement
 - Biometric surveillance or camera-based person identification
 

@@ -24,7 +24,8 @@ Synology DS920+
 
 Input and automation
   Home Assistant Voice Preview Edition
-  iPhone Companion apps
+  Hearth Companion iOS app -> Apple EventKit Reminders (native, read-only proof)
+  iPhone Companion apps -> responsive Hearth web administration
   Existing PIR/IR through ESPHome
   Optional Zigbee/Thread and mmWave devices
 ```
@@ -77,6 +78,23 @@ A minimal Kotlin Android TV application that provides:
 
 Business logic remains in server/core. Do not create a second chore/calendar implementation in Kotlin.
 
+### `apps/ios`
+
+The first native iOS companion proof is a SwiftUI iOS 17+ target under
+`hearth/apps/ios`. It owns a narrow, read-only `ReminderStore` boundary with a
+real EventKit adapter and a deterministic fake adapter for tests/previews. The
+native surface requests the EventKit full Reminders permission required by iOS
+to read existing reminders, enumerates reminder-capable lists, lets an adult
+select lists and displays safe reminder projections. It does not connect to the
+Hearth server, store Apple credentials, request background access, or mutate
+EventKit data.
+
+This is an Apple integration surface, not a second household database or a
+replacement for the responsive web companion. A later installed Hearth
+Companion may combine native Apple integrations with the existing authenticated
+web administration session; WKWebView versus opening that authenticated web
+session remains a future evaluated choice outside this proof.
+
 ### `packages/shared`
 
 Zod schemas, API request/response contracts, event envelopes, identifiers and generated/inferred TypeScript types. It must remain browser-safe.
@@ -92,6 +110,7 @@ Calendar provider -> calendar adapter -> Hearth cache/projection -> Hearth API -
 TV/web command -> Hearth API -> domain validation -> DB/audit -> optional provider command
 Voice -> Home Assistant Assist -> allowlisted HA script -> Hearth command API
 Hearth UI -> Hearth API -> HA adapter -> allowlisted HA service/script
+Hearth Companion iOS -> EventKit permission -> selected Apple Reminders lists (read-only)
 Synology Jellyfin server -> native Google TV Jellyfin app (outside Hearth)
 Voice music -> Assist custom intent -> Music Assistant -> Jellyfin music source -> named Google Cast player (outside Hearth)
 ```

@@ -1111,3 +1111,31 @@ Official platform references:
   gated by DSM before Docker, Docker continues to isolate bridges, and qBittorrent remains bounded
   by Gluetun's own namespace and kill switch. An explicit DSM firewall reload still requires one
   hook invocation and readiness verification.
+
+## D-068 — Modern iCloud Reminders use a native EventKit companion proof
+
+- Date: 2026-08-25
+- Status: accepted for the read-only proof; physical-device validation remains open
+- Context: The commissioned CalDAV capability probe found advertised `VTODO`
+  collections but did not expose the owner's newly created current Reminders
+  or Family Reminders test items. Reopening that server-side path would weaken
+  the established calendar credential boundary and still would not be a
+  reliable modern Reminders source. Apple documents EventKit as the native
+  permission-controlled route and requires full Reminders access for apps that
+  read existing reminders on iOS 17+; Apple does not offer a read-only EventKit
+  permission.
+- Choice: Build the first native SwiftUI companion proof under
+  `hearth/apps/ios`. A narrow `ReminderStore` protocol has a real EventKit
+  adapter and deterministic fake adapter. The app requests
+  `requestFullAccessToReminders`, enumerates `calendars(for: .reminder)`, lets
+  an adult select lists and displays reminder title, list, due date/time and
+  completion state. The app performs no EventKit mutation and has no server
+  writes, background sync, APNs, two-way completion or web session in this
+  slice.
+- Consequence: A physical iPhone is the only evidence that the owner's current
+  Apple Reminders lists and test reminders can be read. Simulator evidence is
+  limited to UI wiring and fake-driven states. The eventual installed Hearth
+  Companion may combine native Apple integrations with the existing responsive
+  web administration UI; WKWebView versus opening an authenticated web session
+  remains a later evaluated choice. No Apple ID, app-specific password, private
+  URL or NAS credential enters Hearth.

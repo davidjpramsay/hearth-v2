@@ -121,6 +121,33 @@ reminders. All advertised objects were included within the bounded sample. This 
 the CalDAV surface is not a reliable source for modern iCloud Reminders, so Hearth must not build a
 direct iCloud Reminders sync on it.
 
+### Native iPhone Reminders companion proof
+
+The supported next boundary for modern Apple Reminders is a native SwiftUI
+companion under `hearth/apps/ios`. It uses a narrow `ReminderStore` protocol,
+an `EventKitReminderStore` implementation and a deterministic
+`FakeReminderStore` for previews/tests. On iOS 17 and later, the app requests
+`requestFullAccessToReminders` because Apple does not offer a read-only
+EventKit permission for reminders. The app declares
+`NSRemindersFullAccessUsageDescription`, enumerates
+`calendars(for: .reminder)`, lets an adult select reminder-capable lists and
+reads reminders with `predicateForReminders(in:)`.
+
+The proof itself remains read-only: it never calls EventKit save, remove,
+commit, completion or edit APIs. It has no server write route, persistent
+background sync, APNs, two-way completion, Apple ID request, iCloud
+app-specific password, private URL or NAS credential. It deliberately renders
+first use, permission request, denied/restricted, loading, empty, success,
+stale and failure states. The simulator can prove the wiring and fake-driven
+state machine; only an installed physical iPhone can prove that the current
+`Reminders` and `Family Reminders` lists and test reminders are visible for the
+owner's Apple Account. That physical-device result is not claimed until run.
+
+Apple references: [Accessing the event store](https://developer.apple.com/documentation/eventkit/accessing-the-event-store),
+[requestFullAccessToReminders](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29),
+[retrieving events and reminders](https://developer.apple.com/documentation/eventkit/retrieving-events-and-reminders) and
+[NSRemindersFullAccessUsageDescription](https://developer.apple.com/documentation/bundleresources/information-property-list/nsremindersfullaccessusagedescription).
+
 ## Weather
 
 Private mode uses the server-side Open-Meteo forecast API with one household
@@ -413,13 +440,13 @@ The automation sends a supported network/IR standby command. It does not hard-cu
 
 ## iPhones
 
-Use the Home Assistant Companion app for:
+Use the native Hearth Companion proof for the Apple Reminders read path. Use the Home Assistant Companion app for:
 
 - Assist from Action Button, lock screen, Control Centre or Shortcut
 - presence only if the household explicitly enables it
 - notifications for adult-facing integration failures where useful
 
-Use the responsive Hearth web companion for detailed editing until a native iOS application has a demonstrated advantage.
+Use the responsive Hearth web companion for detailed household editing. A future installed Hearth Companion may add authenticated web administration alongside native Apple integrations; WKWebView versus opening an authenticated web session remains deliberately out of this proof.
 
 ## Failure reporting
 

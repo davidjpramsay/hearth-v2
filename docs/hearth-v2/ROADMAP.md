@@ -461,11 +461,47 @@ physical-TCL comfort assessment remains part of the household pilot.
 - Synology, Pi, router and TV restart scenarios recover without developer intervention.
 - The system passes `ACCEPTANCE.md` on actual target hardware.
 
+## Phase 8 — Native iPhone Reminders companion proof
+
+Status as of 2026-08-25: source, fake-adapter tests and simulator build/run are
+implemented locally. The physical-iPhone EventKit read of the current
+`Reminders` and `Family Reminders` lists remains required and is not claimed.
+
+### Work
+
+- Add the iOS 17+ SwiftUI target under `hearth/apps/ios`.
+- Request the current EventKit full Reminders permission and handle all newer
+  authorization states without using deprecated request APIs.
+- Enumerate reminder-capable lists, allow an adult to choose lists and display
+  title, list, due date/time and completion state.
+- Keep the adapter boundary narrow and read-only with deterministic fake data
+  for tests/previews.
+- Provide intentional first-use, permission, denied/restricted, loading, empty,
+  success, stale and failure states with accessibility, Dynamic Type and dark
+  mode support.
+- Document that the eventual installed Hearth Companion may combine these
+  native Apple integrations with the existing responsive web administration UI;
+  evaluate WKWebView versus opening an authenticated web session later.
+
+### Completion criteria
+
+- Unit tests prove permission, list selection, reminder filtering, stale-cache
+  and failure transitions through the fake adapter.
+- The app builds and runs on an iOS Simulator, with relevant states visually
+  inspected; simulator evidence is kept separate from live EventKit evidence.
+- A physical iPhone grants Reminders access, exposes the owner's current
+  `Reminders` and `Family Reminders` lists and shows the prepared test
+  reminders with correct due/completion fields.
+- The physical-device check confirms the app makes no reminder mutation and
+  retains no Apple ID, app-specific password, private URL or NAS credential.
+- No server writes, background sync, APNs, two-way completion or WebView is
+  introduced by this proof.
+
 ## Deferred opportunities
 
 - General conversational agent over the allowlisted command layer
 - Dedicated local-AI mini-PC
-- Native iOS companion
+- Full native household administration beyond the Reminders proof
 - Multiple households/remote family sharing
 - Recipe/ingredient management
 - Advanced energy and home-status visualisations

@@ -98,6 +98,28 @@ date-navigation, event-detail focus restoration and automated accessibility
 coverage. Browser-plugin control was unavailable, so the installed Playwright
 Chromium fallback produced the retained evidence.
 
+### Native iPhone Reminders companion proof
+
+- On iOS 17+, the native companion requests full Reminders access through the
+  current EventKit API and includes the required full-access privacy string;
+  deprecated `requestAccess(to:)` APIs are not used.
+- The first-use screen explains that iOS requires full permission even though
+  this proof is read-only. Denied, restricted and insufficient-access states
+  remain explicit and provide safe next actions.
+- An adult can see reminder-capable lists, select one or more lists, refresh
+  them and read reminder title, list, due date/time and completion state.
+- Loading, no-list/no-reminder, success, stale cached data and retryable failure
+  states are intentional, accessible, Dynamic Type-safe and usable in dark mode.
+- The native proof has no server write path, background sync, APNs, two-way
+  completion, Apple ID, iCloud app-specific password, private URL or NAS
+  credential, and it does not invoke EventKit mutation APIs.
+- Fake-adapter unit tests cover permission, list selection/filtering, stale
+  fallback and failure transitions. Simulator build/run and screenshots prove
+  app wiring and presentation only.
+- Completion requires a physical iPhone run showing the owner's current
+  `Reminders` and `Family Reminders` lists and test reminders. Until that run,
+  the physical EventKit bullet is blocked/unverified rather than passed.
+
 ### Household people
 
 - An adult administrator can choose either a portrait or landscape profile photo, position its

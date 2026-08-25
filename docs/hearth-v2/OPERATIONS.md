@@ -184,6 +184,25 @@ Reminders through CalDAV. Do not repeat the probe as a routine health check or t
 `VTODO` capability as proof of modern iCloud Reminders access. The direct CalDAV Reminders path is
 closed unless Apple documents a supported change.
 
+### Native iPhone Reminders companion proof
+
+The supported native route is the SwiftUI iOS 17+ target at
+`hearth/apps/ios`. Build it locally with XcodeGen/Xcode, then use the
+`HearthCompanion` scheme on a physical iPhone. The app's
+`NSRemindersFullAccessUsageDescription` explains that the permission is used
+only to read selected lists; the target contains no Apple ID, iCloud
+app-specific password, private URL or NAS credential.
+
+The simulator run is a presentation and fake-adapter check only. For the live
+proof, the owner selects the physical iPhone, grants Reminders access, chooses
+the current `Reminders` and `Family Reminders` lists and confirms the prepared
+test reminders' titles, due values and completion states. Check the native
+Reminders app before and after to confirm Hearth made no changes. Record the
+iPhone model, iOS version, selected lists and visible test-reminder titles in
+the phase-8 evidence note. Do not claim the native EventKit proof until this
+run is completed; do not place any Apple credential or private device detail in
+source control or chat.
+
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.
 Do not place the URL, token or entity IDs in `.env`, Compose values, source, SQLite, logs, chat or a
