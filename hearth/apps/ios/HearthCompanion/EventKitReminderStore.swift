@@ -72,7 +72,10 @@ final class EventKitReminderStore: ReminderStore {
         }
     }
 
-    private static func mapReminder(_ reminder: EKReminder) -> HearthReminder {
+    // EventKit delivers fetch callbacks on its own serial queue, not the main actor.
+    // Keep this value-only projection nonisolated so the callback never synchronously
+    // crosses into the @MainActor store and trips the Swift concurrency runtime.
+    private nonisolated static func mapReminder(_ reminder: EKReminder) -> HearthReminder {
         let components = reminder.dueDateComponents
         let dueDate: Date?
         if let components {
