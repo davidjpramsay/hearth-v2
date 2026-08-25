@@ -99,6 +99,12 @@ collection names, advertised component names, aggregate resource counts and the 
 title/status/due/completion sample only. It never returns or persists the account, password,
 collection/object URLs, UIDs, descriptions or raw DAV payloads.
 
+WebDAV permits `DAV:href` to be a URI or relative reference. The probe resolves those references
+against the advertised collection, compares decoded path segments to tolerate equivalent
+percent-encoding, and ignores a response that merely repeats the collection itself. It still
+rejects a different origin, sibling/outside path, embedded credentials, fragment, encoded path
+separator, query or nested child path before any object body can be requested.
+
 The probe has no browser route, database write, background polling or calendar/reminder mutation.
 If no collection advertises `VTODO`, the check stops after discovery; Hearth must not scrape iCloud,
 guess private endpoints or imply that modern upgraded iCloud Reminders are available through the

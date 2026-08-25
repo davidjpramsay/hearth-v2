@@ -37,6 +37,7 @@ export interface CalDavCollectionCapability {
   advertisedComponents: string[];
   reminderCapability: 'advertised' | 'not-advertised';
   matchingResourceCount: number | null;
+  ignoredCollectionResponseCount: number;
   sampledItems: CalDavReminderSample[];
   unreadableSampleCount: number;
 }
@@ -101,6 +102,7 @@ export async function probeCalDavReminderCapabilities(
         advertisedComponents,
         reminderCapability,
         matchingResourceCount: null,
+        ignoredCollectionResponseCount: 0,
         sampledItems: [],
         unreadableSampleCount: 0,
       };
@@ -140,9 +142,14 @@ async function sampleReminderCollection(
       depth: '1',
     }),
   );
-  const objectUrls = matchedObjectUrls(matches, calendar.url);
+  const locations = matchedObjectUrls(matches, calendar.url);
+  const objectUrls = locations.objectUrls;
   if (sampleLimit === 0 || objectUrls.length === 0) {
-    return { ...base, matchingResourceCount: objectUrls.length };
+    return {
+      ...base,
+      matchingResourceCount: objectUrls.length,
+      ignoredCollectionResponseCount: locations.ignoredCollectionResponseCount,
+    };
   }
 
   const objects = await atProbeStage('task sample read', () =>
@@ -165,6 +172,7 @@ async function sampleReminderCollection(
   return {
     ...base,
     matchingResourceCount: objectUrls.length,
+    ignoredCollectionResponseCount: locations.ignoredCollectionResponseCount,
     sampledItems,
     unreadableSampleCount,
   };
@@ -219,29 +227,95 @@ function reminderFilters() {
   ];
 }
 
-function matchedObjectUrls(responses: DAVResponse[], collectionUrl: string): string[] {
+function matchedObjectUrls(
+  responses: DAVResponse[],
+  collectionUrl: string,
+): { objectUrls: string[]; ignoredCollectionResponseCount: number } {
   const collection = new URL(collectionUrl);
-  const collectionPath = collection.pathname.endsWith('/')
-    ? collection.pathname
-    : `${collection.pathname}/`;
-  const urls = responses
-    .filter(({ ok, href }) => ok && typeof href === 'string' && href.length > 0)
-    .map(({ href }) => {
-      const object = new URL(href ?? '', collection);
-      assertSecureUrl(object.href, 'calendar object');
-      if (
-        object.origin !== collection.origin ||
-        !object.pathname.startsWith(collectionPath) ||
-        object.pathname === collectionPath
-      ) {
-        throw new CalendarProviderError(
-          'UNAVAILABLE',
-          'Calendar returned an unsafe task resource location.',
-        );
-      }
-      return object.href;
-    });
-  return [...new Set(urls)].sort();
+  const collectionSegments = safePathSegments(collection);
+  const objectUrls: string[] = [];
+  let ignoredCollectionResponseCount = 0;
+
+  for (const { ok, href } of responses) {
+    if (!ok || typeof href !== 'string' || href.length === 0) continue;
+    let object: URL;
+    try {
+      object = new URL(href, collection);
+    } catch {
+      throw unsafeTaskResourceLocation();
+    }
+    assertSecureUrl(object.href, 'calendar object');
+    if (
+      object.origin !== collection.origin ||
+      object.username.length > 0 ||
+      object.password.length > 0 ||
+      object.hash.length > 0
+    ) {
+      throw unsafeTaskResourceLocation();
+    }
+
+    const objectSegments = safePathSegments(object);
+    if (pathsEqual(collectionSegments, objectSegments)) {
+      ignoredCollectionResponseCount += 1;
+      continue;
+    }
+    if (
+      object.pathname.endsWith('/') ||
+      object.search.length > 0 ||
+      objectSegments.length !== collectionSegments.length + 1 ||
+      !collectionSegments.every((segment, index) => objectSegments[index] === segment)
+    ) {
+      throw unsafeTaskResourceLocation();
+    }
+    objectUrls.push(object.href);
+  }
+
+  return {
+    objectUrls: [...new Set(objectUrls)].sort(),
+    ignoredCollectionResponseCount,
+  };
+}
+
+function safePathSegments(url: URL): string[] {
+  const segments = url.pathname.split('/').slice(1);
+  if (segments.at(-1) === '') segments.pop();
+  return segments.map((segment) => {
+    if (/%(?:2f|5c|00)/i.test(segment)) throw unsafeTaskResourceLocation();
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      throw unsafeTaskResourceLocation();
+    }
+    if (
+      decoded === '.' ||
+      decoded === '..' ||
+      decoded.includes('/') ||
+      decoded.includes('\\') ||
+      hasControlCharacters(decoded)
+    ) {
+      throw unsafeTaskResourceLocation();
+    }
+    return decoded;
+  });
+}
+
+function hasControlCharacters(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+}
+
+function pathsEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((segment, index) => right[index] === segment);
+}
+
+function unsafeTaskResourceLocation(): CalendarProviderError {
+  return new CalendarProviderError(
+    'UNAVAILABLE',
+    'Calendar returned an unsafe task resource location.',
+  );
 }
 
 function normalizeComponents(components: string[] | undefined): string[] {

@@ -175,6 +175,9 @@ information, so do not redirect the result into logs, source control or chat. If
 `taskCollectionCount` is zero, stop: the current account has not advertised a standards-based task
 collection and no unsupported iCloud endpoint should be tried. If a task collection is found,
 review the bounded result before proposing a separately approved read-only product integration.
+`ignoredCollectionResponseCount` records harmless `REPORT` responses that repeat the collection
+URL rather than identifying a task object; it does not represent a reminder. Any different-origin
+or outside-collection resource remains a hard failure.
 
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.

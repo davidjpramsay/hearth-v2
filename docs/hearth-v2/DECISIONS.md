@@ -1043,6 +1043,11 @@ Official platform references:
   without weakening its calendar secret boundary or silently expanding product scope. A successful
   diagnostic is evidence for further design, not an automatic implementation commitment; an empty
   result closes the direct CalDAV path unless Apple publishes a supported change.
+- Clarification (2026-08-25): WebDAV `DAV:href` values may be URI or relative references. Resolve
+  them only against the advertised collection, compare decoded path segments for equivalent
+  percent-encoding, and ignore an exact collection-self response. Different origins, sibling or
+  parent paths, embedded credentials, fragments, queries, encoded separators and nested children remain
+  rejected before object retrieval.
 
 ## D-065 — Pocket-money progress uses the complete weekly schedule
 

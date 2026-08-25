@@ -46,6 +46,7 @@ describe('read-only CalDAV reminder capability probe', () => {
           advertisedComponents: ['VEVENT'],
           reminderCapability: 'not-advertised',
           matchingResourceCount: null,
+          ignoredCollectionResponseCount: 0,
           sampledItems: [],
           unreadableSampleCount: 0,
         },
@@ -54,6 +55,7 @@ describe('read-only CalDAV reminder capability probe', () => {
           advertisedComponents: ['VTODO'],
           reminderCapability: 'advertised',
           matchingResourceCount: 7,
+          ignoredCollectionResponseCount: 0,
           sampledItems: [
             {
               title: 'Buy milk',
@@ -75,6 +77,7 @@ describe('read-only CalDAV reminder capability probe', () => {
           advertisedComponents: [],
           reminderCapability: 'not-advertised',
           matchingResourceCount: null,
+          ignoredCollectionResponseCount: 0,
           sampledItems: [],
           unreadableSampleCount: 0,
         },
@@ -146,6 +149,60 @@ describe('read-only CalDAV reminder capability probe', () => {
     expect(JSON.stringify(result)).not.toContain('Private title');
   });
 
+  it('ignores a repeated collection response and resolves relative child resource references', async () => {
+    const fetchedObjectUrls: string[][] = [];
+    const client = clientFixture({
+      calendars: [calendar('Family reminders', TASKS_URL, ['VTODO'])],
+      queryResponses: [davResponse(TASKS_URL), davResponse('task-1.ics')],
+      objects: [reminderObject('task-1', 'Private title', 'NEEDS-ACTION', '20260825')],
+      onFetchObjectUrls: (urls) => fetchedObjectUrls.push(urls),
+    });
+
+    const result = await probeCalDavReminderCapabilities({
+      serverUrl: SERVER_URL,
+      username: 'family@example.test',
+      appPassword: 'super-secret-password',
+      sampleLimit: 1,
+      clientFactory: () => client,
+    });
+
+    expect(result.collections[0]).toMatchObject({
+      matchingResourceCount: 1,
+      ignoredCollectionResponseCount: 1,
+      sampledItems: [
+        {
+          title: 'Private title',
+          status: 'NEEDS-ACTION',
+          due: '2026-08-25',
+          completedAt: null,
+        },
+      ],
+    });
+    expect(fetchedObjectUrls).toEqual([[`${TASKS_URL}task-1.ics`]]);
+  });
+
+  it('accepts equivalent percent-encoding only within the advertised collection', async () => {
+    const encodedTasksUrl = `${SERVER_URL}/calendars/%7Efamily/`;
+    const client = clientFixture({
+      calendars: [calendar('Family reminders', encodedTasksUrl, ['VTODO'])],
+      queryResponses: [davResponse(`${SERVER_URL}/calendars/~family/task-1.ics`)],
+      objects: [],
+    });
+
+    const result = await probeCalDavReminderCapabilities({
+      serverUrl: SERVER_URL,
+      username: 'family@example.test',
+      appPassword: 'super-secret-password',
+      sampleLimit: 0,
+      clientFactory: () => client,
+    });
+
+    expect(result.collections[0]).toMatchObject({
+      matchingResourceCount: 1,
+      ignoredCollectionResponseCount: 0,
+    });
+  });
+
   it('rejects task resource locations outside the advertised collection', async () => {
     let fetches = 0;
     const client = clientFixture({
@@ -171,6 +228,34 @@ describe('read-only CalDAV reminder capability probe', () => {
     });
     expect(fetches).toBe(0);
     expect(JSON.stringify(error)).not.toContain('untrusted.example.test');
+  });
+
+  it('rejects same-origin sibling paths and encoded path separators', async () => {
+    for (const href of [
+      `${SERVER_URL}/calendars/other/task.ics`,
+      `${TASKS_URL}nested%2Ftask.ics`,
+      `${TASKS_URL}nested/task.ics`,
+      `${TASKS_URL}task.ics?unexpected=query`,
+    ]) {
+      const client = clientFixture({
+        calendars: [calendar('Family reminders', TASKS_URL, ['VTODO'])],
+        queryResponses: [davResponse(href)],
+        objects: [],
+      });
+
+      const error = await probeCalDavReminderCapabilities({
+        serverUrl: SERVER_URL,
+        username: 'family@example.test',
+        appPassword: 'super-secret-password',
+        sampleLimit: 0,
+        clientFactory: () => client,
+      }).catch((caught: unknown) => caught);
+
+      expect(error).toMatchObject({
+        code: 'UNAVAILABLE',
+        message: 'Calendar returned an unsafe task resource location.',
+      });
+    }
   });
 
   it('keeps malformed reminder data and authentication details out of errors', async () => {
