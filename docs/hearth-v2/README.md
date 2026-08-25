@@ -8,7 +8,9 @@ the private deployment now also has integrity-checked online database backups, f
 tooling, a calm adult System Health surface, and named-adult multi-passkey access with one-time
 local recovery. No live credential, calendar write, restore or
 household automation was used. The separate Music
-Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or verified.**
+Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or verified. Phase 8's
+read-only native iPhone Reminders proof is physically verified on an iPhone 17e running iOS 26.6;
+it does not add reminder completion or any other EventKit mutation.**
 
 ## Product statement
 

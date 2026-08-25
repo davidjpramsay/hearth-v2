@@ -124,9 +124,15 @@ Chromium fallback produced the retained evidence.
 - Fake-adapter unit tests cover permission, list selection/filtering, stale
   fallback and failure transitions. Simulator build/run and screenshots prove
   app wiring and presentation only.
-- Completion requires a physical iPhone run showing the owner's current
-  `Reminders` and `Family Reminders` lists and test reminders. Until that run,
-  the physical EventKit bullet is blocked/unverified rather than passed.
+- Physical EventKit acceptance passed on 2026-08-25 on an iPhone 17e running
+  iOS 26.6: the owner's current `Reminders` and `Family Reminders` lists and
+  live reminder fields were visible. A remote change appeared automatically in
+  about nine seconds, and a completion change made in Apple Reminders on the
+  Mac appeared in about five seconds without a pull. Repeated manual refresh no
+  longer produced the reported graphical flicker.
+- The physical run confirmed that reminder completion is displayed but cannot
+  be changed in Hearth Companion. This is the intentional read-only boundary,
+  not a missing control in this proof.
 
 ### Household people
 

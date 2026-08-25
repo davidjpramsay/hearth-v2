@@ -1115,7 +1115,7 @@ Official platform references:
 ## D-068 — Modern iCloud Reminders use a native EventKit companion proof
 
 - Date: 2026-08-25
-- Status: accepted for the read-only proof; physical-device validation remains open
+- Status: accepted and physically validated for the read-only proof
 - Context: The commissioned CalDAV capability probe found advertised `VTODO`
   collections but did not expose the owner's newly created current Reminders
   or Family Reminders test items. Reopening that server-side path would weaken
@@ -1134,7 +1134,9 @@ Official platform references:
   slice.
 - Consequence: A physical iPhone is the only evidence that the owner's current
   Apple Reminders lists and test reminders can be read. Simulator evidence is
-  limited to UI wiring and fake-driven states. The eventual installed Hearth
+  limited to UI wiring and fake-driven states. That physical proof passed on
+  2026-08-25 on an iPhone 17e running iOS 26.6; completion was visible but not
+  mutable in Hearth Companion. The eventual installed Hearth
   Companion may combine native Apple integrations with the existing responsive
   web administration UI; WKWebView versus opening an authenticated web session
   remains a later evaluated choice. No Apple ID, app-specific password, private
@@ -1156,5 +1158,8 @@ Official platform references:
   to interaction controls.
 - Consequence: Changes made in Apple Reminders while Hearth Companion is open
   appear without a manual pull, with manual refresh retained as a fallback.
+  The physical run observed approximately nine seconds for one remote change
+  and five seconds for a Mac completion change, and the previously reported
+  repeated-pull flicker was no longer visible.
   This is not persistent background sync or APNs. Apple Reminders Sections are
   not synthesized because EventKit does not expose their hierarchy.

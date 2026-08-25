@@ -141,7 +141,10 @@ first use, permission request, denied/restricted, loading, empty, success,
 stale and failure states. The simulator can prove the wiring and fake-driven
 state machine; only an installed physical iPhone can prove that the current
 `Reminders` and `Family Reminders` lists and test reminders are visible for the
-owner's Apple Account. That physical-device result is not claimed until run.
+owner's Apple Account. On 2026-08-25 that proof passed on an iPhone 17e running
+iOS 26.6: the owner confirmed that both current lists and their live reminders,
+including due and completion state, were visible. Completion controls remain
+deliberately non-interactive in Hearth Companion.
 
 While the companion is open, the EventKit adapter observes
 `EKEventStoreChanged` and refetches the selected lists after a short debounce;
@@ -149,6 +152,10 @@ returning to the foreground also triggers a refetch. The current content stays
 visible while a refresh is in flight, so pull-to-refresh does not replace the
 whole screen with a loading skeleton. This is foreground invalidation and
 refetch, not persistent background sync; manual refresh remains available.
+In the physical-device run, one remote change appeared without a pull after
+about nine seconds, and completing a reminder in Apple Reminders on the Mac was
+reflected in Hearth Companion after about five seconds. Those end-to-end times
+include Apple's iCloud/EventKit propagation, not only Hearth's local debounce.
 
 EventKit exposes the reminder list/calendar and reminder fields used by this
 proof, but it does not expose the user-created Sections hierarchy shown inside

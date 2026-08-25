@@ -464,8 +464,10 @@ physical-TCL comfort assessment remains part of the household pilot.
 ## Phase 8 — Native iPhone Reminders companion proof
 
 Status as of 2026-08-25: source, fake-adapter tests and simulator build/run are
-implemented locally. The physical-iPhone EventKit read of the current
-`Reminders` and `Family Reminders` lists remains required and is not claimed.
+implemented locally, and the physical-iPhone EventKit proof has passed on an
+iPhone 17e running iOS 26.6. The current `Reminders` and `Family Reminders`
+lists were readable, remote changes appeared automatically without a pull, and
+the companion remained read-only.
 
 ### Work
 
