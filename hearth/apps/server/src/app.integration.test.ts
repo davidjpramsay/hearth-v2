@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildServer, LOGGER_REDACT_PATHS } from './app.js';
 import type { CompanionAuthRepository } from './companion-auth.js';
+import { LATEST_MIGRATION_VERSION } from './database.js';
 import { HomeService } from './home-repository.js';
 import { FakeHomeAssistantProvider } from './integrations/home-assistant-provider.js';
 import {
@@ -154,7 +155,7 @@ describe('Hearth v2 API', () => {
     expect(status.json()).toMatchObject({
       mode: 'test',
       generatedAt: '2026-08-02T23:42:00.000Z',
-      database: { state: 'ready', migrationVersion: 24 },
+      database: { state: 'ready', migrationVersion: LATEST_MIGRATION_VERSION },
       backup: { state: 'ready', scheduled: true, retentionCount: 14 },
     });
 

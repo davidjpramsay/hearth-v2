@@ -1,0 +1,7 @@
+{
+  "requestId": "request_reminder_pairing_001",
+  "deviceName": "David's iPhone",
+  "platform": "ios",
+  "applicationVersion": "1.0.0",
+  "pairingSecret": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+}

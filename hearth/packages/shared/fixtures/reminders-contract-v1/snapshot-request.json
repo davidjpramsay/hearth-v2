@@ -1,0 +1,26 @@
+{
+  "requestId": "request_reminders_snapshot_001",
+  "contractVersion": 1,
+  "snapshotId": "snapshot_reminders_001",
+  "sequence": 1,
+  "generatedAt": "2026-08-25T10:00:00+08:00",
+  "lists": [
+    {
+      "sourceListId": "eventkit-list-family",
+      "title": "Family Reminders"
+    }
+  ],
+  "reminders": [
+    {
+      "sourceReminderId": "eventkit-reminder-bins",
+      "sourceListId": "eventkit-list-family",
+      "title": "Put the bins out",
+      "dueLocalDate": "2026-08-25",
+      "dueAt": "2026-08-25T18:00:00+08:00",
+      "hasDueTime": true,
+      "isCompleted": false,
+      "completedAt": null,
+      "sourceUpdatedAt": "2026-08-25T09:55:00+08:00"
+    }
+  ]
+}

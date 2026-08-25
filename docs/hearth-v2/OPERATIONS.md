@@ -184,7 +184,7 @@ Reminders through CalDAV. Do not repeat the probe as a routine health check or t
 `VTODO` capability as proof of modern iCloud Reminders access. The direct CalDAV Reminders path is
 closed unless Apple documents a supported change.
 
-### Native iPhone Reminders companion proof
+### Native Reminders bridge commissioning
 
 The supported native route is the SwiftUI iOS 17+ target at
 `hearth/apps/ios`. Build it locally with XcodeGen/Xcode, then use the
@@ -202,6 +202,28 @@ iPhone model, iOS version, selected lists and visible test-reminder titles in
 the phase-8 evidence note. Do not claim the native EventKit proof until this
 run is completed; do not place any Apple credential or private device detail in
 source control or chat.
+
+Do not reuse the calendar app-specific password. On the private HTTPS/Tailscale Hearth origin, the
+iPhone companion generates its own 32-byte secret, stores it in Keychain and displays the
+server-issued six-character code. A signed-in adult approves that code in Hearth; no operator edits
+an environment file or database row. The app then exchanges and uploads through the distinct
+`HearthReminderSource` authorization scheme described in
+`REMINDERS_COMPANION_CONTRACT.md`.
+
+Before enabling the household surfaces, verify all of the following without printing the secret or
+raw EventKit identifiers:
+
+1. the selected lists survive iPhone terminate/relaunch;
+2. the current source session reports the expected household/source and next sequence;
+3. one full snapshot succeeds and the household read endpoint returns the expected safe titles,
+   due semantics and completion states;
+4. an exact upload replay reports `replayed: true`;
+5. disconnect/revoke makes the source credential return `UNAUTHENTICATED` while unrelated Hearth
+   health, calendar and household data remain available.
+
+Do not script the source secret into Compose, shell history or Synology files. The app must stop and
+offer fresh pairing after revocation. A temporary stale source is not an operator incident: Hearth
+keeps cached reminders and the user can foreground or manually refresh the iPhone bridge.
 
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.
@@ -306,7 +328,7 @@ As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffol
 Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
 Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
 explicit two-hop DSM Reverse Proxy → nginx → Fastify trust boundary for client-address throttling,
-and an ignored runtime directory template. The server production build includes all 24 forward migrations
+and an ignored runtime directory template. The server production build includes all 25 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 
 As of 2026-08-21, ordinary production updates no longer execute that build on the DS920+.

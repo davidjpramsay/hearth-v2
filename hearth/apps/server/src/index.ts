@@ -53,6 +53,7 @@ import { HomeService } from './home-repository.js';
 import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
+import { ReminderSourceService } from './reminder-source-repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 import { TodayContentService } from './today-content-repository.js';
 import {
@@ -165,6 +166,7 @@ const pocketMoneyRepository = new PocketMoneyService(repository, adminRepository
   seedDemo: demoMode,
   clock,
 });
+const reminderSourceRepository = new ReminderSourceService(adminRepository, database, { clock });
 const systemOperations: SystemOperationsRepository = demoMode
   ? new InMemorySystemOperations(adminRepository, {
       version: systemOperationsConfiguration.version,
@@ -262,6 +264,7 @@ const server = buildServer({
   homeRepository,
   photoRepository,
   pocketMoneyRepository,
+  reminderSourceRepository,
   calendarConnectionRepository,
   homeAssistantConnectionRepository,
   systemOperations,

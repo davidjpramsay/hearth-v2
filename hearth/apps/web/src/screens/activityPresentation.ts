@@ -32,6 +32,9 @@ const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> 
   'member.archive': family('Person archived', 'users'),
   'device.pair': family('Television paired', 'television'),
   'device.revoke': family('Television access revoked', 'television'),
+  'reminder-source.pair': connections('Apple Reminders connected', 'list'),
+  'reminder-source.revoke': connections('Apple Reminders disconnected', 'list'),
+  'reminders.snapshot.replace': connections('Apple Reminders refreshed', 'list'),
   'chore-template.create': planning('Chore routine created', 'chores'),
   'chore-template.update': planning('Chore routine updated', 'chores'),
   'chore-template.archive': planning('Chore routine archived', 'chores'),
@@ -97,6 +100,7 @@ export function actorLabel(entry: AuditSummary, admin: AdminOverview): string {
     );
   }
   if (entry.actorType === 'device') {
+    if (entry.action === 'reminders.snapshot.replace') return 'Reminders companion';
     return admin.pairedDevices.find((device) => device.id === entry.actorId)?.name ?? 'Television';
   }
   if (entry.actorType === 'service') {

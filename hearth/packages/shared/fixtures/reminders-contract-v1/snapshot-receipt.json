@@ -1,0 +1,13 @@
+{
+  "contractVersion": 1,
+  "sourceId": "reminder_source_example",
+  "snapshotId": "snapshot_reminders_001",
+  "sequence": 1,
+  "generatedAt": "2026-08-25T10:00:00+08:00",
+  "acceptedAt": "2026-08-25T10:00:01+08:00",
+  "listCount": 1,
+  "reminderCount": 1,
+  "incompleteCount": 1,
+  "nextSnapshotSequence": 2,
+  "replayed": false
+}

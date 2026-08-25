@@ -96,7 +96,21 @@ Can understand the current household state and use clearly exposed room controls
 - Checked-item history with a simple clear/archive action.
 - Voice ambiguity must be confirmed when two items share a name.
 
-### 5. Meal planning
+### 5. Reminders
+
+- A permissioned native iPhone companion may project the user's selected Apple Reminders lists into
+  Hearth through EventKit. This is separate from the iCloud Calendar CalDAV connection.
+- Hearth displays a dedicated read-only Reminders section and may show a bounded due-today summary
+  on Today. Apple remains authoritative; Hearth does not edit or complete Apple reminders in v1.
+- The projection preserves list/title, date-only versus timed due dates and completion state, keeps
+  cached data visible during temporary iPhone/iCloud failure and clearly marks stale data.
+- Pairing, authentication, snapshot replacement and revocation follow
+  `REMINDERS_COMPANION_CONTRACT.md`. Apple credentials and raw EventKit identifiers never enter
+  household browser contracts.
+- Apple Reminders Sections are not a product dependency because public EventKit does not expose
+  them.
+
+### 6. Meal planning
 
 - Weekly breakfast/lunch/dinner plan, with dinner prioritised visually.
 - The television presents tonight and a calm seven-night dinner strip; dense editing belongs in
@@ -113,7 +127,7 @@ Can understand the current household state and use clearly exposed room controls
 - Link meal ingredients to the grocery list later.
 - Do not require recipe management in the first implementation.
 
-### 6. Photos and ambient display
+### 7. Photos and ambient display
 
 - Let an authenticated adult choose one or more family photos directly from the phone companion.
   Hearth stores bounded, orientation-correct managed masters and display derivatives in its private
@@ -150,7 +164,7 @@ not accept an Apple shared-album URL, browse a personal library or retain the cl
 adult explicitly chooses the files to add and the managed collection is included in the private
 Hearth data backup boundary.
 
-### 7. Notices and household summary
+### 8. Notices and household summary
 
 - Brief announcements with expiry and priority.
 - Optional household-local daily Bible verse from the ESV API. It is off by default,
@@ -159,14 +173,14 @@ Hearth data backup boundary.
 - Weather and basic room/home state where useful.
 - Avoid a dense sensor dashboard. Show only states that affect a family decision.
 
-### 8. Home Assistant controls
+### 9. Home Assistant controls
 
 - Launch allowlisted scenes and scripts such as Evening, Goodnight and Screen Off.
 - Display selected door, climate, energy or presence states.
 - No generic entity browser on the family screen.
 - Dangerous actions require explicit confirmation and should normally remain outside Hearth.
 
-### 9. Native media boundary
+### 10. Native media boundary
 
 - The Jellyfin server on the Synology remains authoritative for the household media library.
 - The native Jellyfin Google TV app connects directly to it for normal movie, television and music browsing and manual playback.
@@ -176,7 +190,7 @@ Hearth data backup boundary.
 - Switching between Hearth, Jellyfin and other services uses normal Google TV behaviour.
 - Home Assistant provides Hearth only a generic active-media signal so presence automation cannot turn off the television during native or Cast playback.
 
-### 10. Voice
+### 11. Voice
 
 Home Assistant owns the microphone, wake word, speech recognition, intent
 handling and Piper response. Hearth does not listen or speak; it validates the
@@ -206,10 +220,11 @@ The default Today screen should include, in order of prominence:
 1. Current time/date, weather and a quiet connectivity indicator when needed.
 2. The next few household events and each person's day.
 3. Chores/routines due now or today.
-4. Dinner and the most relevant list summary.
-5. One concise household notice.
-6. Home-scene shortcuts in the navigation rail/dock.
-7. One optional, orientation-safe preview from the approved family photo source. It should be large enough to appreciate from the sofa while remaining secondary to plans and chores. When multiple approved photos exist, the preview may advance at a calm five-minute visible-screen cadence; Today does not become a rapid slideshow or replace ambient mode.
+4. An optional bounded summary of incomplete reminders due today.
+5. Dinner and the most relevant list summary.
+6. One concise household notice.
+7. Home-scene shortcuts in the navigation rail/dock.
+8. One optional, orientation-safe preview from the approved family photo source. It should be large enough to appreciate from the sofa while remaining secondary to plans and chores. When multiple approved photos exist, the preview may advance at a calm five-minute visible-screen cadence; Today does not become a rapid slideshow or replace ambient mode.
 
 It must not become a grid of tiny widgets. Information can be prioritised and paged rather than simultaneously exposed.
 When a television column contains more plans or chores than its calm visible limit, Today shows an
@@ -228,6 +243,7 @@ The first household release includes:
 - Read-only calendar connection plus editable person/avatar/colour assignments
 - Chores/routines, weekly pocket-money progress and payment history
 - Lists
+- Read-only Apple Reminders projection through the permissioned native companion
 - Photo ambient mode
 - Responsive administration
 - Tested household weather location, configured separately from timezone
@@ -247,7 +263,9 @@ Meal planning may follow the first vertical release if schedule or quality would
 - Audio or video playback inside Hearth
 - Social feeds, web browsing or advertising
 - Public multi-tenant SaaS
-- Full native iOS household administration before the responsive web companion proves insufficient; bounded native Apple integration proofs may establish where iOS provides a necessary capability
+- Replacing the responsive web companion with a full native iOS client before feature parity and
+  migration evidence exists; bounded native Apple integrations such as the EventKit Reminders
+  bridge are explicitly in scope where iOS provides a necessary capability
 - Local general-purpose LLM as a launch requirement
 - Biometric surveillance or camera-based person identification
 

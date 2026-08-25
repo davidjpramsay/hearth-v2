@@ -35,7 +35,10 @@ Exact numbers may be refined from real-TV testing, but may not be reduced merely
 
 Primary commands are Up, Down, Left, Right, Select and Back.
 
-- A persistent navigation rail or dock exposes Today, Calendar, Chores, Lists, Meals, selected Home actions and Photos, in that order; Week and Month are views inside Calendar rather than competing primary destinations.
+- A persistent navigation rail or dock exposes Today, Calendar, Chores, Lists, Reminders, Meals,
+  selected Home actions and Photos, in that order; Week and Month are views inside Calendar rather
+  than competing primary destinations. Reminders appears only after a source has produced its first
+  usable snapshot; setup remains phone-first.
 - Every household surface shows the live household-local time and date in shared application chrome: in the television rail and in a compact companion header on phone/admin layouts. Individual screens do not repeat their own clock. Pairing and pre-authentication setup remain uncluttered exceptions.
 - The focused destination and focused action are always visually obvious.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
@@ -59,14 +62,15 @@ The default shared overview:
 - dinner plan
 - one active notice
 - concise list summary
+- an optional bounded summary of incomplete reminders due today
 - one orientation-safe family-photo panel that is large enough to read from the sofa while
   remaining secondary to plans and chores; landscape and portrait sources must remain fully
   visible without distortion, and the photo sits directly on the page without a tinted or
   blurred backing panel
 - quick access to selected Home scenes
 
-Adults may independently show or hide Dinner, List summary, Notice, Daily Bible verse and Family
-photo from the phone-first **Today & notices** settings surface. The verse opens in a Back-safe
+Adults may independently show or hide Dinner, List summary, Notice, Reminders, Daily Bible verse
+and Family photo from the phone-first **Today & notices** settings surface. The verse opens in a Back-safe
 reading dialog so a full quotation and ESV attribution do not make Today dense; a missing server
 key produces a calm unavailable band rather than a broken dashboard. Upcoming plans and due chores
 remain the stable core. The remaining summary bands expand to
@@ -175,6 +179,20 @@ the phone More hub.
   archive and restore lists; it can edit quantities, order or remove items and
   clear checked history only after explicit confirmation. The television keeps
   only the family check/undo interaction.
+
+### Reminders
+
+- The television and phone show the same read-only, list-grouped Hearth projection from the selected
+  EventKit lists. Incomplete reminders appear before completed reminders, then sort by due date/time
+  and title.
+- Date-only reminders never acquire a misleading midnight time. Timed reminders use the household
+  timezone for display while preserving the source instant.
+- A calm `Updated …` or `Stale` cue reports source freshness. Temporary iPhone/iCloud unavailability
+  leaves cached reminders visible; it does not turn a valid empty result into a connection error.
+- The phone owns pairing, selected-list management and manual refresh. The household surfaces do not
+  edit, complete or delete Apple reminders in v1.
+- Today may show only a small due-today subset with an honest overflow link into Reminders. It never
+  consumes all lower-band space or causes the appliance dashboard to scroll.
 
 ### Meals
 

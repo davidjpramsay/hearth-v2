@@ -461,13 +461,15 @@ physical-TCL comfort assessment remains part of the household pilot.
 - Synology, Pi, router and TV restart scenarios recover without developer intervention.
 - The system passes `ACCEPTANCE.md` on actual target hardware.
 
-## Phase 8 — Native iPhone Reminders companion proof
+## Phase 8 — Native Reminders bridge and iPhone foundation
 
 Status as of 2026-08-25: source, fake-adapter tests and simulator build/run are
 implemented locally, and the physical-iPhone EventKit proof has passed on an
 iPhone 17e running iOS 26.6. The current `Reminders` and `Family Reminders`
 lists were readable, remote changes appeared automatically without a pull, and
-the companion remained read-only.
+the companion remained read-only. The server-side v1 pairing, source authentication,
+full-snapshot projection, household read and revocation contract is frozen and tested. Native
+pairing/upload and rendered Hearth surfaces remain open.
 
 ### Work
 
@@ -491,6 +493,14 @@ the companion remained read-only.
 - Document that the eventual installed Hearth Companion may combine these
   native Apple integrations with the existing responsive web administration UI;
   evaluate WKWebView versus opening an authenticated web session later.
+- Implement the hand-written Swift `ReminderSnapshotClient` against
+  `REMINDERS_COMPANION_CONTRACT.md`; store only the generated source secret in Keychain.
+- Prove approval-gated pairing, session recovery, exact retry, stale-sequence recovery, full
+  snapshot upload and revocation on the physical phone and private Hearth server.
+- Add one dedicated, read-only Reminders surface plus an optional bounded Today module. Reuse the
+  same household API from web, TV and the eventual native client.
+- Retain the responsive companion as fallback while migrating additional phone features natively;
+  do not fork Hearth business rules into Swift.
 
 ### Completion criteria
 
@@ -505,14 +515,22 @@ the companion remained read-only.
   reminders with correct due/completion fields.
 - The physical-device check confirms the app makes no reminder mutation and
   retains no Apple ID, app-specific password, private URL or NAS credential.
-- No server writes, background sync, APNs, two-way completion or WebView is
-  introduced by this proof.
+- The native client makes no EventKit mutation and adds no background sync, APNs, two-way
+  completion or WebView. Its only server write is the frozen, bounded snapshot-source transport.
+- Every Native Reminders scenario in `ACCEPTANCE.md` passes, including physical-device live
+  upload/readback and terminate/relaunch selection evidence.
+- Raw EventKit identifiers and the source secret are absent from SQLite, logs, browser responses,
+  fixtures and audit summaries.
+- Temporary phone/iCloud failure retains cached reminders with honest freshness; revocation stops
+  uploads immediately.
+- The dedicated and Today surfaces pass television/mobile rendering, accessibility and D-pad/Back
+  checks without adding Apple-reminder mutation.
 
 ## Deferred opportunities
 
 - General conversational agent over the allowlisted command layer
 - Dedicated local-AI mini-PC
-- Full native household administration beyond the Reminders proof
+- Full native iOS feature parity and retirement of the responsive companion
 - Multiple households/remote family sharing
 - Recipe/ingredient management
 - Advanced energy and home-status visualisations

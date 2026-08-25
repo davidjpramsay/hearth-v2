@@ -66,6 +66,10 @@ const migrations = [
     version: 24,
     url: new URL('./migrations/0024_daily_bible_verse.sql', import.meta.url),
   },
+  {
+    version: 25,
+    url: new URL('./migrations/0025_reminder_source_projection.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);
