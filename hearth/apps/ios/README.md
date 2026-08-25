@@ -1,6 +1,6 @@
-# Hearth Companion iOS proof
+# Hearth Companion iOS bridge
 
-This is the first native Hearth iPhone slice. It is an iOS 17+ SwiftUI app with a read-only EventKit adapter for Apple Reminders.
+This native iOS 17+ SwiftUI slice reads Apple Reminders through EventKit and can project the selected safe fields to a trusted private Hearth server.
 
 The proof:
 
@@ -9,8 +9,13 @@ The proof:
 - persists only the opaque identifiers of the selected lists in app-local `UserDefaults` so the choice survives relaunch;
 - displays reminder title, list, due date/time and completion state;
 - uses `ReminderStore` with `EventKitReminderStore` and `FakeReminderStore` variants;
+- implements the frozen v1 `ReminderSnapshotClient` with hand-written `Codable`/`Sendable` DTOs;
+- generates a 32-byte source secret with Security randomization services, stores it device-only in
+  Keychain and authenticates only as `HearthReminderSource`;
+- pairs through an adult-approved six-character code and sends bounded full snapshots while the app
+  is open after successful EventKit reads;
 - performs no EventKit save, edit, completion, deletion or commit operation;
-- contains no Hearth server connection, background sync, APNs, credentials, WebView or two-way completion.
+- contains no background sync, APNs, Apple credential, WebView or two-way completion.
 
 ## Local build and tests
 
@@ -21,10 +26,29 @@ xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -sdk iphon
 xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
 
-The simulator proves app wiring, fake-driven UI states, local selection persistence and layout only.
+The simulator proves app wiring, fake-driven UI states, contract fixture compatibility, local
+selection persistence and layout only. The current suite has 29 tests, including pairing,
+transport, exact-retry, stale-sequence, revoked-source and accidental-clear protection.
 The physical EventKit proof passed on 2026-08-25 on an iPhone 17e running iOS 26.6; see
 `hearth/docs/evidence/phase-8/README.md`. A change must still be installed and exercised on that
-device before claiming new physical-device evidence for the change.
+device before claiming new physical-device evidence for the change. The current signed transport
+build has been installed on the iPhone, but live pairing/upload/readback is not yet proven.
+
+## Pairing and foreground snapshots
+
+Open the **Hearth** tab, enter the trusted private HTTPS Hearth origin and create a pairing code.
+Allow Local Network access if iOS prompts; the app uses direct HTTPS only and does not browse or
+advertise Bonjour services.
+Approve that code from a signed-in adult Hearth administration session. The source secret never
+appears in the interface or server response. After exchange, each successful startup, foreground,
+EventKit-change or manual reminder refresh can send one full snapshot. A temporary EventKit/query
+failure sends nothing and therefore cannot accidentally clear Hearth; a deliberate empty list
+selection sends an intentional empty snapshot. A transient successful EventKit read that reports
+zero lists while a non-empty selection exists is held as stale rather than uploaded as a clear.
+
+V1 allows one active EventKit source per household. Revocation happens in adult Hearth
+administration and requires a fresh pairing. Apple Reminders Sections, background transfer,
+writeback and native household-administration parity remain out of scope.
 
 ## Physical iPhone verification
 
@@ -33,4 +57,5 @@ the existing local development team. Confirm live reminders still read correctly
 selection, terminate and relaunch the app, and confirm that exact selection returns. Check Apple
 Reminders before and after: Hearth must not change completion or content. Record only the result,
 device model and iOS version in the phase-8 evidence note; do not retain private reminder contents,
-an Apple ID password, app-specific password or private URL.
+an Apple ID password, app-specific password or private Apple/calendar URL. A trusted Hearth origin
+is non-secret connection metadata and is stored separately from the Keychain source secret.

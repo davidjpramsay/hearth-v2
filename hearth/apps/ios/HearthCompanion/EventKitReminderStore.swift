@@ -93,6 +93,7 @@ final class EventKitReminderStore: ReminderStore {
     // crosses into the @MainActor store and trips the Swift concurrency runtime.
     private nonisolated static func mapReminder(_ reminder: EKReminder) -> HearthReminder {
         let components = reminder.dueDateComponents
+        let hasDueTime = components?.hour != nil || components?.minute != nil || components?.second != nil
         let dueDate: Date?
         if let components {
             var calendar = Calendar.current
@@ -106,11 +107,22 @@ final class EventKitReminderStore: ReminderStore {
 
         return HearthReminder(
             id: reminder.calendarItemIdentifier,
-            title: reminder.title,
+            title: reminder.title ?? "",
+            listID: reminder.calendar.calendarIdentifier,
             listTitle: reminder.calendar.title,
+            dueLocalDate: components.flatMap(localDateString),
             dueDate: dueDate,
-            hasDueTime: components?.hour != nil || components?.minute != nil,
-            isCompleted: reminder.isCompleted
+            hasDueTime: hasDueTime,
+            isCompleted: reminder.isCompleted,
+            completedAt: reminder.completionDate,
+            sourceUpdatedAt: reminder.lastModifiedDate
         )
+    }
+
+    private nonisolated static func localDateString(from components: DateComponents) -> String? {
+        guard let year = components.year, let month = components.month, let day = components.day else {
+            return nil
+        }
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 }

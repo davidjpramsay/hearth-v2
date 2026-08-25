@@ -7,15 +7,23 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0B0C85535DECC52B9963ADA2 /* ReminderBridgeContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD499DBDE66CF1B6F1DFAA5 /* ReminderBridgeContractTests.swift */; };
+		1E148F50EB244C0DA6B0FAEE /* ReminderSnapshotClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554DEC9A5F4352B5F7E4B503 /* ReminderSnapshotClient.swift */; };
 		21D5462C03247D649E102B4F /* FakeReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD8A9B387417C297A64BE6A /* FakeReminderStore.swift */; };
 		527654CEE6C001FFA6F4B123 /* EventKitReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4A537537C70B35E4008F39 /* EventKitReminderStore.swift */; };
 		54174E9370BD4DEA79038475 /* ReminderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74708F04DC2731A9DC6B799B /* ReminderModels.swift */; };
+		6F74DC02B40F1EE44FF2A546 /* ReminderBridgeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFEA0E520167165A24B45AE0 /* ReminderBridgeModels.swift */; };
 		6F9088A63BA297B5B4A40020 /* HearthCompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945CAC16DDCF72CECBBF8082 /* HearthCompanionApp.swift */; };
 		781BA4991C4C647E7E587655 /* ReminderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D292E3826B3EAD9FF9CBAC00 /* ReminderViewModel.swift */; };
+		7A7ED8A3A81AC5FF9AF71F23 /* ReminderBridgeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739BED5D3A9EB130542D303E /* ReminderBridgeViewModel.swift */; };
 		7AB3F6A773FCFE1DB310F547 /* HearthTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A4C0086AE1C633D4EF5982 /* HearthTheme.swift */; };
+		99C40770D3EF251EE2A2A35E /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CBE641BB07837955ADF57F7E /* Security.framework */; };
 		A6E5E09677349BDB48977C61 /* AppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8837E1DA5668FE5733A925 /* AppShell.swift */; };
 		A96E4BF0FC8F65E706E3E42E /* ReminderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE078DCA9AF8849F099B6CAD /* ReminderViews.swift */; };
 		AD7D0D391C737C93516642A4 /* EventKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF7908F6E2C7C6D3E3A1F0CB /* EventKit.framework */; };
+		B4A016CE37DEFF1D7E4D89D3 /* ReminderBridgeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BFE5E1FAE1B6409CCD5D1AC /* ReminderBridgeViewModelTests.swift */; };
+		D4672C65260394312B41218A /* ReminderBridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C402C35901A985A46234EC /* ReminderBridgeView.swift */; };
+		D9CB56323A1B86D8AC8C3203 /* ReminderSnapshotClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F57E33E1594C31813D0519 /* ReminderSnapshotClientTests.swift */; };
 		E692236DAE9B0798C4419CD6 /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804D5CB9792FADF16AA0A65A /* PrivacyView.swift */; };
 		ED52EA16305087FCD1B73DAE /* ReminderViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37C148F7878D4481DF03E08 /* ReminderViewModelTests.swift */; };
 /* End PBXBuildFile section */
@@ -32,19 +40,27 @@
 
 /* Begin PBXFileReference section */
 		0CD8A9B387417C297A64BE6A /* FakeReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeReminderStore.swift; sourceTree = "<group>"; };
+		1BFE5E1FAE1B6409CCD5D1AC /* ReminderBridgeViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBridgeViewModelTests.swift; sourceTree = "<group>"; };
+		2DD499DBDE66CF1B6F1DFAA5 /* ReminderBridgeContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBridgeContractTests.swift; sourceTree = "<group>"; };
 		39ABC1F8606D35C52A9ABD88 /* HearthCompanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HearthCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F8837E1DA5668FE5733A925 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
+		49C402C35901A985A46234EC /* ReminderBridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBridgeView.swift; sourceTree = "<group>"; };
+		554DEC9A5F4352B5F7E4B503 /* ReminderSnapshotClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderSnapshotClient.swift; sourceTree = "<group>"; };
 		6A4A537537C70B35E4008F39 /* EventKitReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventKitReminderStore.swift; sourceTree = "<group>"; };
+		739BED5D3A9EB130542D303E /* ReminderBridgeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBridgeViewModel.swift; sourceTree = "<group>"; };
 		74708F04DC2731A9DC6B799B /* ReminderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderModels.swift; sourceTree = "<group>"; };
 		804D5CB9792FADF16AA0A65A /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
 		8B288F7D8F088BE6F0981E6A /* HearthCompanionTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HearthCompanionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		945CAC16DDCF72CECBBF8082 /* HearthCompanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HearthCompanionApp.swift; sourceTree = "<group>"; };
 		AA1A33E50C5470B9C3CC0C60 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AF7908F6E2C7C6D3E3A1F0CB /* EventKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = EventKit.framework; path = System/Library/Frameworks/EventKit.framework; sourceTree = SDKROOT; };
+		CBE641BB07837955ADF57F7E /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		D0A4C0086AE1C633D4EF5982 /* HearthTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HearthTheme.swift; sourceTree = "<group>"; };
 		D292E3826B3EAD9FF9CBAC00 /* ReminderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderViewModel.swift; sourceTree = "<group>"; };
 		E37C148F7878D4481DF03E08 /* ReminderViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderViewModelTests.swift; sourceTree = "<group>"; };
+		E5F57E33E1594C31813D0519 /* ReminderSnapshotClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderSnapshotClientTests.swift; sourceTree = "<group>"; };
 		EE078DCA9AF8849F099B6CAD /* ReminderViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderViews.swift; sourceTree = "<group>"; };
+		EFEA0E520167165A24B45AE0 /* ReminderBridgeModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBridgeModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +69,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD7D0D391C737C93516642A4 /* EventKit.framework in Frameworks */,
+				99C40770D3EF251EE2A2A35E /* Security.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -63,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				AF7908F6E2C7C6D3E3A1F0CB /* EventKit.framework */,
+				CBE641BB07837955ADF57F7E /* Security.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -77,7 +95,11 @@
 				D0A4C0086AE1C633D4EF5982 /* HearthTheme.swift */,
 				AA1A33E50C5470B9C3CC0C60 /* Info.plist */,
 				804D5CB9792FADF16AA0A65A /* PrivacyView.swift */,
+				EFEA0E520167165A24B45AE0 /* ReminderBridgeModels.swift */,
+				49C402C35901A985A46234EC /* ReminderBridgeView.swift */,
+				739BED5D3A9EB130542D303E /* ReminderBridgeViewModel.swift */,
 				74708F04DC2731A9DC6B799B /* ReminderModels.swift */,
+				554DEC9A5F4352B5F7E4B503 /* ReminderSnapshotClient.swift */,
 				D292E3826B3EAD9FF9CBAC00 /* ReminderViewModel.swift */,
 				EE078DCA9AF8849F099B6CAD /* ReminderViews.swift */,
 			);
@@ -96,6 +118,9 @@
 		ABA10E5C94DDFA516E8E5CA5 /* HearthCompanionTests */ = {
 			isa = PBXGroup;
 			children = (
+				2DD499DBDE66CF1B6F1DFAA5 /* ReminderBridgeContractTests.swift */,
+				1BFE5E1FAE1B6409CCD5D1AC /* ReminderBridgeViewModelTests.swift */,
+				E5F57E33E1594C31813D0519 /* ReminderSnapshotClientTests.swift */,
 				E37C148F7878D4481DF03E08 /* ReminderViewModelTests.swift */,
 			);
 			path = HearthCompanionTests;
@@ -193,6 +218,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0B0C85535DECC52B9963ADA2 /* ReminderBridgeContractTests.swift in Sources */,
+				B4A016CE37DEFF1D7E4D89D3 /* ReminderBridgeViewModelTests.swift in Sources */,
+				D9CB56323A1B86D8AC8C3203 /* ReminderSnapshotClientTests.swift in Sources */,
 				ED52EA16305087FCD1B73DAE /* ReminderViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -207,7 +235,11 @@
 				6F9088A63BA297B5B4A40020 /* HearthCompanionApp.swift in Sources */,
 				7AB3F6A773FCFE1DB310F547 /* HearthTheme.swift in Sources */,
 				E692236DAE9B0798C4419CD6 /* PrivacyView.swift in Sources */,
+				6F74DC02B40F1EE44FF2A546 /* ReminderBridgeModels.swift in Sources */,
+				D4672C65260394312B41218A /* ReminderBridgeView.swift in Sources */,
+				7A7ED8A3A81AC5FF9AF71F23 /* ReminderBridgeViewModel.swift in Sources */,
 				54174E9370BD4DEA79038475 /* ReminderModels.swift in Sources */,
+				1E148F50EB244C0DA6B0FAEE /* ReminderSnapshotClient.swift in Sources */,
 				781BA4991C4C647E7E587655 /* ReminderViewModel.swift in Sources */,
 				A96E4BF0FC8F65E706E3E42E /* ReminderViews.swift in Sources */,
 			);

@@ -67,7 +67,7 @@ final class FakeReminderStore: ReminderStore {
             throw ReminderStoreError.readFailed("The fake reminder read failed.")
         }
         return reminders.filter { reminder in
-            lists.first(where: { $0.title == reminder.listTitle }).map { listIDs.contains($0.id) } ?? false
+            listIDs.contains(reminder.listID)
         }
     }
 
@@ -88,10 +88,15 @@ extension FakeReminderStore {
         return FakeReminderStore(
             lists: lists,
             reminders: [
-                HearthReminder(id: "milk", title: "Pick up milk", listTitle: "Family Reminders", dueDate: tomorrow, hasDueTime: false, isCompleted: false),
-                HearthReminder(id: "bins", title: "Put the bins out", listTitle: "Reminders", dueDate: tomorrow, hasDueTime: true, isCompleted: true),
-                HearthReminder(id: "library", title: "Return library books", listTitle: "Family Reminders", dueDate: nil, hasDueTime: false, isCompleted: false)
+                HearthReminder(id: "milk", title: "Pick up milk", listID: "family", listTitle: "Family Reminders", dueLocalDate: localDate(tomorrow), dueDate: tomorrow, hasDueTime: false, isCompleted: false),
+                HearthReminder(id: "bins", title: "Put the bins out", listID: "reminders", listTitle: "Reminders", dueLocalDate: localDate(tomorrow), dueDate: tomorrow, hasDueTime: true, isCompleted: true, completedAt: Date()),
+                HearthReminder(id: "library", title: "Return library books", listID: "family", listTitle: "Family Reminders", dueDate: nil, hasDueTime: false, isCompleted: false)
             ]
         )
+    }
+
+    private static func localDate(_ date: Date?) -> String? {
+        guard let date else { return nil }
+        return date.formatted(.iso8601.year().month().day().dateSeparator(.dash))
     }
 }

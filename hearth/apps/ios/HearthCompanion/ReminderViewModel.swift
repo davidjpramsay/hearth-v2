@@ -3,7 +3,7 @@ import Observation
 
 @MainActor
 @Observable
-final class ReminderViewModel {
+final class ReminderViewModel: ReminderSnapshotRefreshing {
     enum State: Equatable {
         case firstUse
         case requestingPermission
@@ -17,6 +17,7 @@ final class ReminderViewModel {
 
     private let store: any ReminderStore
     private let selectionStore: any ReminderListSelectionStore
+    private let snapshotConsumer: (any ReminderSnapshotConsumer)?
     private let hadPersistedInitialSelection: Bool
     private var hasStarted = false
     private var hasResolvedInitialSelection = false
@@ -30,10 +31,12 @@ final class ReminderViewModel {
 
     init(
         store: any ReminderStore,
-        selectionStore: any ReminderListSelectionStore = InMemoryReminderListSelectionStore()
+        selectionStore: any ReminderListSelectionStore = InMemoryReminderListSelectionStore(),
+        snapshotConsumer: (any ReminderSnapshotConsumer)? = nil
     ) {
         self.store = store
         self.selectionStore = selectionStore
+        self.snapshotConsumer = snapshotConsumer
         let persistedSelection = selectionStore.loadSelectedListIDs()
         hadPersistedInitialSelection = persistedSelection != nil
         selectedListIDs = persistedSelection ?? []
@@ -99,7 +102,12 @@ final class ReminderViewModel {
 
     func selectLists(_ ids: Set<String>) async {
         selectedListIDs = ids
+        hasResolvedInitialSelection = true
         selectionStore.saveSelectedListIDs(ids)
+        await refresh()
+    }
+
+    func refreshForBridge() async {
         await refresh()
     }
 
@@ -114,6 +122,11 @@ final class ReminderViewModel {
         do {
             let lists = try await store.reminderLists()
             let validIDs = Set(lists.map(\.id))
+            if validIDs.isEmpty, !selectedListIDs.isEmpty {
+                throw ReminderStoreError.readFailed(
+                    "Apple Reminders temporarily returned no lists. Hearth kept the last safe snapshot instead of treating that as an intentional clear."
+                )
+            }
             let normalizedSelection = selectedListIDs.intersection(validIDs)
             let isResolvingFirstSelection = !hasResolvedInitialSelection
             let effectiveSelection = isResolvingFirstSelection && !hadPersistedInitialSelection
@@ -138,6 +151,9 @@ final class ReminderViewModel {
             )
             lastSnapshot = snapshot
             state = reminders.isEmpty ? .empty(snapshot) : .success(snapshot)
+            if hasResolvedInitialSelection {
+                snapshotConsumer?.reminderSnapshotDidChange(snapshot)
+            }
         } catch is CancellationError {
             return
         } catch {

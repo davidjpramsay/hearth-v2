@@ -11,8 +11,8 @@ struct ReminderViewModelTests {
 
     private var reminders: [HearthReminder] {
         [
-            HearthReminder(id: "one", title: "Pack lunch", listTitle: "Family Reminders", dueDate: Date(timeIntervalSince1970: 100), hasDueTime: true, isCompleted: false),
-            HearthReminder(id: "two", title: "Water herbs", listTitle: "Reminders", dueDate: nil, hasDueTime: false, isCompleted: true)
+            HearthReminder(id: "one", title: "Pack lunch", listID: "family", listTitle: "Family Reminders", dueLocalDate: "1970-01-01", dueDate: Date(timeIntervalSince1970: 100), hasDueTime: true, isCompleted: false),
+            HearthReminder(id: "two", title: "Water herbs", listID: "reminders", listTitle: "Reminders", dueDate: nil, hasDueTime: false, isCompleted: true)
         ]
     }
 
@@ -94,9 +94,11 @@ struct ReminderViewModelTests {
     @Test("a failed refresh preserves the last successful snapshot as stale")
     func staleAfterFailure() async {
         let fake = FakeReminderStore(lists: lists, reminders: reminders)
-        let model = ReminderViewModel(store: fake)
+        let consumer = SnapshotConsumerSpy()
+        let model = ReminderViewModel(store: fake, snapshotConsumer: consumer)
 
         await model.start()
+        #expect(consumer.snapshots.count == 1)
         fake.shouldFailReminders = true
         await model.refresh()
 
@@ -105,6 +107,8 @@ struct ReminderViewModelTests {
             return
         }
         #expect(snapshot.reminders.count == 2)
+        #expect(consumer.snapshots.count == 1)
+        #expect(consumer.snapshots[0].reminders.count == 2)
     }
 
     @Test("a first read failure is a retryable failure state")
@@ -129,7 +133,7 @@ struct ReminderViewModelTests {
 
         await model.start()
         fake.reminders = [
-            HearthReminder(id: "three", title: "Updated from Apple Reminders", listTitle: "Family Reminders", dueDate: nil, hasDueTime: false, isCompleted: false)
+            HearthReminder(id: "three", title: "Updated from Apple Reminders", listID: "family", listTitle: "Family Reminders", dueDate: nil, hasDueTime: false, isCompleted: false)
         ]
         fake.emitChange()
         try await Task.sleep(nanoseconds: 600_000_000)
@@ -241,6 +245,31 @@ struct ReminderViewModelTests {
         #expect(selectionStore.selectedListIDs == ["reminders", "family"])
     }
 
+    @Test("a transient loss of previously selected lists never emits a clearing snapshot")
+    func transientListLossDoesNotClearHearth() async {
+        let selectionStore = InMemoryReminderListSelectionStore(selectedListIDs: ["family"])
+        let fake = FakeReminderStore(lists: lists, reminders: reminders)
+        let consumer = SnapshotConsumerSpy()
+        let model = ReminderViewModel(
+            store: fake,
+            selectionStore: selectionStore,
+            snapshotConsumer: consumer
+        )
+        await model.start()
+        #expect(consumer.snapshots.count == 1)
+
+        fake.lists = []
+        fake.reminders = []
+        await model.refresh()
+
+        guard case .stale = model.state else {
+            Issue.record("Expected the previous read to remain stale")
+            return
+        }
+        #expect(consumer.snapshots.count == 1)
+        #expect(selectionStore.selectedListIDs == ["family"])
+    }
+
     @Test("the UserDefaults adapter distinguishes unset, empty, and selected values")
     func userDefaultsSelectionStoreRoundTrip() {
         let suiteName = "HearthCompanionTests.\(UUID().uuidString)"
@@ -253,5 +282,14 @@ struct ReminderViewModelTests {
         #expect(selectionStore.loadSelectedListIDs() == [])
         selectionStore.saveSelectedListIDs(["reminders", "family"])
         #expect(selectionStore.loadSelectedListIDs() == ["reminders", "family"])
+    }
+}
+
+@MainActor
+private final class SnapshotConsumerSpy: ReminderSnapshotConsumer {
+    private(set) var snapshots: [ReminderSnapshot] = []
+
+    func reminderSnapshotDidChange(_ snapshot: ReminderSnapshot) {
+        snapshots.append(snapshot)
     }
 }

@@ -132,10 +132,11 @@ EventKit permission for reminders. The app declares
 `calendars(for: .reminder)`, lets an adult select reminder-capable lists and
 reads reminders with `predicateForReminders(in:)`.
 
-The proof itself remains read-only: it never calls EventKit save, remove,
-commit, completion or edit APIs. It has no server write route, persistent
-background sync, APNs, two-way completion, Apple ID request, iCloud
-app-specific password, private URL or NAS credential. It deliberately renders
+The physical EventKit proof itself remains read-only: it never calls EventKit
+save, remove, commit, completion or edit APIs. The bridge adds only the frozen
+pairing and full-snapshot server route; it has no persistent background sync,
+APNs, two-way completion, Apple ID request, iCloud app-specific password,
+private Apple URL or NAS credential. It deliberately renders
 first use, permission request, denied/restricted, loading, empty, success,
 stale and failure states. The simulator can prove the wiring and fake-driven
 state machine; only an installed physical iPhone can prove that the current
@@ -144,6 +145,10 @@ owner's Apple Account. On 2026-08-25 that proof passed on an iPhone 17e running
 iOS 26.6: the owner confirmed that both current lists and their live reminders,
 including due and completion state, were visible. Completion controls remain
 deliberately non-interactive in Hearth Companion.
+
+Because the trusted Hearth origin may resolve to a LAN host, the app also declares
+`NSLocalNetworkUsageDescription`. The HTTPS transport waits for connectivity while iOS resolves
+the first local-network permission prompt; it does not browse or advertise Bonjour services.
 
 While the companion is open, the EventKit adapter observes
 `EKEventStoreChanged` and refetches the selected lists after a short debounce;
@@ -162,7 +167,8 @@ list identifiers in the app's local `UserDefaults`; it stores no reminder
 content or Apple credential. An absent preference selects all lists on the first
 successful non-empty read, an explicitly empty preference stays empty, and
 identifiers for lists EventKit no longer exposes are removed on the next
-successful list read.
+successful non-empty list read. A transient zero-list result cannot turn an
+existing non-empty selection into an upload that clears Hearth.
 
 EventKit exposes the reminder list/calendar and reminder fields used by this
 proof, but it does not expose the user-created Sections hierarchy shown inside
@@ -174,14 +180,18 @@ Apple references: [Accessing the event store](https://developer.apple.com/docume
 [requestFullAccessToReminders](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29),
 [retrieving events and reminders](https://developer.apple.com/documentation/eventkit/retrieving-events-and-reminders),
 [updating with notifications](https://developer.apple.com/documentation/EventKit/updating-with-notifications?language=objc) and
-[NSRemindersFullAccessUsageDescription](https://developer.apple.com/documentation/bundleresources/information-property-list/nsremindersfullaccessusagedescription).
+[NSRemindersFullAccessUsageDescription](https://developer.apple.com/documentation/bundleresources/information-property-list/nsremindersfullaccessusagedescription),
+[NSLocalNetworkUsageDescription](https://developer.apple.com/documentation/bundleresources/information-property-list/nslocalnetworkusagedescription) and
+[TN3179: Understanding local network privacy](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy).
 
 Pairing, the distinct source credential, identifier privacy, list/reminder fields, atomic snapshot
 replacement, ordering, freshness, retry, revocation and Swift client seam are frozen in
 `REMINDERS_COMPANION_CONTRACT.md`. The server implements that v1 contract. Native transport proof
-must still show pairing, upload, terminate/relaunch persistence and live Hearth readback before the
-product UI is called complete. Public EventKit does not expose Apple Reminders Sections, so neither
-the bridge nor Hearth models them.
+now includes Keychain secret storage, the distinct URLSession authorization scheme, fixture-checked
+Swift DTOs, selected-list wire mapping and deterministic pairing/retry/stale/revocation tests. It
+must still show adult-approved pairing, upload, terminate/relaunch persistence and live Hearth
+readback on the physical phone before the product UI is called complete. Public EventKit does not
+expose Apple Reminders Sections, so neither the bridge nor Hearth models them.
 
 ## Weather
 

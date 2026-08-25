@@ -106,6 +106,8 @@ Chromium fallback produced the retained evidence.
 - The first-use screen explains that iOS requires full permission even though
   this proof is read-only. Denied, restricted and insufficient-access states
   remain explicit and provide safe next actions.
+- The app includes an explicit Local Network usage description for a private Hearth origin, waits
+  for the first connectivity decision and performs no Bonjour browsing or advertising.
 - An adult can see reminder-capable lists, select one or more lists, refresh
   them and read reminder title, list, due date/time and completion state.
 - The selected-list choice survives termination and relaunch using app-local
@@ -124,10 +126,16 @@ Chromium fallback produced the retained evidence.
   support because EventKit does not expose those user-created sections.
 - The physical read proof used no server write path. The bridge adds only the frozen source-pairing
   and bounded full-snapshot transport; it has no background sync, APNs, two-way completion, Apple
-  ID, iCloud app-specific password, private URL or NAS credential and invokes no EventKit mutation.
+  ID, iCloud app-specific password, private Apple/calendar URL or NAS credential and invokes no
+  EventKit mutation. The trusted private Hearth origin is stored separately from the source secret.
 - Fake-adapter unit tests cover permission, list selection/filtering, stale
   fallback and failure transitions. Simulator build/run and screenshots prove
   app wiring and presentation only.
+- Native contract tests decode all four committed language-neutral fixtures and cover the distinct
+  source authorization scheme, approved pairing, bounded selected-list mapping, exact retry,
+  stale-sequence recovery, revoked-source repair and protection against accidental empty uploads.
+  These tests and the fake accepted-snapshot screen pass in Simulator; they do not prove a live
+  household upload.
 - Physical EventKit acceptance passed on 2026-08-25 on an iPhone 17e running
   iOS 26.6: the owner's current `Reminders` and `Family Reminders` lists and
   live reminder fields were visible. A remote change appeared automatically in
@@ -160,6 +168,8 @@ Chromium fallback produced the retained evidence.
   persistence across terminate/relaunch, approved Hearth pairing, one live snapshot upload and
   readback from the household endpoint. Until all of those pass, the server contract is frozen but
   the end-to-end bridge and Reminders UI are not complete.
+- The current signed transport build has been installed on the iPhone. Live pairing/upload/readback
+  has not yet been run, so the preceding end-to-end criterion remains open.
 - Apple Reminders Sections, writeback, completion and deletion are absent from v1.
 
 ### Household people

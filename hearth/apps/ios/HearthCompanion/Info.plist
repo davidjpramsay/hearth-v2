@@ -16,6 +16,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Hearth Companion connects to your private Hearth server on the local network to send the reminder lists you choose after adult-approved pairing.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
 	<string>Hearth Companion reads the reminder lists you choose so Hearth can show a calm family view. It never creates, edits, completes, or deletes reminders.</string>
 	<key>UILaunchScreen</key>
@@ -30,6 +32,9 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

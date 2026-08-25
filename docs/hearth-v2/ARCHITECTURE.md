@@ -85,9 +85,12 @@ The first native iOS companion proof is a SwiftUI iOS 17+ target under
 real EventKit adapter and a deterministic fake adapter for tests/previews. The
 native surface requests the EventKit full Reminders permission required by iOS
 to read existing reminders, enumerates reminder-capable lists, lets an adult
-select lists and displays safe reminder projections. It does not connect to the
-Hearth server, store Apple credentials, request background access, or mutate
-EventKit data.
+select lists and displays safe reminder projections. After adult-approved
+pairing, its separate `ReminderSnapshotClient` may send only the frozen,
+bounded full-snapshot projection to the trusted private Hearth origin using the
+device-scoped `HearthReminderSource` credential. It stores that 32-byte secret
+in Keychain, never uses it as a household/adult session, requests no background
+access and does not mutate EventKit data.
 
 The app root injects a separate `ReminderListSelectionStore` into the reminder
 model. The live implementation uses app-sandboxed `UserDefaults` to retain only
@@ -95,7 +98,10 @@ the sorted opaque identifiers of selected EventKit lists; previews and tests use
 an in-memory implementation. Unset state, an intentional empty selection and a
 saved non-empty selection remain distinct. Every successful list read intersects
 the saved identifiers with the current EventKit lists, so removed lists are
-pruned without persisting reminder titles, dates or completion state.
+pruned without persisting reminder titles, dates or completion state. If EventKit
+temporarily returns no lists while a non-empty selection exists, the model keeps
+the prior selection/snapshot stale and emits no clearing snapshot; only an
+explicit empty adult selection can intentionally clear the Hearth projection.
 
 This is an Apple integration surface, not a second household database or a
 replacement for the responsive web companion. A later installed Hearth

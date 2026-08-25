@@ -17,10 +17,38 @@ struct ReminderList: Identifiable, Hashable, Sendable {
 struct HearthReminder: Identifiable, Hashable, Sendable {
     let id: String
     let title: String
+    let listID: String
     let listTitle: String
+    let dueLocalDate: String?
     let dueDate: Date?
     let hasDueTime: Bool
     let isCompleted: Bool
+    let completedAt: Date?
+    let sourceUpdatedAt: Date?
+
+    init(
+        id: String,
+        title: String,
+        listID: String,
+        listTitle: String,
+        dueLocalDate: String? = nil,
+        dueDate: Date?,
+        hasDueTime: Bool,
+        isCompleted: Bool,
+        completedAt: Date? = nil,
+        sourceUpdatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.listID = listID
+        self.listTitle = listTitle
+        self.dueLocalDate = dueLocalDate
+        self.dueDate = dueDate
+        self.hasDueTime = hasDueTime
+        self.isCompleted = isCompleted
+        self.completedAt = completedAt
+        self.sourceUpdatedAt = sourceUpdatedAt
+    }
 }
 
 struct ReminderSnapshot: Equatable, Sendable {

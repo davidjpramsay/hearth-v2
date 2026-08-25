@@ -112,7 +112,7 @@ private struct PermissionIntroView: View {
                 .font(.title2.weight(.semibold))
             Text("This first proof reads the reminder lists you choose and shows each title, list, due date or time, and completion state.")
                 .font(.body)
-            Text("iOS requires full Reminders access for apps that read reminders. Hearth Companion uses that permission only for reading in this proof: it never creates, edits, completes, or deletes a reminder, and it does not send your Apple ID or reminder data to a Hearth server.")
+            Text("iOS requires full Reminders access for apps that read reminders. Hearth Companion uses that permission only for reading: it never creates, edits, completes, or deletes a reminder. After you separately pair with your private Hearth, it can send only selected list titles and each reminder’s title, due fields, and completion state—never your Apple ID or Apple credentials.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Button("Allow Reminders access", action: request)
