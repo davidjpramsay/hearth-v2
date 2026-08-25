@@ -1048,6 +1048,13 @@ Official platform references:
   percent-encoding, and ignore an exact collection-self response. Different origins, sibling or
   parent paths, embedded credentials, fragments, queries, encoded separators and nested children remain
   rejected before object retrieval.
+- Live result (2026-08-25): the commissioned account advertised two `VTODO` collections, but the
+  bounded read returned two duplicated legacy/other records and none of the newly created current
+  test reminders. Direct CalDAV is therefore rejected as a reliable modern iCloud Reminders source.
+  Apple's Calendar guide separately confirms that its native macOS Calendar app can view, create,
+  edit and complete scheduled reminders, but documents no corresponding CalDAV or app-password API.
+  Reconsider direct server sync only if Apple documents a supported server API; otherwise a future
+  permissioned native companion bridge is the appropriate boundary.
 
 ## D-065 — Pocket-money progress uses the complete weekly schedule
 

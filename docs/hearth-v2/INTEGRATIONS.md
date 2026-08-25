@@ -110,7 +110,16 @@ If no collection advertises `VTODO`, the check stops after discovery; Hearth mus
 guess private endpoints or imply that modern upgraded iCloud Reminders are available through the
 existing Calendar connection. A future native EventKit bridge would require a separate product,
 privacy and authentication decision; Apple documents EventKit as the permission-controlled native
-route for [requesting reminder access](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29).
+route for [requesting reminder access](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29),
+and documents reminder access inside its own
+[Calendar app](https://support.apple.com/en-au/guide/calendar/icl873b9a527/mac) without documenting a
+third-party CalDAV equivalent.
+
+The commissioned read-only check on 2026-08-25 discovered two `VTODO` collections, but both
+returned the same two legacy/other records and neither contained the newly created current test
+reminders. All advertised objects were included within the bounded sample. This is evidence that
+the CalDAV surface is not a reliable source for modern iCloud Reminders, so Hearth must not build a
+direct iCloud Reminders sync on it.
 
 ## Weather
 

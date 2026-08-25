@@ -179,6 +179,11 @@ review the bounded result before proposing a separately approved read-only produ
 URL rather than identifying a task object; it does not represent a reminder. Any different-origin
 or outside-collection resource remains a hard failure.
 
+The commissioned 2026-08-25 probe completed and did not expose the account's newly created current
+Reminders through CalDAV. Do not repeat the probe as a routine health check or treat advertised
+`VTODO` capability as proof of modern iCloud Reminders access. The direct CalDAV Reminders path is
+closed unless Apple documents a supported change.
+
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.
 Do not place the URL, token or entity IDs in `.env`, Compose values, source, SQLite, logs, chat or a
