@@ -53,7 +53,8 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await expect(schoolBag).toBeFocused();
 
   await page.keyboard.press('Enter');
-  await expect(schoolBag).toContainText('Done — Undo');
+  await expect(schoolBag).toContainText('Done');
+  await expect(schoolBag).toHaveAccessibleName('Pack school bag, done. Undo');
   await expect(schoolBag).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(schoolBag).toContainText('Mark done');
@@ -132,7 +133,8 @@ test('a failed optimistic completion restores pending state and retries in place
   await expect(page.getByRole('alert')).toContainText('Couldn’t mark this done.');
   await expect(chore).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(chore).toContainText('Done — Undo');
+  await expect(chore).toContainText('Done');
+  await expect(chore).toHaveAccessibleName('Pack school bag, done. Undo');
 });
 
 test('cached Today content remains visible through a real browser offline event', async ({
@@ -351,6 +353,7 @@ test('a chore change invalidates an already-open Today screen in real time', asy
   await choresPage.goto('/chores');
   await choresEvents;
   await choresPage.locator('[data-focus-id="chore-primary"]').press('Enter');
-  await expect(todayChore).toContainText('Done — Undo');
+  await expect(todayChore).toContainText('Done');
+  await expect(todayChore).toHaveAccessibleName('Pack school bag, done. Undo');
   await choresPage.close();
 });

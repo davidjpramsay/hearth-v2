@@ -207,8 +207,9 @@ export function PocketMoneySettingsScreen() {
           <div>
             <strong>Chores decide the amount due</strong>
             <p>
-              Hearth calculates each child’s share from chores due so far this week. Excused and
-              cancelled chores do not count against them; skipped chores remain incomplete.
+              Hearth calculates each child’s share from every chore scheduled for the full week.
+              Excused and cancelled chores do not count against them; skipped chores remain
+              incomplete.
             </p>
           </div>
         </div>

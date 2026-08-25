@@ -198,7 +198,13 @@ Only active child members may receive a setting. New children appear as unconfig
 - optional parent note
 - payment timestamp, adult actor and source
 
-There may be multiple immutable partial payment rows for a child/week. The service sums only active rows and prevents their total exceeding the amount due. Chores in `excused` or `cancelled` state are excluded from the denominator; `pending` and `skipped` remain incomplete. Migration `0009_pocket_money.sql` introduces the original records; migration `0014_pocket_money_payment_history.sql` removes the one-row-per-week constraint and adds notes without rewriting prior snapshots.
+There may be multiple immutable partial payment rows for a child/week. The service sums only active
+rows and prevents their total exceeding the amount due. The denominator covers the complete
+Monday–Sunday schedule, including occurrences later than the selected as-of date. Chores in
+`excused` or `cancelled` state are excluded; `pending` and `skipped` remain incomplete. Migration
+`0009_pocket_money.sql` introduces the original records; migration
+`0014_pocket_money_payment_history.sql` removes the one-row-per-week constraint and adds notes
+without rewriting prior snapshots.
 
 ### Pocket-money payment void
 

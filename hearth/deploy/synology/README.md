@@ -129,12 +129,17 @@ Before any approved Synology commissioning:
     Assistant appliance.
 
 14. If Synology network hardening uses a `FORWARD_FIREWALL` chain before Docker's forwarding chains,
-    keep the exact Hearth bridge exception installed by
-    `ensure-docker-firewall.sh`. It allows only source-and-destination traffic inside the current
-    `hearth-v2_default` Docker subnet and does not expose a host port or permit WAN traffic. The
+    keep the Docker-origin compatibility rule installed by `ensure-docker-firewall.sh`. It permits
+    packets arriving from a `docker+` bridge to continue into Docker's own isolation and policy
+    chains, while inbound LAN/Tailscale/WAN packets remain subject to DSM's existing rules. It does
+    not expose a host port, reorder Docker ahead of the firewall or add an output-interface bypass. The
     private release activator installs it as
-    `/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`; verify `/api/v1/readiness` after a firewall
-    reload or Docker network recreation.
+    `/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`. The hook applies the narrow rules once at
+    startup; it does not poll. The release activator reapplies it after container replacement.
+    After an explicit DSM firewall reload, run the hook's `start` action once, confirm its `status`
+    action, and verify the web
+    container's request to `http://server:4310/api/v1/readiness`, and public `/api/v1/readiness`
+    after a firewall reload or Docker network recreation.
 
 The hostname and certificate mechanism are intentionally unresolved deployment inputs. The passkey
 contract is implemented, but enrolment remains inert until those values and the first-use code file
@@ -187,15 +192,30 @@ only after confirming they contain no household data, secrets, private URLs or c
 ### Normal pull-only update
 
 After the exact full commit has passed all hosted checks and the publish job has produced both
-`linux/amd64` images, run this from the repository root:
+`linux/amd64` images, install the commissioned NAS's root-owned Hearth release helper once from a
+visible owner-controlled terminal:
+
+```sh
+hearth/deploy/synology/install-release-helper.sh
+```
+
+That is the final interactive Synology privilege step. A genuine `sudo` prompt echoes no characters
+while the owner types. The installer grants the deployment user passwordless access only to the
+fixed `/usr/local/sbin/hearth-v2-activate-staged` command; it does not grant a root shell, general
+Docker access or other `sudo` commands. It also installs the root-owned one-shot firewall boot hook
+that returns Docker-origin traffic to Docker's generated isolation and policy chains without a
+background monitor or per-application subnet exceptions.
+
+For subsequent releases, run this from the repository root:
 
 ```sh
 hearth/deploy/synology/activate-private-release.sh <full-verified-commit>
 ```
 
 The scripts use the `hearth-synology` SSH alias by default. If that alias needs a hostname override,
-set `HEARTH_DEPLOY_SSH_HOSTNAME=<private-nas-hostname>` for the command. Synology may ask for the
-administrator password interactively; Hearth never reads or stores it.
+set `HEARTH_DEPLOY_SSH_HOSTNAME=<private-nas-hostname>` for the command. Normal activation uses
+`sudo -n`; Hearth never reads or stores the administrator password. Rerun the one-time installer
+deliberately whenever the canonical production Compose or firewall helper changes.
 
 The activation first stages the exact source revision and copies the canonical pull-only production
 Compose into the preserved private project. The staging guard also refuses a release whose Compose
@@ -224,14 +244,17 @@ wants to stage without restarting. If the private registry is unavailable, a del
 source recovery build remains possible by combining `compose.yaml` and `compose.build.yaml`. This
 is an explicit fallback only and must not occur automatically on the DS920+.
 
-### Privilege boundary and DSM browser fallback
+### Root-owned release-helper boundary and DSM browser fallback
 
 A normal release is pull-only: GitHub Actions builds the images and the Synology does not compile
 Hearth. It still requires one privileged operation because DSM restricts Docker and a private GHCR
-login belongs to root. The preferred update is a visible terminal where the owner enters the DSM
-password once for `activate-private-release.sh`; the script must never capture or store it.
+login belongs to root. The owner enters the DSM password once for `install-release-helper.sh`. The
+installed root-owned helper accepts no release argument, reads one validated staged commit marker,
+uses root-owned Compose/environment files, operates only the fixed `hearth-v2` project and waits for
+readiness before recording success.
 
-When that password prompt cannot be surfaced, use DSM Task Scheduler only as a temporary fallback:
+When that one-time password prompt cannot be surfaced, use DSM Task Scheduler only as a temporary
+fallback:
 
 1. Stage the exact green commit and transfer a short release script as a file.
 2. Create a disabled root-owned user-defined task that runs that file.
@@ -240,8 +263,8 @@ When that password prompt cannot be surfaced, use DSM Task Scheduler only as a t
 5. Delete the temporary task, script and logs.
 
 Do not paste a long script into DSM's text editor, use Container Manager **Build**, leave a reusable
-root task behind or store a DSM/GitHub credential in the task. A permanent least-privilege release
-helper is a separate security decision and requires explicit approval.
+root task behind or store a DSM/GitHub credential in the task. The permanent helper above is the
+explicitly approved, validated replacement for repeated interactive deployment prompts.
 
 ### Commissioning another household
 

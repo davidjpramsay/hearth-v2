@@ -286,9 +286,9 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-027 — Proportional pocket money replaces star rewards
 
 - Date: 2026-08-06
-- Status: amended by D-035
+- Status: amended by D-035 and D-065
 - Context: The owner does not want an abstract star economy or reward catalogue. Each child instead has a real weekly pocket-money amount, and parents need an honest running figure and a record of what to pay.
-- Choice: Require an adult-configured weekly amount in Australian cents and payday for every participating child. For the Monday–Sunday week, calculate progress from completed chores divided by all non-excused, non-cancelled chores due through the selected as-of date. Apply that percentage directly to the weekly amount and round once to the nearest cent. Keep skipped chores in the denominator. Let an adult record one idempotent payment snapshot per child/week containing counts, percentage and amount. Remove star values from chore contracts and administration, remove reward routes/screens and stop chore completion/undo from writing reward-ledger entries.
+- Choice: Require an adult-configured weekly amount in Australian cents and payday for every participating child. D-065 supersedes the original as-of-date denominator. Apply the resulting percentage directly to the weekly amount and round once to the nearest cent. Keep skipped chores in the denominator. Let an adult record one idempotent payment snapshot per child/week containing counts, percentage and amount. Remove star values from chore contracts and administration, remove reward routes/screens and stop chore completion/undo from writing reward-ledger entries.
 - Consequence: Chores can show a child-friendly weekly percentage and amount due while phone administration owns weekly settings and payment recording. A later chore/template change cannot rewrite an existing payment. Migration `0009_pocket_money.sql` is forward-only; the migration-0005 reward tables remain dormant so existing databases are not destructively rewritten, but no active API or UI reads or writes them. D-017 remains authoritative for the shared typed/idempotent/audited command path and is superseded only for its reward-ledger choice.
 
 ## D-028 — Member profile photos are bounded local derivatives
@@ -1023,3 +1023,79 @@ Official platform references:
 - Consequence: Busy portrait/no-photo dashboards expose more useful work without scrolling, while
   landscape images remain substantial. Photo rotation can recompose the row count together with the
   image orientation, and every hidden item remains reachable through the existing overflow action.
+
+## D-064 — iCloud Reminders requires standards capability evidence before product integration
+
+- Date: 2026-08-24
+- Status: accepted
+- Context: [CalDAV](https://www.rfc-editor.org/rfc/rfc4791.html) defines `VTODO`, but Apple documents
+  [upgraded iCloud Reminders](https://support.apple.com/en-ca/102457) separately and its
+  [third-party iCloud access](https://support.apple.com/en-gb/121539) covers Mail, Calendar and
+  Contacts rather than Reminders. Treating the existing iCloud app-specific credential as proof of
+  Reminders access would risk promising an unsupported integration or probing private endpoints.
+- Choice: Add one operator-only, read-only capability probe using the existing server-side CalDAV
+  credential. Discover all collections, query only those that explicitly advertise `VTODO`, bound
+  samples to at most ten items and omit credentials, URLs, UIDs, descriptions and raw DAV payloads
+  from output. Add no browser route, persistence, polling or mutation. Stop when no task collection
+  is advertised; do not scrape or guess Apple endpoints. Any later EventKit companion bridge or
+  CalDAV reminders product surface needs separate approval and a new typed contract.
+- Consequence: Hearth can establish whether the household account exposes standards-based tasks
+  without weakening its calendar secret boundary or silently expanding product scope. A successful
+  diagnostic is evidence for further design, not an automatic implementation commitment; an empty
+  result closes the direct CalDAV path unless Apple publishes a supported change.
+
+## D-065 — Pocket-money progress uses the complete weekly schedule
+
+- Date: 2026-08-24
+- Status: accepted; supersedes D-027's as-of-date denominator
+- Context: Counting only chores due through today makes one completed Monday chore appear as 100%
+  even when that child has more work scheduled later in the week. That overstates both progress and
+  the amount earned from a fixed weekly allowance.
+- Choice: For every current or historical Monday–Sunday week, load all seven days and calculate the
+  percentage from completed occurrences divided by the complete non-excused, non-cancelled weekly
+  schedule. Keep future pending occurrences and skipped occurrences in the denominator. Retain the
+  as-of date only for payday state, command timing and the immutable payment snapshot timestamp.
+- Consequence: Progress begins below 100% when work remains later in the week and rises as the child
+  completes the whole schedule. Editing a future recurring schedule can change an unpaid current
+  week's denominator, while existing immutable payment snapshots remain unchanged.
+
+## D-066 — Normal Synology releases use a fixed root-owned activator
+
+- Date: 2026-08-24
+- Status: accepted with explicit owner approval
+- Context: Repeated interactive `sudo` prompts were unreliable in Codex and DSM browser workflows,
+  causing failed or confusing deployments. Storing the administrator password, granting a
+  passwordless shell or granting unrestricted Docker access would violate Hearth's credential and
+  least-privilege boundaries.
+- Choice: Use one final owner-entered, non-echoing `sudo` prompt to install a root-owned
+  `/usr/local/sbin/hearth-v2-activate-staged` command and root-owned production Compose/environment.
+  Permit the named deployment user to run only that command through `sudo -n`. The command accepts
+  no release argument, reads one validated 40-character staged marker, operates only the fixed
+  Hearth Compose project, reapplies the root-owned narrow Docker-firewall rules and waits for
+  readiness before recording the release. Refresh the helper
+  deliberately whenever the canonical production Compose changes.
+- Consequence: Routine verified releases can be launched and checked entirely from Codex without
+  handling a password, while the NAS does not gain a reusable root task, passwordless shell or
+  unrestricted Docker privilege. Removing `/etc/sudoers.d/hearth-v2-release` disables this path.
+
+## D-067 — DSM forwarding permits Docker-origin traffic without bypassing inbound policy
+
+- Date: 2026-08-25
+- Status: accepted with explicit owner approval
+- Context: DSM places its host-oriented `FORWARD_FIREWALL` catch-all drop before Docker's generated
+  `DEFAULT_FORWARD` chain. That blocked ordinary bridge, DNS and outbound container traffic and
+  required fragile Hearth-subnet exceptions. The live audit confirmed qBittorrent independently
+  shares Gluetun's network namespace, Docker keeps its own bridge-isolation chains and unsolicited
+  inbound traffic should remain subject to DSM's LAN, Tailscale and port rules.
+- Choice: Keep DSM's input and forwarding firewall. Add one idempotent `FORWARD_FIREWALL` return
+  rule matching only the input interface pattern `docker+`, positioned after established traffic.
+  Packets from a Docker bridge may then continue into Docker's own `DOCKER-USER`, isolation and
+  published-port policy. Do not match Docker output interfaces and do not reorder `DEFAULT_FORWARD`
+  ahead of DSM, because those alternatives could weaken unsolicited inbound filtering. Remove the
+  superseded Hearth-subnet and resolver exceptions. Apply the rule once at boot and after verified
+  container replacement; run no polling watchdog.
+- Consequence: Normal Docker-origin bridge, DNS and outbound traffic works across current and future
+  Docker networks without per-application subnet rules. LAN/Tailscale/WAN-origin traffic remains
+  gated by DSM before Docker, Docker continues to isolate bridges, and qBittorrent remains bounded
+  by Gluetun's own namespace and kill switch. An explicit DSM firewall reload still requires one
+  hook invocation and readiness verification.

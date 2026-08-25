@@ -67,7 +67,10 @@ describe('ChoreRow', () => {
         focus={{ 'data-focus-id': 'chore-one' }}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Pack school bag, done. Undo' }));
+    const undoButton = screen.getByRole('button', { name: 'Pack school bag, done. Undo' });
+    expect(undoButton).toHaveTextContent('Done');
+    expect(undoButton).not.toHaveTextContent('Undo');
+    fireEvent.click(undoButton);
     expect(mutation.mutate).toHaveBeenLastCalledWith({ action: 'undo', occurrence: completed });
   });
 

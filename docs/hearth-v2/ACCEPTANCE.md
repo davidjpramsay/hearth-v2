@@ -138,7 +138,10 @@ Chromium fallback produced the retained evidence.
 - An adult can reverse an accidental completion with an audit trail.
 - A child cannot modify another person's history or household rules without permission.
 - Every participating child has a required weekly amount and payday in phone administration. The setting persists across weeks and server restarts, repeats until an adult changes it and is visibly described as set-and-forget.
-- Chores shows each child's week-to-date completed/total count, percentage and proportional amount due without requiring scroll on the primary television layout.
+- Chores shows each child's completed/total count for the complete Monday–Sunday schedule,
+  percentage and proportional amount due without requiring scroll on the primary television
+  layout. A Monday completion cannot report 100% while that child still has chores scheduled later
+  in the week.
 - On a day with no due occurrence, each child remains visible with weekly pocket-money progress and explicit unscheduled-day wording; private households never expose a demo-bootstrap action.
 - Completing and undoing a chore updates that running total through the same typed chore contract.
 - Excused and cancelled occurrences do not reduce the percentage; skipped occurrences remain incomplete.

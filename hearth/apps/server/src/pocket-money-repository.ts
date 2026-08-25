@@ -114,7 +114,7 @@ export class PocketMoneyService implements PocketMoneyRepository {
       this.store.settings(householdId).map((setting) => [setting.memberId, setting]),
     );
     const days = await Promise.all(
-      Array.from({ length: localDateOffset(weekStart, asOfDate) + 1 }, (_, offset) =>
+      Array.from({ length: 7 }, (_, offset) =>
         this.chores.getChores(householdId, addLocalDays(weekStart, offset)),
       ),
     );

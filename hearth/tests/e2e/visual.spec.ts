@@ -268,7 +268,7 @@ test('@visual pocket-money progress and administration at required viewports', a
         memberId: 'member_ezra',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',
-        amountCents: 150,
+        amountCents: 50,
         note: 'Cash',
       },
       headers,
@@ -279,8 +279,8 @@ test('@visual pocket-money progress and administration at required viewports', a
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/chores');
-    await expect(page.getByText('33% this week')).toBeVisible();
-    await expect(page.getByText('$4.00 of $12.00')).toBeVisible();
+    await expect(page.getByText('5% this week')).toBeVisible();
+    await expect(page.getByText('$0.63 of $12.00')).toBeVisible();
     await captureEvidence(page, {
       path: resolve(pocketMoneyEvidence, `chores-pocket-money-${viewport.name}.png`),
       animations: 'disabled',
@@ -292,7 +292,7 @@ test('@visual pocket-money progress and administration at required viewports', a
     await page.goto('/admin/pocket-money');
     await expect(page.getByRole('heading', { name: 'Pocket money' })).toBeVisible();
     await expect(page.getByRole('alert')).toContainText('Alex');
-    await expect(page.getByText('$2.50 still to pay')).toBeVisible();
+    await expect(page.getByText('$0.13 still to pay')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Payment history' })).toContainText('Cash');
     await captureEvidence(page, {
       path: resolve(pocketMoneyEvidence, `admin-pocket-money-${viewport.name}.png`),

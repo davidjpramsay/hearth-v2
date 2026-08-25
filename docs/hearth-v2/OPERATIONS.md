@@ -152,6 +152,30 @@ the connection merely to force a refresh; first allow the next automatic cycle
 or reconnect, then inspect the Calendar status and server logs if stale state
 persists.
 
+### One-time CalDAV Reminders capability probe
+
+Hearth includes an operator-only diagnostic for testing whether the commissioned CalDAV account
+explicitly advertises any `VTODO` collection. It is not a Reminders connection, sync job or browser
+feature. Run it only after the owner approves one live read and only against the existing private
+server container, so the credential stays in its mounted secret file:
+
+```sh
+sudo /var/packages/ContainerManager/target/usr/bin/docker exec \
+  -e HEARTH_REMINDERS_PROBE_SAMPLE_LIMIT=0 \
+  hearth-v2-server-1 node dist/caldav-reminders-probe-cli.js
+```
+
+The sample limit accepts `0` through `10`; always begin with `0` for metadata-only discovery. If and
+only if `taskCollectionCount` is greater than zero, the owner may approve a second bounded run with
+`HEARTH_REMINDERS_PROBE_SAMPLE_LIMIT=3` to confirm that title, status and due/completion fields parse.
+The result is
+printed only to the interactive terminal and deliberately omits account details, private URLs, UIDs,
+descriptions and raw DAV content. Collection names and sampled reminder titles are still household
+information, so do not redirect the result into logs, source control or chat. If
+`taskCollectionCount` is zero, stop: the current account has not advertised a standards-based task
+collection and no unsupported iCloud endpoint should be tried. If a task collection is found,
+review the bounded result before proposing a separately approved read-only product integration.
+
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.
 Do not place the URL, token or entity IDs in `.env`, Compose values, source, SQLite, logs, chat or a
@@ -222,17 +246,23 @@ never return to the workspace.
 ### NAS firewall compatibility
 
 If Synology network hardening inserts a `FORWARD_FIREWALL` chain before Docker's own forwarding
-chains, it must allow only traffic whose source and destination are the current
-`hearth-v2_default` Docker subnet. A blanket Docker or LAN exception would weaken the external
-boundary. The repository helper `hearth/deploy/synology/ensure-docker-firewall.sh` discovers that
-subnet and adds an idempotent same-subnet `RETURN` rule; it does not open a host port or permit
-WAN traffic. The commissioned NAS installs it as the root-owned
-`/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`, which reapplies the rule after Docker/firewall
-startup. The private release activator refreshes that hook from the verified source release.
+chains, permit only packets that originated on a Docker bridge to continue to Docker's own
+`DOCKER-USER`, isolation and published-port policy. Do not move Docker ahead of the firewall and do
+not add an output-interface exception, because either could bypass the inbound WAN boundary. The
+repository helper `hearth/deploy/synology/ensure-docker-firewall.sh` adds one idempotent
+input-interface `docker+` `RETURN` rule and removes the superseded Hearth-subnet/DNS exceptions. It
+does not open a host port or permit unsolicited inbound WAN traffic. The commissioned NAS installs it as the root-owned
+`/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`. Its boot action applies the rules once after
+Docker/firewall startup; no polling monitor runs. The private release activator also refreshes the
+hook from root-owned configuration and reapplies the rules after recreating the Hearth containers.
 
-This compatibility rule is required because Docker's normal same-bridge allow rules are evaluated
-after the custom hardening chain. Without it, Hearth's static web shell can load while nginx's API
-proxy times out connecting to the server container. After any firewall change, verify both the
+This compatibility rule is required because DSM mirrors its host-oriented catch-all drop into
+`FORWARD_FIREWALL` before Docker's generated forwarding rules. Without it, containers cannot use
+their normal bridge, DNS or outbound path; Hearth's static web shell can load while nginx's API
+proxy times out connecting to the server container. Packets arriving from LAN, Tailscale or WAN
+still meet the existing source/port rules before Docker. Docker's own bridge-isolation rules remain
+active, and qBittorrent continues to share Gluetun's network namespace and kill switch. After an
+explicit DSM firewall reload, run the hook's `start` action once, confirm its `status` action, then verify the
 container-to-container readiness request and the public `/api/v1/readiness` route.
 
 For pre-commission television testing, `compose.demo.yaml` provides a separate LAN-bound pilot with
@@ -320,7 +350,23 @@ mounted at runtime rather than baked into an image.
 ### Normal private release
 
 Promote only an exact full Git commit whose hosted workflow has completed successfully and published
-both packages. From the repository root, run:
+both packages. The commissioned NAS uses one root-owned Hearth-only release helper so normal Codex
+deployments never need to surface or store the Synology administrator password. Install that helper
+once, from a visible owner-controlled terminal:
+
+```sh
+hearth/deploy/synology/install-release-helper.sh
+```
+
+This is the final interactive privilege step. A genuine `sudo` prompt echoes no characters. The
+installer copies the fixed production Compose and runtime environment into root-only configuration,
+installs `/usr/local/sbin/hearth-v2-activate-staged` plus the root-owned one-shot Docker-firewall
+boot hook, and grants the named deployment user
+passwordless access to that command only. It does not grant a passwordless shell, Docker client or
+general `sudo`. If the canonical production Compose changes, rerun the one-time installer before
+activating that release so the root-owned copy is deliberately refreshed.
+
+For every subsequent verified release, run from the repository root:
 
 ```sh
 hearth/deploy/synology/activate-private-release.sh <full-verified-commit>
@@ -329,29 +375,32 @@ hearth/deploy/synology/activate-private-release.sh <full-verified-commit>
 The activation script stages that exact source/Compose revision and pulls both images while the
 existing containers remain running. It recreates the project with an explicit full immutable commit
 tag, waits up to 60 seconds for the loopback readiness route, and only then records the new active
-version plus the previous rollback version in atomically replaced runtime metadata. This also
-repairs release markers created with root ownership by older deployment paths. Synology may ask for
-the administrator password; the script neither reads nor stores it. The database, managed photos,
-optional read-only import and integration secrets stay in their existing external mounts.
+version plus the previous rollback version in atomically replaced runtime metadata. The activation
+uses `sudo -n` and fails closed with an installation instruction if the fixed helper or its sudo
+policy is missing. The database, managed photos, optional read-only import and integration secrets
+stay in their existing external mounts.
 
 `stage-private-release.sh` remains available when an operator deliberately wants to stage without
 restarting. Do not choose Container Manager **Build** for a normal update: production Compose has no
 build context. If GHCR is unavailable and an operator explicitly accepts a slow NAS recovery build,
 combine `compose.yaml` with `compose.build.yaml`; never silently fall back to compilation.
 
-### Why deployment needs one privileged step
+### Root-owned release-helper boundary
 
 The NAS no longer compiles Hearth during a normal release. GitHub Actions builds both `linux/amd64`
 images, and the Synology only downloads and recreates containers. The remaining friction comes from
 two intentional boundaries: Docker on DSM is root-controlled, and private GHCR packages require a
 root-owned registry login. Codex must not read, type or store the DSM password or registry token.
 
-The preferred path is therefore a visible interactive terminal: the owner enters the DSM password
-once when `activate-private-release.sh` invokes `sudo`, then the script completes and verifies the
-release. A public source repository does not remove the registry step while its packages remain
-private.
+The owner enters the DSM password once when installing the fixed helper; normal releases then use
+its exact no-argument activation command through `sudo -n`. The deployment account may stage only
+a 40-character version marker. It cannot replace the root-owned Compose, environment, helper or
+firewall hook. The helper refreshes and reapplies the root-owned hook from its root-only copy, pulls only the two
+fixed Hearth image names, recreates only the fixed
+`hearth-v2` project, waits for readiness and atomically records the active version. A public source
+repository does not remove the registry step while its packages remain private.
 
-If the interactive password prompt is unavailable, the supported Safari fallback is:
+If the one-time installation prompt is unavailable, the supported Safari fallback is:
 
 1. Stage the exact green commit and transfer a short, inspectable release script to the NAS.
 2. Create a **disabled**, root-owned DSM Task Scheduler task that runs only that file.
@@ -360,9 +409,9 @@ If the interactive password prompt is unavailable, the supported Safari fallback
 5. Delete the task, release script and task log after verification.
 
 Do not paste a long release program into DSM's script text area: browser editing has previously
-mutated shell text. Do not leave a reusable root deployment task behind. A permanent privileged
-helper would reduce clicks, but it materially expands persistent access and needs its own security
-review plus explicit owner approval.
+mutated shell text. Do not leave a reusable root deployment task behind. The permanent helper above
+is the explicitly approved alternative: it is root-owned, argument-bounded, configuration-pinned
+and validated with `sudo -n` after installation.
 
 ### Additional household Synology installations
 

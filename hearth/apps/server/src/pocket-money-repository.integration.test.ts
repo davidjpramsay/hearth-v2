@@ -37,7 +37,7 @@ describe('SQLite pocket money repository', () => {
     expect(initial.children[0]).toMatchObject({
       weeklyAmountCents: 1200,
       completedCount: 0,
-      scheduledCount: 3,
+      scheduledCount: 19,
       earnedAmountCents: 0,
     });
 
@@ -52,7 +52,7 @@ describe('SQLite pocket money repository', () => {
       'member_ezra',
       {
         requestId: 'request_pocket_settings',
-        weeklyAmountCents: 1500,
+        weeklyAmountCents: 9500,
         payday: 'friday',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',
@@ -60,7 +60,8 @@ describe('SQLite pocket money repository', () => {
       adult,
     );
     expect(settings.child).toMatchObject({
-      completionPercentage: 33,
+      scheduledCount: 19,
+      completionPercentage: 5,
       earnedAmountCents: 500,
     });
 
@@ -143,7 +144,7 @@ describe('SQLite pocket money repository', () => {
     });
     expect(voidReplay).toMatchObject({ replayed: true });
     expect(persisted.children[0]).toMatchObject({
-      weeklyAmountCents: 1500,
+      weeklyAmountCents: 9500,
       status: 'partially-paid',
       paidAmountCents: 200,
       remainingAmountCents: 300,
@@ -151,7 +152,7 @@ describe('SQLite pocket money repository', () => {
     expect(persisted.children[0]?.payments).toHaveLength(2);
     expect(persisted.recentPayments).toHaveLength(2);
     expect(followingWeek.children[0]).toMatchObject({
-      weeklyAmountCents: 1500,
+      weeklyAmountCents: 9500,
       payday: 'friday',
     });
     expect(corrected.child).toMatchObject({ status: 'paid', paidAmountCents: 500 });
@@ -255,7 +256,7 @@ describe('SQLite pocket money repository', () => {
       'member_ezra',
       {
         requestId: 'request_pocket_concurrent_settings',
-        weeklyAmountCents: 1500,
+        weeklyAmountCents: 9500,
         payday: 'friday',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',

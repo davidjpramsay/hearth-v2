@@ -13,12 +13,7 @@ release_commit=$(git -C "$script_dir" rev-parse --verify "${requested_ref}^{comm
 
 deploy_target=${HEARTH_DEPLOY_SSH_TARGET:-hearth-synology}
 deploy_hostname=${HEARTH_DEPLOY_SSH_HOSTNAME:-}
-remote_runtime=/volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project
-remote_project="$remote_runtime/docker-compose.yml"
-remote_environment="$remote_runtime/.env"
-remote_compose=/var/packages/ContainerManager/target/usr/bin/docker-compose
-remote_firewall_helper=/volume1/docker/hearth-v2/source/hearth/deploy/synology/ensure-docker-firewall.sh
-remote_boot_hook=/usr/local/etc/rc.d/S99hearth-docker-firewall.sh
+remote_activation_helper=/usr/local/sbin/hearth-v2-activate-staged
 
 if [ -n "$deploy_hostname" ]; then
   case "$deploy_hostname" in
@@ -37,63 +32,14 @@ run_ssh() {
   fi
 }
 
-run_ssh_tty() {
-  if [ -n "$deploy_hostname" ]; then
-    ssh -t -o "Hostname=$deploy_hostname" "$deploy_target" "$@"
-  else
-    ssh -t "$deploy_target" "$@"
-  fi
-}
-
 "$script_dir/stage-private-release.sh" "$release_commit"
 
 printf 'Pulling verified images before replacing the running containers.\n'
-printf 'Synology may ask for the administrator password; it is not stored by Hearth.\n'
-run_ssh_tty \
-  "sudo install -o root -g root -m 0755 '$remote_firewall_helper' '$remote_boot_hook' && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' pull && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' up -d --remove-orphans && sudo '$remote_boot_hook' start && sudo env HEARTH_VERSION='$release_commit' '$remote_compose' --env-file '$remote_environment' --file '$remote_project' ps"
-
-run_ssh /bin/sh <<EOF
-set -eu
-port=\$(sed -n 's/^HEARTH_HTTP_PORT=//p' '$remote_environment')
-case "\$port" in
-  ''|*[!0-9]*)
-    echo 'HEARTH_HTTP_PORT must be a numeric value.' >&2
-    exit 1
-    ;;
-esac
-attempt=0
-while [ "\$attempt" -lt 30 ]; do
-  if response=\$(curl --fail --silent --show-error "http://127.0.0.1:\$port/api/v1/readiness" 2>/dev/null); then
-    if printf '%s' "\$response" | grep -q '"status":"ready"'; then
-      printf '%s\n' "\$response"
-      exit 0
-    fi
-  fi
-  attempt=\$((attempt + 1))
-  sleep 2
-done
-echo 'Hearth did not become ready within 60 seconds.' >&2
-exit 1
-EOF
-
-run_ssh_tty "sudo /bin/sh -s" <<EOF
-set -eu
-write_release_marker() {
-  marker_path=\$1
-  marker_value=\$2
-  marker_temp="\${marker_path}.tmp.\$\$"
-  umask 022
-  printf '%s\n' "\$marker_value" > "\$marker_temp"
-  mv -f "\$marker_temp" "\$marker_path"
-}
-current_version=\$(sed -n 's/^HEARTH_VERSION=//p' '$remote_environment')
-if [ -n "\$current_version" ] && [ "\$current_version" != '$release_commit' ]; then
-  write_release_marker '/volume1/docker/hearth-v2/previous-source-version' "\$current_version"
+if ! run_ssh "sudo -n '$remote_activation_helper' --check"; then
+  printf 'The Hearth-only Synology release helper is not installed.\n' >&2
+  printf 'Run hearth/deploy/synology/install-release-helper.sh once in a visible terminal.\n' >&2
+  exit 77
 fi
-sed -i.bak 's/^HEARTH_VERSION=.*/HEARTH_VERSION=$release_commit/' '$remote_environment'
-rm -f -- '$remote_environment.bak'
-write_release_marker '/volume1/docker/hearth-v2/active-source-version' '$release_commit'
-rm -f -- '/volume1/docker/hearth-v2/staged-source-version'
-EOF
+run_ssh "sudo -n '$remote_activation_helper'"
 
 printf 'Hearth %s is ready on Synology.\n' "$release_commit"

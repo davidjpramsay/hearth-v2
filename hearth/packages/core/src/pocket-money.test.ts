@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { calculatePocketMoneyProgress } from './pocket-money.js';
 
 describe('pocket money progress', () => {
-  it('uses completed chores as a proportion of chores due so far', () => {
+  it('uses completed chores as a proportion of the supplied complete-week schedule', () => {
     expect(
       calculatePocketMoneyProgress(
         [

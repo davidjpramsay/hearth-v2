@@ -218,7 +218,7 @@ Status: complete and locally verified with deterministic demo household data.
 - Lists, item completion/addition and phone-first adult list administration.
 - Meal plan and saved meals.
 - Required weekly pocket-money amount and payday for each child.
-- Week-to-date chore proportion, amount due and immutable payment snapshots.
+- Complete-week chore proportion, amount due and immutable payment snapshots.
 - Phone-oriented administration for recurring chores, meals and pocket money.
 - Voice-ready typed commands for the new modules.
 

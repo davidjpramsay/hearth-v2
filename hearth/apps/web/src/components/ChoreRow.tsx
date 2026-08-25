@@ -84,7 +84,7 @@ export function ChoreRow({
                     : cancelled
                       ? 'Cancelled'
                       : completed
-                        ? 'Done — Undo'
+                        ? 'Done'
                         : 'Mark done'}
           </span>
         </span>

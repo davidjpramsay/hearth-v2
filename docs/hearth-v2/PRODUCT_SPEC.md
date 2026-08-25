@@ -78,7 +78,9 @@ Can understand the current household state and use clearly exposed room controls
 ### 3. Pocket money
 
 - Every participating child has a required weekly amount in Australian dollars and a household-selected payday. These are standing rules that repeat until an adult changes them; they are not re-entered for each week.
-- Week-to-date progress is the number of completed chore occurrences divided by all non-excused, non-cancelled occurrences due so far in the Monday–Sunday week.
+- Weekly progress is the number of completed chore occurrences divided by all non-excused,
+  non-cancelled occurrences scheduled across the complete Monday–Sunday week. Future scheduled
+  chores therefore remain in the denominator until completed, excused or cancelled.
 - The amount due is the same proportion of the weekly amount, rounded to the nearest cent. Skipped chores remain due and therefore reduce the proportion.
 - A parent can record one or more partial disbursements, each with an optional note. Every payment stores a dated snapshot of the counts, percentage and amount so later chore/template edits do not rewrite payment history; active payments for a week may never exceed the amount currently due.
 - Mistakes are corrected with a separate adult-authenticated void record and reason. Hearth never silently edits or deletes a payment, and paid, partially paid and unpaid states remain visible by child and week.

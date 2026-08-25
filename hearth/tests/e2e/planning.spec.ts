@@ -314,31 +314,31 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
 
   await page.goto('/chores');
   await page.locator('[data-focus-id="chore-primary"]').click();
-  await expect(page.getByText('25% this week')).toBeVisible();
-  await expect(page.getByText('$3.75 of $15.00')).toBeVisible();
+  await expect(page.getByText('5% this week')).toBeVisible();
+  await expect(page.getByText('$0.75 of $15.00')).toBeVisible();
 
   await page.goto('/admin/pocket-money');
-  await page.getByLabel('Payment amount').fill('2.00');
+  await page.getByLabel('Payment amount').fill('0.50');
   await page.getByLabel(/Note optional/).fill('Cash');
   await page.getByRole('button', { name: 'Record payment' }).click();
-  await expect(page.getByRole('status')).toContainText('$2.00 recorded');
-  await expect(page.getByText('$1.75 still to pay')).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('$0.50 recorded');
+  await expect(page.getByText('$0.25 still to pay')).toBeVisible();
   const history = page.getByRole('region', { name: 'Payment history' });
   await expect(history.getByText('Cash')).toBeVisible();
-  await expect(history.getByText('$2.00')).toBeVisible();
+  await expect(history.getByText('$0.50')).toBeVisible();
 
-  await page.getByLabel('Payment amount').fill('1.75');
+  await page.getByLabel('Payment amount').fill('0.25');
   await page.getByRole('button', { name: 'Record payment' }).click();
   await expect(
     page.locator('.pocket-money-admin-card').getByText('Paid in full').first(),
   ).toBeVisible();
 
-  const remainderPayment = history.locator('article').filter({ hasText: '$1.75' });
+  const remainderPayment = history.locator('article').filter({ hasText: '$0.25' });
   await remainderPayment.getByRole('button', { name: 'Correct' }).click();
   await remainderPayment.getByLabel('Correction reason').fill('Recorded from wrong account');
   await remainderPayment.getByRole('button', { name: 'Void payment' }).click();
   await expect(history.getByText('Voided · Recorded from wrong account')).toBeVisible();
-  await expect(page.getByText('$1.75 still to pay')).toBeVisible();
+  await expect(page.getByText('$0.25 still to pay')).toBeVisible();
 
   const weekReview = page.getByLabel('Week to review');
   await expect(weekReview.locator('option[value="2026-08-10"]')).toHaveCount(0);
@@ -394,8 +394,8 @@ test('phone adults reason, skip, excuse and reassign today’s chores with visib
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/chores');
-  await expect(page.getByText('33% this week')).toBeVisible();
-  await expect(page.getByText('$4.00 of $12.00')).toBeVisible();
+  await expect(page.getByText('5% this week')).toBeVisible();
+  await expect(page.getByText('$0.63 of $12.00')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Pack school bag, skipped' })).toBeVisible();
 
   await page.goto('/admin/chore-day');
@@ -410,8 +410,8 @@ test('phone adults reason, skip, excuse and reassign today’s chores with visib
   );
 
   await page.goto('/chores');
-  await expect(page.getByText('50% this week')).toBeVisible();
-  await expect(page.getByText('$6.00 of $12.00')).toBeVisible();
+  await expect(page.getByText('6% this week')).toBeVisible();
+  await expect(page.getByText('$0.67 of $12.00')).toBeVisible();
 
   await page.goto('/admin/chore-day');
   const pepper = page.locator('.chore-management-row').filter({ hasText: 'Feed Pepper' });
@@ -430,8 +430,8 @@ test('phone adults reason, skip, excuse and reassign today’s chores with visib
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/chores');
-  await expect(page.getByText('100% this week')).toBeVisible();
-  await expect(page.getByText('$12.00 of $12.00')).toBeVisible();
+  await expect(page.getByText('6% this week')).toBeVisible();
+  await expect(page.getByText('$0.71 of $12.00')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Complete Feed Pepper' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Complete Feed Pepper' })).toContainText(
     'Due 7:15 am',
@@ -704,7 +704,7 @@ test('@a11y partial-payment history and correction form have no serious violatio
         memberId: 'member_ezra',
         weekStart: '2026-08-03',
         asOfDate: '2026-08-03',
-        amountCents: 150,
+        amountCents: 50,
         note: 'Cash',
       },
     },

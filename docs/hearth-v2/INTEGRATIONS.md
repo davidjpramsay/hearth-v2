@@ -88,6 +88,24 @@ allowlist and safe SQLite projection are replaced together.
 Only authenticated CalDAV account connections are supported. Calendar web interfaces and
 alternate URL-ingestion paths remain outside the integration boundary.
 
+### Experimental iCloud Reminders capability check
+
+Hearth does not currently treat iCloud Reminders as a supported product integration. An
+operator-only, read-only capability probe may use the already commissioned CalDAV credential to
+check the [CalDAV standards boundary](https://www.rfc-editor.org/rfc/rfc4791.html) before any such
+feature is proposed. The probe discovers every CalDAV collection, queries only collections that
+explicitly advertise `VTODO`, and retrieves at most ten small reminder samples. Its result contains
+collection names, advertised component names, aggregate resource counts and the bounded
+title/status/due/completion sample only. It never returns or persists the account, password,
+collection/object URLs, UIDs, descriptions or raw DAV payloads.
+
+The probe has no browser route, database write, background polling or calendar/reminder mutation.
+If no collection advertises `VTODO`, the check stops after discovery; Hearth must not scrape iCloud,
+guess private endpoints or imply that modern upgraded iCloud Reminders are available through the
+existing Calendar connection. A future native EventKit bridge would require a separate product,
+privacy and authentication decision; Apple documents EventKit as the permission-controlled native
+route for [requesting reminder access](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29).
+
 ## Weather
 
 Private mode uses the server-side Open-Meteo forecast API with one household
