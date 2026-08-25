@@ -50,24 +50,26 @@ final class EventKitReminderStore: ReminderStore {
         let predicate = eventStore.predicateForReminders(in: calendars)
         let store = eventStore
 
-        return await withCheckedContinuation { continuation in
+        let mapped = await withCheckedContinuation { continuation in
             store.fetchReminders(matching: predicate) { reminders in
-                let mapped = (reminders ?? [])
-                    .map(Self.mapReminder)
-                    .sorted { lhs, rhs in
-                        switch (lhs.dueDate, rhs.dueDate) {
-                        case let (left?, right?):
-                            if left != right { return left < right }
-                            return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
-                        case (_?, nil):
-                            return true
-                        case (nil, _?):
-                            return false
-                        case (nil, nil):
-                            return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
-                        }
-                    }
-                continuation.resume(returning: mapped)
+                continuation.resume(returning: (reminders ?? []).map(Self.mapReminder))
+            }
+        }
+
+        // EventKit invokes its callback on a private queue. Perform Foundation's
+        // localized comparison after resuming this @MainActor method instead of
+        // running the comparator inside that callback queue.
+        return mapped.sorted { lhs, rhs in
+            switch (lhs.dueDate, rhs.dueDate) {
+            case let (left?, right?):
+                if left != right { return left < right }
+                return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
             }
         }
     }
