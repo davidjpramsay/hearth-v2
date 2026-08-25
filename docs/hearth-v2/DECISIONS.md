@@ -1139,3 +1139,22 @@ Official platform references:
   web administration UI; WKWebView versus opening an authenticated web session
   remains a later evaluated choice. No Apple ID, app-specific password, private
   URL or NAS credential enters Hearth.
+
+## D-069 — Foreground EventKit changes refetch selected reminders without layout replacement
+
+- Date: 2026-08-25
+- Status: accepted for the native Reminders proof
+- Context: EventKit documents that `EKEventStoreChanged` can invalidate fetched
+  reminders and that clients should refetch. A manual pull was also replacing
+  the complete success layout with a loading skeleton, causing a brief visual
+  flicker when the user pulled repeatedly.
+- Choice: Keep a narrow change stream on `ReminderStore`. The EventKit adapter
+  yields when its `EKEventStore` changes; the view model debounces the signal,
+  refetches the selected lists while the companion is foregrounded, and also
+  refetches on foreground entry. When a prior snapshot exists, the view model
+  preserves it while the read is in flight and exposes the refreshing state only
+  to interaction controls.
+- Consequence: Changes made in Apple Reminders while Hearth Companion is open
+  appear without a manual pull, with manual refresh retained as a fallback.
+  This is not persistent background sync or APNs. Apple Reminders Sections are
+  not synthesized because EventKit does not expose their hierarchy.

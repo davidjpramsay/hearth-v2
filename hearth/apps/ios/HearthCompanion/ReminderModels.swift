@@ -53,6 +53,9 @@ enum ReminderStoreError: LocalizedError, Equatable, Sendable {
 
 @MainActor
 protocol ReminderStore {
+    /// Emits when the underlying reminder database may have changed.
+    /// Consumers must refetch because EventKit objects can become stale.
+    var changes: AsyncStream<Void> { get }
     func authorizationStatus() -> ReminderAuthorization
     func requestFullAccess() async throws -> Bool
     func reminderLists() async throws -> [ReminderList]

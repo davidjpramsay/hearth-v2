@@ -143,9 +143,23 @@ state machine; only an installed physical iPhone can prove that the current
 `Reminders` and `Family Reminders` lists and test reminders are visible for the
 owner's Apple Account. That physical-device result is not claimed until run.
 
+While the companion is open, the EventKit adapter observes
+`EKEventStoreChanged` and refetches the selected lists after a short debounce;
+returning to the foreground also triggers a refetch. The current content stays
+visible while a refresh is in flight, so pull-to-refresh does not replace the
+whole screen with a loading skeleton. This is foreground invalidation and
+refetch, not persistent background sync; manual refresh remains available.
+
+EventKit exposes the reminder list/calendar and reminder fields used by this
+proof, but it does not expose the user-created Sections hierarchy shown inside
+Apple Reminders. Hearth therefore displays the selected list name and does not
+pretend to reconstruct Apple sections from unrelated fields. True Apple
+Reminders section support remains a deferred native capability investigation.
+
 Apple references: [Accessing the event store](https://developer.apple.com/documentation/eventkit/accessing-the-event-store),
 [requestFullAccessToReminders](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29),
-[retrieving events and reminders](https://developer.apple.com/documentation/eventkit/retrieving-events-and-reminders) and
+[retrieving events and reminders](https://developer.apple.com/documentation/eventkit/retrieving-events-and-reminders),
+[updating with notifications](https://developer.apple.com/documentation/EventKit/updating-with-notifications?language=objc) and
 [NSRemindersFullAccessUsageDescription](https://developer.apple.com/documentation/bundleresources/information-property-list/nsremindersfullaccessusagedescription).
 
 ## Weather

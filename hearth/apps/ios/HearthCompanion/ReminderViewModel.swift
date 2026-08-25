@@ -19,13 +19,21 @@ final class ReminderViewModel {
     private var hasStarted = false
     private var hasResolvedInitialSelection = false
     private var lastSnapshot: ReminderSnapshot?
+    private var changeTask: Task<Void, Never>?
+    private var pendingAutoRefreshTask: Task<Void, Never>?
 
     private(set) var state: State = .firstUse
     private(set) var selectedListIDs: Set<String>
+    private(set) var isRefreshing = false
 
     init(store: any ReminderStore, initialSelectedListIDs: Set<String> = []) {
         self.store = store
         self.selectedListIDs = initialSelectedListIDs
+    }
+
+    isolated deinit {
+        changeTask?.cancel()
+        pendingAutoRefreshTask?.cancel()
     }
 
     var snapshot: ReminderSnapshot? {
@@ -46,6 +54,7 @@ final class ReminderViewModel {
             state = .firstUse
         case .fullAccess:
             await load()
+            startObservingChanges()
         case let status:
             state = .unavailable(status)
         }
@@ -60,6 +69,7 @@ final class ReminderViewModel {
                 return
             }
             await load()
+            startObservingChanges()
         } catch is CancellationError {
             return
         } catch {
@@ -71,6 +81,7 @@ final class ReminderViewModel {
     }
 
     func refresh() async {
+        guard !isRefreshing else { return }
         guard store.authorizationStatus() == .fullAccess else {
             state = .unavailable(store.authorizationStatus())
             return
@@ -84,7 +95,13 @@ final class ReminderViewModel {
     }
 
     private func load() async {
-        state = .loading
+        let preservesExistingContent = lastSnapshot != nil
+        if !preservesExistingContent {
+            state = .loading
+        }
+        isRefreshing = preservesExistingContent
+        defer { isRefreshing = false }
+
         do {
             let lists = try await store.reminderLists()
             let validIDs = Set(lists.map(\.id))
@@ -109,6 +126,32 @@ final class ReminderViewModel {
                 state = .stale(lastSnapshot, message: error.localizedDescription)
             } else {
                 state = .failure(message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func startObservingChanges() {
+        guard changeTask == nil else { return }
+        let changes = store.changes
+        changeTask = Task { [weak self] in
+            for await _ in changes {
+                guard !Task.isCancelled else { return }
+                self?.scheduleAutomaticRefresh()
+            }
+        }
+    }
+
+    private func scheduleAutomaticRefresh() {
+        pendingAutoRefreshTask?.cancel()
+        pendingAutoRefreshTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 350_000_000)
+                guard !Task.isCancelled else { return }
+                await self?.refresh()
+            } catch is CancellationError {
+                return
+            } catch {
+                return
             }
         }
     }

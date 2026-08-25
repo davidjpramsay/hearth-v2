@@ -119,4 +119,43 @@ struct ReminderViewModelTests {
         }
         #expect(message.contains("fake list read failed"))
     }
+
+    @Test("an EventKit-style change notification refreshes the visible reminders")
+    func automaticRefresh() async throws {
+        let fake = FakeReminderStore(lists: lists, reminders: reminders)
+        let model = ReminderViewModel(store: fake)
+
+        await model.start()
+        fake.reminders = [
+            HearthReminder(id: "three", title: "Updated from Apple Reminders", listTitle: "Family Reminders", dueDate: nil, hasDueTime: false, isCompleted: false)
+        ]
+        fake.emitChange()
+        try await Task.sleep(nanoseconds: 600_000_000)
+
+        guard case .success(let snapshot) = model.state else {
+            Issue.record("Expected automatic refresh to finish successfully, got \(model.state)")
+            return
+        }
+        #expect(snapshot.reminders.map(\.id) == ["three"])
+    }
+
+    @Test("a refresh keeps the last successful content while reading")
+    func refreshPreservesContent() async throws {
+        let fake = FakeReminderStore(lists: lists, reminders: reminders)
+        let model = ReminderViewModel(store: fake)
+
+        await model.start()
+        fake.artificialDelayNanoseconds = 200_000_000
+        let refreshTask = Task { await model.refresh() }
+        try await Task.sleep(nanoseconds: 20_000_000)
+
+        #expect(model.isRefreshing)
+        guard case .success(let snapshot) = model.state else {
+            Issue.record("Expected the last successful content to remain visible during refresh, got \(model.state)")
+            await refreshTask.value
+            return
+        }
+        #expect(snapshot.reminders.count == reminders.count)
+        await refreshTask.value
+    }
 }

@@ -15,6 +15,8 @@ final class FakeReminderStore: ReminderStore {
     var shouldFailLists = false
     var shouldFailReminders = false
     var artificialDelayNanoseconds: UInt64 = 0
+    let changes: AsyncStream<Void>
+    private let changeContinuation: AsyncStream<Void>.Continuation
 
     init(
         status: ReminderAuthorization = .fullAccess,
@@ -26,6 +28,13 @@ final class FakeReminderStore: ReminderStore {
         self.requestOutcome = requestOutcome
         self.lists = lists
         self.reminders = reminders
+        let (changes, changeContinuation) = AsyncStream<Void>.makeStream()
+        self.changes = changes
+        self.changeContinuation = changeContinuation
+    }
+
+    func emitChange() {
+        changeContinuation.yield()
     }
 
     func authorizationStatus() -> ReminderAuthorization { status }

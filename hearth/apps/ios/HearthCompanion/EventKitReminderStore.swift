@@ -6,9 +6,23 @@ import Foundation
 @MainActor
 final class EventKitReminderStore: ReminderStore {
     private let eventStore: EKEventStore
+    private let changeStream: AsyncStream<Void>
+    private let changeContinuation: AsyncStream<Void>.Continuation
+
+    var changes: AsyncStream<Void> { changeStream }
 
     init(eventStore: EKEventStore = EKEventStore()) {
         self.eventStore = eventStore
+        let (changeStream, changeContinuation) = AsyncStream<Void>.makeStream()
+        self.changeStream = changeStream
+        self.changeContinuation = changeContinuation
+        NotificationCenter.default.addObserver(
+            forName: .EKEventStoreChanged,
+            object: eventStore,
+            queue: .main
+        ) { _ in
+            changeContinuation.yield()
+        }
     }
 
     func authorizationStatus() -> ReminderAuthorization {

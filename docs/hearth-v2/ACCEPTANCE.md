@@ -108,8 +108,16 @@ Chromium fallback produced the retained evidence.
   remain explicit and provide safe next actions.
 - An adult can see reminder-capable lists, select one or more lists, refresh
   them and read reminder title, list, due date/time and completion state.
+- While the companion is open, an EventKit store-change notification refetches
+  the selected lists automatically, and returning to the foreground refetches
+  them as a safety check. A manual pull or toolbar refresh remains available.
+- Refreshing keeps the last successful reminder content in place until the
+  replacement read completes; the screen does not flicker into a separate
+  loading layout during an ordinary refresh.
 - Loading, no-list/no-reminder, success, stale cached data and retryable failure
   states are intentional, accessible, Dynamic Type-safe and usable in dark mode.
+- The proof explicitly does not claim Apple Reminders Sections hierarchy
+  support because EventKit does not expose those user-created sections.
 - The native proof has no server write path, background sync, APNs, two-way
   completion, Apple ID, iCloud app-specific password, private URL or NAS
   credential, and it does not invoke EventKit mutation APIs.

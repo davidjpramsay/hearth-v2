@@ -479,6 +479,10 @@ implemented locally. The physical-iPhone EventKit read of the current
 - Provide intentional first-use, permission, denied/restricted, loading, empty,
   success, stale and failure states with accessibility, Dynamic Type and dark
   mode support.
+- Observe foreground EventKit store changes, refetch selected lists
+  automatically, and keep the last successful content stable during refresh.
+- State the supported EventKit boundary clearly: Apple Reminders Sections are
+  not exposed by EventKit and are deferred rather than inferred.
 - Document that the eventual installed Hearth Companion may combine these
   native Apple integrations with the existing responsive web administration UI;
   evaluate WKWebView versus opening an authenticated web session later.
@@ -486,7 +490,8 @@ implemented locally. The physical-iPhone EventKit read of the current
 ### Completion criteria
 
 - Unit tests prove permission, list selection, reminder filtering, stale-cache
-  and failure transitions through the fake adapter.
+  and failure transitions through the fake adapter, plus automatic refresh and
+  stable content during refresh.
 - The app builds and runs on an iOS Simulator, with relevant states visually
   inspected; simulator evidence is kept separate from live EventKit evidence.
 - A physical iPhone grants Reminders access, exposes the owner's current

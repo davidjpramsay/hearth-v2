@@ -7,6 +7,7 @@ struct ReminderHomeView: View {
     @Environment(RouterPath.self) private var router
     @Environment(HearthTheme.self) private var theme
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScrollView {
@@ -42,6 +43,10 @@ struct ReminderHomeView: View {
         }
         .refreshable { await model.refresh() }
         .task { await model.start() }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, model.snapshot != nil else { return }
+            Task { await model.refresh() }
+        }
     }
 
     @ViewBuilder
@@ -89,6 +94,7 @@ struct ReminderHomeView: View {
     }
 
     private var isLoading: Bool {
+        if model.isRefreshing { return true }
         if case .loading = model.state { return true }
         if case .requestingPermission = model.state { return true }
         return false

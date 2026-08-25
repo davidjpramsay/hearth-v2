@@ -18,7 +18,7 @@ XcodeBuildMCP built, installed, launched, and visually inspected the app with de
 
 The success snapshot exposed the expected accessible reminder rows, including title, list, due date/time, and completion state. The list chooser was exercised by turning off `Reminders`; the UI then showed only the selected `Family Reminders` items.
 
-The XcodeBuildMCP unit run passed 7 tests with 0 failures and 0 skips. The tests cover permission request, initial read failure/retry, stale refresh, list filtering, intentional empty selection, denied permission, and restricted permission.
+The XcodeBuildMCP unit run passed 9 tests with 0 failures and 0 skips. The tests cover permission request, initial read failure/retry, stale refresh, list filtering, intentional empty selection, denied permission, restricted permission, automatic EventKit-style refresh, and preserving the last successful content during refresh.
 
 ## Checks run
 
