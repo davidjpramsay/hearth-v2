@@ -89,6 +89,14 @@ select lists and displays safe reminder projections. It does not connect to the
 Hearth server, store Apple credentials, request background access, or mutate
 EventKit data.
 
+The app root injects a separate `ReminderListSelectionStore` into the reminder
+model. The live implementation uses app-sandboxed `UserDefaults` to retain only
+the sorted opaque identifiers of selected EventKit lists; previews and tests use
+an in-memory implementation. Unset state, an intentional empty selection and a
+saved non-empty selection remain distinct. Every successful list read intersects
+the saved identifiers with the current EventKit lists, so removed lists are
+pruned without persisting reminder titles, dates or completion state.
+
 This is an Apple integration surface, not a second household database or a
 replacement for the responsive web companion. A later installed Hearth
 Companion may combine native Apple integrations with the existing authenticated

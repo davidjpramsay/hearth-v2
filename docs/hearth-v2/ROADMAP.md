@@ -483,6 +483,9 @@ the companion remained read-only.
   mode support.
 - Observe foreground EventKit store changes, refetch selected lists
   automatically, and keep the last successful content stable during refresh.
+- Persist only selected list identifiers in the app sandbox, preserving the
+  difference between no prior choice and an intentional empty selection, and
+  prune identifiers for lists EventKit no longer exposes.
 - State the supported EventKit boundary clearly: Apple Reminders Sections are
   not exposed by EventKit and are deferred rather than inferred.
 - Document that the eventual installed Hearth Companion may combine these
@@ -493,7 +496,8 @@ the companion remained read-only.
 
 - Unit tests prove permission, list selection, reminder filtering, stale-cache
   and failure transitions through the fake adapter, plus automatic refresh and
-  stable content during refresh.
+  stable content during refresh. They also prove local selected-list restore,
+  intentional empty restore, removed-list pruning and the `UserDefaults` adapter.
 - The app builds and runs on an iOS Simulator, with relevant states visually
   inspected; simulator evidence is kept separate from live EventKit evidence.
 - A physical iPhone grants Reminders access, exposes the owner's current

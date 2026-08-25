@@ -61,3 +61,57 @@ protocol ReminderStore {
     func reminderLists() async throws -> [ReminderList]
     func reminders(in listIDs: Set<String>) async throws -> [HearthReminder]
 }
+
+/// Persists only the opaque identifiers of lists the adult chose to display.
+/// Reminder content and Apple credentials never enter this store.
+@MainActor
+protocol ReminderListSelectionStore: AnyObject {
+    /// Returns nil when the adult has never made or inherited an initial choice.
+    /// An empty set is a deliberate choice to display no lists.
+    func loadSelectedListIDs() -> Set<String>?
+    func saveSelectedListIDs(_ ids: Set<String>)
+}
+
+@MainActor
+final class UserDefaultsReminderListSelectionStore: ReminderListSelectionStore {
+    static let defaultKey = "reminders.selectedListIdentifiers"
+
+    private let defaults: UserDefaults
+    private let key: String
+
+    init(defaults: UserDefaults = .standard, key: String = defaultKey) {
+        self.defaults = defaults
+        self.key = key
+    }
+
+    func loadSelectedListIDs() -> Set<String>? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        guard let ids = defaults.array(forKey: key) as? [String] else {
+            // Fail closed if the local preference is malformed instead of
+            // unexpectedly widening the selection to every EventKit list.
+            return []
+        }
+        return Set(ids)
+    }
+
+    func saveSelectedListIDs(_ ids: Set<String>) {
+        defaults.set(ids.sorted(), forKey: key)
+    }
+}
+
+@MainActor
+final class InMemoryReminderListSelectionStore: ReminderListSelectionStore {
+    private(set) var selectedListIDs: Set<String>?
+
+    init(selectedListIDs: Set<String>? = nil) {
+        self.selectedListIDs = selectedListIDs
+    }
+
+    func loadSelectedListIDs() -> Set<String>? {
+        selectedListIDs
+    }
+
+    func saveSelectedListIDs(_ ids: Set<String>) {
+        selectedListIDs = ids
+    }
+}

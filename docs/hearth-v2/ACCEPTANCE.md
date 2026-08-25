@@ -108,6 +108,10 @@ Chromium fallback produced the retained evidence.
   remain explicit and provide safe next actions.
 - An adult can see reminder-capable lists, select one or more lists, refresh
   them and read reminder title, list, due date/time and completion state.
+- The selected-list choice survives termination and relaunch using app-local
+  storage of opaque list identifiers only. A deliberate no-list selection
+  remains empty, and identifiers for deleted/unavailable lists are pruned rather
+  than causing a read failure or broadening access to every list.
 - While the companion is open, an EventKit store-change notification refetches
   the selected lists automatically, and returning to the foreground refetches
   them as a safety check. A manual pull or toolbar refresh remains available.

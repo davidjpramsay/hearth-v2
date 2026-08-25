@@ -6,6 +6,7 @@ The proof:
 
 - requests `requestFullAccessToReminders()` because iOS does not provide a read-only EventKit permission;
 - lists reminder-capable EventKit calendars and lets an adult choose which lists to read;
+- persists only the opaque identifiers of the selected lists in app-local `UserDefaults` so the choice survives relaunch;
 - displays reminder title, list, due date/time and completion state;
 - uses `ReminderStore` with `EventKitReminderStore` and `FakeReminderStore` variants;
 - performs no EventKit save, edit, completion, deletion or commit operation;
@@ -20,8 +21,16 @@ xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -sdk iphon
 xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
 
-The simulator proves app wiring, fake-driven UI states and layout only. It does not prove that a real Apple Account exposes the current `Reminders` and `Family Reminders` lists.
+The simulator proves app wiring, fake-driven UI states, local selection persistence and layout only.
+The physical EventKit proof passed on 2026-08-25 on an iPhone 17e running iOS 26.6; see
+`hearth/docs/evidence/phase-8/README.md`. A change must still be installed and exercised on that
+device before claiming new physical-device evidence for the change.
 
-## Physical iPhone handoff
+## Physical iPhone verification
 
-Select the `HearthCompanion` scheme in Xcode, choose the owner’s physical iPhone, resolve the normal Apple development signing/team prompt, and install. On first launch, grant Reminders access, select the `Reminders` and `Family Reminders` lists, and confirm the current test reminders appear. Check the native Reminders app before and after: Hearth must not change completion or content. Record the iPhone model, iOS version, selected list names and visible test reminder titles in the phase-8 evidence note. Do not put an Apple ID password, app-specific password or private URL in this repository or chat.
+Select the `HearthCompanion` scheme in Xcode, choose the owner’s physical iPhone and install with
+the existing local development team. Confirm live reminders still read correctly, change the list
+selection, terminate and relaunch the app, and confirm that exact selection returns. Check Apple
+Reminders before and after: Hearth must not change completion or content. Record only the result,
+device model and iOS version in the phase-8 evidence note; do not retain private reminder contents,
+an Apple ID password, app-specific password or private URL.

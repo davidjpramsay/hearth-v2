@@ -59,7 +59,8 @@ struct ReminderViewModelTests {
     @Test("selecting one list filters reminders without changing the fake data")
     func listSelection() async {
         let fake = FakeReminderStore(lists: lists, reminders: reminders)
-        let model = ReminderViewModel(store: fake)
+        let selectionStore = InMemoryReminderListSelectionStore()
+        let model = ReminderViewModel(store: fake, selectionStore: selectionStore)
 
         await model.start()
         await model.selectLists(["family"])
@@ -71,6 +72,7 @@ struct ReminderViewModelTests {
         #expect(snapshot.selectedListIDs == ["family"])
         #expect(snapshot.reminders.map(\.id) == ["one"])
         #expect(fake.reminders.count == 2)
+        #expect(selectionStore.selectedListIDs == ["family"])
     }
 
     @Test("clearing the list selection produces an intentional empty state")
@@ -157,5 +159,99 @@ struct ReminderViewModelTests {
         }
         #expect(snapshot.reminders.count == reminders.count)
         await refreshTask.value
+    }
+
+    @Test("a saved list selection is restored on launch")
+    func restoresSavedSelection() async {
+        let selectionStore = InMemoryReminderListSelectionStore(selectedListIDs: ["family"])
+        let fake = FakeReminderStore(lists: lists, reminders: reminders)
+        let model = ReminderViewModel(store: fake, selectionStore: selectionStore)
+
+        await model.start()
+
+        guard case .success(let snapshot) = model.state else {
+            Issue.record("Expected the saved selection to load successfully, got \(model.state)")
+            return
+        }
+        #expect(snapshot.selectedListIDs == ["family"])
+        #expect(snapshot.reminders.map(\.id) == ["one"])
+    }
+
+    @Test("an intentional empty selection survives relaunch")
+    func emptySelectionSurvivesRelaunch() async {
+        let selectionStore = InMemoryReminderListSelectionStore()
+        let firstModel = ReminderViewModel(
+            store: FakeReminderStore(lists: lists, reminders: reminders),
+            selectionStore: selectionStore
+        )
+        await firstModel.start()
+        await firstModel.selectLists([])
+
+        let relaunchedModel = ReminderViewModel(
+            store: FakeReminderStore(lists: lists, reminders: reminders),
+            selectionStore: selectionStore
+        )
+        await relaunchedModel.start()
+
+        guard case .empty(let snapshot) = relaunchedModel.state else {
+            Issue.record("Expected the empty selection after relaunch, got \(relaunchedModel.state)")
+            return
+        }
+        #expect(snapshot.selectedListIDs.isEmpty)
+        #expect(snapshot.reminders.isEmpty)
+    }
+
+    @Test("identifiers for lists that no longer exist are pruned")
+    func prunesRemovedLists() async {
+        let selectionStore = InMemoryReminderListSelectionStore(selectedListIDs: ["family", "removed"])
+        let model = ReminderViewModel(
+            store: FakeReminderStore(lists: lists, reminders: reminders),
+            selectionStore: selectionStore
+        )
+
+        await model.start()
+
+        guard case .success(let snapshot) = model.state else {
+            Issue.record("Expected the remaining selected list to load, got \(model.state)")
+            return
+        }
+        #expect(snapshot.selectedListIDs == ["family"])
+        #expect(selectionStore.selectedListIDs == ["family"])
+    }
+
+    @Test("a temporary no-list result does not persist an accidental empty choice")
+    func transientNoListsDoesNotFreezeSelection() async throws {
+        let selectionStore = InMemoryReminderListSelectionStore()
+        let fake = FakeReminderStore()
+        let model = ReminderViewModel(store: fake, selectionStore: selectionStore)
+
+        await model.start()
+        #expect(selectionStore.selectedListIDs == nil)
+
+        fake.lists = lists
+        fake.reminders = reminders
+        fake.emitChange()
+        try await Task.sleep(nanoseconds: 600_000_000)
+
+        guard case .success(let snapshot) = model.state else {
+            Issue.record("Expected lists arriving later to become selected, got \(model.state)")
+            return
+        }
+        #expect(snapshot.selectedListIDs == ["reminders", "family"])
+        #expect(selectionStore.selectedListIDs == ["reminders", "family"])
+    }
+
+    @Test("the UserDefaults adapter distinguishes unset, empty, and selected values")
+    func userDefaultsSelectionStoreRoundTrip() {
+        let suiteName = "HearthCompanionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let selectionStore = UserDefaultsReminderListSelectionStore(defaults: defaults)
+
+        #expect(selectionStore.loadSelectedListIDs() == nil)
+        selectionStore.saveSelectedListIDs([])
+        #expect(selectionStore.loadSelectedListIDs() == [])
+        selectionStore.saveSelectedListIDs(["reminders", "family"])
+        #expect(selectionStore.loadSelectedListIDs() == ["reminders", "family"])
     }
 }

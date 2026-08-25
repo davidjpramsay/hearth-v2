@@ -157,6 +157,14 @@ about nine seconds, and completing a reminder in Apple Reminders on the Mac was
 reflected in Hearth Companion after about five seconds. Those end-to-end times
 include Apple's iCloud/EventKit propagation, not only Hearth's local debounce.
 
+The adult's selected-list choice survives app relaunch through a separate
+`ReminderListSelectionStore`. Its live adapter stores only sorted opaque EventKit
+list identifiers in the app's local `UserDefaults`; it stores no reminder
+content or Apple credential. An absent preference selects all lists on the first
+successful non-empty read, an explicitly empty preference stays empty, and
+identifiers for lists EventKit no longer exposes are removed on the next
+successful list read.
+
 EventKit exposes the reminder list/calendar and reminder fields used by this
 proof, but it does not expose the user-created Sections hierarchy shown inside
 Apple Reminders. Hearth therefore displays the selected list name and does not

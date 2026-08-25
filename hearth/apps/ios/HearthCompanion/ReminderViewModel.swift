@@ -16,6 +16,8 @@ final class ReminderViewModel {
     }
 
     private let store: any ReminderStore
+    private let selectionStore: any ReminderListSelectionStore
+    private let hadPersistedInitialSelection: Bool
     private var hasStarted = false
     private var hasResolvedInitialSelection = false
     private var lastSnapshot: ReminderSnapshot?
@@ -26,9 +28,15 @@ final class ReminderViewModel {
     private(set) var selectedListIDs: Set<String>
     private(set) var isRefreshing = false
 
-    init(store: any ReminderStore, initialSelectedListIDs: Set<String> = []) {
+    init(
+        store: any ReminderStore,
+        selectionStore: any ReminderListSelectionStore = InMemoryReminderListSelectionStore()
+    ) {
         self.store = store
-        self.selectedListIDs = initialSelectedListIDs
+        self.selectionStore = selectionStore
+        let persistedSelection = selectionStore.loadSelectedListIDs()
+        hadPersistedInitialSelection = persistedSelection != nil
+        selectedListIDs = persistedSelection ?? []
     }
 
     isolated deinit {
@@ -91,6 +99,7 @@ final class ReminderViewModel {
 
     func selectLists(_ ids: Set<String>) async {
         selectedListIDs = ids
+        selectionStore.saveSelectedListIDs(ids)
         await refresh()
     }
 
@@ -106,8 +115,18 @@ final class ReminderViewModel {
             let lists = try await store.reminderLists()
             let validIDs = Set(lists.map(\.id))
             let normalizedSelection = selectedListIDs.intersection(validIDs)
-            let effectiveSelection = !hasResolvedInitialSelection && normalizedSelection.isEmpty ? validIDs : normalizedSelection
-            hasResolvedInitialSelection = true
+            let isResolvingFirstSelection = !hasResolvedInitialSelection
+            let effectiveSelection = isResolvingFirstSelection && !hadPersistedInitialSelection
+                ? validIDs
+                : normalizedSelection
+
+            // An account can temporarily report no lists while EventKit/iCloud
+            // settles. Do not freeze that transient state as an explicit empty
+            // choice unless a persisted choice already existed.
+            if hadPersistedInitialSelection || !validIDs.isEmpty {
+                hasResolvedInitialSelection = true
+                selectionStore.saveSelectedListIDs(effectiveSelection)
+            }
             selectedListIDs = effectiveSelection
 
             let reminders = try await store.reminders(in: effectiveSelection)

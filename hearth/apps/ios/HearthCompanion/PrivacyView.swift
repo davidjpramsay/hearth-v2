@@ -13,6 +13,9 @@ struct PrivacyView: View {
                 privacySection(title: "What this proof reads", systemImage: "checklist") {
                     Text("Only the reminder lists you select, plus each reminder’s title, list, due date or time, and completion state.")
                 }
+                privacySection(title: "What stays on this iPhone", systemImage: "iphone") {
+                    Text("Hearth saves only the identifiers of the reminder lists you select so that choice survives relaunch. It does not persist reminder titles, dates, completion states, or Apple credentials.")
+                }
                 privacySection(title: "What it never does", systemImage: "hand.raised") {
                     Text("It never creates, edits, completes, or deletes EventKit reminders. It has no server write path, background sync, APNs, two-way completion, Apple ID request, iCloud app-specific password, private URL, or NAS credential.")
                 }

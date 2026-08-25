@@ -6,6 +6,7 @@ Date: 2026-08-25
 
 - Simulator proof: passed on the iPhone 17 simulator, iOS 26.5, bundle ID `app.hearth.companion`.
 - Physical-device EventKit proof: passed on an iPhone 17e running iOS 26.6 with the signed Debug build from commit `1396329`.
+- Selected-list persistence change: unit and simulator verification passed; physical terminate/relaunch verification remains pending and is not inferred from the earlier EventKit proof.
 - Live Synology, Home Assistant, calendar, server, notification, and credential state: unchanged.
 
 ## Simulator evidence
@@ -18,7 +19,11 @@ XcodeBuildMCP built, installed, launched, and visually inspected the app with de
 
 The success snapshot exposed the expected accessible reminder rows, including title, list, due date/time, and completion state. The list chooser was exercised by turning off `Reminders`; the UI then showed only the selected `Family Reminders` items.
 
-The XcodeBuildMCP unit run passed 9 tests with 0 failures and 0 skips. The tests cover permission request, initial read failure/retry, stale refresh, list filtering, intentional empty selection, denied permission, restricted permission, automatic EventKit-style refresh, and preserving the last successful content during refresh.
+The original XcodeBuildMCP unit run passed 9 tests with 0 failures and 0 skips. After adding local
+selected-list persistence, the suite passes 14 tests. The additional coverage proves restoring a
+saved selection, preserving an intentional empty selection across model relaunch, pruning removed
+list identifiers, avoiding an accidental empty preference while EventKit temporarily reports no
+lists, and distinguishing unset, empty and selected values in the real `UserDefaults` adapter.
 
 ## Physical-device evidence
 
@@ -38,7 +43,7 @@ contain private reminder content.
 - `xcodegen generate` — passed.
 - `xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -sdk iphonesimulator -configuration Debug build` — passed through XcodeBuildMCP.
 - `xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -sdk iphoneos -configuration Debug CODE_SIGNING_ALLOWED=NO build` — passed; device-target compile only.
-- XcodeBuildMCP `test_sim` — passed: 9 tests, 0 failures, 0 skipped.
+- XcodeBuildMCP `test_sim` — passed after selected-list persistence: 14 tests, 0 failures, 0 skipped.
 - `xcodebuild -project hearth/apps/ios/HearthCompanion.xcodeproj -scheme HearthCompanion -configuration Debug -destination 'id=<physical-device-udid>' -derivedDataPath <temporary-directory> build` — passed and signed with the user's local Apple Development team.
 - `xcrun devicectl device install app --device <paired-device-id> <HearthCompanion.app>` — passed; bundle ID `app.hearth.companion` installed.
 - `xcrun devicectl device process launch --device <paired-device-id> --terminate-existing app.hearth.companion` — passed; the device reported a successful launch and the process was present.

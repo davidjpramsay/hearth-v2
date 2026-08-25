@@ -1163,3 +1163,24 @@ Official platform references:
   repeated-pull flicker was no longer visible.
   This is not persistent background sync or APNs. Apple Reminders Sections are
   not synthesized because EventKit does not expose their hierarchy.
+
+## D-070 — Reminder list selection is an app-local opaque preference
+
+- Date: 2026-08-25
+- Status: accepted for the native Reminders proof
+- Context: Requiring an adult to reselect EventKit lists on every launch makes
+  the native proof unreliable, but retaining reminder content would create a
+  new cache and privacy boundary that this slice does not need. An empty saved
+  set must also remain distinguishable from a first launch with no preference.
+- Choice: Inject a narrow `ReminderListSelectionStore` separately from
+  `ReminderStore`. The live adapter stores only sorted EventKit list identifiers
+  in app-sandboxed `UserDefaults`; tests and previews use an in-memory adapter.
+  A missing preference selects all lists after the first successful non-empty
+  EventKit list read. A saved empty set remains empty, and every successful read
+  intersects saved identifiers with the currently available lists before saving
+  them again.
+- Consequence: The adult's selection survives relaunch without storing reminder
+  titles, dates, completion states or Apple credentials. Removed list identifiers
+  fail closed and are pruned. This local preference is not a Hearth server
+  snapshot, pairing credential, background upload, APNs state or writeback
+  contract; those boundaries remain deferred to a versioned shared design.

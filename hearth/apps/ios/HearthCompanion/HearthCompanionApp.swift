@@ -8,13 +8,18 @@ struct HearthCompanionApp: App {
 
     init() {
         #if DEBUG
-        let store: any ReminderStore = CommandLine.arguments.contains("-hearth-preview-data")
+        let usesPreviewData = CommandLine.arguments.contains("-hearth-preview-data")
+        let store: any ReminderStore = usesPreviewData
             ? FakeReminderStore.preview
             : EventKitReminderStore()
+        let selectionStore: any ReminderListSelectionStore = usesPreviewData
+            ? InMemoryReminderListSelectionStore()
+            : UserDefaultsReminderListSelectionStore()
         #else
         let store: any ReminderStore = EventKitReminderStore()
+        let selectionStore: any ReminderListSelectionStore = UserDefaultsReminderListSelectionStore()
         #endif
-        _reminderModel = State(initialValue: ReminderViewModel(store: store))
+        _reminderModel = State(initialValue: ReminderViewModel(store: store, selectionStore: selectionStore))
     }
 
     var body: some Scene {
@@ -26,7 +31,10 @@ struct HearthCompanionApp: App {
 }
 
 #Preview("Hearth Companion") {
-    let model = ReminderViewModel(store: FakeReminderStore.preview)
+    let model = ReminderViewModel(
+        store: FakeReminderStore.preview,
+        selectionStore: InMemoryReminderListSelectionStore()
+    )
     AppShellView(reminderModel: model)
         .environment(HearthTheme())
 }
