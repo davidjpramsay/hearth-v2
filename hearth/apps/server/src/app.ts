@@ -22,6 +22,7 @@ import {
   AssistDaySummaryRequestSchema,
   AssistDaySummaryResultSchema,
   ApprovePairingRequestSchema,
+  ApproveReminderSourcePairingRequestSchema,
   ArchiveMemberRequestSchema,
   ArchiveHouseholdNoticeRequestSchema,
   CalendarConnectionCommandResultSchema,
@@ -44,6 +45,7 @@ import {
   CreateMemberRequestSchema,
   CreateHouseholdNoticeRequestSchema,
   CreatePairingRequestSchema,
+  CreateReminderSourcePairingRequestSchema,
   CreateTvPairingSessionRequestSchema,
   CreateChoreTemplateRequestSchema,
   CreateHouseholdListRequestSchema,
@@ -52,6 +54,7 @@ import {
   DemoScenarioRequestSchema,
   ExecuteHomeActionRequestSchema,
   ExchangeTvPairingRequestSchema,
+  ExchangeReminderSourcePairingRequestSchema,
   FirstUsePasskeyOptionsRequestSchema,
   HouseholdListsSchema,
   HouseholdListSettingsSchema,
@@ -91,6 +94,14 @@ import {
   PhotoSourceRefreshResultSchema,
   PhotoUploadResultSchema,
   RefreshPhotoSourceRequestSchema,
+  ReminderOverviewSchema,
+  ReminderSnapshotReceiptSchema,
+  ReminderSourceCommandResultSchema,
+  ReminderSourceDeviceSessionSchema,
+  ReminderSourcePairingRequestSchema,
+  ReminderSourceSettingsSchema,
+  ReplaceReminderSnapshotRequestSchema,
+  RevokeReminderSourceDeviceRequestSchema,
   RestoreChoreTemplateRequestSchema,
   ReorderHouseholdListsRequestSchema,
   ReorderChoreTemplatesRequestSchema,
@@ -177,6 +188,10 @@ import { MAX_MANAGED_PHOTO_BYTES } from './integrations/synology-photo-source.js
 import { PhotoService, type PhotoRepository } from './photo-repository.js';
 import { InMemoryPlanningRepository, type PlanningRepository } from './planning-repository.js';
 import { PocketMoneyService, type PocketMoneyRepository } from './pocket-money-repository.js';
+import {
+  ReminderSourceService,
+  type ReminderSourceRepository,
+} from './reminder-source-repository.js';
 import { TodayContentService, type TodayContentRepository } from './today-content-repository.js';
 import {
   FakeWeatherLocationVerifier,
@@ -237,6 +252,17 @@ const PHOTO_UPLOAD_MIME_TYPES = new Set([
   'image/x-heif',
 ]);
 const PairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
+const ReminderPairingParamsSchema = z.object({ pairingId: OpaqueIdSchema });
+const ReminderSourceParamsSchema = z.object({ sourceId: OpaqueIdSchema });
+const ReminderSourceDeviceParamsSchema = HouseholdParamsSchema.extend({
+  reminderDeviceId: OpaqueIdSchema,
+});
+const ReminderQuerySchema = z.object({
+  includeCompleted: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+});
 const TodayQuerySchema = z.object({ date: LocalDateSchema });
 const WeekQuerySchema = z.object({ start: LocalDateSchema });
 const MonthQuerySchema = z.object({ month: MonthKeySchema });
@@ -275,6 +301,7 @@ export interface BuildServerOptions {
   homeRepository?: HomeRepository;
   photoRepository?: PhotoRepository;
   pocketMoneyRepository?: PocketMoneyRepository;
+  reminderSourceRepository?: ReminderSourceRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
   homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
   systemOperations?: SystemOperationsRepository;
@@ -319,6 +346,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       seedDemo: demoMode,
       clock: runtime.clock,
     });
+  const reminderSourceRepository =
+    options.reminderSourceRepository ??
+    new ReminderSourceService(adminRepository, undefined, { clock: runtime.clock });
   const todayContentRepository = options.todayContentRepository ?? new TodayContentService();
   const dailyVerseProvider =
     options.dailyVerseProvider ??
@@ -1263,6 +1293,130 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return run(reply, async () =>
       TvDeviceSessionSchema.parse(
         await adminRepository.getTvDeviceSession(deviceCredential(request.headers)),
+      ),
+    );
+  });
+
+  server.post('/api/v1/reminder-source-pairing-requests', async (request, reply) => {
+    const body = parse(CreateReminderSourcePairingRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () =>
+      ReminderSourcePairingRequestSchema.parse(await reminderSourceRepository.createPairing(body)),
+    );
+  });
+
+  server.get('/api/v1/reminder-source-pairing-requests/:pairingId', async (request, reply) => {
+    const params = parse(ReminderPairingParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      ReminderSourcePairingRequestSchema.parse(
+        await reminderSourceRepository.getPairing(params.pairingId),
+      ),
+    );
+  });
+
+  server.post(
+    '/api/v1/reminder-source-pairing-requests/:pairingId/exchanges',
+    async (request, reply) => {
+      const params = parse(ReminderPairingParamsSchema, request.params, reply);
+      const body = parse(ExchangeReminderSourcePairingRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        reply.header('Cache-Control', 'no-store');
+        return ReminderSourceDeviceSessionSchema.parse(
+          await reminderSourceRepository.exchangePairing(
+            params.pairingId,
+            body.pairingSecret,
+            body.requestId,
+          ),
+        );
+      });
+    },
+  );
+
+  server.get('/api/v1/reminder-source-sessions/current', async (request, reply) => {
+    return run(reply, async () => {
+      reply.header('Cache-Control', 'no-store');
+      return ReminderSourceDeviceSessionSchema.parse(
+        reminderSourceRepository.getDeviceSession(reminderSourceCredential(request.headers)),
+      );
+    });
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/reminder-source-pairing-approvals',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(ApproveReminderSourcePairingRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () =>
+        ReminderSourcePairingRequestSchema.parse(
+          await reminderSourceRepository.approvePairing(
+            params.householdId,
+            actorId(request.headers, options),
+            body,
+          ),
+        ),
+      );
+    },
+  );
+
+  server.get('/api/v1/households/:householdId/reminder-sources', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      ReminderSourceSettingsSchema.parse(
+        await reminderSourceRepository.getSettings(
+          params.householdId,
+          actorId(request.headers, options),
+        ),
+      ),
+    );
+  });
+
+  server.post(
+    '/api/v1/households/:householdId/reminder-source-devices/:reminderDeviceId/revocations',
+    async (request, reply) => {
+      const params = parse(ReminderSourceDeviceParamsSchema, request.params, reply);
+      const body = parse(RevokeReminderSourceDeviceRequestSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      return run(reply, async () => {
+        const result = ReminderSourceCommandResultSchema.parse(
+          await reminderSourceRepository.revokeDevice(
+            params.householdId,
+            params.reminderDeviceId,
+            actorId(request.headers, options),
+            body.requestId,
+          ),
+        );
+        realtime.publish(params.householdId, 'reminders.changed', result.source.id);
+        return result;
+      });
+    },
+  );
+
+  server.put('/api/v1/reminder-sources/:sourceId/snapshots/current', async (request, reply) => {
+    const params = parse(ReminderSourceParamsSchema, request.params, reply);
+    const body = parse(ReplaceReminderSnapshotRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      const credential = reminderSourceCredential(request.headers);
+      const session = reminderSourceRepository.getDeviceSession(credential);
+      const receipt = ReminderSnapshotReceiptSchema.parse(
+        await reminderSourceRepository.replaceSnapshot(params.sourceId, credential, body),
+      );
+      realtime.publish(session.householdId, 'reminders.changed', params.sourceId);
+      return receipt;
+    });
+  });
+
+  server.get('/api/v1/households/:householdId/reminders', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const query = parse(ReminderQuerySchema, request.query, reply);
+    if (params === null || query === null) return reply;
+    return run(reply, async () =>
+      ReminderOverviewSchema.parse(
+        await reminderSourceRepository.getOverview(params.householdId, query.includeCompleted),
       ),
     );
   });
@@ -2393,6 +2547,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       homeRepository.reset();
       photoRepository.reset();
       pocketMoneyRepository.reset();
+      reminderSourceRepository.reset();
       calendarConnectionRepository.reset();
       homeAssistantConnectionRepository.reset();
       systemOperations.reset();
@@ -2418,6 +2573,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     planningRepository.close();
     adminRepository.close();
     pocketMoneyRepository.close();
+    reminderSourceRepository.close();
     calendarConnectionRepository.close();
     homeAssistantConnectionRepository.close();
     systemOperations.close();
@@ -2469,6 +2625,7 @@ async function run(reply: FastifyReply, operation: () => Promise<unknown>): Prom
                       'CONFIRMATION_REQUIRED',
                       'AMBIGUOUS_TARGET',
                       'DUPLICATE_ITEM',
+                      'STALE_SNAPSHOT',
                     ].includes(error.code)
                   ? 409
                   : 503;
@@ -2628,6 +2785,24 @@ function optionalDeviceCredential(
     }
   }
   return null;
+}
+
+function reminderSourceCredential(headers: Record<string, string | string[] | undefined>): string {
+  const authorization = headers.authorization;
+  if (typeof authorization !== 'string' || !authorization.startsWith('HearthReminderSource ')) {
+    throw new RepositoryError(
+      'UNAUTHENTICATED',
+      'Pair this iPhone Reminders source with Hearth to continue.',
+    );
+  }
+  const credential = authorization.slice('HearthReminderSource '.length).trim();
+  if (credential.length === 0) {
+    throw new RepositoryError(
+      'UNAUTHENTICATED',
+      'Pair this iPhone Reminders source with Hearth to continue.',
+    );
+  }
+  return credential;
 }
 
 function companionAuth(options: BuildServerOptions): CompanionAuthRepository {

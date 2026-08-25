@@ -335,7 +335,7 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 24 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 25 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(
     page.getByText('Provider tokens stay in the separate protected secrets folder.'),

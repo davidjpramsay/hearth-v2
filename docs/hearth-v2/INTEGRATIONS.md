@@ -90,7 +90,7 @@ alternate URL-ingestion paths remain outside the integration boundary.
 
 ### Experimental iCloud Reminders capability check
 
-Hearth does not currently treat iCloud Reminders as a supported product integration. An
+Hearth does not treat direct iCloud Reminders through CalDAV as a supported product integration. An
 operator-only, read-only capability probe may use the already commissioned CalDAV credential to
 check the [CalDAV standards boundary](https://www.rfc-editor.org/rfc/rfc4791.html) before any such
 feature is proposed. The probe discovers every CalDAV collection, queries only collections that
@@ -108,8 +108,7 @@ separator, query or nested child path before any object body can be requested.
 The probe has no browser route, database write, background polling or calendar/reminder mutation.
 If no collection advertises `VTODO`, the check stops after discovery; Hearth must not scrape iCloud,
 guess private endpoints or imply that modern upgraded iCloud Reminders are available through the
-existing Calendar connection. A future native EventKit bridge would require a separate product,
-privacy and authentication decision; Apple documents EventKit as the permission-controlled native
+existing Calendar connection. Apple documents EventKit as the permission-controlled native
 route for [requesting reminder access](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29),
 and documents reminder access inside its own
 [Calendar app](https://support.apple.com/en-au/guide/calendar/icl873b9a527/mac) without documenting a
@@ -120,6 +119,20 @@ returned the same two legacy/other records and neither contained the newly creat
 reminders. All advertised objects were included within the bounded sample. This is evidence that
 the CalDAV surface is not a reliable source for modern iCloud Reminders, so Hearth must not build a
 direct iCloud Reminders sync on it.
+
+### Native EventKit Reminders bridge
+
+The approved Reminders integration is the permissioned native iPhone companion, not CalDAV. Its
+physical EventKit read proof succeeded against current personal and shared family lists. The bridge
+remains read-only: the user selects lists locally, the app produces one bounded full snapshot, and
+Hearth stores a local hash-only projection for household display and outage fallback.
+
+Pairing, the distinct source credential, identifier privacy, list/reminder fields, atomic snapshot
+replacement, ordering, freshness, retry, revocation and Swift client seam are frozen in
+`REMINDERS_COMPANION_CONTRACT.md`. The server implements that v1 contract. Native transport proof
+must still show pairing, upload, terminate/relaunch persistence and live Hearth readback before the
+product UI is called complete. Public EventKit does not expose Apple Reminders Sections, so neither
+the bridge nor Hearth models them.
 
 ## Weather
 
@@ -419,7 +432,9 @@ Use the Home Assistant Companion app for:
 - presence only if the household explicitly enables it
 - notifications for adult-facing integration failures where useful
 
-Use the responsive Hearth web companion for detailed editing until a native iOS application has a demonstrated advantage.
+Use the responsive Hearth web companion for detailed editing during native migration. The native
+iPhone app has a demonstrated EventKit advantage for Reminders and should consume the same Hearth
+household API/business rules for later features rather than creating a second domain implementation.
 
 ## Failure reporting
 

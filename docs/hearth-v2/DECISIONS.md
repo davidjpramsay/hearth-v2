@@ -1111,3 +1111,28 @@ Official platform references:
   gated by DSM before Docker, Docker continues to isolate bridges, and qBittorrent remains bounded
   by Gluetun's own namespace and kill switch. An explicit DSM firewall reload still requires one
   hook invocation and readiness verification.
+
+## D-068 — Native EventKit bridge uses a device-scoped full-snapshot contract
+
+- Date: 2026-08-25
+- Status: accepted; implements the native path identified by D-064
+- Context: The commissioned CalDAV capability check did not expose current Apple Reminders, while a
+  physical iPhone EventKit build successfully read current personal and shared family lists. Hearth
+  needs a durable server contract before the iOS task adds network assumptions, and the eventual
+  full native client must not fork household business rules or receive a broad credential merely to
+  bridge reminders.
+- Choice: Freeze `REMINDERS_COMPANION_CONTRACT.md` as wire version 1. Pair one EventKit source per
+  household through an adult-approved ten-minute code and a device-generated Keychain secret whose
+  server-side form is hash-only. Grant that device exactly `reminders.snapshot.write` through the
+  distinct `HearthReminderSource` authorization scheme. Accept bounded full snapshots only, with a
+  strictly increasing gap-tolerant sequence, immutable idempotency identities, internal tombstones,
+  atomic projection/audit/receipt writes and stale-cache retention. Hash source identifiers before
+  persistence and omit them from household reads. Keep the projection read-only and omit Apple
+  Reminders Sections and unsupported content. Use hand-written Swift `Codable` DTOs checked against
+  committed language-neutral fixtures until a stable generated-schema path exists.
+- Consequence: The iPhone bridge can begin without schema drift or Apple credentials on Hearth. A
+  revoked source cannot act as a television/adult client, temporary unavailability does not erase
+  family information, and the later native iPhone app can use ordinary passkey-authenticated Hearth
+  services alongside this narrow source transport. V1 requires full-list enumeration and caps one
+  snapshot at 50 lists, 1,000 reminders and 1.5 MB; incremental sync, APNs/background transfer,
+  EventKit mutation and full native feature parity require later evidence and decisions.

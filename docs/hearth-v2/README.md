@@ -7,7 +7,8 @@ includes fake and private REST Home Assistant contracts plus an adult connection
 the private deployment now also has integrity-checked online database backups, fail-safe restore
 tooling, a calm adult System Health surface, and named-adult multi-passkey access with one-time
 local recovery. No live credential, calendar write, restore or
-household automation was used. The separate Music
+household automation was used. Phase 8 has a frozen, tested v1 EventKit Reminders bridge contract;
+the native iPhone transport and dashboard surfaces remain in progress. The separate Music
 Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or verified.**
 
 ## Product statement
@@ -18,18 +19,19 @@ The reference class is the family organiser represented by Skylight Calendar. He
 
 ## Authoritative documents
 
-| File                    | Controls                                                              |
-| ----------------------- | --------------------------------------------------------------------- |
-| `PRODUCT_SPEC.md`       | Users, outcomes, scope and functional requirements                    |
-| `UX_SPEC.md`            | Screens, navigation, television ergonomics and visual principles      |
-| `ARCHITECTURE.md`       | Runtime topology, package boundaries, security and deployment shape   |
-| `DATA_MODEL.md`         | Domain entities, ownership and persistence rules                      |
-| `INTEGRATIONS.md`       | Calendar, Home Assistant, voice, photos and the native-media boundary |
-| `ROADMAP.md`            | Ordered implementation phases and delivery boundaries                 |
-| `ACCEPTANCE.md`         | Definition of done and system-level acceptance tests                  |
-| `DECISIONS.md`          | Durable architectural and product decisions                           |
-| `OPERATIONS.md`         | Verified local environment, proposed deployment and backup model      |
-| `REFERENCE_SKYLIGHT.md` | Publicly documented reference features and the non-copying boundary   |
+| File                              | Controls                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| `PRODUCT_SPEC.md`                 | Users, outcomes, scope and functional requirements                        |
+| `UX_SPEC.md`                      | Screens, navigation, television ergonomics and visual principles          |
+| `ARCHITECTURE.md`                 | Runtime topology, package boundaries, security and deployment shape       |
+| `DATA_MODEL.md`                   | Domain entities, ownership and persistence rules                          |
+| `INTEGRATIONS.md`                 | Calendar, Home Assistant, voice, photos and the native-media boundary     |
+| `ROADMAP.md`                      | Ordered implementation phases and delivery boundaries                     |
+| `ACCEPTANCE.md`                   | Definition of done and system-level acceptance tests                      |
+| `DECISIONS.md`                    | Durable architectural and product decisions                               |
+| `OPERATIONS.md`                   | Verified local environment, proposed deployment and backup model          |
+| `REMINDERS_COMPANION_CONTRACT.md` | Frozen native EventKit pairing, authentication and snapshot wire contract |
+| `REFERENCE_SKYLIGHT.md`           | Publicly documented reference features and the non-copying boundary       |
 
 ## Confirmed target environment
 
@@ -63,7 +65,11 @@ Use typed provider interfaces and seeded demo data until these choices are suppl
 
 ## Immediate next step
 
-Phase 7 is active: the path-safe Photos gallery, mixed-orientation source,
+Phase 7 remains active for production acceptance. In parallel, Phase 8 now has the versioned
+server-side Reminders pairing, projection and read contracts plus golden Swift interoperability
+fixtures. Complete the native client against `REMINDERS_COMPANION_CONTRACT.md`, then add the
+dedicated Reminders surface and optional Today summary only after physical end-to-end snapshot
+evidence. The path-safe Photos gallery, mixed-orientation source,
 direct adult phone uploads, optional Synology bulk import and immediate-exit
 ambient mode now run in the web product, while presence/quiet-hours coordination
 and live operations acceptance remain open. Configure the implemented backup service only inside

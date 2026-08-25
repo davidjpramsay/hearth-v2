@@ -240,6 +240,45 @@ checked items soft-archives them; it does not erase their audit or command
 history. An archived list remains recoverable, and the final active list cannot
 be archived.
 
+## Reminders projection
+
+### Reminder source pairing request
+
+- opaque request/pairing identifiers and six-character code
+- device name, platform and application version
+- SHA-256 credential digest only
+- pending/approved/exchanged/expired/cancelled state and ten-minute expiry
+- approving household/member references populated only after an adult command
+
+### Reminder source and source device
+
+- one active EventKit source per household in v1
+- one active device credential per source
+- device-scoped `reminders.snapshot.write` scope, pairing/last-seen/revocation timestamps
+- last accepted snapshot sequence/identifier plus source-generated and Hearth-received timestamps
+- revocation request identity for command replay
+
+### Reminder list and reminder item
+
+- stable Hearth ID derived from a source-scoped external-ID hash
+- SHA-256 external-ID hash only; raw EventKit identifiers are not persisted
+- list/title projection and internal removal tombstone
+- reminder title, list relationship, date-only due date, optional due instant and explicit
+  `hasDueTime`
+- completion flag plus optional completion/source-updated timestamps
+
+### Reminder snapshot receipt
+
+- source, snapshot, request and strictly increasing sequence identities
+- canonical payload hash and immutable typed response
+- unique constraints on every idempotency dimension
+
+Each successful full snapshot transaction marks the previous projection removed, upserts all
+included rows, advances source freshness, writes the receipt and records one audit event. Missing
+rows are internal tombstones; the client never sends incremental deletes. Cached rows survive
+temporary source unavailability. A revoked source is intentionally hidden rather than served stale.
+The complete wire and identifier rules are in `REMINDERS_COMPANION_CONTRACT.md`.
+
 ## Meals
 
 ### Meal
@@ -520,6 +559,11 @@ provider response or API credential.
 Migration `0023_managed_photo_uploads.sql` links each private managed master to its opaque photo
 asset, authenticated adult, content hash and bounded byte size, and persists path-free optional
 folder-import health. Client filenames, source paths and image bytes do not enter SQLite.
+
+Migration `0024_daily_bible_verse.sql` adds the off-by-default Today verse preference and bounded
+attributed fallback cache. Migration `0025_reminder_source_projection.sql` adds approval-gated
+EventKit source/device state, hash-only identifiers, atomic full-snapshot projection and replay
+receipts. It stores no Apple credential or raw EventKit identifier.
 
 The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administration
 on the same SQLite connection. Voice list commands resolve a normalized list

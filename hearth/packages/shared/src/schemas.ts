@@ -1059,6 +1059,9 @@ export const AuditSummarySchema = z.object({
     'member.archive',
     'device.pair',
     'device.revoke',
+    'reminder-source.pair',
+    'reminder-source.revoke',
+    'reminders.snapshot.replace',
     'chore-template.create',
     'chore-template.update',
     'chore-template.archive',
@@ -1264,6 +1267,7 @@ export const RealtimeEventSchema = z.object({
     'weather.changed',
     'today.changed',
     'photos.changed',
+    'reminders.changed',
   ]),
   householdId: OpaqueIdSchema,
   targetId: OpaqueIdSchema,
@@ -1282,6 +1286,7 @@ export const ApiErrorCodeSchema = z.enum([
   'CONFIRMATION_REQUIRED',
   'AMBIGUOUS_TARGET',
   'DUPLICATE_ITEM',
+  'STALE_SNAPSHOT',
 ]);
 
 export const AdminActorSchema = z.object({

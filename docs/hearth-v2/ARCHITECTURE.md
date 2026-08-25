@@ -89,6 +89,7 @@ Pure household-domain behaviour: recurrence expansion, completion rules, proport
 
 ```text
 Calendar provider -> calendar adapter -> Hearth cache/projection -> Hearth API -> TV/web
+iPhone EventKit -> device-scoped full snapshot -> Hearth reminder projection -> Hearth API -> TV/web
 TV/web command -> Hearth API -> domain validation -> DB/audit -> optional provider command
 Voice -> Home Assistant Assist -> allowlisted HA script -> Hearth command API
 Hearth UI -> Hearth API -> HA adapter -> allowlisted HA service/script
@@ -108,7 +109,7 @@ Voice music -> Assist custom intent -> Music Assistant -> Jellyfin music source 
 
 An eventual MCP endpoint, if built, is a thin authenticated adapter over the same application services. It is not a second business-logic path.
 
-### Phase 1–5 implemented contract
+### Implemented household and native-bridge contracts
 
 The first slice implements browser-safe Zod contracts for `TodaySummary`,
 `WeekSchedule`, `MonthSchedule`, `ChoreList`, integration freshness, command results, audit
@@ -127,6 +128,9 @@ summaries and stable family-safe API errors. The implemented routes are:
 - adult-only `POST .../:occurrenceId/reassignments` with
   `{ requestId, reason, assigneeId }`
 - `GET /api/v1/households/:id/events` as a same-origin Server-Sent Events invalidation stream
+- the versioned native Reminders endpoints, schemas and retry rules in
+  `REMINDERS_COMPANION_CONTRACT.md`, including approval-gated pairing, a distinct
+  `HearthReminderSource` credential, full-snapshot replacement and ordinary household reads
 - `GET /api/v1/households/:id/admin` and typed household/member setup commands
 - adult-only `GET /api/v1/households/:id/activity?limit=` for the newest 1–100 safe audit
   summaries; the companion currently requests 50 and presents family-readable filters without
@@ -345,14 +349,15 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0024` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0025` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
 management history, snapshotted chore windows/order, credential-free Home Assistant connection
 metadata, named-adult passkey recovery, canonical chore time-of-day grouping,
 the tested household weather location, managed photo-upload metadata, optional folder-import status,
-daily-verse visibility and the bounded attributed passage cache. The live demo server uses the SQLite
+daily-verse visibility, the bounded attributed passage cache and the device-scoped EventKit
+Reminders projection. The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
@@ -406,6 +411,9 @@ During the isolated demo, a server-resolved Maya administrator session exercises
 
 - Calendar credentials and Home Assistant URL/token/raw mappings remain in access-restricted,
   external server files; SQLite, browser contracts and audit summaries retain only safe metadata.
+- A paired EventKit companion uses its own hash-only, independently revocable device credential with
+  exactly `reminders.snapshot.write`. It cannot authenticate as a television or companion adult,
+  and an adult passkey session cannot be substituted for snapshot upload.
 - Secrets enter containers through environment/secret files excluded from source control.
 - Tokens are scoped as narrowly as the provider allows.
 - Device and service credentials are independently revocable.

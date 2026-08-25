@@ -1104,4 +1104,56 @@ describe('0001 household core migration', () => {
     expect(database.pragma('journal_mode', { simple: true })).toBe('wal');
     database.close();
   });
+
+  it('adds a private, bounded Reminders source projection without raw EventKit identifiers', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
+    temporaryDirectories.push(directory);
+    const database = new Database(join(directory, 'hearth.sqlite'));
+    applyMigrations(database);
+
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 25').get()).toEqual(
+      { name: 'reminder_source_projection' },
+    );
+    expect(
+      database.prepare('PRAGMA table_info(reminder_items)').all() as Array<{ name: string }>,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'external_id_hash' }),
+        expect.objectContaining({ name: 'due_local_date' }),
+        expect.objectContaining({ name: 'has_due_time' }),
+        expect.objectContaining({ name: 'source_updated_at' }),
+        expect.objectContaining({ name: 'removed_at' }),
+      ]),
+    );
+    const itemColumns = (
+      database.prepare('PRAGMA table_info(reminder_items)').all() as Array<{ name: string }>
+    ).map((column) => column.name);
+    expect(itemColumns).not.toContain('external_id');
+    const listColumns = (
+      database.prepare('PRAGMA table_info(reminder_lists)').all() as Array<{ name: string }>
+    ).map((column) => column.name);
+    expect(listColumns).not.toContain('external_id');
+
+    database.exec(`
+      INSERT INTO households VALUES ('household_reminder', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO reminder_sources
+        (id, household_id, display_name, source_kind, created_at, revoked_at,
+         revoked_request_id, last_snapshot_sequence, last_snapshot_id,
+         last_snapshot_generated_at, last_snapshot_received_at)
+      VALUES ('reminder_source_one', 'household_reminder', 'Apple Reminders', 'eventkit',
+              'now', NULL, NULL, 0, NULL, NULL, NULL);
+    `);
+    expect(() =>
+      database.exec(`
+        INSERT INTO reminder_sources
+          (id, household_id, display_name, source_kind, created_at, revoked_at,
+           revoked_request_id, last_snapshot_sequence, last_snapshot_id,
+           last_snapshot_generated_at, last_snapshot_received_at)
+        VALUES ('reminder_source_two', 'household_reminder', 'Another source', 'eventkit',
+                'now', NULL, NULL, 0, NULL, NULL, NULL);
+      `),
+    ).toThrow(/UNIQUE/);
+    expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
+    database.close();
+  });
 });

@@ -1,0 +1,9 @@
+{
+  "contractVersion": 1,
+  "householdId": "household_hearth_demo",
+  "deviceId": "reminder_device_example",
+  "sourceId": "reminder_source_example",
+  "scopes": ["reminders.snapshot.write"],
+  "pairedAt": "2026-08-25T10:00:00+08:00",
+  "nextSnapshotSequence": 1
+}

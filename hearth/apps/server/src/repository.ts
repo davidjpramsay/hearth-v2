@@ -45,7 +45,8 @@ export class RepositoryError extends Error {
       | 'INTEGRATION_UNAVAILABLE'
       | 'CONFIRMATION_REQUIRED'
       | 'AMBIGUOUS_TARGET'
-      | 'DUPLICATE_ITEM',
+      | 'DUPLICATE_ITEM'
+      | 'STALE_SNAPSHOT',
     message: string,
     readonly retryable = false,
   ) {

@@ -98,6 +98,32 @@ date-navigation, event-detail focus restoration and automated accessibility
 coverage. Browser-plugin control was unavailable, so the installed Playwright
 Chromium fallback produced the retained evidence.
 
+### Native Reminders bridge
+
+- An iPhone creates a ten-minute pairing request with a locally generated Keychain secret; an adult
+  administrator can approve it, a child cannot, and exchange returns only the
+  `reminders.snapshot.write` source session.
+- A reminder-source credential cannot authenticate as a television or adult companion, cannot write
+  another source and becomes unusable immediately after adult revocation.
+- The v1 Swift DTOs decode the committed golden pairing/session/snapshot/receipt fixtures without
+  schema drift.
+- One full snapshot atomically projects selected lists and reminders, correctly distinguishes no
+  due date, date-only and timed due dates, and preserves completion state. Raw EventKit identifiers
+  appear in neither SQLite nor household responses.
+- Snapshot sequence gaps are accepted; lower sequences return `STALE_SNAPSHOT`; an exact retry
+  returns `replayed: true`; changing content while reusing request, snapshot or sequence identity
+  returns `CONFLICT`.
+- A successful empty full snapshot intentionally clears the active projection. Query/permission
+  failure does not upload an accidental empty snapshot.
+- Temporary phone/iCloud unavailability keeps the last valid rows visible and changes freshness to
+  stale after 15 minutes. Intentional revocation hides the source and requires fresh pairing.
+- Payloads above 50 lists, 1,000 reminders or 1.5 MB are rejected without partial application.
+- Physical-device evidence covers current personal and shared-family EventKit reads, selected-list
+  persistence across terminate/relaunch, approved Hearth pairing, one live snapshot upload and
+  readback from the household endpoint. Until all of those pass, the server contract is frozen but
+  the end-to-end bridge and Reminders UI are not complete.
+- Apple Reminders Sections, writeback, completion and deletion are absent from v1.
+
 ### Household people
 
 - An adult administrator can choose either a portrait or landscape profile photo, position its

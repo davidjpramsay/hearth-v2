@@ -461,11 +461,43 @@ physical-TCL comfort assessment remains part of the household pilot.
 - Synology, Pi, router and TV restart scenarios recover without developer intervention.
 - The system passes `ACCEPTANCE.md` on actual target hardware.
 
+## Phase 8 — Native Reminders bridge and iPhone foundation
+
+Status: in progress. Physical EventKit read proof passed on iPhone for current personal and shared
+family lists. The server-side v1 pairing, device authentication, full-snapshot projection, ordinary
+household read and revocation contract is frozen and covered by shared schemas, golden fixtures,
+SQLite migration and integration tests. Native pairing/upload and rendered Hearth surfaces remain
+open.
+
+### Work
+
+- Keep app-local selected-list persistence behind the iOS selection store and prove intentional
+  empty selection separately from unset/unavailable state across terminate/relaunch.
+- Implement the hand-written Swift `ReminderSnapshotClient` against
+  `REMINDERS_COMPANION_CONTRACT.md`; store only the generated source secret in Keychain.
+- Prove approval-gated pairing, session recovery, exact retry, stale-sequence recovery, full
+  snapshot upload and revocation on the physical phone and private Hearth server.
+- Add one dedicated, read-only Reminders surface plus an optional bounded Today module. Reuse the
+  same household API from web, TV and the eventual native client.
+- Retain the responsive companion as fallback while migrating additional phone features natively;
+  do not fork Hearth business rules into Swift.
+
+### Completion criteria
+
+- Every Native Reminders scenario in `ACCEPTANCE.md` passes, including physical-device live
+  upload/readback and terminate/relaunch selection evidence.
+- Raw EventKit identifiers and the source secret are absent from SQLite, logs, browser responses,
+  fixtures and audit summaries.
+- Temporary phone/iCloud failure retains cached reminders with honest freshness; revocation stops
+  uploads immediately.
+- The dedicated and Today surfaces pass television/mobile rendering, accessibility and D-pad/Back
+  checks without adding Apple-reminder mutation.
+
 ## Deferred opportunities
 
 - General conversational agent over the allowlisted command layer
 - Dedicated local-AI mini-PC
-- Native iOS companion
+- Full native iOS feature parity and retirement of the responsive companion
 - Multiple households/remote family sharing
 - Recipe/ingredient management
 - Advanced energy and home-status visualisations
