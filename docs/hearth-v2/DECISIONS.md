@@ -1017,8 +1017,7 @@ Official platform references:
 - Choice: Derive one shared Upcoming/Chores capacity from the active display and normalized photo
   orientation. Phones show three rows. A landscape-photo television shows four rows at full height
   and three on a compact 768-pixel display. Portrait and no-photo television compositions may show
-  five; a square image shows five at full TV height and three on the compact display. The Admin
-  TV/Phone preview uses the same policy. Slice the typed data
+  five; a square image shows five at full TV height and three on the compact display. Slice the typed data
   before rendering so exact overflow counts and D-pad links describe only controls that are visible.
 - Consequence: Busy portrait/no-photo dashboards expose more useful work without scrolling, while
   landscape images remain substantial. Photo rotation can recompose the row count together with the
@@ -1228,3 +1227,56 @@ Official platform references:
   cached reminders visible with honest freshness, while unpaired, awaiting-first-snapshot and
   revoked sources do not create misleading navigation or Today content. Migration
   `0026_today_reminders.sql` stores only the visibility preference and no reminder content.
+
+## D-073 — Today settings use direct controls without a simulated dashboard
+
+- Date: 2026-08-26
+- Status: accepted and implemented
+- Context: The embedded TV/Phone Today preview repeated a large amount of the real dashboard inside
+  the phone-first administration page, made the page unnecessarily long and was less trustworthy
+  than checking the actual responsive Today destination.
+- Choice: Remove the embedded Preview section, its secondary Today-summary query and its preview-only
+  rendering code. Keep the six section switches, serialised optimistic persistence and notice
+  administration unchanged. Treat the actual Today page as the authoritative rendered result.
+- Consequence: Today administration is shorter and performs one fewer query. Layout behaviour remains
+  covered on the real Today page across module subsets, photo orientations and supported viewports.
+
+## D-074 — Apple Reminders use best-effort iOS background refresh
+
+- Date: 2026-08-26
+- Status: accepted and implemented; physical scheduling latency not yet measured
+- Context: Foreground `EKEventStoreChanged` observation is fast, but it does not provide a server
+  webhook or guarantee that a suspended iPhone app wakes when Apple Reminders changes. Hearth should
+  usually receive changes without requiring the adult to reopen the companion, while keeping the
+  source read-only and avoiding a misleading fixed refresh promise.
+- Choice: Register one `BGAppRefreshTask` permitted by the app's Info.plist and request another run
+  for paired sources when the app enters the background. Set fifteen minutes as the earliest start,
+  reschedule when iOS launches the task, reread the complete selected EventKit lists and reuse the
+  frozen device-scoped full-snapshot contract. Keep the task alive until Hearth accepts or rejects
+  the snapshot. On expiration, cancel the transport without accepting or clearing data and retain
+  any exact in-memory pending request for a later retry. Add no APNs polling, proprietary iCloud
+  endpoint, continuous background mode or EventKit mutation.
+- Consequence: Reminder changes can reach Hearth automatically while the companion is suspended,
+  and existing server-sent invalidation updates open household screens immediately after acceptance.
+  iOS still controls whether and when the task runs, so Hearth retains cached rows, an honest stale
+  state and foreground/manual refresh. Simulator tests prove read-to-acceptance coordination; a
+  physical background launch and real-world latency observation remain separate evidence.
+
+## D-075 — Phone administration separates destinations from management actions
+
+- Date: 2026-08-26
+- Status: accepted and implemented
+- Context: More exposed **Photos** as the family gallery while phone upload and curation lived behind
+  a generic household/settings path. Adults repeatedly entered the display gallery while looking for
+  photo management. On Today settings, a narrow-width override appeared before the desktop grid rule,
+  so the desktop two-column cards won in the cascade and squeezed descriptions against switches.
+- Choice: Name the gallery action **View family photos** and expose a prominent **Manage photos** row
+  directly under Manage Hearth. Group the settings root as Family content, Household & access,
+  Connections & displays and System, using joined list rows and one continuous focus order. At phone
+  widths, render all Today visibility options as full-width joined rows; keep the icon, copy and switch
+  in distinct grid columns and apply focus inside the group boundary. Keep More and settings-root
+  navigation bars slim, slightly squared and title-only; task-specific guidance starts after opening a
+  destination rather than repeating under every self-explanatory title.
+- Consequence: Viewing and administering photos are discoverable as separate intents, upload no longer
+  depends on finding the gallery or a generic household row, and Today controls remain legible at the
+  390-pixel companion width. Routes, permissions and the underlying photo/Today contracts do not change.

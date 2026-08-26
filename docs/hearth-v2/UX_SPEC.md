@@ -83,7 +83,7 @@ The two core columns remain equal and share heading and first-card rails. Portra
 that core upper rail; landscape/square media and the enabled summary bands share one lower rail.
 Collapsed modules reserve no track, and the lower content follows the actual core height rather than
 floating at the bottom of a taller display.
-The preview contract carries source dimensions when available, and the image itself sizes from that
+The Today photo contract carries source dimensions when available, and the image itself sizes from that
 native ratio with no persistent frame, crop, shadow or backing panel.
 Landscape media receives a band-count-aware share of the lower rail: it grows when fewer summaries
 need horizontal room and remains height-bounded on shorter televisions. Square media stays compact
@@ -95,15 +95,10 @@ minutes of visible screen time. The Photos screen Pause/Resume control governs t
 current display session as well as the gallery. A hidden document does not consume the interval, and
 reduced-motion devices keep the preview static. A reload starts a fresh automatic display session.
 
-The settings surface includes live TV and Phone previews built from the current household summary.
-They show the real composition produced by the section switches, not a draggable editor or a static
-illustration. Rapid changes are applied optimistically and serialised so one switch cannot restore
-another switch's older value. If overview data cannot load, the preview says so while leaving the
-visibility controls usable. The TV preview models the Today content viewport after the navigation
-rail has been reserved, rather than squeezing that content into a physical 16:9 display frame. The
-Phone preview models the real phone shell and its scrollable single-column Today document. Both
-previews use the same orientation-aware row capacity as the rendered Today screen, while the Phone
-preview keeps the companion's concise three-row bound.
+The phone-first settings surface keeps this choice direct: it shows the six visibility switches and
+notice administration without embedding a second simulated Today screen. Rapid changes are applied
+optimistically and serialised so one switch cannot restore another switch's older value. The actual
+Today destination remains the authoritative rendered result.
 
 The first focus should usually be the most relevant actionable item, not the navigation chrome.
 Today derives the visible event/chore capacity from the rendered composition. Full-height
@@ -191,6 +186,9 @@ the phone More hub.
   leaves cached reminders visible; it does not turn a valid empty result into a connection error.
 - The phone owns pairing, selected-list management and manual refresh. The household surfaces do not
   edit, complete or delete Apple reminders in v1.
+- The paired native companion also requests best-effort background refresh. Hearth continues to show
+  the last accepted snapshot and its honest freshness when iOS delays or declines that work; the UI
+  never claims a fixed background interval.
 - Today may show only a small due-today subset with an honest overflow link into Reminders. It never
   consumes all lower-band space or causes the appliance dashboard to scroll.
 
@@ -236,6 +234,10 @@ the phone More hub.
   multi-select photo picker and reports added, duplicate and failed counts without sending client
   filenames to the server. Each file is limited to 25 MB and uploads run sequentially so a partial
   failure does not discard successful additions.
+- Phone navigation names the two photo intents explicitly: **View family photos** opens the gallery
+  and ambient display, while a prominent **Manage photos** row under Manage Hearth opens upload,
+  curation and removal. Adults should not have to enter the display gallery to discover the upload
+  surface.
 - The same surface shows orientation-safe thumbnails, capture date when available and clear
   Favourite, Hide and Restore actions. Selection mode supports bulk hide, restore and managed-upload
   deletion without turning ordinary browsing into a destructive surface. Cards identify whether
@@ -282,19 +284,24 @@ the phone More hub.
   shows a family-readable place label, hides coordinates under **Advanced**,
   and requires a successful current-conditions test before Save is enabled.
 - Phone More is a genuine hub rather than a direct jump into settings: family
-  tools appear first, followed by Hearth setup destinations. The administration
-  root is named Hearth settings so it cannot be confused with the Home Assistant
-  action surface. Television pairing is one row/action inside Televisions, not a
-  duplicate call to action on the settings root.
-- Hearth settings groups destinations by household, family setup, connections,
-  displays and system while preserving one continuous remote-focus order. System
+  destinations appear first, followed by a clearly labelled Manage Hearth group and device-local
+  appearance. Display and administration verbs stay distinct, including **View family photos** and
+  **Manage photos**. Navigation rows use their self-explanatory titles without repeated descriptive
+  subtitles, keeping each bar slim and scannable. The administration root is named Hearth settings
+  so it cannot be confused with the Home Assistant action surface. Television pairing is one
+  row/action inside Televisions, not a duplicate call to action on the settings root.
+- Hearth settings groups destinations by family content, household and access, connections and
+  displays, then system. Each group is one joined list with a continuous remote-focus order rather
+  than a collection of visually unrelated cards. Joined groups use restrained, slightly squared
+  corners and title-only rows; detailed explanation belongs inside the destination screen. System
   Health combines database/backup state with path-free Calendar, Home Assistant
   and Photos setup status; it links to the dedicated setup screen instead of
   exposing credentials or raw provider details.
 - Today & notices lets an adult publish, edit and remove concise notices, choose
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
-  and see which eligible notice currently wins. It also owns the five optional
-  Today summary switches; it is not a general layout editor.
+  and see which eligible notice currently wins. It also owns the six optional
+  Today summary switches; on a phone these are full-width joined rows with a compact icon, concise
+  description and trailing switch. It is not a general layout editor.
 - Adult access shows every named adult's enrolled passkeys and recovery readiness. An administrator
   can enrol another passkey on that adult's phone, revoke a lost credential and, after confirming
   their current passkey, rotate a one-time recovery code that is displayed only once. The signed-out

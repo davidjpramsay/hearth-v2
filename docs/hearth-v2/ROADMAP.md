@@ -194,20 +194,25 @@ composition, accessibility and clean console behaviour.
 Implementation extension (2026-08-21): Today now treats television height as a hard appliance
 constraint. Its typed photo orientation and enabled summary count select a deterministic portrait,
 wide-photo or no-photo composition; one to four summary tiles reflow without blank reserved bands,
-and the full dashboard remains non-scrolling at 1920×1080 and 1366×768. The same rules drive the
-adult TV preview while the phone keeps its naturally scrolling single-column presentation.
+and the full dashboard remains non-scrolling at 1920×1080 and 1366×768. The phone keeps its naturally
+scrolling single-column presentation.
 
 Implementation extension (2026-08-20): Daily Bible verse uses the same bounded Today preference
 contract. It is off by default, reads an ESV token only from a server secret file, caches a small
 attributed passage rotation and opens full text in a Back-safe dialog without becoming a general
 content-module system.
 
-Implementation extension (2026-08-10): **Today & notices** now previews the
-resulting TV and Phone compositions using current household content before an
-adult leaves settings. Visibility switches update the preview optimistically
-and execute serially, closing a rapid-toggle race that could previously restore
-an older switch value. Loading/unavailable preview data stays honest without
-blocking the independently persisted settings.
+Implementation extension (updated 2026-08-26): **Today & notices** keeps the six visibility controls
+and notice administration compact, without embedding duplicate TV and Phone previews. Visibility
+switches still update optimistically and execute serially, closing the rapid-toggle race that could
+previously restore an older switch value. The real Today screen is the authoritative result.
+
+Implementation extension (2026-08-26): phone administration now uses joined, full-width setting
+rows at narrow widths instead of a cramped two-column card grid. More separates **View family
+photos** from a prominent **Manage photos** action, and Hearth settings groups family content,
+household/access, connections/displays and system destinations in the same scan order. The photo
+management page returns to More and leads with phone upload, so curation is discoverable without
+entering the family gallery.
 
 ## Phase 4 — Lists, meals and pocket money
 
@@ -469,8 +474,8 @@ iPhone 17e running iOS 26.6. The current `Reminders` and `Family Reminders`
 lists were readable, remote changes appeared automatically without a pull, and
 the companion remained read-only. The server-side v1 pairing, source authentication,
 full-snapshot projection, household read and revocation contract is frozen and tested. The native
-Keychain, URLSession, EventKit-to-wire adapter, pairing/repair UI and foreground full-snapshot
-state machine are now implemented; 30 canonical native tests and deterministic simulator
+Keychain, URLSession, EventKit-to-wire adapter, pairing/repair UI, foreground full-snapshot
+state machine and best-effort `BGAppRefreshTask` path are now implemented; 32 canonical native tests and deterministic simulator
 pairing/upload pass. A separate 31-test DEBUG evidence build proved exact replay and was not merged
 into the product branch.
 On the physical phone, selected-list terminate/relaunch persistence, adult-approved pairing,
@@ -492,6 +497,9 @@ forced-stale recovery remain open and are not inferred from simulator or aggrega
   mode support.
 - Observe foreground EventKit store changes, refetch selected lists
   automatically, and keep the last successful content stable during refresh.
+- Register a paired-source-only `BGAppRefreshTask` that requests another run no earlier than fifteen
+  minutes after suspension, performs one safe full read/upload when iOS grants runtime and cancels
+  cleanly on expiration without claiming fixed-latency sync.
 - Persist only selected list identifiers in the app sandbox, preserving the
   difference between no prior choice and an intentional empty selection, and
   prune identifiers for lists EventKit no longer exposes.
@@ -523,8 +531,9 @@ forced-stale recovery remain open and are not inferred from simulator or aggrega
   reminders with correct due/completion fields.
 - The physical-device check confirms the app makes no reminder mutation and
   retains no Apple ID, app-specific password, private URL or NAS credential.
-- The native client makes no EventKit mutation and adds no background sync, APNs, two-way
-  completion or WebView. Its only server write is the frozen, bounded snapshot-source transport.
+- The native client makes no EventKit mutation, APNs integration, two-way completion or WebView.
+  Its best-effort background refresh reuses the frozen, bounded snapshot-source transport and does
+  not claim continuous execution or fixed delivery time.
 - Every Native Reminders scenario in `ACCEPTANCE.md` passes, including physical-device live
   upload/readback and terminate/relaunch selection evidence.
 - Raw EventKit identifiers and the source secret are absent from SQLite, logs, browser responses,

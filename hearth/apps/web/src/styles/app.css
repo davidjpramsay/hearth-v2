@@ -9,22 +9,6 @@
   background: var(--canvas);
 }
 
-@media (max-width: 520px) {
-  .today-admin-section {
-    padding: 17px;
-  }
-  .today-section-switches,
-  .notice-form__options {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .notice-card__actions {
-    justify-content: stretch;
-  }
-  .notice-card__actions .button {
-    flex: 1;
-  }
-}
-
 .runtime-gate {
   min-height: 100vh;
   padding: clamp(32px, 6vw, 96px);
@@ -1520,8 +1504,8 @@
 }
 .local-status__icon,
 .admin-setting-row__icon {
-  width: 50px;
-  height: 50px;
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
   border-radius: 50%;
   display: grid;
@@ -1559,46 +1543,45 @@
   text-transform: uppercase;
 }
 .admin-setting-list {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-}
-.admin-setting-row {
-  min-height: 88px;
-  padding: 14px;
+  overflow: hidden;
   border: 1px solid #e5ddd3;
-  border-radius: 18px;
-  color: #292329;
+  border-radius: 14px;
   background: rgb(255 255 255 / 80%);
   box-shadow: 0 6px 18px rgb(61 48 50 / 5%);
+}
+.admin-setting-row {
+  min-height: 64px;
+  padding: 10px 13px;
+  border: 0;
+  border-bottom: 1px solid #e5ddd3;
+  color: #292329;
+  background: transparent;
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 14px;
 }
+.admin-setting-row:last-child {
+  border-bottom: 0;
+}
 .admin-setting-row:focus-visible,
 .admin-setting-row:hover {
-  border-color: #b495aa;
-  outline: 3px solid rgb(85 50 74 / 18%);
+  position: relative;
+  z-index: 1;
+  background: var(--surface-raised);
+}
+.admin-setting-row:focus-visible {
+  border-radius: 12px;
+  outline: 0;
+  box-shadow: inset 0 0 0 3px var(--sky);
+  transform: none;
 }
 .admin-setting-row__copy {
   min-width: 0;
   flex: 1;
 }
-.admin-setting-row__copy strong,
-.admin-setting-row__copy small {
-  display: block;
-}
-.admin-setting-row__copy strong {
+.admin-setting-row__copy {
   font-size: 21px;
-}
-.admin-setting-row__copy small {
-  margin-top: 2px;
-  overflow: hidden;
-  color: #746b72;
-  font-size: 15px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .admin-setting-row > svg {
   color: #3d323b;
@@ -1723,12 +1706,36 @@
   border-radius: 16px;
   color: var(--ink);
   background: var(--surface);
-  display: flex;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   text-align: left;
   cursor: pointer;
+}
+.today-section-switch:focus-visible {
+  position: relative;
+  z-index: 1;
+  border-radius: 12px;
+  outline: 0;
+  box-shadow: inset 0 0 0 3px var(--sky);
+  transform: none;
+}
+.today-section-switch__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+  display: grid;
+  place-items: center;
+}
+.today-section-switch__icon svg {
+  width: 21px;
+  height: 21px;
+}
+.today-section-switch__copy {
+  min-width: 0;
 }
 .today-section-switch strong,
 .today-section-switch small {
@@ -3328,11 +3335,11 @@
     gap: 16px;
   }
   .admin-home .admin-setting-list {
-    gap: 8px;
+    border-radius: 14px;
   }
   .admin-home .admin-setting-row {
-    min-height: 80px;
-    padding: 10px 12px;
+    min-height: 58px;
+    padding: 8px 11px;
   }
   .admin-home .admin-primary-action {
     min-height: 54px;
@@ -5668,7 +5675,6 @@
 :root[data-theme='dark'] .summary-details,
 :root[data-theme='dark'] .event-detail__panel,
 :root[data-theme='dark'] .admin-actor,
-:root[data-theme='dark'] .admin-setting-row,
 :root[data-theme='dark'] .admin-form,
 :root[data-theme='dark'] .planning-area-card,
 :root[data-theme='dark'] .routine-editor,
@@ -5681,6 +5687,15 @@
 :root[data-theme='dark'] .saved-meal-card,
 :root[data-theme='dark'] .today-admin-section {
   background: var(--surface-glass);
+}
+:root[data-theme='dark'] .admin-setting-list {
+  border-color: var(--hairline);
+  background: var(--surface-glass);
+  box-shadow: none;
+}
+:root[data-theme='dark'] .admin-setting-row {
+  border-color: var(--hairline);
+  background: transparent;
 }
 :root[data-theme='dark'] .today-admin-section {
   border-color: var(--hairline);
@@ -5907,5 +5922,102 @@
   }
   .reminder-source-remove-confirmation .admin-secondary {
     margin: 10px 0 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-page__header {
+    min-height: 68px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+  .admin-page__header h1 {
+    font-size: 30px;
+    line-height: 1.05;
+  }
+  .admin-page__header p {
+    margin-top: 5px;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  .admin-back {
+    width: 42px;
+    height: 42px;
+  }
+  .today-admin-section,
+  :root[data-theme='dark'] .today-admin-section {
+    margin-top: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-page__header + .today-admin-section {
+    margin-top: 0;
+  }
+  .today-admin-section__heading {
+    margin-bottom: 11px;
+  }
+  .today-admin-section__heading h2 {
+    font-size: 22px;
+  }
+  .today-admin-section__heading > span {
+    padding: 0;
+    background: transparent;
+    font-size: 13px;
+  }
+  .today-section-switches {
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    border: 1px solid var(--hairline);
+    border-radius: 17px;
+    background: var(--surface);
+  }
+  .today-section-switch {
+    min-height: 78px;
+    padding: 11px 13px;
+    border: 0;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    background: transparent;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .today-section-switch:last-child {
+    border-bottom: 0;
+  }
+  .today-section-switch__icon {
+    width: 36px;
+    height: 36px;
+  }
+  .today-section-switch strong {
+    font-size: 16px;
+  }
+  .today-section-switch small {
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .settings-toggle {
+    width: 44px;
+    height: 26px;
+  }
+  .settings-toggle > span {
+    width: 20px;
+    height: 20px;
+  }
+  .today-section-switch[aria-checked='true'] .settings-toggle > span {
+    transform: translateX(18px);
+  }
+  .notice-form__options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .notice-card__actions {
+    justify-content: stretch;
+  }
+  .notice-card__actions .button {
+    flex: 1;
   }
 }

@@ -2,22 +2,12 @@
   max-width: 1420px;
 }
 
-.more-screen__header p,
 .more-screen__header h1,
 .more-screen__header span {
   margin: 0;
 }
 
-.more-screen__header p {
-  color: var(--eucalyptus);
-  font-size: 18px;
-  font-weight: 760;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .more-screen__header h1 {
-  margin-top: 2px;
   font-size: 58px;
 }
 
@@ -36,28 +26,53 @@
 }
 
 .more-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgb(61 48 50 / 5%);
 }
 
 .more-card {
-  min-height: 92px;
-  padding: 15px 18px;
-  border: 1px solid var(--hairline);
-  border-radius: 17px;
+  min-height: 64px;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
   color: var(--ink);
-  background: var(--surface);
+  background: transparent;
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr) auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: 13px;
   text-decoration: none;
 }
 
+.more-card:last-child {
+  border-bottom: 0;
+}
+
+.more-card:hover,
+.more-card:focus-visible {
+  position: relative;
+  z-index: 1;
+  background: var(--surface-raised);
+}
+
+.more-card:focus-visible {
+  border-radius: 12px;
+  outline: 0;
+  box-shadow: inset 0 0 0 3px var(--sky);
+  transform: none;
+}
+
+.more-card--emphasis {
+  color: var(--plum);
+  background: color-mix(in srgb, var(--plum-soft) 72%, var(--surface));
+}
+
 .more-card__icon {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   color: var(--eucalyptus);
   background: var(--eucalyptus-soft);
@@ -66,30 +81,20 @@
 }
 
 .more-card__icon svg {
-  width: 25px;
-  height: 25px;
+  width: 23px;
+  height: 23px;
 }
 
-.more-card strong,
-.more-card small {
-  display: block;
+.more-card--emphasis .more-card__icon {
+  color: var(--plum);
+  background: color-mix(in srgb, var(--plum-soft) 82%, var(--surface));
 }
 
 .more-card strong {
-  font-size: 22px;
-}
-
-.more-card small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 16px;
+  font-size: 20px;
 }
 
 @media (max-width: 900px) {
-  .more-screen__header p {
-    font-size: 13px;
-  }
-
   .more-screen__header h1 {
     font-size: 40px;
   }
@@ -99,39 +104,45 @@
   }
 
   .more-group {
-    margin-top: 24px;
+    margin-top: 22px;
   }
 
   .more-group h2 {
     font-size: 20px;
   }
 
-  .more-grid {
-    grid-template-columns: 1fr;
-    gap: 9px;
-  }
-
   .more-card {
-    min-height: 78px;
-    padding: 11px 13px;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    gap: 11px;
+    min-height: 58px;
+    padding: 8px 12px;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 10px;
   }
 
   .more-card__icon {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .more-card__icon svg {
+    width: 21px;
+    height: 21px;
   }
 
   .more-card strong {
-    font-size: 18px;
-  }
-
-  .more-card small {
-    font-size: 14px;
+    font-size: 17px;
   }
 }
 
 :root[data-theme='dark'] .more-card {
+  background: transparent;
+}
+
+:root[data-theme='dark'] .more-grid {
   background: var(--surface-glass);
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .more-card--emphasis {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--plum-soft) 62%, var(--surface-glass));
 }

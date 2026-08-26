@@ -7,39 +7,55 @@ import { createRequestId, getHearthRuntime } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { todayApi as hearthApi } from '../api/today';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
-import { Icon } from '../components/Icon';
-import { TodayConfigurationPreview } from '../components/TodayConfigurationPreview';
-import { createTodayPreviewData } from '../components/todayPreviewData';
-import { useTodayConfigurationQuery, useTodayQuery } from '../hooks/useTodayQueries';
+import { Icon, type IconName } from '../components/Icon';
+import { useTodayConfigurationQuery } from '../hooks/useTodayQueries';
 
 const sectionOptions: Array<{
   key: keyof TodaySectionVisibility;
   title: string;
   description: string;
+  icon: IconName;
 }> = [
-  { key: 'dinner', title: 'Dinner', description: 'Tonight’s meal from the family plan' },
-  { key: 'listSummary', title: 'List summary', description: 'Items left on the main list' },
-  { key: 'notice', title: 'Notice', description: 'The highest-priority active notice' },
+  {
+    key: 'dinner',
+    title: 'Dinner',
+    description: 'Tonight’s meal from the family plan',
+    icon: 'meal',
+  },
+  {
+    key: 'listSummary',
+    title: 'List summary',
+    description: 'Items left on the main list',
+    icon: 'list',
+  },
+  {
+    key: 'notice',
+    title: 'Notice',
+    description: 'The highest-priority active notice',
+    icon: 'bell',
+  },
   {
     key: 'dailyVerse',
     title: 'Daily Bible verse',
     description: 'One ESV passage selected for the household’s local day',
+    icon: 'book-open',
   },
   {
     key: 'reminders',
     title: 'Reminders',
     description: 'Open Apple Reminders that are due today',
+    icon: 'today',
   },
   {
     key: 'photo',
     title: 'Family photo',
     description: 'A substantial photo from the private Hearth collection',
+    icon: 'image',
   },
 ];
 
 export function TodaySettingsScreen() {
   const query = useTodayConfigurationQuery();
-  const todayQuery = useTodayQuery();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const [priority, setPriority] = useState<'standard' | 'important'>('standard');
@@ -109,11 +125,6 @@ export function TodaySettingsScreen() {
     () => configuration?.notices.toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt)) ?? [],
     [configuration?.notices],
   );
-  const activeNotice =
-    configuration?.notices.find((notice) => notice.id === configuration.activeNoticeId)?.message ??
-    null;
-  const previewData = createTodayPreviewData(todayQuery.data, activeNotice);
-
   function toggleSection(key: keyof TodaySectionVisibility) {
     const latest =
       queryClient.getQueryData<TodayConfiguration>(queryKeys.todayConfiguration) ?? configuration;
@@ -130,17 +141,14 @@ export function TodaySettingsScreen() {
 
   const error = saveSections.error ?? saveNotice.error ?? archiveNotice.error;
   return (
-    <AdminPage
-      title="Today & notices"
-      subtitle="Choose the useful details your family sees at a glance"
-    >
+    <AdminPage title="Today & notices" subtitle="Choose what appears on the family dashboard">
       <section className="today-admin-section">
         <div className="today-admin-section__heading">
-          <div>
-            <p className="admin-kicker">Today overview</p>
-            <h2>Show what matters</h2>
-          </div>
-          <span>{Object.values(configuration.sections).filter(Boolean).length} shown</span>
+          <h2>Show on Today</h2>
+          <span aria-live="polite">
+            {Object.values(configuration.sections).filter(Boolean).length} of{' '}
+            {sectionOptions.length} shown
+          </span>
         </div>
         <div className="today-section-switches">
           {sectionOptions.map((option) => {
@@ -156,7 +164,10 @@ export function TodaySettingsScreen() {
                 role="switch"
                 type="button"
               >
-                <span>
+                <span className="today-section-switch__icon">
+                  <Icon name={option.icon} />
+                </span>
+                <span className="today-section-switch__copy">
                   <strong>{option.title}</strong>
                   <small>{option.description}</small>
                 </span>
@@ -167,17 +178,6 @@ export function TodaySettingsScreen() {
             );
           })}
         </div>
-        <TodayConfigurationPreview
-          data={previewData}
-          sections={configuration.sections}
-          status={
-            todayQuery.data !== undefined
-              ? 'ready'
-              : todayQuery.isPending
-                ? 'loading'
-                : 'unavailable'
-          }
-        />
       </section>
 
       <section className="today-admin-section">

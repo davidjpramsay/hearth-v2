@@ -489,7 +489,7 @@ test('@visual phone administration uploads and curates the private photo collect
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/photos');
-  await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Manage photos', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Choose photos' })).toBeFocused();
   await expect(page.getByRole('heading', { name: 'Add photos from this phone' })).toBeVisible();
   await expect(page.getByText('Optional Synology folder import', { exact: true })).toBeVisible();

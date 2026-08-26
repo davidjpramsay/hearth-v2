@@ -11,90 +11,63 @@ import { useHearthRuntime } from '../runtime/context';
 
 interface Setting {
   title: string;
-  description: (
-    members: number,
-    televisions: number,
-    householdName: string,
-    timezone: string,
-  ) => string;
   icon: IconName;
   path: string;
 }
 
 const settingGroups: Array<{ title: string; settings: Setting[] }> = [
   {
-    title: 'Household',
+    title: 'Family content',
     settings: [
       {
-        title: 'Household',
-        description: (_members, _televisions, householdName, timezone) =>
-          `${householdName} · ${timezoneLabel(timezone)}`,
-        icon: 'home',
-        path: '/admin/household',
+        title: 'Manage photos',
+        icon: 'image',
+        path: '/admin/photos',
       },
       {
-        title: 'People',
-        description: (members) => `${members} members · Roles and permissions`,
-        icon: 'users',
-        path: '/admin/people',
-      },
-      {
-        title: 'Adult access',
-        description: () => 'Passkeys, trusted devices and recovery',
-        icon: 'shield',
-        path: '/admin/access',
-      },
-    ],
-  },
-  {
-    title: 'Family setup',
-    settings: [
-      {
-        title: 'Today & notices',
-        description: () => 'Overview sections and household notices',
+        title: 'Today screen & notices',
         icon: 'today',
         path: '/admin/today',
       },
       {
-        title: 'Family planning',
-        description: () => 'Routines, meals, lists and pocket money',
+        title: 'Chores, routines & pocket money',
         icon: 'wallet',
         path: '/admin/planning',
       },
     ],
   },
   {
-    title: 'Connections',
+    title: 'Household & access',
     settings: [
       {
-        title: 'Connections',
-        description: () => 'Calendar and Home Assistant',
-        icon: 'link',
-        path: '/admin/connections',
+        title: 'Household details',
+        icon: 'home',
+        path: '/admin/household',
+      },
+      {
+        title: 'People',
+        icon: 'users',
+        path: '/admin/people',
+      },
+      {
+        title: 'Adult access',
+        icon: 'shield',
+        path: '/admin/access',
       },
     ],
   },
   {
-    title: 'Displays',
+    title: 'Connections & displays',
     settings: [
       {
-        title: 'Photos',
-        description: () => 'Upload and choose family photos',
-        icon: 'image',
-        path: '/admin/photos',
+        title: 'Connections',
+        icon: 'link',
+        path: '/admin/connections',
       },
       {
         title: 'Paired televisions',
-        description: (_members, televisions) =>
-          `${televisions} connected · Approve, pair or revoke a television`,
         icon: 'television',
         path: '/admin/televisions',
-      },
-      {
-        title: 'Appearance',
-        description: () => 'Light, dark and evening comfort',
-        icon: 'moon',
-        path: '/appearance',
       },
     ],
   },
@@ -103,13 +76,11 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
     settings: [
       {
         title: 'System health',
-        description: () => 'Backups, storage and version',
         icon: 'shield',
         path: '/admin/system',
       },
       {
         title: 'Recent activity',
-        description: () => 'Private household change history',
         icon: 'list',
         path: '/admin/activity',
       },
@@ -120,7 +91,12 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
 const settings = settingGroups.flatMap((group) => group.settings);
 
 function settingFocusId(title: string): string {
-  return `admin-${title.toLowerCase().split(' ')[0]}`;
+  const firstWord =
+    title
+      .toLowerCase()
+      .split(' ')[0]
+      ?.replaceAll(/[^a-z0-9]/g, '') ?? 'setting';
+  return `admin-${firstWord}`;
 }
 
 function adjacentSettingFocusId(index: number, fallback: string): string {
@@ -141,9 +117,6 @@ export function AdminScreen() {
   if (admin.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;
 
-  const connected = admin.data.pairedDevices.filter(
-    (device) => device.status === 'connected',
-  ).length;
   return (
     <section className="admin-home">
       <header className="admin-home__topbar">
@@ -207,17 +180,7 @@ export function AdminScreen() {
                     <span className="admin-setting-row__icon">
                       <Icon name={setting.icon} />
                     </span>
-                    <span className="admin-setting-row__copy">
-                      <strong>{setting.title}</strong>
-                      <small>
-                        {setting.description(
-                          admin.data.household.members.length,
-                          connected,
-                          admin.data.household.name,
-                          admin.data.household.timezone,
-                        )}
-                      </small>
-                    </span>
+                    <strong className="admin-setting-row__copy">{setting.title}</strong>
                     <Icon name="chevron-right" />
                   </Link>
                 );
@@ -233,8 +196,4 @@ export function AdminScreen() {
       )}
     </section>
   );
-}
-
-function timezoneLabel(timezone: string): string {
-  return timezone.split('/').at(-1)?.replaceAll('_', ' ') ?? timezone;
 }

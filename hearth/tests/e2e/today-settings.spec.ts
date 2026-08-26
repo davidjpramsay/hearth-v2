@@ -22,10 +22,7 @@ test('adult publishes an important notice and chooses the Today overview section
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/today');
   await expect(page.getByRole('heading', { name: 'Today & notices' })).toBeVisible();
-  await expect(page.getByRole('img', { name: /TV Today preview/ })).toBeVisible();
-  await expect(page.getByText('School drop-off')).toBeVisible();
-  await page.getByRole('button', { name: 'Phone' }).click();
-  await expect(page.getByRole('img', { name: /phone Today preview/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Preview', exact: true })).toHaveCount(0);
   const dinner = page.getByRole('switch', { name: /Dinner/ });
   const photo = page.getByRole('switch', { name: /Family photo/ });
   await expect(dinner).toHaveAttribute('aria-checked', 'true');
@@ -33,8 +30,6 @@ test('adult publishes an important notice and chooses the Today overview section
   await photo.click();
   await expect(dinner).toHaveAttribute('aria-checked', 'false');
   await expect(photo).toHaveAttribute('aria-checked', 'false');
-  await expect(page.locator('.today-configuration-preview__band--dinner')).toHaveCount(0);
-  await expect(page.locator('.today-configuration-preview__photo')).toHaveCount(0);
 
   await page.getByLabel('Message').fill('Bring library books tomorrow');
   await page.getByLabel('Priority').selectOption('important');
@@ -73,7 +68,6 @@ test('@visual @a11y daily verse is optional and Back restores its television foc
   await expect(dailyVerse).toHaveAttribute('aria-checked', 'false');
   await dailyVerse.click();
   await expect(dailyVerse).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByText('Demo preview')).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'today-daily-verse-settings-phone-portrait.png'),
     animations: 'disabled',
@@ -128,61 +122,6 @@ test('@visual and @a11y Today notice administration and customised television ov
     animations: 'disabled',
   });
 
-  const tvPreview = page.getByRole('img', { name: /TV Today preview/ });
-  await expect(tvPreview).toBeVisible();
-  const tvBox = await tvPreview.boundingBox();
-  expect(tvBox).not.toBeNull();
-  expect((tvBox?.width ?? 0) / (tvBox?.height ?? 1)).toBeCloseTo(1666 / 1080, 2);
-  await tvPreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-  await captureEvidence(page, {
-    path: resolve(evidence, 'today-preview-tv-phone-portrait.png'),
-    animations: 'disabled',
-  });
-  await page.getByRole('button', { name: 'Phone' }).click();
-  const phonePreview = page.getByRole('img', { name: /phone Today preview/ });
-  await expect(phonePreview).toBeVisible();
-  const phoneBox = await phonePreview.boundingBox();
-  expect(phoneBox).not.toBeNull();
-  expect((phoneBox?.width ?? 0) / (phoneBox?.height ?? 1)).toBeCloseTo(390 / 844, 2);
-  await phonePreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-  await expect(page.getByText('School drop-off')).toBeVisible();
-  await captureEvidence(page, {
-    path: resolve(evidence, 'today-preview-phone-phone-portrait.png'),
-    animations: 'disabled',
-  });
-  const phoneCanvas = phonePreview.locator('.today-configuration-preview__canvas');
-  await expect
-    .poll(() => phoneCanvas.evaluate((element) => element.scrollHeight > element.clientHeight))
-    .toBe(true);
-  await phoneCanvas.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-  });
-  await expect.poll(() => phoneCanvas.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  const previewResults = await new AxeBuilder({ page }).analyze();
-  expect(
-    previewResults.violations.filter((violation) =>
-      ['serious', 'critical'].includes(violation.impact ?? ''),
-    ),
-  ).toEqual([]);
-
-  await page.setViewportSize({ width: 1366, height: 768 });
-  await page.getByRole('button', { name: 'TV' }).click();
-  const wideTvPreview = page.getByRole('img', { name: /TV Today preview/ });
-  await wideTvPreview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-  const previewBandsBox = await wideTvPreview
-    .locator('.today-configuration-preview__bands')
-    .boundingBox();
-  const previewPhotoBox = await wideTvPreview
-    .locator('.today-configuration-preview__photo')
-    .boundingBox();
-  expect(previewBandsBox).not.toBeNull();
-  expect(previewPhotoBox).not.toBeNull();
-  expect(Math.abs(previewBandsBox!.y - previewPhotoBox!.y)).toBeLessThanOrEqual(1);
-  await captureEvidence(page, {
-    path: resolve(evidence, 'today-preview-tv-admin-1366.png'),
-    animations: 'disabled',
-  });
-
   await page.getByRole('switch', { name: /Dinner/ }).click();
   await page.getByRole('switch', { name: /Family photo/ }).click();
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -195,7 +134,7 @@ test('@visual and @a11y Today notice administration and customised television ov
   });
 });
 
-test('@visual @a11y dark Today previews remain readable on phone', async ({ page }) => {
+test('@visual @a11y dark Today settings remain readable on phone', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
       'hearth.appearance.v1',
@@ -205,10 +144,8 @@ test('@visual @a11y dark Today previews remain readable on phone', async ({ page
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/today');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: 'Phone' }).click();
-  const preview = page.getByRole('img', { name: /phone Today preview/ });
-  await expect(preview).toBeVisible();
-  await preview.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  await expect(page.getByRole('heading', { name: 'Show on Today' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Preview', exact: true })).toHaveCount(0);
   const results = await new AxeBuilder({ page }).analyze();
   expect(
     results.violations.filter((violation) =>
@@ -216,7 +153,7 @@ test('@visual @a11y dark Today previews remain readable on phone', async ({ page
     ),
   ).toEqual([]);
   await captureEvidence(page, {
-    path: resolve(evidence, 'today-preview-dark-phone-portrait.png'),
+    path: resolve(evidence, 'today-settings-dark-phone-portrait.png'),
     animations: 'disabled',
   });
 });

@@ -34,11 +34,16 @@ test('phone More opens setup and household/member changes survive reload', async
   await page.getByRole('link', { name: 'More', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'More' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Lists/ })).toBeVisible();
-  await page.getByRole('link', { name: /Household & people/ }).click();
-  await expect(page.getByRole('heading', { name: 'Hearth settings' })).toBeVisible();
-  await expect(page.locator('.admin-actor')).toContainText('Administrator');
+  await expect(page.locator('.more-card small')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /View family photos/ })).toHaveAttribute(
+    'href',
+    '/photos',
+  );
+  await page.getByRole('link', { name: /Manage photos/ }).click();
+  await expect(page.getByRole('heading', { name: 'Manage photos' })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to More' }).click();
 
-  await page.getByRole('link', { name: /Household/ }).click();
+  await page.getByRole('link', { name: /Household details/ }).click();
   await page.getByLabel('Household name').fill('Rowan household');
   await page.getByRole('button', { name: 'Save household' }).click();
   await expect(page.getByRole('status')).toContainText('Household saved');
@@ -67,19 +72,19 @@ test('Hearth settings groups household tasks and keeps remote movement continuou
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin');
   await expect(page.locator('.admin-setting-group > h2')).toHaveText([
-    'Household',
-    'Family setup',
-    'Connections',
-    'Displays',
+    'Family content',
+    'Household & access',
+    'Connections & displays',
     'System',
   ]);
-  await expect(page.locator('[data-focus-id="admin-household"]')).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(page.locator('[data-focus-id="admin-people"]')).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(page.locator('[data-focus-id="admin-adult"]')).toBeFocused();
+  await expect(page.locator('.admin-setting-row small')).toHaveCount(0);
+  await expect(page.locator('[data-focus-id="admin-manage"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-today"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="admin-chores"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="admin-household"]')).toBeFocused();
 });
 
 test('Adult access explains private passkeys and recovery without exposing demo controls', async ({

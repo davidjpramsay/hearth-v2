@@ -117,6 +117,10 @@ Chromium fallback produced the retained evidence.
 - While the companion is open, an EventKit store-change notification refetches
   the selected lists automatically, and returning to the foreground refetches
   them as a safety check. A manual pull or toolbar refresh remains available.
+- After a paired companion enters the background, it submits one permitted app-refresh request with
+  a fifteen-minute earliest start. An OS-granted run performs a safe EventKit read and waits for the
+  existing source transport to accept the snapshot; expiration cancels the transport and preserves
+  the prior projection/pending retry. No acceptance claim implies that iOS runs it at a fixed time.
 - Refreshing keeps the last successful reminder content in place until the
   replacement read completes; the screen does not flicker into a separate
   loading layout during an ordinary refresh.
@@ -125,7 +129,8 @@ Chromium fallback produced the retained evidence.
 - The proof explicitly does not claim Apple Reminders Sections hierarchy
   support because EventKit does not expose those user-created sections.
 - The physical read proof used no server write path. The bridge adds only the frozen source-pairing
-  and bounded full-snapshot transport; it has no background sync, APNs, two-way completion, Apple
+  and bounded full-snapshot transport plus best-effort iOS background refresh; it has no APNs,
+  persistent execution, two-way completion, Apple
   ID, iCloud app-specific password, private Apple/calendar URL or NAS credential and invokes no
   EventKit mutation. The trusted private Hearth origin is stored separately from the source secret.
 - Fake-adapter unit tests cover permission, list selection/filtering, stale
@@ -135,7 +140,8 @@ Chromium fallback produced the retained evidence.
   source authorization scheme, approved pairing, bounded selected-list mapping, exact retry,
   stale-sequence recovery, revoked-source repair and protection against accidental empty uploads.
   These tests and the fake accepted-snapshot screen pass in Simulator. The canonical product suite
-  has 30 passing tests, including explicit JSON-null encoding. The isolated evidence build added
+  has 32 passing tests, including explicit JSON-null encoding and background read-to-acceptance
+  coordination. The isolated evidence build added
   one DEBUG-only exact-replay test and passed 31 before that evidence seam was deliberately omitted
   from the product branch.
 - Physical EventKit acceptance passed on 2026-08-25 on an iPhone 17e running
@@ -181,7 +187,8 @@ Chromium fallback produced the retained evidence.
   reminders, so the replay added no receipt and changed no projection count.
 - Signed household endpoint/rendered-dashboard readback remains a separate open checkpoint; it is
   not inferred from the aggregate transport evidence. Physical revocation and forced-stale recovery
-  are also not run, although their deterministic tests pass.
+  are also not run, although their deterministic tests pass. OS-scheduled background execution and
+  its real-world latency remain a separate physical-device checkpoint.
 - Apple Reminders Sections, writeback, completion and deletion are absent from v1.
 
 ### Household people
@@ -293,11 +300,12 @@ Chromium fallback produced the retained evidence.
 - When Daily Bible verse is enabled, demo mode shows fictional copy and private mode shows an
   attributed ESV passage only when its server secret is configured. Select opens a Back-safe full
   reading; a missing key or provider outage cannot take down Today, and cached text is marked stale.
-- Today & notices offers distinct TV and Phone previews using current household
-  content. Switching optional sections updates the preview without navigating
-  away, and two rapid changes cannot overwrite one another.
-- A failed secondary preview read is family-readable and does not prevent an
-  adult from changing or saving section visibility.
+- Today & notices presents the six visibility switches and notice administration without embedding
+  a duplicate simulated dashboard. Two rapid changes cannot overwrite one another, and the actual
+  Today destination remains the authoritative rendered result.
+- At 390×844, all six Today visibility controls render as full-width joined rows with readable copy,
+  an unobstructed trailing switch and a complete inset focus treatment. No control depends on the
+  earlier two-column desktop card geometry.
 - Today displays three to five event and chore rows on television according to photo orientation
   and available height, keeps the full dashboard inside one viewport, and exposes the exact hidden
   count through focusable links to Calendar Agenda and Chores. A landscape photo permits four only
@@ -318,11 +326,9 @@ summary destinations, deterministic focus/Back restoration, TV and phone
 responsive renders, automated accessibility checks and console-clean remote
 flows are covered by `tests/e2e/today-polish.spec.ts`.
 
-The same date's companion extension adds data-backed TV/Phone composition
-previews and serialised optimistic visibility changes. Unit coverage exercises
-both preview compositions, no-optional-section and unavailable states;
-`tests/e2e/today-settings.spec.ts` covers the rapid-toggle race, responsive
-renders and automated accessibility checks.
+The same date's companion extension adds serialised optimistic visibility changes.
+`tests/e2e/today-settings.spec.ts` covers the rapid-toggle race, the absence of the retired embedded
+preview, responsive settings renders and automated accessibility checks.
 
 ### Home Assistant and voice
 
@@ -420,6 +426,13 @@ live-system commissioning tasks requiring owner approval.
   explicit confirmation. The managed master, display and thumbnail files disappear, the command is
   idempotent and one path-free audit event remains. Imported originals cannot be deleted through
   Hearth and the UI explains the source-folder plus **Check folder** workflow.
+- Phone More exposes **View family photos** at `/photos` and a separately labelled, visually prominent
+  **Manage photos** action at `/admin/photos`. The latter opens the phone upload/curation surface,
+  including **Add photos from this phone**, and its Back control returns to More. Hearth settings also
+  places Manage photos first under Family content rather than hiding it behind a generic household row.
+- More and the Hearth settings root use compact title-only navigation rows with slightly squared joined
+  group corners. Repeated row subtitles are absent; destination screens retain the explanatory copy
+  needed to complete their tasks.
 
 Status as of 2026-08-21: the local browser/server slice passes a unique-image,
 content-dependent orientation-aware collage with bounded tile geometry, uncropped portrait rails,

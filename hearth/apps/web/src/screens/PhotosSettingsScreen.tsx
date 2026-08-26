@@ -158,7 +158,12 @@ export function PhotosSettingsScreen() {
     ? primaryCurationFocusId(data.photos.at(-1)!, selectionMode)
     : 'photo-upload-select';
   return (
-    <AdminPage title="Photos" subtitle="Add and choose what appears on the family screen">
+    <AdminPage
+      backLabel="Back to More"
+      backTo="/more"
+      title="Manage photos"
+      subtitle="Add, hide or remove photos shown around Hearth"
+    >
       <section
         aria-labelledby="photo-upload-title"
         className={`photo-source-guide photo-source-guide--${status}`}
