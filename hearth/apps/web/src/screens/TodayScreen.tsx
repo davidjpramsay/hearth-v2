@@ -53,11 +53,13 @@ export function TodayScreen({
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const today = query.data;
+  const showReminderSummary = today.sections.reminders && today.reminderSummary !== null;
   const visibleSummaryCount = [
     today.sections.dinner,
     today.sections.listSummary,
     today.sections.notice,
     today.sections.dailyVerse,
+    showReminderSummary,
   ].filter(Boolean).length;
   const showPhoto = today.sections.photo && rotatingPhoto !== null;
   const photoOrientation = showPhoto && rotatingPhoto !== null ? rotatingPhoto.orientation : 'none';
@@ -78,6 +80,7 @@ export function TodayScreen({
     today.sections.listSummary ? 'today-summary-list' : null,
     today.sections.notice && today.notice !== null ? 'today-summary-notice' : null,
     today.sections.dailyVerse && today.dailyVerse !== null ? 'today-summary-daily-verse' : null,
+    showReminderSummary ? 'today-summary-reminders' : null,
   ].filter((focusId): focusId is string => focusId !== null);
   const portraitSummaryShelf = photoOrientation === 'portrait' && summaryFocusIds.length > 0;
   const portraitChoreSummaryIndex = Math.min(
@@ -111,6 +114,7 @@ export function TodayScreen({
     (today.sections.listSummary && today.listSummary !== null) ||
     (today.sections.notice && today.notice !== null) ||
     today.sections.dailyVerse ||
+    showReminderSummary ||
     showPhoto;
   const empty = today.events.length === 0 && today.chores.length === 0 && !hasVisibleSummaryContent;
   if (empty) {
@@ -349,6 +353,21 @@ export function TodayScreen({
                       {today.dailyVerse.reference} · {today.dailyVerse.text}
                     </SummaryBand>
                   )
+                ) : null}
+                {showReminderSummary && today.reminderSummary !== null ? (
+                  <SummaryBand
+                    ariaLabel="Open Apple Reminders shared with Hearth"
+                    focus={summaryFocus('today-summary-reminders')}
+                    icon="bell"
+                    label="Reminders"
+                    to="/reminders"
+                  >
+                    {today.reminderSummary.dueTodayCount === 0
+                      ? 'Nothing due today'
+                      : today.reminderSummary.dueTodayCount === 1
+                        ? (today.reminderSummary.items[0]?.title ?? '1 due today')
+                        : `${today.reminderSummary.dueTodayCount} due today · ${today.reminderSummary.items[0]?.title ?? 'Open reminders'}`}
+                  </SummaryBand>
                 ) : null}
               </div>
             )}

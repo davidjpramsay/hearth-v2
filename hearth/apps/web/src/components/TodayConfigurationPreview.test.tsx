@@ -40,6 +40,18 @@ const data: TodayPreviewData = {
     freshness: 'current',
     statusMessage: null,
   },
+  reminderSummary: {
+    sourceStatus: 'current',
+    dueTodayCount: 2,
+    items: [
+      {
+        id: 'reminder_lunchbox',
+        title: 'Pack lunchbox',
+        dueAt: null,
+        hasDueTime: false,
+      },
+    ],
+  },
   photo: { url: '/demo/family.webp', alt: 'Family breakfast', orientation: 'landscape' },
 };
 
@@ -49,6 +61,7 @@ const allSections: TodaySectionVisibility = {
   notice: true,
   photo: true,
   dailyVerse: true,
+  reminders: true,
 };
 
 describe('TodayConfigurationPreview', () => {
@@ -99,7 +112,7 @@ describe('TodayConfigurationPreview', () => {
     ).toBeVisible();
     expect(
       container.querySelector('.today-configuration-preview__canvas--photo-portrait'),
-    ).toHaveAttribute('data-summary-count', '4');
+    ).toHaveAttribute('data-summary-count', '5');
     expect(container.querySelector('.today-configuration-preview__photo--portrait')).toBeVisible();
   });
 
@@ -157,7 +170,7 @@ describe('TodayConfigurationPreview', () => {
     const { container } = render(
       <TodayConfigurationPreview
         data={ratioData}
-        sections={{ ...allSections, dailyVerse: false }}
+        sections={{ ...allSections, dailyVerse: false, reminders: false }}
       />,
     );
 
@@ -179,6 +192,7 @@ describe('TodayConfigurationPreview', () => {
           notice: false,
           photo: false,
           dailyVerse: false,
+          reminders: false,
         }}
       />,
     );

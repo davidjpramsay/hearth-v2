@@ -1114,6 +1114,9 @@ describe('0001 household core migration', () => {
     expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 25').get()).toEqual(
       { name: 'reminder_source_projection' },
     );
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 26').get()).toEqual(
+      { name: 'today_reminders' },
+    );
     expect(
       database.prepare('PRAGMA table_info(reminder_items)').all() as Array<{ name: string }>,
     ).toEqual(
@@ -1136,6 +1139,10 @@ describe('0001 household core migration', () => {
 
     database.exec(`
       INSERT INTO households VALUES ('household_reminder', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
+      INSERT INTO today_section_preferences
+        (household_id, show_dinner, show_list_summary, show_notice, show_photo,
+         show_daily_verse, updated_at)
+      VALUES ('household_reminder', 1, 1, 1, 1, 0, 'now');
       INSERT INTO reminder_sources
         (id, household_id, display_name, source_kind, created_at, revoked_at,
          revoked_request_id, last_snapshot_sequence, last_snapshot_id,
@@ -1143,6 +1150,16 @@ describe('0001 household core migration', () => {
       VALUES ('reminder_source_one', 'household_reminder', 'Apple Reminders', 'eventkit',
               'now', NULL, NULL, 0, NULL, NULL, NULL);
     `);
+    expect(
+      database
+        .prepare('SELECT show_reminders FROM today_section_preferences WHERE household_id = ?')
+        .get('household_reminder'),
+    ).toEqual({ show_reminders: 1 });
+    expect(() =>
+      database
+        .prepare('UPDATE today_section_preferences SET show_reminders = 2 WHERE household_id = ?')
+        .run('household_reminder'),
+    ).toThrow(/CHECK/);
     expect(() =>
       database.exec(`
         INSERT INTO reminder_sources

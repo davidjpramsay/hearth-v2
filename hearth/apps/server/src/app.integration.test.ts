@@ -284,6 +284,7 @@ describe('Hearth v2 API', () => {
       `${base}/meal-plan?weekStart=2026-08-03`,
       `${base}/pocket-money?weekStart=2026-08-03&asOf=2026-08-03`,
       `${base}/events`,
+      `${base}/reminders?includeCompleted=false`,
     ];
     for (const url of privateReadUrls) {
       const response = await app.inject({ method: 'GET', url });
@@ -307,6 +308,12 @@ describe('Hearth v2 API', () => {
       headers: companionCookie,
     });
     expect(signedInToday.statusCode).toBe(200);
+    const signedInReminders = await app.inject({
+      method: 'GET',
+      url: `${base}/reminders?includeCompleted=false`,
+      headers: companionCookie,
+    });
+    expect(signedInReminders.statusCode).toBe(200);
 
     const wrongHousehold = await app.inject({
       method: 'GET',
@@ -366,6 +373,12 @@ describe('Hearth v2 API', () => {
       headers: { cookie: `hearth_device=${pairingSecret}` },
     });
     expect(televisionToday.statusCode).toBe(200);
+    const televisionReminders = await app.inject({
+      method: 'GET',
+      url: `${base}/reminders?includeCompleted=false`,
+      headers: { cookie: `hearth_device=${pairingSecret}` },
+    });
+    expect(televisionReminders.statusCode).toBe(200);
   });
 
   it('returns schema-valid Today, Week, Month and Chores projections', async () => {
@@ -479,6 +492,7 @@ describe('Hearth v2 API', () => {
         notice: true,
         photo: false,
         dailyVerse: true,
+        reminders: false,
       },
     });
     expect(sections.statusCode).toBe(200);
@@ -496,6 +510,7 @@ describe('Hearth v2 API', () => {
         notice: true,
         photo: false,
         dailyVerse: true,
+        reminders: false,
       },
     });
   });

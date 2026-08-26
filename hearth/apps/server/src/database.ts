@@ -70,6 +70,10 @@ const migrations = [
     version: 25,
     url: new URL('./migrations/0025_reminder_source_projection.sql', import.meta.url),
   },
+  {
+    version: 26,
+    url: new URL('./migrations/0026_today_reminders.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

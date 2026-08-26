@@ -59,6 +59,7 @@ describe('SQLite Today content', () => {
         notice: true,
         photo: false,
         dailyVerse: true,
+        reminders: false,
       },
       actor,
     );
@@ -70,6 +71,7 @@ describe('SQLite Today content', () => {
       notice: true,
       photo: false,
       dailyVerse: true,
+      reminders: false,
     });
     expect(configuration.notices).toEqual(
       expect.arrayContaining([expect.objectContaining({ message: 'Library books tomorrow' })]),

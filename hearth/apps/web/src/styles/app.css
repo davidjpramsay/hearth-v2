@@ -770,6 +770,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
+.summary-details--count-5 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
 .summary-details--count-4 .summary-band + .summary-band {
   border-top: 0;
 }
@@ -777,6 +781,15 @@
   border-top: 1px solid var(--hairline);
 }
 .summary-details--count-4 .summary-band:nth-child(even) {
+  border-left: 1px solid var(--hairline);
+}
+.summary-details--count-5 .summary-band + .summary-band {
+  border-top: 0;
+}
+.summary-details--count-5 .summary-band:nth-child(n + 4) {
+  border-top: 1px solid var(--hairline);
+}
+.summary-details--count-5 .summary-band:not(:nth-child(3n + 1)) {
   border-left: 1px solid var(--hairline);
 }
 .summary-band {
@@ -958,8 +971,19 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     grid-template-rows: minmax(0, 1fr);
   }
+  .today-dashboard .summary-details--count-5 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(104px, auto));
+  }
+  .today-dashboard .summary-details--count-5 .summary-band {
+    grid-column: span 2;
+  }
+  .today-dashboard .summary-details--count-5 .summary-band:nth-child(n + 4) {
+    grid-column: span 3;
+  }
   .today-dashboard .summary-band,
-  .today-dashboard .summary-details--count-4 .summary-band:nth-child(n) {
+  .today-dashboard .summary-details--count-4 .summary-band:nth-child(n),
+  .today-dashboard .summary-details--count-5 .summary-band:nth-child(n) {
     min-width: 0;
     min-height: 104px;
     padding: 18px;
@@ -969,7 +993,8 @@
     box-shadow: var(--shadow-rest);
   }
   .today-dashboard .summary-band + .summary-band,
-  .today-dashboard .summary-details--count-4 .summary-band + .summary-band {
+  .today-dashboard .summary-details--count-4 .summary-band + .summary-band,
+  .today-dashboard .summary-details--count-5 .summary-band + .summary-band {
     border-top: 1px solid var(--hairline);
   }
   .today-dashboard .summary-band__icon {
@@ -1001,6 +1026,9 @@
   .today-dashboard--photo-landscape[data-summary-count='4'] .summary-row {
     grid-template-columns: minmax(0, 1fr) 42%;
   }
+  .today-dashboard--photo-landscape[data-summary-count='5'] .summary-row {
+    grid-template-columns: minmax(0, 1fr) 42%;
+  }
   .today-dashboard--photo-square .summary-row {
     grid-template-columns: minmax(0, 1fr) clamp(300px, 32%, 410px);
     align-items: start;
@@ -1026,6 +1054,20 @@
   .today-dashboard--photo-landscape .summary-details--count-4,
   .today-dashboard--photo-square .summary-details--count-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(104px, auto));
+  }
+  .today-dashboard--photo-landscape .summary-details--count-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(104px, auto));
+  }
+  .today-dashboard--photo-landscape .summary-details--count-5 .summary-band:nth-child(n) {
+    grid-column: auto;
+  }
+  .today-dashboard--photo-landscape .summary-details--count-5 .summary-band:last-child {
+    grid-column: 1 / -1;
+  }
+  .today-dashboard--photo-square .summary-details--count-5 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(104px, auto));
   }
   .today-dashboard--photo-portrait {
@@ -1062,7 +1104,8 @@
     align-self: start;
   }
   .today-dashboard--photo-portrait .summary-band,
-  .today-dashboard--photo-portrait .summary-details--count-4 .summary-band:nth-child(n) {
+  .today-dashboard--photo-portrait .summary-details--count-4 .summary-band:nth-child(n),
+  .today-dashboard--photo-portrait .summary-details--count-5 .summary-band:nth-child(n) {
     min-height: clamp(104px, 11vh, 132px);
     padding: clamp(18px, 2vh, 24px);
   }
@@ -3157,10 +3200,20 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
   }
+  .summary-details--count-5 {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
   .summary-details--count-4 .summary-band:nth-child(even) {
     border-left: 0;
   }
   .summary-details--count-4 .summary-band + .summary-band {
+    border-top: 1px solid var(--hairline);
+  }
+  .summary-details--count-5 .summary-band:nth-child(n) {
+    border-left: 0;
+  }
+  .summary-details--count-5 .summary-band + .summary-band {
     border-top: 1px solid var(--hairline);
   }
   .summary-band {

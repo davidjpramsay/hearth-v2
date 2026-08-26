@@ -55,6 +55,8 @@ export const queryKeys = {
   get reminders() {
     return [householdId(getHearthRuntime()), 'reminders'] as const;
   },
+  reminderOverview: (includeCompleted = false) =>
+    [...queryKeys.reminders, includeCompleted ? 'all' : 'open'] as const,
   get systemStatus() {
     return [householdId(getHearthRuntime()), 'system-status'] as const;
   },

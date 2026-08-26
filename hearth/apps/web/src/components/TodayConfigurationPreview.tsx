@@ -33,6 +33,7 @@ export function TodayConfigurationPreview({
     sections.listSummary ? 'List summary' : null,
     sections.notice ? 'Notice' : null,
     sections.dailyVerse ? 'Daily Bible verse' : null,
+    sections.reminders ? 'Reminders' : null,
     sections.photo ? 'Family photo' : null,
   ].filter((name): name is string => name !== null);
   const modeLabel = mode === 'television' ? 'TV' : 'phone';
@@ -254,7 +255,7 @@ function PreviewPhoto({ photo }: { photo: TodayPreviewData['photo'] }) {
 
 function previewSummaryBands(data: TodayPreviewData, sections: TodaySectionVisibility) {
   const bands: Array<{
-    key: 'dinner' | 'list' | 'notice' | 'daily-verse';
+    key: 'dinner' | 'list' | 'notice' | 'daily-verse' | 'reminders';
     icon: IconName;
     label: string;
     value: string;
@@ -286,6 +287,18 @@ function previewSummaryBands(data: TodayPreviewData, sections: TodaySectionVisib
       icon: 'book-open',
       label: 'Daily verse',
       value: data.dailyVerse?.reference ?? 'ESV key needed',
+    });
+  if (sections.reminders)
+    bands.push({
+      key: 'reminders',
+      icon: 'bell',
+      label: 'Reminders',
+      value:
+        data.reminderSummary === null
+          ? 'Connect the iPhone bridge'
+          : data.reminderSummary.dueTodayCount === 0
+            ? 'Nothing due today'
+            : `${data.reminderSummary.dueTodayCount} due today`,
     });
   return bands;
 }

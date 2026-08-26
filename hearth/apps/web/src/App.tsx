@@ -34,6 +34,9 @@ const HomeScreen = lazy(async () => ({
 const PhotosScreen = lazy(async () => ({
   default: (await import('./screens/PhotosScreen')).PhotosScreen,
 }));
+const RemindersScreen = lazy(async () => ({
+  default: (await import('./screens/RemindersScreen')).RemindersScreen,
+}));
 const PairingScreen = lazy(async () => ({
   default: (await import('./screens/PairingScreen')).PairingScreen,
 }));
@@ -160,6 +163,7 @@ export function App() {
             path="/photos"
             element={<PhotosScreen preparing={preparing} scenario={scenario} />}
           />
+          <Route path="/reminders" element={<RemindersScreen preparing={preparing} />} />
           <Route path="/home" element={<HomeScreen preparing={preparing} scenario={scenario} />} />
           <Route path="/more" element={<MoreScreen />} />
           <Route path="/appearance" element={<AppearanceSettingsScreen />} />

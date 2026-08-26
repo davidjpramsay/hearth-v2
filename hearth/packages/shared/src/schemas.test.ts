@@ -803,6 +803,7 @@ describe('shared wire schemas', () => {
         notice: true,
         photo: false,
         dailyVerse: false,
+        reminders: true,
       }),
     ).toEqual({
       dinner: false,
@@ -810,6 +811,7 @@ describe('shared wire schemas', () => {
       notice: true,
       photo: false,
       dailyVerse: false,
+      reminders: true,
     });
   });
 

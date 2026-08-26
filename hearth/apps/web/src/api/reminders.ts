@@ -1,15 +1,22 @@
 import {
+  ReminderOverviewSchema,
   ReminderSourceCommandResultSchema,
   ReminderSourcePairingRequestSchema,
   ReminderSourceSettingsSchema,
   type ReminderSourceCommandResult,
   type ReminderSourcePairingRequest,
   type ReminderSourceSettings,
+  type ReminderOverview,
 } from '@hearth/shared';
 
 import { createRequestId, demoAdminHeaders, householdApiBase, request } from './core';
 
 export const remindersApi = {
+  getOverview: (includeCompleted = false): Promise<ReminderOverview> =>
+    request(
+      `${householdApiBase()}/reminders?includeCompleted=${includeCompleted ? 'true' : 'false'}`,
+      ReminderOverviewSchema,
+    ),
   getSources: (): Promise<ReminderSourceSettings> =>
     request(`${householdApiBase()}/reminder-sources`, ReminderSourceSettingsSchema, {
       headers: demoAdminHeaders,

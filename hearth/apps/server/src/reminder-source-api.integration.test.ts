@@ -77,7 +77,7 @@ describe('native Reminders source API v1', () => {
             sourceReminderId: 'eventkit-reminder-test',
             sourceListId: 'eventkit-list-family',
             title: 'Test Reminder',
-            dueLocalDate: null,
+            dueLocalDate: '2026-08-03',
             dueAt: null,
             hasDueTime: false,
             isCompleted: false,
@@ -102,6 +102,20 @@ describe('native Reminders source API v1', () => {
     expect(overviewResponse.json()).toMatchObject({
       source: { status: 'current', reminderCount: 1 },
       reminders: [{ title: 'Test Reminder' }],
+    });
+
+    const todayResponse = await server.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
+    });
+    expect(todayResponse.statusCode).toBe(200);
+    expect(todayResponse.json()).toMatchObject({
+      reminderSummary: {
+        sourceStatus: 'current',
+        dueTodayCount: 1,
+        items: [{ title: 'Test Reminder', dueAt: null, hasDueTime: false }],
+      },
+      sections: { reminders: true },
     });
 
     const revokeResponse = await server.inject({

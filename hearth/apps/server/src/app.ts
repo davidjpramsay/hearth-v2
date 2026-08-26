@@ -420,16 +420,25 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   const readToday = async (householdId: string, localDate: string) => {
-    const [today, household, lists, meals, gallery, todayConfiguration, activeNotice] =
-      await Promise.all([
-        repository.getToday(householdId, localDate),
-        adminRepository.getHousehold(householdId),
-        planningRepository.getLists(householdId),
-        planningRepository.getMealPlan(householdId, localDate),
-        photoRepository.getGallery(householdId).catch(() => null),
-        todayContentRepository.getConfiguration(householdId),
-        todayContentRepository.getActiveNotice(householdId),
-      ]);
+    const [
+      today,
+      household,
+      lists,
+      meals,
+      gallery,
+      todayConfiguration,
+      activeNotice,
+      reminderOverview,
+    ] = await Promise.all([
+      repository.getToday(householdId, localDate),
+      adminRepository.getHousehold(householdId),
+      planningRepository.getLists(householdId),
+      planningRepository.getMealPlan(householdId, localDate),
+      photoRepository.getGallery(householdId).catch(() => null),
+      todayContentRepository.getConfiguration(householdId),
+      todayContentRepository.getActiveNotice(householdId),
+      reminderSourceRepository.getOverview(householdId, false),
+    ]);
     const members = memberLookup(household.members);
     const primaryList = lists.lists[0];
     const dinner = meals.days[0]?.entries.find((entry) => entry.slot === 'dinner');
@@ -438,6 +447,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const dailyVerse = todayConfiguration.sections.dailyVerse
       ? await dailyVerseProvider.getDailyVerse(householdId, localDate)
       : null;
+    const dueTodayReminders = reminderOverview.reminders.filter(
+      (reminder) => !reminder.isCompleted && reminder.dueLocalDate === localDate,
+    );
+    const reminderSummary =
+      todayConfiguration.sections.reminders &&
+      (reminderOverview.source?.status === 'current' || reminderOverview.source?.status === 'stale')
+        ? {
+            sourceStatus: reminderOverview.source.status,
+            dueTodayCount: dueTodayReminders.length,
+            items: dueTodayReminders.slice(0, 3).map((reminder) => ({
+              id: reminder.id,
+              title: reminder.title,
+              dueAt: reminder.dueAt,
+              hasDueTime: reminder.hasDueTime,
+            })),
+          }
+        : null;
     return TodaySummarySchema.parse({
       ...today,
       household: { ...household, mode: today.household.mode },
@@ -448,6 +474,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           : { name: primaryList.name, remainingCount: primaryList.remainingCount },
       notice: activeNotice?.message ?? null,
       dailyVerse,
+      reminderSummary,
       sections: todayConfiguration.sections,
       photo: !todayConfiguration.sections.photo
         ? null

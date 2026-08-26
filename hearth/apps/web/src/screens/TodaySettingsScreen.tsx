@@ -26,6 +26,11 @@ const sectionOptions: Array<{
     description: 'One ESV passage selected for the household’s local day',
   },
   {
+    key: 'reminders',
+    title: 'Reminders',
+    description: 'Open Apple Reminders that are due today',
+  },
+  {
     key: 'photo',
     title: 'Family photo',
     description: 'A substantial photo from the private Hearth collection',

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import './MoreScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
+import { useRemindersQuery } from '../hooks/useReminderQueries';
 
 interface MoreLink {
   title: string;
@@ -11,7 +12,7 @@ interface MoreLink {
   path: string;
 }
 
-const groups: Array<{ title: string; links: MoreLink[] }> = [
+const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
   {
     title: 'Family',
     links: [
@@ -91,9 +92,27 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
   },
 ];
 
-const flattened = groups.flatMap((group) => group.links);
-
 export function MoreScreen() {
+  const reminders = useRemindersQuery();
+  const reminderStatus = reminders.data?.source?.status;
+  const showReminders = reminderStatus === 'current' || reminderStatus === 'stale';
+  const groups = baseGroups.map((group) =>
+    group.title === 'Family' && showReminders
+      ? {
+          ...group,
+          links: [
+            {
+              title: 'Reminders',
+              description: 'Read-only lists from Apple Reminders',
+              icon: 'bell' as const,
+              path: '/reminders',
+            },
+            ...group.links,
+          ],
+        }
+      : group,
+  );
+  const flattened = groups.flatMap((group) => group.links);
   return (
     <div className="screen more-screen">
       <header className="more-screen__header">

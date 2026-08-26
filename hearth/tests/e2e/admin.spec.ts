@@ -182,12 +182,23 @@ test('adult can approve, inspect and revoke the read-only iPhone Reminders bridg
             sourceReminderId: 'eventkit-reminder-test',
             sourceListId: 'eventkit-list-family',
             title: 'Test Reminder',
-            dueLocalDate: null,
+            dueLocalDate: '2026-08-03',
             dueAt: null,
             hasDueTime: false,
             isCompleted: false,
             completedAt: null,
             sourceUpdatedAt: null,
+          },
+          {
+            sourceReminderId: 'eventkit-reminder-complete',
+            sourceListId: 'eventkit-list-family',
+            title: 'Completed Reminder',
+            dueLocalDate: '2026-08-03',
+            dueAt: null,
+            hasDueTime: false,
+            isCompleted: true,
+            completedAt: '2026-08-03T06:30:00+08:00',
+            sourceUpdatedAt: '2026-08-03T06:30:00+08:00',
           },
         ],
       },
@@ -197,6 +208,25 @@ test('adult can approve, inspect and revoke the read-only iPhone Reminders bridg
 
   await expect(page.getByText('Up to date', { exact: true })).toBeVisible();
   await expect(page.locator('.reminder-source-facts')).toContainText('Incomplete1');
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/reminders');
+  await expect(page.getByRole('heading', { name: 'Reminders', exact: true })).toBeVisible();
+  await expect(page.locator('[data-focus-id="nav-reminders"]')).toBeVisible();
+  await expect(page.locator('[data-focus-id="reminders-filter-open"]')).toBeFocused();
+  await expect(page.getByText('Test Reminder')).toBeVisible();
+  await expect(page.getByText('Completed Reminder')).toHaveCount(0);
+  await page.getByRole('button', { name: 'All' }).click();
+  await expect(page.getByText('Completed Reminder')).toBeVisible();
+
+  await page.goto('/today');
+  const reminderBand = page.locator('[data-focus-id="today-summary-reminders"]');
+  await expect(reminderBand).toContainText('Test Reminder');
+  await reminderBand.click();
+  await expect(page).toHaveURL(/\/reminders$/);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/connections/reminders');
   await page.getByRole('button', { name: 'Disconnect iPhone' }).click();
   await page.getByRole('button', { name: 'Disconnect iPhone' }).click();
   await expect(page.getByRole('button', { name: 'Approve iPhone' })).toBeVisible();

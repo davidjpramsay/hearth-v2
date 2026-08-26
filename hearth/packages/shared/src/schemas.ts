@@ -354,7 +354,27 @@ export const TodaySectionVisibilitySchema = z.object({
   notice: z.boolean(),
   photo: z.boolean(),
   dailyVerse: z.boolean(),
+  reminders: z.boolean(),
 });
+
+export const TodayReminderSummarySchema = z
+  .object({
+    sourceStatus: z.enum(['current', 'stale']),
+    dueTodayCount: z.number().int().nonnegative(),
+    items: z
+      .array(
+        z
+          .object({
+            id: OpaqueIdSchema,
+            title: z.string().min(1).max(240),
+            dueAt: TimestampSchema.nullable(),
+            hasDueTime: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(3),
+  })
+  .strict();
 
 export const DailyVerseSummarySchema = z.object({
   text: z.string().trim().min(1).max(1200),
@@ -405,6 +425,7 @@ export const TodaySummarySchema = z.object({
   notice: z.string().max(240).nullable(),
   photo: TodayPhotoSummarySchema.nullable(),
   dailyVerse: DailyVerseSummarySchema.nullable(),
+  reminderSummary: TodayReminderSummarySchema.nullable(),
   sections: TodaySectionVisibilitySchema,
   integrations: z.array(IntegrationStateSchema),
 });

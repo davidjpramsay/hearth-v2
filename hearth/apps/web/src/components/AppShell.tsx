@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAppearance } from '../appearance/appearance';
 import { HouseholdClockProvider } from '../hooks/useHouseholdClock';
+import { useRemindersQuery } from '../hooks/useReminderQueries';
 import { useHearthRuntime } from '../runtime/context';
 import { HouseholdDateTime } from './HouseholdDateTime';
 import { Icon, type IconName } from './Icon';
@@ -14,7 +15,7 @@ interface NavigationItem {
   enabled: boolean;
 }
 
-const navigation: NavigationItem[] = [
+const baseNavigation: NavigationItem[] = [
   { label: 'Today', path: '/today', icon: 'today', enabled: true },
   { label: 'Calendar', path: '/calendar/week', icon: 'calendar', enabled: true },
   { label: 'Chores', path: '/chores', icon: 'chores', enabled: true },
@@ -24,7 +25,7 @@ const navigation: NavigationItem[] = [
   { label: 'Photos', path: '/photos', icon: 'image', enabled: true },
 ];
 
-const phoneNavigation = navigation.filter((item) =>
+const phoneNavigation = baseNavigation.filter((item) =>
   ['Today', 'Calendar', 'Chores'].includes(item.label),
 );
 
@@ -40,6 +41,17 @@ function AppShellLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { preferences } = useAppearance();
   const runtime = useHearthRuntime();
+  const reminders = useRemindersQuery(false, runtime.household !== null);
+  const reminderStatus = reminders.data?.source?.status;
+  const showReminders =
+    pathname === '/reminders' || reminderStatus === 'current' || reminderStatus === 'stale';
+  const navigation = showReminders
+    ? [
+        ...baseNavigation.slice(0, 2),
+        { label: 'Reminders', path: '/reminders', icon: 'bell', enabled: true } as const,
+        ...baseNavigation.slice(2),
+      ]
+    : baseNavigation;
   if (pathname === '/pair') {
     return (
       <main className="pair-shell" id="main-content">
@@ -67,7 +79,13 @@ function AppShellLayout({ children }: { children: ReactNode }) {
         </div>
         <nav className="tv-rail__nav">
           {navigation.map((item, index) => (
-            <RailItem item={item} index={index} key={item.label} pathname={pathname} />
+            <RailItem
+              item={item}
+              index={index}
+              key={item.label}
+              navigation={navigation}
+              pathname={pathname}
+            />
           ))}
         </nav>
         <div className="tv-rail__footer">
@@ -105,7 +123,7 @@ function PhoneNavigation() {
     pathname === '/more' ||
     pathname === '/appearance' ||
     pathname.startsWith('/admin') ||
-    ['/lists', '/meals', '/home', '/photos'].includes(pathname);
+    ['/lists', '/meals', '/home', '/photos', '/reminders'].includes(pathname);
   return (
     <nav className="phone-tabs" aria-label="Primary navigation">
       {phoneNavigation.map((item, index) => (
@@ -129,10 +147,12 @@ function RailItem({
   item,
   index,
   pathname,
+  navigation,
 }: {
   item: NavigationItem;
   index: number;
   pathname: string;
+  navigation: NavigationItem[];
 }) {
   const prior = navigation.slice(0, index).findLast((candidate) => candidate.enabled);
   const next = navigation.slice(index + 1).find((candidate) => candidate.enabled);
