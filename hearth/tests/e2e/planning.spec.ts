@@ -245,7 +245,7 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin');
-  await page.getByRole('link', { name: /Family planning/ }).click();
+  await page.getByRole('link', { name: /Chores, routines & pocket money/ }).click();
   await expect(page.getByRole('heading', { name: 'Family planning' })).toBeVisible();
   await page.getByRole('link', { name: /Routines and chores/ }).click();
   const schoolBag = page.locator('.routine-editor').filter({ hasText: 'Pack school bag' });
