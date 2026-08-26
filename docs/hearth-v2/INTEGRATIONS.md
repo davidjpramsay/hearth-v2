@@ -188,10 +188,12 @@ Pairing, the distinct source credential, identifier privacy, list/reminder field
 replacement, ordering, freshness, retry, revocation and Swift client seam are frozen in
 `REMINDERS_COMPANION_CONTRACT.md`. The server implements that v1 contract. Native transport proof
 now includes Keychain secret storage, the distinct URLSession authorization scheme, fixture-checked
-Swift DTOs, selected-list wire mapping and deterministic pairing/retry/stale/revocation tests. It
-must still show adult-approved pairing, upload, terminate/relaunch persistence and live Hearth
-readback on the physical phone before the product UI is called complete. Public EventKit does not
-expose Apple Reminders Sections, so neither the bridge nor Hearth models them.
+Swift DTOs, selected-list wire mapping and deterministic pairing/retry/stale/revocation tests.
+Physical evidence now also covers selected-list terminate/relaunch persistence, adult-approved
+pairing, token exchange, full-snapshot upload and an exact retry returning `replayed: true` without
+adding a server receipt. Signed household endpoint/rendered-dashboard readback, physical revocation
+and forced-stale recovery remain open before the product UI is called complete. Public EventKit
+does not expose Apple Reminders Sections, so neither the bridge nor Hearth models them.
 
 ## Weather
 

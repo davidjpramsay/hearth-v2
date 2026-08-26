@@ -134,8 +134,8 @@ Chromium fallback produced the retained evidence.
 - Native contract tests decode all four committed language-neutral fixtures and cover the distinct
   source authorization scheme, approved pairing, bounded selected-list mapping, exact retry,
   stale-sequence recovery, revoked-source repair and protection against accidental empty uploads.
-  These tests and the fake accepted-snapshot screen pass in Simulator; they do not prove a live
-  household upload.
+  These tests and the fake accepted-snapshot screen pass in Simulator. The current suite has 31
+  passing tests, including explicit JSON-null encoding and the DEBUG-only exact-replay seam.
 - Physical EventKit acceptance passed on 2026-08-25 on an iPhone 17e running
   iOS 26.6: the owner's current `Reminders` and `Family Reminders` lists and
   live reminder fields were visible. A remote change appeared automatically in
@@ -164,12 +164,14 @@ Chromium fallback produced the retained evidence.
 - Temporary phone/iCloud unavailability keeps the last valid rows visible and changes freshness to
   stale after 15 minutes. Intentional revocation hides the source and requires fresh pairing.
 - Payloads above 50 lists, 1,000 reminders or 1.5 MB are rejected without partial application.
-- Physical-device evidence covers current personal and shared-family EventKit reads, selected-list
-  persistence across terminate/relaunch, approved Hearth pairing, one live snapshot upload and
-  readback from the household endpoint. Until all of those pass, the server contract is frozen but
-  the end-to-end bridge and Reminders UI are not complete.
-- The current signed transport build has been installed on the iPhone. Live pairing/upload/readback
-  has not yet been run, so the preceding end-to-end criterion remains open.
+- Physical-device evidence now covers current personal/shared-family EventKit reads, selected-list
+  persistence across terminate/relaunch, adult-approved Hearth pairing, source-token exchange, real
+  full-snapshot upload and an exact retry returning `replayed: true`. The privacy-safe production
+  aggregate remained at sequence/receipt 6 after replay with one active list and four active
+  reminders, so the replay added no receipt and changed no projection count.
+- Signed household endpoint/rendered-dashboard readback remains a separate open checkpoint; it is
+  not inferred from the aggregate transport evidence. Physical revocation and forced-stale recovery
+  are also not run, although their deterministic tests pass.
 - Apple Reminders Sections, writeback, completion and deletion are absent from v1.
 
 ### Household people

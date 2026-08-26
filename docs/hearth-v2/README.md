@@ -8,8 +8,10 @@ the private deployment now also has integrity-checked online database backups, f
 tooling, a calm adult System Health surface, and named-adult multi-passkey access with one-time
 local recovery. No live credential, calendar write, restore or household automation was used.
 Phase 8's read-only EventKit proof is physically verified on an iPhone 17e running iOS 26.6, and
-its tested v1 pairing and snapshot contract is frozen. The native transport and dashboard surfaces
-remain in progress; reminder completion and every other EventKit mutation remain absent. The
+its tested v1 pairing and snapshot contract is frozen. Physical pairing, full-snapshot upload and
+exact idempotent replay are verified; signed household UI readback and physical revoke/stale
+recovery remain open. The native dashboard surfaces remain in progress; reminder completion and
+every other EventKit mutation remain absent. The
 separate Music Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or
 verified.**
 

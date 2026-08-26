@@ -463,16 +463,18 @@ physical-TCL comfort assessment remains part of the household pilot.
 
 ## Phase 8 — Native Reminders bridge and iPhone foundation
 
-Status as of 2026-08-25: source, fake-adapter tests and simulator build/run are
+Status as of 2026-08-26: source, fake-adapter tests and simulator build/run are
 implemented locally, and the physical-iPhone EventKit proof has passed on an
 iPhone 17e running iOS 26.6. The current `Reminders` and `Family Reminders`
 lists were readable, remote changes appeared automatically without a pull, and
 the companion remained read-only. The server-side v1 pairing, source authentication,
 full-snapshot projection, household read and revocation contract is frozen and tested. The native
 Keychain, URLSession, EventKit-to-wire adapter, pairing/repair UI and foreground full-snapshot
-state machine are now implemented; 29 native tests and deterministic simulator pairing/upload pass.
-The signed build is installed on the physical phone, but adult-approved live pairing, snapshot
-upload and household readback remain open and are not inferred from simulator evidence.
+state machine are now implemented; 31 native tests and deterministic simulator pairing/upload pass.
+On the physical phone, selected-list terminate/relaunch persistence, adult-approved pairing,
+exchange, real full-snapshot upload and exact idempotent replay now pass against private Hearth.
+Signed household endpoint/rendered-dashboard readback, physical revocation and physical
+forced-stale recovery remain open and are not inferred from simulator or aggregate evidence.
 
 ### Work
 
