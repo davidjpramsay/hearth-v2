@@ -16,6 +16,10 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>app.hearth.companion.reminders.refresh</string>
+	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Hearth Companion connects to your private Hearth server on the local network to send the reminder lists you choose after adult-approved pairing.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
@@ -28,6 +32,10 @@
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

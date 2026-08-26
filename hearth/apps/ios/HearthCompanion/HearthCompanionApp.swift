@@ -4,6 +4,7 @@ import UIKit
 @main
 @MainActor
 struct HearthCompanionApp: App {
+    @UIApplicationDelegateAdaptor(HearthAppDelegate.self) private var appDelegate
     @State private var theme = HearthTheme()
     @State private var reminderModel: ReminderViewModel
     @State private var bridgeModel: ReminderBridgeViewModel
@@ -58,6 +59,7 @@ struct HearthCompanionApp: App {
             snapshotConsumer: bridge
         )
         bridge.attachSnapshotRefresher(reminders)
+        ReminderBackgroundRefreshCoordinator.shared.configure(bridgeModel: bridge)
         _bridgeModel = State(initialValue: bridge)
         _reminderModel = State(initialValue: reminders)
     }

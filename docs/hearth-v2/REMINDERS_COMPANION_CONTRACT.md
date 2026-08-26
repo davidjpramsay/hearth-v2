@@ -256,8 +256,9 @@ Hearth uses its standard error envelope. Required client behaviour:
 | `503 COMMAND_FAILED` or timeout | Temporary local failure                                         | Exponential backoff with jitter, retrying the exact payload and identifiers.                              |
 
 Recommended foreground retry delays are 2, 5, 15 and 30 seconds, then a visible manual retry. The
-v1 contract assumes foreground/startup/pull-to-refresh uploads; it does not require background
-transfer, APNs or a proprietary Apple service.
+v1 wire contract does not require background transfer, APNs or a proprietary Apple service. A
+client may use the same idempotent full-snapshot operation during an OS-granted background refresh;
+that changes neither the schema nor the server's security boundary.
 
 ## Swift client seam
 

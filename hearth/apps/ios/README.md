@@ -12,10 +12,12 @@ The proof:
 - implements the frozen v1 `ReminderSnapshotClient` with hand-written `Codable`/`Sendable` DTOs;
 - generates a 32-byte source secret with Security randomization services, stores it device-only in
   Keychain and authenticates only as `HearthReminderSource`;
-- pairs through an adult-approved six-character code and sends bounded full snapshots while the app
-  is open after successful EventKit reads;
+- pairs through an adult-approved six-character code and sends bounded full snapshots after safe
+  EventKit reads;
+- requests best-effort background refresh for a paired source and waits for Hearth acceptance when
+  iOS grants runtime; task expiration cancels transport without clearing the last safe projection;
 - performs no EventKit save, edit, completion, deletion or commit operation;
-- contains no background sync, APNs, Apple credential, WebView or two-way completion.
+- contains no persistent background execution, APNs, Apple credential, WebView or two-way completion.
 
 ## Local build and tests
 
@@ -27,9 +29,10 @@ xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -destinati
 ```
 
 The simulator proves app wiring, fake-driven UI states, contract fixture compatibility, local
-selection persistence and layout only. The canonical suite has 30 tests, including pairing,
+selection persistence and layout only. The canonical suite has 32 tests, including pairing,
 transport, exact-retry, stale-sequence, revoked-source and accidental-clear protection plus the
-regression for required nullable JSON fields. A separate 31-test DEBUG evidence build proved an
+regression for required nullable JSON fields and background read-to-acceptance coordination. A
+separate 31-test DEBUG evidence build proved an
 exact in-memory replay; that evidence-only control is intentionally absent from this product branch.
 The physical EventKit proof passed on 2026-08-25 on an iPhone 17e running iOS 26.6; see
 `hearth/docs/evidence/phase-8/README.md`. A change must still be installed and exercised on that
@@ -38,7 +41,7 @@ persistence, adult-approved pairing, full-snapshot upload and exact idempotent r
 2026-08-26. Signed household endpoint/rendered-dashboard readback, physical revocation and
 forced-stale recovery remain separate open checkpoints.
 
-## Pairing and foreground snapshots
+## Pairing and snapshots
 
 Open the **Hearth** tab, enter the trusted private HTTPS Hearth origin and create a pairing code.
 Allow Local Network access if iOS prompts; the app uses direct HTTPS only and does not browse or
@@ -50,9 +53,15 @@ failure sends nothing and therefore cannot accidentally clear Hearth; a delibera
 selection sends an intentional empty snapshot. A transient successful EventKit read that reports
 zero lists while a non-empty selection exists is held as stale rather than uploaded as a clear.
 
+When the paired app enters the background, it asks iOS for another short refresh no earlier than
+fifteen minutes later. If iOS grants the task, the same safe read and versioned full-snapshot upload
+run without opening the app, and the task completes only after Hearth accepts or rejects it. iOS may
+delay or skip the request, so foreground/manual refresh and Hearth's honest stale state remain
+necessary. The app uses no silent push or continuous background process.
+
 V1 allows one active EventKit source per household. Revocation happens in adult Hearth
-administration and requires a fresh pairing. Apple Reminders Sections, background transfer,
-writeback and native household-administration parity remain out of scope.
+administration and requires a fresh pairing. Apple Reminders Sections, writeback and native
+household-administration parity remain out of scope.
 
 ## Physical iPhone verification
 

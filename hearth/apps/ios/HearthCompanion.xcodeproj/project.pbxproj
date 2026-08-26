@@ -10,6 +10,7 @@
 		0B0C85535DECC52B9963ADA2 /* ReminderBridgeContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD499DBDE66CF1B6F1DFAA5 /* ReminderBridgeContractTests.swift */; };
 		1E148F50EB244C0DA6B0FAEE /* ReminderSnapshotClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554DEC9A5F4352B5F7E4B503 /* ReminderSnapshotClient.swift */; };
 		21D5462C03247D649E102B4F /* FakeReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD8A9B387417C297A64BE6A /* FakeReminderStore.swift */; };
+		29DE52DD9BB270ECDA2B6AE9 /* ReminderBackgroundRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CD4B073012048FB2F95C84 /* ReminderBackgroundRefresh.swift */; };
 		527654CEE6C001FFA6F4B123 /* EventKitReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4A537537C70B35E4008F39 /* EventKitReminderStore.swift */; };
 		54174E9370BD4DEA79038475 /* ReminderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74708F04DC2731A9DC6B799B /* ReminderModels.swift */; };
 		6F74DC02B40F1EE44FF2A546 /* ReminderBridgeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFEA0E520167165A24B45AE0 /* ReminderBridgeModels.swift */; };
@@ -46,6 +47,7 @@
 		3F8837E1DA5668FE5733A925 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
 		49C402C35901A985A46234EC /* ReminderBridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBridgeView.swift; sourceTree = "<group>"; };
 		554DEC9A5F4352B5F7E4B503 /* ReminderSnapshotClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderSnapshotClient.swift; sourceTree = "<group>"; };
+		66CD4B073012048FB2F95C84 /* ReminderBackgroundRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBackgroundRefresh.swift; sourceTree = "<group>"; };
 		6A4A537537C70B35E4008F39 /* EventKitReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventKitReminderStore.swift; sourceTree = "<group>"; };
 		739BED5D3A9EB130542D303E /* ReminderBridgeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBridgeViewModel.swift; sourceTree = "<group>"; };
 		74708F04DC2731A9DC6B799B /* ReminderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderModels.swift; sourceTree = "<group>"; };
@@ -95,6 +97,7 @@
 				D0A4C0086AE1C633D4EF5982 /* HearthTheme.swift */,
 				AA1A33E50C5470B9C3CC0C60 /* Info.plist */,
 				804D5CB9792FADF16AA0A65A /* PrivacyView.swift */,
+				66CD4B073012048FB2F95C84 /* ReminderBackgroundRefresh.swift */,
 				EFEA0E520167165A24B45AE0 /* ReminderBridgeModels.swift */,
 				49C402C35901A985A46234EC /* ReminderBridgeView.swift */,
 				739BED5D3A9EB130542D303E /* ReminderBridgeViewModel.swift */,
@@ -235,6 +238,7 @@
 				6F9088A63BA297B5B4A40020 /* HearthCompanionApp.swift in Sources */,
 				7AB3F6A773FCFE1DB310F547 /* HearthTheme.swift in Sources */,
 				E692236DAE9B0798C4419CD6 /* PrivacyView.swift in Sources */,
+				29DE52DD9BB270ECDA2B6AE9 /* ReminderBackgroundRefresh.swift in Sources */,
 				6F74DC02B40F1EE44FF2A546 /* ReminderBridgeModels.swift in Sources */,
 				D4672C65260394312B41218A /* ReminderBridgeView.swift in Sources */,
 				7A7ED8A3A81AC5FF9AF71F23 /* ReminderBridgeViewModel.swift in Sources */,

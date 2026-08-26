@@ -223,7 +223,12 @@ raw EventKit identifiers:
 
 Do not script the source secret into Compose, shell history or Synology files. The app must stop and
 offer fresh pairing after revocation. A temporary stale source is not an operator incident: Hearth
-keeps cached reminders and the user can foreground or manually refresh the iPhone bridge.
+keeps cached reminders and the user can foreground or manually refresh the iPhone bridge. The
+paired app also requests a best-effort iOS background refresh no earlier than fifteen minutes after
+it is suspended. Keep Background App Refresh enabled for Hearth Companion, but do not diagnose a
+stale badge as a server fault merely because iOS delayed the task; Apple controls its actual launch
+time. After installing a build that changes this path, verify it on the physical iPhone before
+claiming background latency.
 
 The Home Assistant REST adapter likewise remains inert unless private mode sets
 `HEARTH_HOME_ASSISTANT_CONFIG_PATH` to an access-restricted, writable file outside the repository.

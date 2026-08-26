@@ -134,9 +134,9 @@ reads reminders with `predicateForReminders(in:)`.
 
 The physical EventKit proof itself remains read-only: it never calls EventKit
 save, remove, commit, completion or edit APIs. The bridge adds only the frozen
-pairing and full-snapshot server route; it has no persistent background sync,
-APNs, two-way completion, Apple ID request, iCloud app-specific password,
-private Apple URL or NAS credential. It deliberately renders
+pairing and full-snapshot server route. It registers a best-effort
+`BGAppRefreshTask`, but has no persistent execution, APNs, two-way completion,
+Apple ID request, iCloud app-specific password, private Apple URL or NAS credential. It deliberately renders
 first use, permission request, denied/restricted, loading, empty, success,
 stale and failure states. The simulator can prove the wiring and fake-driven
 state machine; only an installed physical iPhone can prove that the current
@@ -154,8 +154,15 @@ While the companion is open, the EventKit adapter observes
 `EKEventStoreChanged` and refetches the selected lists after a short debounce;
 returning to the foreground also triggers a refetch. The current content stays
 visible while a refresh is in flight, so pull-to-refresh does not replace the
-whole screen with a loading skeleton. This is foreground invalidation and
-refetch, not persistent background sync; manual refresh remains available.
+whole screen with a loading skeleton. Manual refresh remains available.
+Separately, when the paired app enters the background it requests another
+refresh no earlier than fifteen minutes later. iOS chooses whether and when to
+run that task and may delay it substantially. When granted, the app performs a
+complete safe EventKit read, uploads through the existing full-snapshot
+contract and reports completion only after Hearth accepts or rejects the
+snapshot. A task expiration cancels the transport without marking the snapshot
+accepted or clearing cached reminders. This is best-effort background freshness,
+not continuous monitoring or a fixed service level.
 In the physical-device run, one remote change appeared without a pull after
 about nine seconds, and completing a reminder in Apple Reminders on the Mac was
 reflected in Hearth Companion after about five seconds. Those end-to-end times
@@ -179,7 +186,8 @@ Reminders section support remains a deferred native capability investigation.
 Apple references: [Accessing the event store](https://developer.apple.com/documentation/eventkit/accessing-the-event-store),
 [requestFullAccessToReminders](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders%28completion%3A%29),
 [retrieving events and reminders](https://developer.apple.com/documentation/eventkit/retrieving-events-and-reminders),
-[updating with notifications](https://developer.apple.com/documentation/EventKit/updating-with-notifications?language=objc) and
+[updating with notifications](https://developer.apple.com/documentation/EventKit/updating-with-notifications?language=objc),
+[using background tasks](https://developer.apple.com/documentation/uikit/using-background-tasks-to-update-your-app) and
 [NSRemindersFullAccessUsageDescription](https://developer.apple.com/documentation/bundleresources/information-property-list/nsremindersfullaccessusagedescription),
 [NSLocalNetworkUsageDescription](https://developer.apple.com/documentation/bundleresources/information-property-list/nslocalnetworkusagedescription) and
 [TN3179: Understanding local network privacy](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy).

@@ -63,6 +63,10 @@ final class ReminderBridgeViewModel: ReminderSnapshotConsumer {
         registration != nil && registration?.session == nil
     }
 
+    var hasPairedSource: Bool {
+        registration?.session != nil || registrationStore.load()?.session != nil
+    }
+
     init(
         clientFactory: any ReminderSnapshotClientFactory,
         secretStore: any ReminderSourceSecretStore,
@@ -211,6 +215,41 @@ final class ReminderBridgeViewModel: ReminderSnapshotConsumer {
     func refreshAndUpload() async {
         guard case .paired = connectionState else { return }
         await snapshotRefresher?.refreshForBridge()
+    }
+
+    /// Performs the complete read-and-upload cycle while iOS has granted a
+    /// bounded background-refresh window. A missing pairing is successful
+    /// no-op work; an authorised source succeeds only after Hearth accepts the
+    /// freshly read snapshot.
+    func performBackgroundRefresh() async -> Bool {
+        await start()
+        guard registration?.session != nil else { return true }
+
+        if case .paired = connectionState {
+            // The persisted session and in-memory client are ready.
+        } else {
+            await refreshCurrentSession()
+        }
+        guard case .paired = connectionState else { return false }
+
+        if let pendingUpload {
+            retryUpload()
+            guard await waitForAcceptedUpload(revision: pendingUpload.revision) else {
+                return false
+            }
+        }
+
+        let previousRevision = latestSnapshotRevision
+        await snapshotRefresher?.refreshForBridge()
+        guard latestSnapshotRevision > previousRevision else { return false }
+        return await waitForAcceptedUpload(revision: latestSnapshotRevision)
+    }
+
+    /// Cancels only the transport task started by the bridge. The exact
+    /// pending request remains in memory for a foreground or later background
+    /// retry, and no snapshot is treated as accepted.
+    func cancelBackgroundRefresh() {
+        uploadTask?.cancel()
     }
 
     func retryUpload() {
@@ -392,6 +431,23 @@ final class ReminderBridgeViewModel: ReminderSnapshotConsumer {
         } catch {
             uploadState = .failure(message: error.localizedDescription)
         }
+    }
+
+    private func waitForAcceptedUpload(revision: Int) async -> Bool {
+        while lastUploadedRevision < revision {
+            guard !Task.isCancelled else { return false }
+            if let uploadTask {
+                await uploadTask.value
+                continue
+            }
+            // A retained pending request with no running task has already
+            // exhausted this attempt. Leave it intact for the next explicit
+            // foreground/background retry rather than looping indefinitely.
+            guard pendingUpload == nil else { return false }
+            scheduleUploadIfPossible()
+            guard uploadTask != nil else { return false }
+        }
+        return true
     }
 
     private func beginUpload(_ pending: PendingUpload) {

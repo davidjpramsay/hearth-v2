@@ -104,6 +104,10 @@ Can understand the current household state and use clearly exposed room controls
   on Today. Apple remains authoritative; Hearth does not edit or complete Apple reminders in v1.
 - The projection preserves list/title, date-only versus timed due dates and completion state, keeps
   cached data visible during temporary iPhone/iCloud failure and clearly marks stale data.
+- The native companion requests a best-effort iOS background refresh after it is suspended. When
+  iOS grants runtime, it rereads the selected EventKit lists and waits for Hearth to accept the
+  replacement snapshot. Apple controls launch timing, so this improves automatic freshness without
+  promising calendar-like five-minute delivery.
 - Pairing, authentication, snapshot replacement and revocation follow
   `REMINDERS_COMPANION_CONTRACT.md`. Apple credentials and raw EventKit identifiers never enter
   household browser contracts.

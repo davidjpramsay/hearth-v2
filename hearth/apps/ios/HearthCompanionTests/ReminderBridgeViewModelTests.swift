@@ -97,6 +97,44 @@ struct ReminderBridgeViewModelTests {
         #expect(context.model.connectionState == .notPaired)
     }
 
+    @Test("background refresh waits for Hearth to accept the fresh EventKit snapshot")
+    func backgroundRefreshWaitsForAcceptedSnapshot() async throws {
+        let context = makeContext()
+        try await pair(context)
+        let refresher = SnapshotRefresherSpy()
+        refresher.onRefresh = { [weak model = context.model] in
+            model?.reminderSnapshotDidChange(Self.makeSnapshot())
+        }
+        context.model.attachSnapshotRefresher(refresher)
+
+        let succeeded = await context.model.performBackgroundRefresh()
+
+        #expect(succeeded)
+        #expect(refresher.refreshCount == 1)
+        let uploads = await context.client.uploads
+        #expect(uploads.count == 1)
+        #expect(uploads.first?.sequence == 1)
+        guard case .success(let receipt) = context.model.uploadState else {
+            Issue.record("Expected the background snapshot to be accepted")
+            return
+        }
+        #expect(receipt.nextSnapshotSequence == 2)
+    }
+
+    @Test("background refresh reports failure when EventKit produces no safe snapshot")
+    func backgroundRefreshRequiresSafeSnapshot() async throws {
+        let context = makeContext()
+        try await pair(context)
+        let refresher = SnapshotRefresherSpy()
+        context.model.attachSnapshotRefresher(refresher)
+
+        let succeeded = await context.model.performBackgroundRefresh()
+
+        #expect(!succeeded)
+        #expect(refresher.refreshCount == 1)
+        #expect(await context.client.uploads.isEmpty)
+    }
+
     private struct Context {
         let model: ReminderBridgeViewModel
         let client: ScriptedReminderSnapshotClient

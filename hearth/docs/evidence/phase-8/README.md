@@ -15,6 +15,9 @@ Date: 2026-08-25 to 2026-08-26
   inferred from the privacy-safe database aggregate used for the transport proof.
 - Physical revocation and forced-stale recovery: not run. Their deterministic native/server tests
   pass, but that is not physical evidence.
+- Best-effort iOS background refresh: implemented and simulator-tested on 2026-08-26. A physical
+  OS-scheduled launch and observed end-to-end latency are not yet run and are not inferred from a
+  foreground or simulator refresh.
 - Live Synology reminder-source state changed only through the approved pairing and snapshots.
   Home Assistant, calendar credentials, notifications and Apple Reminders content were unchanged.
 
@@ -38,7 +41,7 @@ saved selection, preserving an intentional empty selection across model relaunch
 list identifiers, avoiding an accidental empty preference while EventKit temporarily reports no
 lists, and distinguishing unset, empty and selected values in the real `UserDefaults` adapter.
 
-The frozen native bridge extension initially raised the suite to 29 tests. The canonical 30-test
+The frozen native bridge extension initially raised the suite to 29 tests. The canonical 32-test
 suite also verifies that every required nullable reminder field is encoded explicitly as JSON
 `null`. The isolated 31-test evidence build verified that its DEBUG-only in-memory replay seam
 resends the exact accepted request once; that seam was not merged into the product branch. The
@@ -46,7 +49,9 @@ transport coverage decodes all four shared JSON fixtures and proves the distinct
 `HearthReminderSource` header, unauthenticated
 pairing body, approved pairing exchange, selected-list/date projection, intentional empty snapshot,
 exact retry identity, stale-sequence recovery, revoked-source repair and the rule that a transient
-or failed EventKit read never emits a clearing snapshot.
+or failed EventKit read never emits a clearing snapshot. The two later background tests prove that
+an OS-granted refresh waits for the fresh EventKit projection to be accepted by Hearth and reports
+failure without uploading when no safe snapshot is produced.
 
 ## Physical-device evidence
 
@@ -81,8 +86,8 @@ install/open/refresh flow; the exact retry itself added none. The seam stores ne
 secret persistently and is absent from Release builds.
 
 This proves physical pairing, exchange, fresh full-snapshot upload and exact idempotent replay. It
-does not prove signed household endpoint/rendered-dashboard readback, physical revocation or
-physical forced-stale recovery.
+does not prove signed household endpoint/rendered-dashboard readback, physical revocation,
+physical forced-stale recovery or OS-scheduled background execution.
 
 The first Hearth household surfaces are now implemented against that frozen projection: a
 conditional list-grouped, read-only Reminders destination and an independently configurable,
@@ -95,8 +100,9 @@ read back through an authenticated production household session.
 - `xcodegen generate` — passed.
 - `xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -sdk iphonesimulator -configuration Debug build` — passed through XcodeBuildMCP.
 - `xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -sdk iphoneos -configuration Debug CODE_SIGNING_ALLOWED=NO build` — passed; device-target compile only.
-- XcodeBuildMCP `test_sim` — passed for the isolated replay-evidence build: 31 tests, 0 failures, 0
-  skipped. The canonical product suite has 30 tests after omitting the evidence-only seam.
+- XcodeBuildMCP `test_sim` — passed for the background-refresh product build: 32 tests, 0 failures,
+  0 skipped. The earlier isolated replay-evidence build passed 31 before its evidence-only seam was
+  omitted from the canonical product.
 - XcodeBuildMCP `build_run_sim` with `-hearth-preview-data` — passed; fake setup, accepted snapshot,
   portrait, landscape, dark mode and accessibility text were inspected.
 - `xcodebuild -project hearth/apps/ios/HearthCompanion.xcodeproj -scheme HearthCompanion -configuration Debug -destination 'id=<physical-device-udid>' -derivedDataPath <temporary-directory> build` — passed and signed with the user's local Apple Development team.

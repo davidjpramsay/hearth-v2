@@ -89,8 +89,13 @@ select lists and displays safe reminder projections. After adult-approved
 pairing, its separate `ReminderSnapshotClient` may send only the frozen,
 bounded full-snapshot projection to the trusted private Hearth origin using the
 device-scoped `HearthReminderSource` credential. It stores that 32-byte secret
-in Keychain, never uses it as a household/adult session, requests no background
-access and does not mutate EventKit data.
+in Keychain, never uses it as a household/adult session and does not mutate
+EventKit data. The app registers one `BGAppRefreshTask` after launch and submits
+the next best-effort request when it enters the background. A granted task
+rereads EventKit and remains alive until the existing snapshot transport reports
+acceptance or failure; expiration cancels only the transport task and keeps any
+exact pending request available for a later retry. There is no APNs dependency
+or guaranteed refresh interval.
 
 The app root injects a separate `ReminderListSelectionStore` into the reminder
 model. The live implementation uses app-sandboxed `UserDefaults` to retain only
@@ -121,7 +126,7 @@ Pure household-domain behaviour: recurrence expansion, completion rules, proport
 
 ```text
 Calendar provider -> calendar adapter -> Hearth cache/projection -> Hearth API -> TV/web
-iPhone EventKit -> device-scoped full snapshot -> Hearth reminder projection -> Hearth API -> TV/web
+iPhone EventKit -> foreground or best-effort iOS background refresh -> device-scoped full snapshot -> Hearth reminder projection -> Hearth API -> TV/web
 TV/web command -> Hearth API -> domain validation -> DB/audit -> optional provider command
 Voice -> Home Assistant Assist -> allowlisted HA script -> Hearth command API
 Hearth UI -> Hearth API -> HA adapter -> allowlisted HA service/script
