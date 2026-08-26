@@ -154,6 +154,31 @@ struct ReminderSnapshotItemInput: Codable, Equatable, Sendable {
     let isCompleted: Bool
     let completedAt: Date?
     let sourceUpdatedAt: Date?
+
+    private enum CodingKeys: String, CodingKey {
+        case sourceReminderId
+        case sourceListId
+        case title
+        case dueLocalDate
+        case dueAt
+        case hasDueTime
+        case isCompleted
+        case completedAt
+        case sourceUpdatedAt
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(sourceReminderId, forKey: .sourceReminderId)
+        try container.encode(sourceListId, forKey: .sourceListId)
+        try container.encode(title, forKey: .title)
+        try container.encode(dueLocalDate, forKey: .dueLocalDate)
+        try container.encode(dueAt, forKey: .dueAt)
+        try container.encode(hasDueTime, forKey: .hasDueTime)
+        try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encode(completedAt, forKey: .completedAt)
+        try container.encode(sourceUpdatedAt, forKey: .sourceUpdatedAt)
+    }
 }
 
 struct ReplaceReminderSnapshotRequest: Codable, Equatable, Sendable {

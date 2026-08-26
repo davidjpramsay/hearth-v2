@@ -100,6 +100,43 @@ struct ReminderBridgeContractTests {
         #expect(timed.completedAt == nil)
     }
 
+    @Test("wire encoder preserves contract-required nullable fields")
+    func encodesRequiredNullFields() throws {
+        let request = ReplaceReminderSnapshotRequest(
+            requestId: "request_null_encoding_test",
+            contractVersion: 1,
+            snapshotId: "snapshot_null_encoding_test",
+            sequence: 1,
+            generatedAt: Date(timeIntervalSince1970: 1_787_624_000),
+            lists: [
+                ReminderSnapshotListInput(sourceListId: "family-list", title: "Family Reminders")
+            ],
+            reminders: [
+                ReminderSnapshotItemInput(
+                    sourceReminderId: "reminder-with-null-fields",
+                    sourceListId: "family-list",
+                    title: "Example",
+                    dueLocalDate: nil,
+                    dueAt: nil,
+                    hasDueTime: false,
+                    isCompleted: false,
+                    completedAt: nil,
+                    sourceUpdatedAt: nil
+                )
+            ]
+        )
+
+        let data = try ReminderContractJSON.encoder().encode(request)
+        let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let reminders = try #require(root["reminders"] as? [[String: Any]])
+        let reminder = try #require(reminders.first)
+
+        for key in ["dueLocalDate", "dueAt", "completedAt", "sourceUpdatedAt"] {
+            #expect(reminder.keys.contains(key))
+            #expect(reminder[key] is NSNull)
+        }
+    }
+
     @Test("an intentional empty selection maps to an empty full snapshot")
     func mapsIntentionalEmptySnapshot() throws {
         let snapshot = ReminderSnapshot(
