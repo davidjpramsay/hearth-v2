@@ -87,6 +87,14 @@ export function useRealtimeInvalidation(): void {
         ]);
         return;
       }
+      if (parsed.data.kind === 'reminders.changed') {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.reminderSources }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.reminders }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
+        ]);
+        return;
+      }
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
@@ -106,6 +114,7 @@ export function useRealtimeInvalidation(): void {
     source.addEventListener('calendar.changed', receive as EventListener);
     source.addEventListener('weather.changed', receive as EventListener);
     source.addEventListener('photos.changed', receive as EventListener);
+    source.addEventListener('reminders.changed', receive as EventListener);
     return () => source.close();
   }, [queryClient]);
 }

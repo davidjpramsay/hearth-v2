@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { connectionsApi } from '../api/connections';
 import { queryKeys } from '../api/queryKeys';
+import { remindersApi } from '../api/reminders';
 
 export function useCalendarConnectionQuery(enabled = true) {
   return useQuery({
@@ -16,6 +17,15 @@ export function useHomeAssistantConnectionQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.homeAssistantConnection,
     queryFn: connectionsApi.getHomeAssistantConnection,
+    enabled,
+    retry: false,
+  });
+}
+
+export function useReminderSourcesQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.reminderSources,
+    queryFn: remindersApi.getSources,
     enabled,
     retry: false,
   });

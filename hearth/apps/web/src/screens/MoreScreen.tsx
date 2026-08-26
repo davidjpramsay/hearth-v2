@@ -54,7 +54,7 @@ const groups: Array<{ title: string; links: MoreLink[] }> = [
       },
       {
         title: 'Connections',
-        description: 'Calendar and Home Assistant',
+        description: 'Calendar, Apple Reminders and Home Assistant',
         icon: 'link',
         path: '/admin/connections',
       },

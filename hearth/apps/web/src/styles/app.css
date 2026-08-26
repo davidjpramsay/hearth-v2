@@ -2270,6 +2270,57 @@
   width: 100%;
   margin-top: 10px;
 }
+.reminder-pairing-form h2 {
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+.reminder-pairing-steps {
+  margin: 0 0 20px;
+  padding-left: 24px;
+  color: #5f565c;
+  line-height: 1.55;
+}
+.reminder-pairing-form input {
+  max-width: 290px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 22px;
+  font-weight: 780;
+}
+.reminder-source-summary {
+  max-width: 900px;
+}
+.reminder-source-facts {
+  margin: 20px 0;
+  padding: 16px 0;
+  border-block: 1px solid #e2d9d0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.reminder-source-facts dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 740;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.reminder-source-facts dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 720;
+}
+.reminder-source-remove-confirmation {
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--brick-soft);
+}
+.reminder-source-remove-confirmation p {
+  margin: 0 0 12px;
+}
+.reminder-source-remove-confirmation .admin-secondary {
+  margin-left: 10px;
+}
 .calendar-tested-account {
   max-width: 900px;
   min-height: 82px;
@@ -5753,6 +5804,13 @@
 :root[data-theme='dark'] .home-assistant-mapping-group legend {
   color: var(--eucalyptus);
 }
+:root[data-theme='dark'] .reminder-pairing-steps,
+:root[data-theme='dark'] .reminder-source-facts dt {
+  color: var(--muted);
+}
+:root[data-theme='dark'] .reminder-source-facts {
+  border-color: var(--hairline);
+}
 :root[data-theme='dark'] .planning-intro,
 :root[data-theme='dark'] .history-safe-note,
 :root[data-theme='dark'] .pocket-money-intro {
@@ -5760,4 +5818,17 @@
 }
 
 @media (max-width: 900px) {
+}
+
+@media (max-width: 700px) {
+  .reminder-source-facts {
+    grid-template-columns: 1fr;
+  }
+  .reminder-source-remove-confirmation .admin-danger,
+  .reminder-source-remove-confirmation .admin-secondary {
+    width: 100%;
+  }
+  .reminder-source-remove-confirmation .admin-secondary {
+    margin: 10px 0 0;
+  }
 }

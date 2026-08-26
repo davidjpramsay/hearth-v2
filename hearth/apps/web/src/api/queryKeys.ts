@@ -49,6 +49,12 @@ export const queryKeys = {
   get homeAssistantConnection() {
     return [householdId(getHearthRuntime()), 'home-assistant-connection'] as const;
   },
+  get reminderSources() {
+    return [householdId(getHearthRuntime()), 'reminder-sources'] as const;
+  },
+  get reminders() {
+    return [householdId(getHearthRuntime()), 'reminders'] as const;
+  },
   get systemStatus() {
     return [householdId(getHearthRuntime()), 'system-status'] as const;
   },

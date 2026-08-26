@@ -61,6 +61,10 @@ const HomeAssistantConnectionSettingsScreen = lazy(async () => ({
   default: (await import('./screens/HomeAssistantConnectionSettingsScreen'))
     .HomeAssistantConnectionSettingsScreen,
 }));
+const ReminderConnectionSettingsScreen = lazy(async () => ({
+  default: (await import('./screens/ReminderConnectionSettingsScreen'))
+    .ReminderConnectionSettingsScreen,
+}));
 const HouseholdSettingsScreen = lazy(async () => ({
   default: (await import('./screens/HouseholdSettingsScreen')).HouseholdSettingsScreen,
 }));
@@ -181,6 +185,10 @@ export function App() {
             <Route
               path="/admin/connections/home-assistant"
               element={<HomeAssistantConnectionSettingsScreen />}
+            />
+            <Route
+              path="/admin/connections/reminders"
+              element={<ReminderConnectionSettingsScreen />}
             />
             <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
             <Route path="/admin/lists" element={<ListsSettingsScreen />} />

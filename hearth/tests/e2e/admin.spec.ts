@@ -120,10 +120,86 @@ test('Connections contains only services used directly by Hearth', async ({ page
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
   await expect(page.locator('[data-focus-id="connection-calendar"]')).toBeVisible();
   await expect(page.getByText('Home Assistant', { exact: true })).toBeVisible();
+  await expect(page.getByText('Apple Reminders', { exact: true })).toBeVisible();
   await expect(page.getByText('Jellyfin', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Music Assistant', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Private services Hearth reads from')).toBeVisible();
   expect(consoleProblems).toEqual([]);
+});
+
+test('adult can approve, inspect and revoke the read-only iPhone Reminders bridge', async ({
+  page,
+  request,
+}) => {
+  const pairingSecret = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+  const pairingResponse = await request.post(
+    'http://127.0.0.1:4310/api/v1/reminder-source-pairing-requests',
+    {
+      data: {
+        requestId: 'request_reminder_e2e_pair',
+        deviceName: "David's iPhone",
+        platform: 'ios',
+        applicationVersion: '1.0',
+        pairingSecret,
+      },
+    },
+  );
+  expect(pairingResponse.ok()).toBe(true);
+  const pairing = (await pairingResponse.json()) as { id: string; code: string };
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/connections/reminders');
+  await expect(page.getByRole('heading', { name: 'Apple Reminders' })).toBeVisible();
+  await page.getByLabel('Pairing code').fill(pairing.code.toLowerCase());
+  await expect(page.getByLabel('Pairing code')).toHaveValue(pairing.code);
+  await page.getByRole('button', { name: 'Approve iPhone' }).click();
+  await expect(page.getByRole('status')).toContainText('Pairing approved');
+
+  const exchangeResponse = await request.post(
+    `http://127.0.0.1:4310/api/v1/reminder-source-pairing-requests/${pairing.id}/exchanges`,
+    {
+      data: {
+        requestId: 'request_reminder_e2e_exchange',
+        pairingSecret,
+      },
+    },
+  );
+  expect(exchangeResponse.ok()).toBe(true);
+  const session = (await exchangeResponse.json()) as { sourceId: string };
+  const snapshotResponse = await request.put(
+    `http://127.0.0.1:4310/api/v1/reminder-sources/${session.sourceId}/snapshots/current`,
+    {
+      headers: { authorization: `HearthReminderSource ${pairingSecret}` },
+      data: {
+        requestId: 'request_reminder_e2e_snapshot',
+        contractVersion: 1,
+        snapshotId: 'snapshot_reminder_e2e_001',
+        sequence: 1,
+        generatedAt: '2026-08-03T07:41:00+08:00',
+        lists: [{ sourceListId: 'eventkit-list-family', title: 'Family Reminders' }],
+        reminders: [
+          {
+            sourceReminderId: 'eventkit-reminder-test',
+            sourceListId: 'eventkit-list-family',
+            title: 'Test Reminder',
+            dueLocalDate: null,
+            dueAt: null,
+            hasDueTime: false,
+            isCompleted: false,
+            completedAt: null,
+            sourceUpdatedAt: null,
+          },
+        ],
+      },
+    },
+  );
+  expect(snapshotResponse.ok()).toBe(true);
+
+  await expect(page.getByText('Up to date', { exact: true })).toBeVisible();
+  await expect(page.locator('.reminder-source-facts')).toContainText('Incomplete1');
+  await page.getByRole('button', { name: 'Disconnect iPhone' }).click();
+  await page.getByRole('button', { name: 'Disconnect iPhone' }).click();
+  await expect(page.getByRole('button', { name: 'Approve iPhone' })).toBeVisible();
 });
 
 test('adult can test, select, map, save and remove a read-only calendar connection', async ({
@@ -656,6 +732,7 @@ for (const path of [
   '/admin/connections',
   '/admin/connections/calendar',
   '/admin/connections/home-assistant',
+  '/admin/connections/reminders',
   '/admin/system',
   '/admin/activity',
 ]) {
