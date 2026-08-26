@@ -31,4 +31,21 @@ describe('getTodayRailCapacity', () => {
       3,
     );
   });
+
+  it('reserves height for five enabled summary modules', () => {
+    expect(
+      getTodayRailCapacity({
+        photoOrientation: 'portrait',
+        summaryCount: 5,
+        viewportClass: 'full-tv',
+      }),
+    ).toBe(4);
+    expect(
+      getTodayRailCapacity({
+        photoOrientation: 'none',
+        summaryCount: 5,
+        viewportClass: 'compact-tv',
+      }),
+    ).toBe(3);
+  });
 });

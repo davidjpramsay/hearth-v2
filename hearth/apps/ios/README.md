@@ -27,9 +27,10 @@ xcodebuild -project HearthCompanion.xcodeproj -scheme HearthCompanion -destinati
 ```
 
 The simulator proves app wiring, fake-driven UI states, contract fixture compatibility, local
-selection persistence and layout only. The current suite has 31 tests, including pairing,
-transport, exact-retry, stale-sequence, revoked-source and accidental-clear protection plus
-regressions for required nullable JSON fields and the DEBUG-only in-memory replay seam.
+selection persistence and layout only. The canonical suite has 30 tests, including pairing,
+transport, exact-retry, stale-sequence, revoked-source and accidental-clear protection plus the
+regression for required nullable JSON fields. A separate 31-test DEBUG evidence build proved an
+exact in-memory replay; that evidence-only control is intentionally absent from this product branch.
 The physical EventKit proof passed on 2026-08-25 on an iPhone 17e running iOS 26.6; see
 `hearth/docs/evidence/phase-8/README.md`. A change must still be installed and exercised on that
 device before claiming new physical-device evidence for the change. Physical list-selection

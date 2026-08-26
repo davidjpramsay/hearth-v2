@@ -527,7 +527,14 @@
   grid-row: 2;
   align-self: start;
   height: auto;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: var(--today-preview-photo-ratio);
+}
+
+.today-configuration-preview--television
+  .today-configuration-preview__canvas--photo-portrait[data-summary-count='5']
+  .today-configuration-preview__photo {
+  width: min(100%, calc(18cqi * var(--today-preview-photo-ratio)));
+  justify-self: center;
 }
 
 .today-configuration-preview__photo--empty {

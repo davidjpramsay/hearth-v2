@@ -365,7 +365,7 @@ removed from Hearth only after the source is removed and the folder is checked a
 - archive, created and updated times
 
 `today_section_preferences` stores one row per household for Dinner, List
-summary, Notice, Daily Bible verse and Family photo visibility. `announcements` is append/update/
+summary, Notice, Reminders, Daily Bible verse and Family photo visibility. `announcements` is append/update/
 archive managed through adult commands; the active Today notice is the eligible
 Important notice first, then the most recently updated eligible notice. The
 browser never chooses priority ordering itself.
@@ -563,7 +563,9 @@ folder-import health. Client filenames, source paths and image bytes do not ente
 Migration `0024_daily_bible_verse.sql` adds the off-by-default Today verse preference and bounded
 attributed fallback cache. Migration `0025_reminder_source_projection.sql` adds approval-gated
 EventKit source/device state, hash-only identifiers, atomic full-snapshot projection and replay
-receipts. It stores no Apple credential or raw EventKit identifier.
+receipts. It stores no Apple credential or raw EventKit identifier. Migration
+`0026_today_reminders.sql` adds the default-on bounded Today Reminders visibility preference; it
+does not duplicate reminder rows or add a writeback path.
 
 The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administration
 on the same SQLite connection. Voice list commands resolve a normalized list

@@ -1209,3 +1209,22 @@ Official platform references:
   services alongside this narrow source transport. V1 requires full-list enumeration and caps one
   snapshot at 50 lists, 1,000 reminders and 1.5 MB; incremental sync, APNs/background transfer,
   EventKit mutation and full native feature parity require later evidence and decisions.
+
+## D-072 — Reminders are a conditional read-only destination with a bounded Today summary
+
+- Date: 2026-08-26
+- Status: accepted and implemented
+- Context: The EventKit bridge now provides a durable household projection, but exposing all
+  reminders inside Today would crowd the appliance dashboard and showing an empty primary
+  destination before the first snapshot would imply a working source that does not yet exist.
+- Choice: Add one dedicated Reminders destination only after the active source is `current` or
+  `stale`. Group the shared household projection by list, default to incomplete reminders and offer
+  an explicit read-only **All** filter for completed rows. Add a default-on but independently
+  configurable Today module containing only incomplete reminders whose source-local due date equals
+  the household local date. Keep the module bounded and link it to the dedicated destination. Do
+  not add complete, edit, delete or writeback controls.
+- Consequence: Television, responsive web and the future native client can consume the same typed
+  household read model without duplicating business rules. Temporary iPhone/iCloud failure leaves
+  cached reminders visible with honest freshness, while unpaired, awaiting-first-snapshot and
+  revoked sources do not create misleading navigation or Today content. Migration
+  `0026_today_reminders.sql` stores only the visibility preference and no reminder content.

@@ -141,10 +141,10 @@ describe('TodayConfigurationPreview', () => {
 
     expect(container.querySelector('.today-configuration-preview__canvas')).toHaveAttribute(
       'data-rail-capacity',
-      '5',
+      '4',
     );
-    expect(container.querySelectorAll('.today-configuration-preview__event')).toHaveLength(5);
-    expect(container.querySelectorAll('.today-configuration-preview__chore')).toHaveLength(5);
+    expect(container.querySelectorAll('.today-configuration-preview__event')).toHaveLength(4);
+    expect(container.querySelectorAll('.today-configuration-preview__chore')).toHaveLength(4);
 
     fireEvent.click(screen.getByRole('button', { name: 'Phone' }));
 

@@ -470,7 +470,9 @@ lists were readable, remote changes appeared automatically without a pull, and
 the companion remained read-only. The server-side v1 pairing, source authentication,
 full-snapshot projection, household read and revocation contract is frozen and tested. The native
 Keychain, URLSession, EventKit-to-wire adapter, pairing/repair UI and foreground full-snapshot
-state machine are now implemented; 31 native tests and deterministic simulator pairing/upload pass.
+state machine are now implemented; 30 canonical native tests and deterministic simulator
+pairing/upload pass. A separate 31-test DEBUG evidence build proved exact replay and was not merged
+into the product branch.
 On the physical phone, selected-list terminate/relaunch persistence, adult-approved pairing,
 exchange, real full-snapshot upload and exact idempotent replay now pass against private Hearth.
 Signed household endpoint/rendered-dashboard readback, physical revocation and physical
@@ -502,8 +504,9 @@ forced-stale recovery remain open and are not inferred from simulator or aggrega
   `REMINDERS_COMPANION_CONTRACT.md`; store only the generated source secret in Keychain.
 - Prove approval-gated pairing, session recovery, exact retry, stale-sequence recovery, full
   snapshot upload and revocation on the physical phone and private Hearth server.
-- Add one dedicated, read-only Reminders surface plus an optional bounded Today module. Reuse the
-  same household API from web, TV and the eventual native client.
+- The dedicated, read-only Reminders surface and optional bounded Today module are implemented.
+  They reuse the same household API on web and TV that the eventual native client will consume,
+  keep stale cached content visible and expose no Apple-reminder mutation.
 - Retain the responsive companion as fallback while migrating additional phone features natively;
   do not fork Hearth business rules into Swift.
 

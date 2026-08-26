@@ -267,6 +267,15 @@ selects the one active notice by start/expiry window and priority, publishes a
 `today.changed` invalidation and returns explicit visibility flags in
 `TodaySummary`. This is bounded content configuration, not a layout DSL.
 
+The authenticated household Reminders query reads the latest active EventKit projection through
+the same server API on television, phone and future native clients. The browser groups the typed
+projection by list and defaults to incomplete items; an explicit **All** filter may reveal completed
+items, but neither surface emits a reminder mutation. Reminders navigation appears only after an
+active source has produced a current or stale snapshot. `TodaySummary` derives a nullable bounded
+summary from incomplete reminders whose source-local due date equals the household local date. A
+temporarily stale source remains visible with its freshness state; awaiting, revoked and unpaired
+sources contribute no Today reminder content.
+
 The optional daily-verse flag resolves through an injected `DailyVerseProvider` only when enabled.
 Demo mode returns original fictional copy. Private mode either uses the ESV passage-text API with a
 token read from `HEARTH_ESV_API_KEY_PATH`, or an explicit unconfigured adapter. Successful text is

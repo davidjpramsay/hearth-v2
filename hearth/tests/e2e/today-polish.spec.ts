@@ -273,11 +273,11 @@ test('@visual Today aligns landscape media with the optional-summary rail', asyn
 test('Today covers every optional-module subset across representative native photo ratios', async ({
   page,
 }) => {
-  // This deliberately exercises 192 complete render/navigation cycles. GitHub's
+  // This deliberately exercises 384 complete render/navigation cycles. GitHub's
   // shared runners need more headroom than the local Chromium run, while each
   // individual assertion retains the normal five-second expectation timeout.
-  test.setTimeout(360_000);
-  const sectionKeys = ['dinner', 'listSummary', 'notice', 'dailyVerse'] as const;
+  test.setTimeout(720_000);
+  const sectionKeys = ['dinner', 'listSummary', 'notice', 'dailyVerse', 'reminders'] as const;
   const photoShapes = [
     { name: 'none', orientation: 'none', width: 0, height: 0 },
     { name: 'landscape-3-2', orientation: 'landscape', width: 1500, height: 1000 },
@@ -301,12 +301,23 @@ test('Today covers every optional-module subset across representative native pho
         url: string;
         width?: number;
       };
+      reminderSummary: null | {
+        dueTodayCount: number;
+        items: Array<{
+          dueAt: string | null;
+          hasDueTime: boolean;
+          id: string;
+          title: string;
+        }>;
+        sourceStatus: 'current' | 'stale';
+      };
       sections: {
         dailyVerse: boolean;
         dinner: boolean;
         listSummary: boolean;
         notice: boolean;
         photo: boolean;
+        reminders: boolean;
       };
     };
     const originalPhoto = payload.photo;
@@ -316,7 +327,22 @@ test('Today covers every optional-module subset across representative native pho
       listSummary: Boolean(matrixState.mask & (1 << 1)),
       notice: Boolean(matrixState.mask & (1 << 2)),
       photo: matrixState.photo.orientation !== 'none',
+      reminders: Boolean(matrixState.mask & (1 << 4)),
     };
+    payload.reminderSummary = payload.sections.reminders
+      ? {
+          dueTodayCount: 2,
+          items: [
+            {
+              dueAt: null,
+              hasDueTime: false,
+              id: 'reminder_matrix_today',
+              title: 'Return library books',
+            },
+          ],
+          sourceStatus: 'current',
+        }
+      : null;
     payload.photo =
       matrixState.photo.orientation === 'none' || originalPhoto === null
         ? null
@@ -347,13 +373,16 @@ test('Today covers every optional-module subset across representative native pho
         await expect(dashboard).toHaveAttribute('data-photo-orientation', photo.orientation);
         await expect(dashboard).toHaveAttribute(
           'data-rail-capacity',
-          String(expectedRailCapacity(viewport, photo.orientation)),
+          String(expectedRailCapacity(viewport, photo.orientation, summaryCount)),
         );
         await expect(page.locator('.summary-band')).toHaveCount(summaryCount);
         await expect(page.locator('.summary-row')).toHaveCount(
           summaryCount === 0 && photo.orientation === 'none' ? 0 : 1,
         );
-        expect(await hasTelevisionOverflow(page)).toBe(false);
+        expect(
+          await hasTelevisionOverflow(page),
+          `Today overflowed for ${viewport.width}x${viewport.height}, ${photo.name}, mask ${mask}`,
+        ).toBe(false);
 
         if (photo.orientation === 'none') {
           await expect(page.locator('.today-photo')).toHaveCount(0);
@@ -503,6 +532,7 @@ async function usePhotoOnly(page: Page): Promise<void> {
         listSummary: boolean;
         notice: boolean;
         photo: boolean;
+        reminders: boolean;
       };
     };
     payload.sections = {
@@ -511,6 +541,7 @@ async function usePhotoOnly(page: Page): Promise<void> {
       listSummary: false,
       notice: false,
       photo: true,
+      reminders: false,
     };
     await route.fulfill({ response, json: payload });
   });
@@ -531,8 +562,11 @@ async function hasTelevisionOverflow(page: Page): Promise<boolean> {
 function expectedRailCapacity(
   viewport: { height: number; width: number },
   photoOrientation: 'landscape' | 'none' | 'portrait' | 'square',
+  summaryCount: number,
 ): number {
   if (viewport.width <= 900) return 3;
+  if (summaryCount >= 5 && viewport.height < 900) return 3;
+  if (summaryCount >= 5 && photoOrientation === 'portrait') return 4;
   if (photoOrientation === 'landscape') return viewport.height >= 900 ? 4 : 3;
   if (photoOrientation === 'square' && viewport.height < 900) return 3;
   return 5;

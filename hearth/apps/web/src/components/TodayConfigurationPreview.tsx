@@ -26,6 +26,7 @@ export function TodayConfigurationPreview({
   const photoOrientation = showPhoto ? (data.photo?.orientation ?? 'landscape') : 'none';
   const railCapacity = getTodayRailCapacity({
     photoOrientation,
+    summaryCount: summaryBands.length,
     viewportClass: mode === 'television' ? 'full-tv' : 'companion',
   });
   const enabledNames = [

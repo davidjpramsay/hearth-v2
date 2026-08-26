@@ -9,12 +9,16 @@ const FULL_TV_QUERY = '(min-width: 901px) and (min-height: 900px)';
 
 export function getTodayRailCapacity({
   photoOrientation,
+  summaryCount = 0,
   viewportClass,
 }: {
   photoOrientation: TodayPhotoOrientation;
+  summaryCount?: number;
   viewportClass: TodayViewportClass;
 }): TodayRailCapacity {
   if (viewportClass === 'companion') return 3;
+  if (summaryCount >= 5 && viewportClass === 'compact-tv') return 3;
+  if (summaryCount >= 5 && photoOrientation === 'portrait') return 4;
   if (photoOrientation === 'landscape') return viewportClass === 'full-tv' ? 4 : 3;
   if (photoOrientation === 'square' && viewportClass === 'compact-tv') return 3;
   return 5;

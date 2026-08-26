@@ -63,7 +63,11 @@ export function TodayScreen({
   ].filter(Boolean).length;
   const showPhoto = today.sections.photo && rotatingPhoto !== null;
   const photoOrientation = showPhoto && rotatingPhoto !== null ? rotatingPhoto.orientation : 'none';
-  const railCapacity = getTodayRailCapacity({ photoOrientation, viewportClass });
+  const railCapacity = getTodayRailCapacity({
+    photoOrientation,
+    summaryCount: visibleSummaryCount,
+    viewportClass,
+  });
   const visibleEvents = today.events.slice(0, railCapacity);
   const visibleChores = today.chores.slice(0, railCapacity);
   const eventOverflowCount = Math.max(0, today.events.length - visibleEvents.length);
