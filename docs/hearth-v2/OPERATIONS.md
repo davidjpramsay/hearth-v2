@@ -152,18 +152,15 @@ the connection merely to force a refresh; first allow the next automatic cycle
 or reconnect, then inspect the Calendar status and server logs if stale state
 persists.
 
-### One-time CalDAV Reminders capability probe
+### Retired CalDAV Reminders capability probe (do not run)
 
-Hearth includes an operator-only diagnostic for testing whether the commissioned CalDAV account
-explicitly advertises any `VTODO` collection. It is not a Reminders connection, sync job or browser
-feature. Run it only after the owner approves one live read and only against the existing private
-server container, so the credential stays in its mounted secret file:
+This diagnostic has been removed from the server and archived with the Apple Reminders proof under
+`hearth/archive/apple-reminders-bridge/`. The command below is retained only as historical evidence;
+it must not be used as an operating procedure.
 
-```sh
-sudo /var/packages/ContainerManager/target/usr/bin/docker exec \
-  -e HEARTH_REMINDERS_PROBE_SAMPLE_LIMIT=0 \
-  hearth-v2-server-1 node dist/caldav-reminders-probe-cli.js
-```
+The former operator-only diagnostic tested whether the commissioned CalDAV account explicitly
+advertised a `VTODO` collection. Its implementation and old command are retained only in the
+archive; the active server contains no executable probe.
 
 The sample limit accepts `0` through `10`; always begin with `0` for metadata-only discovery. If and
 only if `taskCollectionCount` is greater than zero, the owner may approve a second bounded run with
@@ -184,10 +181,14 @@ Reminders through CalDAV. Do not repeat the probe as a routine health check or t
 `VTODO` capability as proof of modern iCloud Reminders access. The direct CalDAV Reminders path is
 closed unless Apple documents a supported change.
 
-### Native Reminders bridge commissioning
+### Retired native Reminders bridge commissioning (historical)
 
-The supported native route is the SwiftUI iOS 17+ target at
-`hearth/apps/ios`. Build it locally with XcodeGen/Xcode, then use the
+The former SwiftUI iOS 17+ target and its contract are archived under
+`hearth/archive/apple-reminders-bridge/`. They are excluded from current builds and must not be
+commissioned without a new product/security decision. The following text records the completed
+proof only.
+
+The archived target was built locally with XcodeGen/Xcode using the
 `HearthCompanion` scheme on a physical iPhone. The app's
 `NSRemindersFullAccessUsageDescription` explains that the permission is used
 only to read selected lists; the target contains no Apple ID, iCloud

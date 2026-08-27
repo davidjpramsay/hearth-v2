@@ -32,12 +32,12 @@ export function TelevisionsSettingsScreen() {
   }
 
   return (
-    <AdminPage title="Paired televisions" subtitle="Only approved screens can open this home">
+    <AdminPage title="Paired televisions">
       <div className="pair-instructions">
         <Icon name="television" />
         <div>
-          <strong>On the television</strong>
-          <p>Open Hearth’s pairing screen, then enter its six-character code here.</p>
+          <strong>Pair a television</strong>
+          <p>Enter the six-character code shown on its screen.</p>
         </div>
       </div>
       <form className="pair-code-form" onSubmit={submit}>
@@ -60,12 +60,12 @@ export function TelevisionsSettingsScreen() {
       </form>
       {approve.isSuccess ? (
         <p className="save-confirmation" role="status">
-          Television approved. It can now open Hearth.
+          Television paired.
         </p>
       ) : null}
       {approve.isError ? <AdminError message={approve.error.message} /> : null}
       <Link className="tv-demo-link" to="/pair">
-        Open the television pairing screen for this demo
+        Open pairing screen
       </Link>
       <section className="device-list" aria-labelledby="connected-tvs">
         <h2 id="connected-tvs">Televisions</h2>

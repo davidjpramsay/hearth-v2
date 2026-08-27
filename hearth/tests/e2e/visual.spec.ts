@@ -324,8 +324,8 @@ test('@visual pocket-money progress and administration at required viewports', a
 });
 
 const states = [
-  { name: 'loading', path: '/today?scenario=loading', marker: 'Gathering today’s plans…' },
-  { name: 'empty', path: '/today?scenario=empty', marker: 'Nothing is planned yet' },
+  { name: 'loading', path: '/today?scenario=loading', marker: 'Loading…' },
+  { name: 'empty', path: '/today?scenario=empty', marker: '0 plans' },
   { name: 'stale', path: '/today?scenario=stale', marker: 'Calendar last updated at 6:45' },
   {
     name: 'unavailable',
@@ -442,11 +442,8 @@ test('@visual Phase 3 cached provider-outage state', async ({ page }) => {
 test('@visual Phase 3 CalDAV connection boundary on phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/connections');
-  await expect(page.getByRole('link', { name: /Calendar/ })).toBeVisible();
-  await expect(page.getByText(/Connection secrets stay on the Hearth server/)).toBeVisible();
-  await expect(page.getByRole('link', { name: /Home Assistant/ })).toContainText(
-    'four household states and three approved Home actions',
-  );
+  await expect(page.locator('[data-focus-id="connection-calendar"]')).toContainText('Set up');
+  await expect(page.locator('[data-focus-id="connection-home-assistant"]')).toContainText('Set up');
   await expect(page.getByText('Jellyfin', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Music Assistant', { exact: true })).toHaveCount(0);
   await captureEvidence(page, {

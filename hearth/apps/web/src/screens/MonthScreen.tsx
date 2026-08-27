@@ -78,9 +78,7 @@ export function MonthScreen({
         }
       />
       <CalendarViewSwitch />
-      {!online ? (
-        <StatusBanner kind="offline">You’re offline · Showing saved plans.</StatusBanner>
-      ) : null}
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
       {month.freshness === 'stale' && online ? (
         <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
           {month.statusMessage}

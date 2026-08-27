@@ -23,7 +23,7 @@ test('remote-only Lists check, undo, Meals navigation and Back restoration', asy
   const milk = page.locator('[data-focus-id="list-item-list_item_milk"]');
   await expect(milk).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(milk).toContainText('Checked · Undo');
+  await expect(milk).toContainText('Checked');
   await expect(milk).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(milk).toContainText('Check item');
@@ -200,7 +200,7 @@ test('phone adults create, edit, order, clear, archive and restore household lis
   await details.getByRole('button', { name: 'Save list details' }).click();
   await expect(page.getByRole('status')).toContainText('Year 8 camp was updated');
 
-  await page.getByRole('button', { name: /Groceries 6 waiting/ }).click();
+  await page.getByRole('button', { name: /Groceries 6 left · 7 total/ }).click();
   const milk = page.getByLabel('Item name for Milk').locator('xpath=ancestor::form');
   await milk.getByLabel('Item name for Milk').fill('Oat milk');
   await milk.getByLabel('Quantity for Milk').fill('2');
@@ -216,7 +216,7 @@ test('phone adults create, edit, order, clear, archive and restore household lis
   await expect(page.getByRole('status')).toContainText('Checked items were cleared');
   await expect(page.getByLabel('Item name for Oats')).toHaveCount(0);
 
-  await page.getByRole('button', { name: /Year 8 camp 1 waiting/ }).click();
+  await page.getByRole('button', { name: /Year 8 camp 1 left · 1 total/ }).click();
   await page.getByRole('button', { name: 'Archive list' }).click();
   await page.getByRole('button', { name: 'Archive Year 8 camp?' }).click();
   await expect(page.getByRole('status')).toContainText('can be restored');
@@ -625,7 +625,7 @@ test('list failure restores the item and retries with focus preserved', async ({
   await expect(milk).toContainText('Check item');
   await expect(milk).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(milk).toContainText('Checked · Undo');
+  await expect(milk).toContainText('Checked');
   await expect(milk).toBeFocused();
 });
 
@@ -650,7 +650,7 @@ test('cached lists stay visible through a real browser offline event', async ({
   await expect(page.getByText('Milk')).toBeVisible();
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
-  await expect(page.getByRole('status')).toContainText('Saved lists remain available');
+  await expect(page.getByRole('status')).toContainText('Showing saved lists');
   await expect(page.getByText('Milk')).toBeVisible();
   await context.setOffline(false);
 });
@@ -797,7 +797,7 @@ for (const route of [
 test('@visual Phase 4 empty, offline and mutation-failure states', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/lists?scenario=empty');
-  await expect(page.getByText('Nothing is planned yet')).toBeVisible();
+  await expect(page.getByText('Nothing planned yet')).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'lists-state-empty.png'),
     animations: 'disabled',
@@ -806,7 +806,7 @@ test('@visual Phase 4 empty, offline and mutation-failure states', async ({ page
   await page.goto('/lists');
   await expect(page.getByText('Milk')).toBeVisible();
   await page.goto('/lists?scenario=offline');
-  await expect(page.getByRole('status')).toContainText('Saved lists remain available');
+  await expect(page.getByRole('status')).toContainText('Showing saved lists');
   await captureEvidence(page, {
     path: resolve(evidence, 'lists-state-offline.png'),
     animations: 'disabled',

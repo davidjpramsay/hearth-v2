@@ -66,7 +66,7 @@ export function PeopleSettingsScreen() {
   }
 
   return (
-    <AdminPage title="People" subtitle="Photos, names, roles and home permissions">
+    <AdminPage title="People">
       <div className="member-editor-list">
         {admin.data.household.members.map((member) => (
           <MemberEditor

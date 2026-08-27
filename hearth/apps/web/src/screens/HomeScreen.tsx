@@ -76,9 +76,7 @@ export function HomeScreen({
     <div className="screen home-screen">
       <ScreenHeader title="Home" meta={home.roomLabel} />
       {!online ? (
-        <StatusBanner kind="offline">
-          You’re offline · Showing the last known room state.
-        </StatusBanner>
+        <StatusBanner kind="offline">Offline · Showing saved room state.</StatusBanner>
       ) : null}
       {home.freshness === 'stale' && online ? (
         <StatusBanner kind="unavailable">{home.statusMessage}</StatusBanner>
@@ -185,7 +183,7 @@ export function HomeScreen({
               <Icon name="moon" />
             </span>
             <h2 id="home-confirm-title">Settle the house for bedtime?</h2>
-            <p>Goodnight runs the configured Home Assistant script for this household.</p>
+            <p>Runs the Home Assistant Goodnight script.</p>
             <div>
               <button
                 className="secondary-action focusable"

@@ -74,14 +74,58 @@ describe('native Reminders source API v1', () => {
         lists: [{ sourceListId: 'eventkit-list-family', title: 'Family Reminders' }],
         reminders: [
           {
-            sourceReminderId: 'eventkit-reminder-test',
+            sourceReminderId: 'eventkit-reminder-overdue',
             sourceListId: 'eventkit-list-family',
-            title: 'Test Reminder',
+            title: 'Overdue reminder',
+            dueLocalDate: '2026-08-02',
+            dueAt: null,
+            hasDueTime: false,
+            isCompleted: false,
+            completedAt: null,
+            sourceUpdatedAt: null,
+          },
+          {
+            sourceReminderId: 'eventkit-reminder-today',
+            sourceListId: 'eventkit-list-family',
+            title: 'Due today reminder',
             dueLocalDate: '2026-08-03',
             dueAt: null,
             hasDueTime: false,
             isCompleted: false,
             completedAt: null,
+            sourceUpdatedAt: null,
+          },
+          {
+            sourceReminderId: 'eventkit-reminder-undated',
+            sourceListId: 'eventkit-list-family',
+            title: 'House reminder',
+            dueLocalDate: null,
+            dueAt: null,
+            hasDueTime: false,
+            isCompleted: false,
+            completedAt: null,
+            sourceUpdatedAt: null,
+          },
+          {
+            sourceReminderId: 'eventkit-reminder-future',
+            sourceListId: 'eventkit-list-family',
+            title: 'Future reminder',
+            dueLocalDate: '2026-08-04',
+            dueAt: null,
+            hasDueTime: false,
+            isCompleted: false,
+            completedAt: null,
+            sourceUpdatedAt: null,
+          },
+          {
+            sourceReminderId: 'eventkit-reminder-completed',
+            sourceListId: 'eventkit-list-family',
+            title: 'Completed reminder',
+            dueLocalDate: '2026-08-01',
+            dueAt: null,
+            hasDueTime: false,
+            isCompleted: true,
+            completedAt: '2026-08-02T09:00:00+08:00',
             sourceUpdatedAt: null,
           },
         ],
@@ -90,7 +134,7 @@ describe('native Reminders source API v1', () => {
     expect(snapshotResponse.statusCode).toBe(200);
     expect(snapshotResponse.json()).toMatchObject({
       sequence: 1,
-      reminderCount: 1,
+      reminderCount: 5,
       nextSnapshotSequence: 2,
     });
 
@@ -100,8 +144,13 @@ describe('native Reminders source API v1', () => {
     });
     expect(overviewResponse.statusCode).toBe(200);
     expect(overviewResponse.json()).toMatchObject({
-      source: { status: 'current', reminderCount: 1 },
-      reminders: [{ title: 'Test Reminder' }],
+      source: { status: 'current', reminderCount: 5 },
+      reminders: [
+        { title: 'Overdue reminder' },
+        { title: 'Due today reminder' },
+        { title: 'Future reminder' },
+        { title: 'House reminder' },
+      ],
     });
 
     const todayResponse = await server.inject({
@@ -112,10 +161,55 @@ describe('native Reminders source API v1', () => {
     expect(todayResponse.json()).toMatchObject({
       reminderSummary: {
         sourceStatus: 'current',
-        dueTodayCount: 1,
-        items: [{ title: 'Test Reminder', dueAt: null, hasDueTime: false }],
+        openCount: 4,
+        items: [
+          { title: 'Overdue reminder', dueAt: null, hasDueTime: false },
+          { title: 'Due today reminder', dueAt: null, hasDueTime: false },
+          { title: 'House reminder', dueAt: null, hasDueTime: false },
+        ],
       },
       sections: { reminders: true },
+    });
+
+    const completedOnlySnapshotResponse = await server.inject({
+      method: 'PUT',
+      url: `/api/v1/reminder-sources/${session.sourceId}/snapshots/current`,
+      headers: { authorization: `HearthReminderSource ${secret}` },
+      payload: {
+        requestId: 'request_reminder_api_snapshot_completed',
+        contractVersion: 1,
+        snapshotId: 'snapshot_reminder_api_002',
+        sequence: 2,
+        generatedAt: '2026-08-03T07:42:00+08:00',
+        lists: [{ sourceListId: 'eventkit-list-family', title: 'Family Reminders' }],
+        reminders: [
+          {
+            sourceReminderId: 'eventkit-reminder-completed',
+            sourceListId: 'eventkit-list-family',
+            title: 'Completed reminder',
+            dueLocalDate: '2026-08-01',
+            dueAt: null,
+            hasDueTime: false,
+            isCompleted: true,
+            completedAt: '2026-08-02T09:00:00+08:00',
+            sourceUpdatedAt: null,
+          },
+        ],
+      },
+    });
+    expect(completedOnlySnapshotResponse.statusCode).toBe(200);
+
+    const noOpenTodayResponse = await server.inject({
+      method: 'GET',
+      url: '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
+    });
+    expect(noOpenTodayResponse.statusCode).toBe(200);
+    expect(noOpenTodayResponse.json()).toMatchObject({
+      reminderSummary: {
+        sourceStatus: 'current',
+        openCount: 0,
+        items: [],
+      },
     });
 
     const revokeResponse = await server.inject({

@@ -43,6 +43,7 @@ import {
   CreateTvPairingSessionRequestSchema,
   TvPairingSessionSchema,
   TodayPhotoSummarySchema,
+  TodayReminderSummarySchema,
   AssistAddListItemRequestSchema,
   CreateHouseholdListRequestSchema,
   HouseholdListSettingsSchema,
@@ -143,6 +144,45 @@ describe('shared wire schemas', () => {
         requiresSetup: true,
       }),
     ).toMatchObject({ mode: 'private', household: null, localDate: '2027-01-01' });
+  });
+
+  it('keeps the Today reminder preview consistent with its total open count', () => {
+    expect(
+      TodayReminderSummarySchema.parse({
+        openCount: 3,
+        items: [
+          {
+            id: 'reminder_house',
+            title: 'House reminder',
+            dueAt: null,
+            hasDueTime: false,
+          },
+        ],
+      }),
+    ).toMatchObject({ openCount: 3, items: [{ title: 'House reminder' }] });
+    expect(
+      TodayReminderSummarySchema.safeParse({
+        openCount: 0,
+        items: [
+          {
+            id: 'reminder_impossible',
+            title: 'Should not appear',
+            dueAt: null,
+            hasDueTime: false,
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      TodayReminderSummarySchema.safeParse({
+        openCount: 2,
+        items: [],
+      }).success,
+    ).toBe(false);
+    expect(TodayReminderSummarySchema.parse({ openCount: 0, items: [] })).toEqual({
+      openCount: 0,
+      items: [],
+    });
   });
 
   it('accepts opaque request identifiers and rejects database row numbers', () => {
@@ -479,13 +519,19 @@ describe('shared wire schemas', () => {
   it('keeps daily weather forecasts compact and presentation-safe', () => {
     expect(
       DailyForecastSchema.parse({
-        temperatureCelsius: 16,
+        temperatureCelsius: 21,
+        lowTemperatureCelsius: 11,
+        highTemperatureCelsius: 21,
+        precipitationProbabilityPercent: 20,
         condition: 'clear',
         label: 'Clear',
         source: 'open-meteo',
       }),
     ).toEqual({
-      temperatureCelsius: 16,
+      temperatureCelsius: 21,
+      lowTemperatureCelsius: 11,
+      highTemperatureCelsius: 21,
+      precipitationProbabilityPercent: 20,
       condition: 'clear',
       label: 'Clear',
       source: 'open-meteo',
@@ -493,6 +539,9 @@ describe('shared wire schemas', () => {
     expect(
       DailyForecastSchema.safeParse({
         temperatureCelsius: 16,
+        lowTemperatureCelsius: 11,
+        highTemperatureCelsius: 21,
+        precipitationProbabilityPercent: 20,
         condition: 'provider-specific-code',
         label: 'Clear',
         source: 'open-meteo',

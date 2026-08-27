@@ -70,14 +70,14 @@ test('weather location supports search, advanced coordinates, test, save and rel
   await candidate.getByText('Advanced').click();
   await expect(candidate).toContainText('Latitude -32.32800 · Longitude 115.82000');
   await candidate.getByRole('button', { name: 'Test weather' }).click();
-  await expect(page.getByRole('status')).toContainText('Weather is working forBaldivis, WA');
+  await expect(page.getByRole('status')).toContainText('Weather works forBaldivis, WA');
   await expect(page.getByRole('status')).toContainText('18° · Partly cloudy');
   await page.getByRole('button', { name: 'Save weather location' }).click();
   await expect(page.getByRole('status')).toContainText('Weather location saved');
 
   await page.reload();
   const saved = page.locator('.weather-saved-location');
-  await expect(saved).toContainText('Current weather locationBaldivis, WA');
+  await expect(saved).toContainText('CurrentBaldivis, WA');
   await saved.getByText('Advanced').click();
   await expect(saved).toContainText('Latitude -32.32800 · Longitude 115.82000');
   await expect(page.getByText('No matching places found')).toHaveCount(0);

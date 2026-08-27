@@ -74,6 +74,10 @@ const migrations = [
     version: 26,
     url: new URL('./migrations/0026_today_reminders.sql', import.meta.url),
   },
+  {
+    version: 27,
+    url: new URL('./migrations/0027_native_reminders.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

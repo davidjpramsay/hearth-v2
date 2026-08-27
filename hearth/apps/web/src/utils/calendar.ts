@@ -1,4 +1,4 @@
-import type { CalendarEvent, DailyForecast } from '@hearth/shared';
+import type { CalendarEvent, DailyForecast, WeekDay } from '@hearth/shared';
 
 import type { IconName } from '../components/Icon';
 
@@ -34,4 +34,12 @@ export function eventsForDay(events: CalendarEvent[], localDate: string): Calend
   return events.filter(
     (event) => event.startLocalDate <= localDate && event.endLocalDate >= localDate,
   );
+}
+
+export function weekTemperatureDomain(days: readonly WeekDay[]): readonly [number, number] | null {
+  const forecasts = days.flatMap((day) => (day.forecast === null ? [] : [day.forecast]));
+  if (forecasts.length === 0) return null;
+  const minimum = Math.min(...forecasts.map((forecast) => forecast.lowTemperatureCelsius));
+  const maximum = Math.max(...forecasts.map((forecast) => forecast.highTemperatureCelsius));
+  return minimum === maximum ? [minimum - 1, maximum + 1] : [minimum, maximum];
 }

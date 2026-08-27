@@ -51,11 +51,9 @@ export function SystemHealthScreen() {
   const canCreateBackup = status.backup.state !== 'not-configured';
 
   return (
-    <AdminPage title="System health" subtitle="Recovery, storage and this Hearth version">
+    <AdminPage title="System health">
       {runtime.mode === 'private' ? null : (
-        <div className="admin-demo-note">
-          Demo preview: backup actions are simulated and do not write a household database.
-        </div>
+        <div className="admin-demo-note">Demo only · backups are not written.</div>
       )}
       <section
         className={`system-health-summary system-health-summary--${healthy ? 'healthy' : 'attention'}`}
@@ -68,11 +66,7 @@ export function SystemHealthScreen() {
           <h2 id="system-health-heading">
             {healthy ? 'Hearth is protected' : 'One setup item needs attention'}
           </h2>
-          <p>
-            {healthy
-              ? 'Household data is ready and a recent local recovery copy is available.'
-              : status.backup.message}
-          </p>
+          {healthy ? null : <p>{status.backup.message}</p>}
         </div>
       </section>
 
@@ -84,7 +78,7 @@ export function SystemHealthScreen() {
           title="Household data"
           tone={status.database.state === 'ready' ? 'healthy' : 'attention'}
         >
-          {status.database.message}
+          {status.database.state === 'ready' ? undefined : status.database.message}
         </HealthCard>
         <HealthCard
           detail={backupDetail(status.backup)}
@@ -93,16 +87,13 @@ export function SystemHealthScreen() {
           title="Recovery copies"
           tone={status.backup.state === 'ready' ? 'healthy' : 'attention'}
         >
-          {status.backup.message}
+          {status.backup.state === 'ready' ? undefined : status.backup.message}
         </HealthCard>
       </div>
 
       <section className="system-connection-health" aria-labelledby="connection-health-title">
         <div className="system-section-heading">
-          <div>
-            <h2 id="connection-health-title">Connections and photos</h2>
-            <p>Safe setup state for the services Hearth uses directly.</p>
-          </div>
+          <h2 id="connection-health-title">Connections and photos</h2>
           <Link
             className="system-section-link focusable"
             data-focus-down="system-calendar-health"
@@ -166,19 +157,12 @@ export function SystemHealthScreen() {
         </span>
         <span className="system-activity-entry__copy">
           <strong>Recent activity</strong>
-          <small>See who changed household settings, planning and connections.</small>
         </span>
         <Icon name="chevron-right" />
       </Link>
 
       <section className="system-backup-actions" aria-labelledby="system-backup-actions-title">
-        <div>
-          <h2 id="system-backup-actions-title">Create a recovery copy</h2>
-          <p>
-            Hearth takes a consistent online copy while the family keeps using the display. It keeps
-            the newest {status.backup.retentionCount} local copies.
-          </p>
-        </div>
+        <h2 id="system-backup-actions-title">Recovery copy</h2>
         {canCreateBackup ? (
           <button
             className="button button--primary focusable"
@@ -193,7 +177,7 @@ export function SystemHealthScreen() {
             type="button"
           >
             <Icon name="refresh" />
-            {createBackup.isPending ? 'Creating backup…' : 'Create backup now'}
+            {createBackup.isPending ? 'Creating…' : 'Create now'}
           </button>
         ) : (
           <div className="system-backup-unconfigured" role="status">
@@ -228,19 +212,18 @@ export function SystemHealthScreen() {
         className="system-recovery-boundary"
         aria-labelledby="system-recovery-boundary-title"
       >
-        <h2 id="system-recovery-boundary-title">Recovery boundary</h2>
+        <h2 id="system-recovery-boundary-title">Recovery copies</h2>
         <ul>
-          <li>The local copy contains Hearth household data and audit history.</li>
-          <li>Provider tokens stay in the separate protected secrets folder.</li>
-          <li>Managed photo masters remain in Hearth’s private data folder.</li>
-          <li>Home Assistant keeps its own independent backup on the Pi and Synology.</li>
+          <li>Include household data and activity.</li>
+          <li>Exclude secrets and photos.</li>
+          <li>Home Assistant is separate.</li>
         </ul>
       </section>
 
       <footer className="system-version">
-        <span>Hearth version</span>
+        <span>Version</span>
         <strong>{status.version}</strong>
-        <small>{status.mode === 'private' ? 'Private household mode' : 'Demo/test mode'}</small>
+        <small>{status.mode === 'private' ? 'Private' : 'Demo'}</small>
       </footer>
     </AdminPage>
   );
@@ -319,9 +302,9 @@ function calendarLabel(query: ConnectionQuery): string {
 }
 
 function calendarDetail(query: ConnectionQuery): string {
-  if (query.isPending) return 'Checking the saved read-only calendar setup.';
-  if (query.isError) return 'Hearth could not read calendar setup just now.';
-  if (query.data === null) return 'Add a read-only calendar connection when you are ready.';
+  if (query.isPending) return 'Checking…';
+  if (query.isError) return 'Could not read calendar status.';
+  if (query.data === null) return 'Not connected';
   return `${query.data.label} · ${query.data.calendars.length} calendar${query.data.calendars.length === 1 ? '' : 's'}`;
 }
 
@@ -339,9 +322,9 @@ function homeAssistantLabel(query: HomeAssistantQuery): string {
 }
 
 function homeAssistantDetail(query: HomeAssistantQuery): string {
-  if (query.isPending) return 'Checking the approved household-action setup.';
-  if (query.isError) return 'Hearth could not read Home Assistant setup just now.';
-  if (query.data === null) return 'Connect approved states and actions when you are ready.';
+  if (query.isPending) return 'Checking…';
+  if (query.isError) return 'Could not read Home Assistant status.';
+  if (query.data === null) return 'Not connected';
   return `${query.data.label} · ${query.data.instanceName}`;
 }
 
@@ -360,8 +343,8 @@ function photoLabel(query: PhotoQuery): string {
 }
 
 function photoDetail(query: PhotoQuery): string {
-  if (query.isPending) return 'Checking the private family photo collection.';
-  if (query.isError) return 'Hearth could not read photo collection status just now.';
+  if (query.isPending) return 'Checking…';
+  if (query.isError) return 'Could not read photo status.';
   return `${query.data.collection.name} · ${query.data.visiblePhotoCount} ready`;
 }
 
@@ -373,7 +356,7 @@ function HealthCard({
   title,
   tone,
 }: {
-  children: string;
+  children: string | undefined;
   detail: string;
   icon: 'refresh' | 'shield';
   label: string;
@@ -393,7 +376,7 @@ function HealthCard({
           {label}
         </span>
       </div>
-      <p>{children}</p>
+      {children === undefined ? null : <p>{children}</p>}
       <small>{detail}</small>
     </article>
   );

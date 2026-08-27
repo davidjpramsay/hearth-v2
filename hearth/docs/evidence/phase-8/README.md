@@ -1,4 +1,8 @@
-# Phase 8 evidence: native iPhone Reminders companion
+# Archived Phase 8 evidence: native iPhone Reminders companion
+
+> Retired on 2026-08-27. This document records a completed historical proof only. The companion,
+> pairing/snapshot server path and Apple projection are excluded from the active product; source is
+> preserved under `hearth/archive/apple-reminders-bridge/`. Current reminders are Hearth-owned.
 
 Date: 2026-08-25 to 2026-08-26
 
@@ -91,9 +95,10 @@ physical forced-stale recovery or OS-scheduled background execution.
 
 The first Hearth household surfaces are now implemented against that frozen projection: a
 conditional list-grouped, read-only Reminders destination and an independently configurable,
-bounded due-today summary. Local rendered inspection covered television and phone layouts plus
-D-pad entry and return. This remains product-code evidence until the exact release is deployed and
-read back through an authenticated production household session.
+bounded all-open summary ordered overdue, due today, undated and future. Local rendered inspection
+covered television and phone layouts plus D-pad entry and return. This remains product-code evidence
+until the exact release is deployed and read back through an authenticated production household
+session.
 
 ## Checks run
 

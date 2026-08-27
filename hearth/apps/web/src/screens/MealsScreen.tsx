@@ -39,7 +39,6 @@ export function MealsScreen({
             Manage meals
           </Link>
         }
-        eyebrow="Dinner plan"
         title="Meals"
         meta={plan.data.displayRange}
       />
@@ -48,7 +47,9 @@ export function MealsScreen({
         <div>
           <p>Tonight</p>
           <h2 id="tonight-heading">{tonight?.mealName ?? 'Nothing planned yet'}</h2>
-          <span>{tonight?.note ?? 'Dinner plan is ready for the week.'}</span>
+          {tonight?.note === undefined || tonight.note === null ? null : (
+            <span>{tonight.note}</span>
+          )}
         </div>
       </section>
       <div className="meal-week" aria-label={plan.data.displayRange}>
@@ -100,8 +101,7 @@ export function MealsScreen({
         >
           <Icon name="calendar" />
           <span>
-            <strong>Plan another night</strong>
-            <small>Comfortable editing on phone</small>
+            <strong>Plan meals</strong>
           </span>
           <Icon name="chevron-right" />
         </Link>

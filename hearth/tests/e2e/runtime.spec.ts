@@ -126,7 +126,7 @@ test('configured private Hearth requires a passkey before revealing household da
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
   await expect(page.getByRole('heading', { name: 'Sign in to open Hearth' })).toBeVisible();
-  await expect(page.getByText(/calendar, photos and family information private/i)).toBeVisible();
+  await expect(page.getByText('Use an adult passkey.')).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Pair this screen as a television' }),
   ).toBeVisible();
@@ -145,7 +145,7 @@ test('configured private Hearth requires a passkey before revealing household da
   await page.getByRole('button', { name: 'Use a recovery code' }).click();
   await expect(page.getByRole('heading', { name: 'Recover adult access' })).toBeVisible();
   await expect(page.getByLabel('Recovery code')).toHaveAttribute('autocomplete', 'off');
-  await expect(page.getByText(/removes the old passkeys and signed-in sessions/i)).toBeVisible();
+  await expect(page.getByText(/removes this adult’s old passkeys and sessions/i)).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'private-recovery-phone-portrait.png'),
     animations: 'disabled',
@@ -210,7 +210,7 @@ test('configured private Hearth offers browser television pairing without exposi
   await page.getByRole('button', { name: 'Pair this screen as a television' }).click();
   await expect(page.getByRole('heading', { name: 'Connect this screen' })).toBeVisible();
   await expect(page.getByLabel('Pairing code M7PAIR')).toBeVisible();
-  await expect(page.getByText(/Waiting for an adult’s approval/)).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Waiting for approval…');
   await expect(page.getByRole('button', { name: 'Back to sign in' })).toBeFocused();
   expect(submittedSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
   await expect(page.locator('body')).not.toContainText(submittedSecret);

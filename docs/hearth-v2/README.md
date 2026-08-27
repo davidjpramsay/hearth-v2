@@ -1,89 +1,36 @@
-# Hearth v2 specification index
+# Hearth v2 specifications
 
-Status: **Phases 0–5 are implemented and locally verified. Phase 6 source,
-pairing contracts, Android builds and emulator lifecycle evidence are implemented; selected-TCL
-evidence is still required. Phase 3 includes the first read-only CalDAV/iCloud adapter. Phase 5
-includes fake and private REST Home Assistant contracts plus an adult connection/mapping workflow;
-the private deployment now also has integrity-checked online database backups, fail-safe restore
-tooling, a calm adult System Health surface, and named-adult multi-passkey access with one-time
-local recovery. No live credential, calendar write, restore or household automation was used.
-Phase 8's read-only EventKit proof is physically verified on an iPhone 17e running iOS 26.6, and
-its tested v1 pairing and snapshot contract is frozen. Physical pairing, full-snapshot upload and
-exact idempotent replay are verified; signed household UI readback and physical revoke/stale
-recovery remain open. The native dashboard surfaces remain in progress; reminder completion and
-every other EventKit mutation remain absent. The
-separate Music Assistant/Jellyfin/Cast voice-music workstream is planned but not installed or
-verified.**
+Hearth is a private family command centre designed for a wall-mounted Google TV, D-pad remote and
+phone browser. It owns reminders, chores, routines, pocket money, lists, meals, notices and photos;
+connected calendars remain provider-owned.
 
-## Product statement
+The active product includes Today, Week, Month, Weather, Hearth reminders, Chores, Lists, Meals,
+Home, Photos and phone administration. Home Assistant remains the authority for physical devices
+and voice. Native television media apps remain separate.
 
-Hearth is an original family command centre for a wall-mounted Google TV. It brings together calendars, chores, routines, proportional pocket money, meals, lists, photos and household notices, and extends those features through Home Assistant and local voice. The native Jellyfin Google TV app independently handles normal movie, television and music browsing from the Synology server. A separate Home Assistant/Music Assistant path may search that Jellyfin music library and cast voice-requested audio to the television without making media part of Hearth.
+## Source of truth
 
-The reference class is the family organiser represented by Skylight Calendar. Hearth should match the useful household outcomes, not copy the product's identity or interface.
+| Document                             | Purpose                         |
+| ------------------------------------ | ------------------------------- |
+| [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) | Outcomes and scope              |
+| [`UX_SPEC.md`](UX_SPEC.md)           | Screens and interaction         |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Runtime and security boundaries |
+| [`DATA_MODEL.md`](DATA_MODEL.md)     | Persistence and ownership       |
+| [`INTEGRATIONS.md`](INTEGRATIONS.md) | External services               |
+| [`ROADMAP.md`](ROADMAP.md)           | Delivery order                  |
+| [`ACCEPTANCE.md`](ACCEPTANCE.md)     | Definition of done              |
+| [`DECISIONS.md`](DECISIONS.md)       | Durable decisions               |
+| [`OPERATIONS.md`](OPERATIONS.md)     | Local and Synology operation    |
 
-## Authoritative documents
+## Current boundaries
 
-| File                              | Controls                                                                  |
-| --------------------------------- | ------------------------------------------------------------------------- |
-| `PRODUCT_SPEC.md`                 | Users, outcomes, scope and functional requirements                        |
-| `UX_SPEC.md`                      | Screens, navigation, television ergonomics and visual principles          |
-| `ARCHITECTURE.md`                 | Runtime topology, package boundaries, security and deployment shape       |
-| `DATA_MODEL.md`                   | Domain entities, ownership and persistence rules                          |
-| `INTEGRATIONS.md`                 | Calendar, Home Assistant, voice, photos and the native-media boundary     |
-| `ROADMAP.md`                      | Ordered implementation phases and delivery boundaries                     |
-| `ACCEPTANCE.md`                   | Definition of done and system-level acceptance tests                      |
-| `DECISIONS.md`                    | Durable architectural and product decisions                               |
-| `OPERATIONS.md`                   | Verified local environment, proposed deployment and backup model          |
-| `REMINDERS_COMPANION_CONTRACT.md` | Frozen native EventKit pairing, authentication and snapshot wire contract |
-| `REFERENCE_SKYLIGHT.md`           | Publicly documented reference features and the non-copying boundary       |
+- Apple Reminders/EventKit is retired. Its proof is archived under
+  `hearth/archive/apple-reminders-bridge/` and excluded from builds and deployment.
+- Weather uses the server-side Open-Meteo adapter and cache.
+- Calendar access is read-only unless a future decision explicitly expands it.
+- Household services are LAN/Tailscale-first; no public exposure is approved.
+- The Synology owns Hearth's private runtime and data. The external Google/Android TV device runs
+  the small native shell; the Raspberry Pi remains a headless Home Assistant appliance.
 
-## Confirmed target environment
-
-- Landscape 65-inch 4K Google TV, with TCL 65C7L as the current preferred
-  target; 65C8K is the picture-upgrade alternative and 65C6K only a value
-  fallback if suitable clearance stock appears
-- Normal TV remote and microphone remote
-- Home Assistant Voice Preview Edition and iPhone Companion apps
-- Existing Raspberry Pi 5 running Home Assistant OS, headless and off the HDMI path
-- Existing Synology DS920+ running Jellyfin and storing family media
-- Optional Sonos Beam through HDMI eARC
-- Existing PIR/IR hardware, preferably connected through an ESPHome node near the television
-
-## Known decisions still requiring user input
-
-These are intentionally deferred and should not block the first rendered prototype:
-
-- Exact iCloud calendar read allowlist and any future calendars that may be modified
-- Household member names, colours and permissions beyond the known example of Ezra
-- Real child weekly pocket-money amounts and preferred payday; demo mode uses A$12 each Friday for Ezra
-- Exact Home Assistant script/entity mappings plus the presence grace period, quiet hours and protected-playback signal source
-- Exact Home Assistant Voice satellite-to-player mapping, the final `Hearth TV`
-  Cast entity and a dedicated least-privilege Jellyfin account for Music
-  Assistant; the read-only Synology music-share fallback is used only if the
-  best-effort Jellyfin provider fails household reliability testing
-- Whether the household wants to keep the optional read-only Synology bulk-import folder; everyday
-  photo additions now use the adult companion uploader and require no shared-folder setup
-- Final TV and audio purchase
-
-Use typed provider interfaces and seeded demo data until these choices are supplied. Do not invent live credentials or mutate a real calendar to unblock development. D-012 selects iCloud through CalDAV as the first read provider, but the adapter fails closed until an exact external allowlist is approved.
-
-## Immediate next step
-
-Phase 7 remains active for production acceptance. In parallel, Phase 8 now has the versioned
-server-side Reminders pairing, projection and read contracts plus golden Swift interoperability
-fixtures. Complete the native client against `REMINDERS_COMPANION_CONTRACT.md`, then add the
-dedicated Reminders surface and optional Today summary only after physical end-to-end snapshot
-evidence. The path-safe Photos gallery, mixed-orientation source,
-direct adult phone uploads, optional Synology bulk import and immediate-exit
-ambient mode now run in the web product, while presence/quiet-hours coordination
-and live operations acceptance remain open. Configure the implemented backup service only inside
-the approved private Synology deployment, copy it off-device with encrypted Synology tooling and
-perform the clean-location restore drill. Repeat the Phase 6 launcher, pairing,
-D-pad/Back, app switching, standby/resume and outage-recovery checks on the
-selected TCL television. In a separate live-system
-workstream, and only after approval and backup, commission Music Assistant on
-Home Assistant OS, connect Jellyfin as its music source, expose the television
-through Google Cast and configure the explicit custom voice intents/player
-mapping described in `INTEGRATIONS.md` and `OPERATIONS.md`. None of that media
-orchestration belongs in Hearth. A one-time live CalDAV read also remains a
-separately approved action and does not grant calendar write scope.
+Open acceptance work is tracked only in [`ACCEPTANCE.md`](ACCEPTANCE.md) and
+[`ROADMAP.md`](ROADMAP.md); this index intentionally avoids duplicating it.

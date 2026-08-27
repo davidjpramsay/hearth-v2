@@ -98,21 +98,15 @@ Can understand the current household state and use clearly exposed room controls
 
 ### 5. Reminders
 
-- A permissioned native iPhone companion may project the user's selected Apple Reminders lists into
-  Hearth through EventKit. This is separate from the iCloud Calendar CalDAV connection.
-- Hearth displays a dedicated read-only Reminders section and may show a bounded due-today summary
-  on Today. Apple remains authoritative; Hearth does not edit or complete Apple reminders in v1.
-- The projection preserves list/title, date-only versus timed due dates and completion state, keeps
-  cached data visible during temporary iPhone/iCloud failure and clearly marks stale data.
-- The native companion requests a best-effort iOS background refresh after it is suspended. When
-  iOS grants runtime, it rereads the selected EventKit lists and waits for Hearth to accept the
-  replacement snapshot. Apple controls launch timing, so this improves automatic freshness without
-  promising calendar-like five-minute delivery.
-- Pairing, authentication, snapshot replacement and revocation follow
-  `REMINDERS_COMPANION_CONTRACT.md`. Apple credentials and raw EventKit identifiers never enter
-  household browser contracts.
-- Apple Reminders Sections are not a product dependency because public EventKit does not expose
-  them.
+- Hearth owns household reminders directly. A household member may create, edit, complete, reopen
+  and remove a reminder through the same private, authenticated command boundary as other Hearth
+  content.
+- Reminders support a title and optional due date. Date-only reminders remain date-only; Hearth does
+  not invent a midnight time.
+- The dedicated Reminders screen defaults to open items and can reveal completed items. Today shows
+  a bounded summary ordered overdue, due today, undated and then future.
+- Apple Reminders, EventKit, VTODO and companion-app synchronisation are not active product
+  integrations. The retired proof is retained only under `hearth/archive/apple-reminders-bridge/`.
 
 ### 6. Meal planning
 
@@ -170,11 +164,19 @@ Hearth data backup boundary.
 
 ### 8. Notices and household summary
 
+- A dedicated Weather destination follows Calendar in primary navigation and presents current
+  conditions, a single mode-switching 24-hour graph and a comparable seven-day forecast.
+- The graph exposes temperature with apparent temperature, rain probability with expected amount,
+  and sustained wind with gusts and direction. Television use requires only D-pad directions and
+  Select; the phone uses the same information in a stacked touch-friendly layout.
+- Seven-day and Calendar Week temperature bars share a scale within their displayed week, so their
+  positions communicate relative warmth rather than acting as decorative progress bars.
+- Keep the last successful forecast readable during a provider outage and show its age quietly.
 - Brief announcements with expiry and priority.
 - Optional household-local daily Bible verse from the ESV API. It is off by default,
   server-fetched, visibly attributed and read-only; provider failure must not affect other Today
   content.
-- Weather and basic room/home state where useful.
+- Current weather and basic room/home state where useful on Today.
 - Avoid a dense sensor dashboard. Show only states that affect a family decision.
 
 ### 9. Home Assistant controls
@@ -224,7 +226,7 @@ The default Today screen should include, in order of prominence:
 1. Current time/date, weather and a quiet connectivity indicator when needed.
 2. The next few household events and each person's day.
 3. Chores/routines due now or today.
-4. An optional bounded summary of incomplete reminders due today.
+4. An optional bounded summary of all incomplete reminders.
 5. Dinner and the most relevant list summary.
 6. One concise household notice.
 7. Home-scene shortcuts in the navigation rail/dock.
@@ -247,7 +249,7 @@ The first household release includes:
 - Read-only calendar connection plus editable person/avatar/colour assignments
 - Chores/routines, weekly pocket-money progress and payment history
 - Lists
-- Read-only Apple Reminders projection through the permissioned native companion
+- Household-owned reminders with create, edit, complete, reopen and remove actions
 - Photo ambient mode
 - Responsive administration
 - Tested household weather location, configured separately from timezone
@@ -268,8 +270,8 @@ Meal planning may follow the first vertical release if schedule or quality would
 - Social feeds, web browsing or advertising
 - Public multi-tenant SaaS
 - Replacing the responsive web companion with a full native iOS client before feature parity and
-  migration evidence exists; bounded native Apple integrations such as the EventKit Reminders
-  bridge are explicitly in scope where iOS provides a necessary capability
+  migration evidence exists
+- Apple Reminders, EventKit or VTODO synchronisation without a new product/security decision
 - Local general-purpose LLM as a launch requirement
 - Biometric surveillance or camera-based person identification
 

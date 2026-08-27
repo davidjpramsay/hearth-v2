@@ -5,42 +5,36 @@ import { Icon, type IconName } from '../components/Icon';
 
 const planningAreas: Array<{
   title: string;
-  description: string;
   path: string;
   icon: IconName;
   focusId: string;
 }> = [
   {
     title: 'Routines and chores',
-    description: 'Schedules, assignees and due times',
     path: '/admin/routines',
     icon: 'chores',
     focusId: 'planning-routines',
   },
   {
     title: 'Today’s chores',
-    description: 'Reassign, skip, excuse and review history',
     path: '/admin/chore-day',
     icon: 'chores',
     focusId: 'planning-chore-day',
   },
   {
     title: 'Meals',
-    description: 'Plan dinners and keep family favourites',
     path: '/admin/meals',
     icon: 'meal',
     focusId: 'planning-meals',
   },
   {
     title: 'Pocket money',
-    description: 'Set-and-forget amounts, weekly progress and payments',
     path: '/admin/pocket-money',
     icon: 'wallet',
     focusId: 'planning-pocket-money',
   },
   {
     title: 'Household lists',
-    description: 'Groceries, packing and shared reminders',
     path: '/admin/lists',
     icon: 'list',
     focusId: 'planning-lists',
@@ -49,14 +43,7 @@ const planningAreas: Array<{
 
 export function PlanningSettingsScreen() {
   return (
-    <AdminPage title="Family planning" subtitle="The things that keep the week moving">
-      <div className="planning-intro">
-        <Icon name="leaf" />
-        <div>
-          <strong>Comfortable editing belongs on the phone</strong>
-          <p>The television stays simple while adults can make detailed changes here.</p>
-        </div>
-      </div>
+    <AdminPage title="Family planning">
       <div className="planning-area-list">
         {planningAreas.map((area, index) => (
           <Link
@@ -71,7 +58,6 @@ export function PlanningSettingsScreen() {
             </span>
             <div>
               <strong>{area.title}</strong>
-              <small>{area.description}</small>
             </div>
             <Icon name="chevron-right" />
           </Link>

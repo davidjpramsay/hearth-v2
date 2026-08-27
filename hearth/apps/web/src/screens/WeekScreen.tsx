@@ -5,7 +5,7 @@ import { addLocalDays } from '@hearth/core';
 import type { CalendarEvent, DemoScenario, WeekDay } from '@hearth/shared';
 
 import { Avatar } from '../components/Avatar';
-import { CalendarAgenda, DayForecast } from '../components/CalendarAgenda';
+import { CalendarAgenda, WeekForecast } from '../components/CalendarAgenda';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
@@ -14,7 +14,12 @@ import { EmptyState, FailureState, LoadingState, StatusBanner } from '../compone
 import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
-import { eventColorVariables, eventsForDay, forecastIcon } from '../utils/calendar';
+import {
+  eventColorVariables,
+  eventsForDay,
+  forecastIcon,
+  weekTemperatureDomain,
+} from '../utils/calendar';
 import { formatEventTime } from '../utils/date';
 
 export function WeekScreen({
@@ -45,6 +50,7 @@ export function WeekScreen({
     );
   const primaryEventId = week.events[0]?.id;
   const currentForecast = week.days.find((day) => day.isToday)?.forecast ?? null;
+  const forecastDomain = weekTemperatureDomain(week.days);
   return (
     <div className="screen week-screen">
       <ScreenHeader
@@ -67,9 +73,7 @@ export function WeekScreen({
         }
       />
       <CalendarViewSwitch />
-      {!online ? (
-        <StatusBanner kind="offline">You’re offline · Showing saved plans.</StatusBanner>
-      ) : null}
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
       {week.freshness === 'stale' && online ? (
         <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
           {week.statusMessage}
@@ -89,6 +93,7 @@ export function WeekScreen({
             key={day.localDate}
             onSelect={setSelectedEvent}
             primaryEventId={primaryEventId}
+            forecastDomain={forecastDomain}
             timezone={runtime.timezone}
           />
         ))}
@@ -180,6 +185,7 @@ function WeekColumn({
   events,
   dayIndex,
   primaryEventId,
+  forecastDomain,
   timezone,
   onSelect,
 }: {
@@ -187,6 +193,7 @@ function WeekColumn({
   events: CalendarEvent[];
   dayIndex: number;
   primaryEventId: string | undefined;
+  forecastDomain: readonly [number, number] | null;
   timezone: string;
   onSelect: (event: CalendarEvent) => void;
 }) {
@@ -197,9 +204,11 @@ function WeekColumn({
   return (
     <section className={`week-column${day.isToday ? ' week-column--today' : ''}`}>
       <header>
-        <span>{day.dayLabel}</span>
-        <strong className="week-day-date">{day.dateLabel.split(' ')[0]}</strong>
-        <DayForecast forecast={day.forecast} />
+        <span className="week-day-heading">
+          <span>{day.dayLabel}</span>
+          <strong className="week-day-date">{day.dateLabel.split(' ')[0]}</strong>
+        </span>
+        <WeekForecast domain={forecastDomain} forecast={day.forecast} />
       </header>
       <div className="week-column__events">
         {events.length === 0 ? (

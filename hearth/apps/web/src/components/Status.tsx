@@ -21,8 +21,7 @@ export function LoadingState() {
   return (
     <section className="state-panel state-panel--loading" aria-label="Loading Hearth">
       <div className="state-panel__spinner" />
-      <h1>Gathering today’s plans…</h1>
-      <p>Hearth is getting the household ready.</p>
+      <h1>Loading…</h1>
       <div className="loading-lines" aria-hidden="true">
         <span />
         <span />
@@ -34,7 +33,7 @@ export function LoadingState() {
 
 export function EmptyState({
   onBootstrap,
-  title = 'Nothing is planned yet',
+  title = 'Nothing planned yet',
   description,
 }: {
   onBootstrap?: (() => void) | undefined;
@@ -48,8 +47,8 @@ export function EmptyState({
       <p>
         {description ??
           (onBootstrap === undefined
-            ? 'Add plans, chores or a calendar from the companion to begin.'
-            : 'Add the fictional demo household to see how Hearth brings a family day together.')}
+            ? 'Add plans, chores or a calendar to begin.'
+            : 'Add the demo household to explore Hearth.')}
       </p>
       {onBootstrap === undefined ? null : (
         <button
@@ -70,8 +69,8 @@ export function FailureState({ onRetry }: { onRetry: () => void }) {
   return (
     <section className="state-panel state-panel--failure" role="alert">
       <Icon name="warning" />
-      <h1>Hearth couldn’t load this view</h1>
-      <p>Your family’s plans are safe. Try again when the connection settles.</p>
+      <h1>Couldn’t load this view</h1>
+      <p>Your plans are safe.</p>
       <button
         className="primary-action focusable"
         data-focus-id="state-retry"

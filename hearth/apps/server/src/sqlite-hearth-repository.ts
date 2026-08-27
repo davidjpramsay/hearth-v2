@@ -35,6 +35,7 @@ import {
   type Member,
   type MonthSchedule,
   type TodaySummary,
+  type WeatherForecast,
   type WeekDay,
   type WeekSchedule,
 } from '@hearth/shared';
@@ -43,6 +44,7 @@ import { CalendarProjectionService, type CalendarProjectionMode } from './calend
 import { createDemoCalendarFixture } from './demo/calendar-fixture.js';
 import {
   createDemoSeed,
+  createDemoWeatherForecast,
   demoForecastForDay,
   DEMO_HOUSEHOLD_ID,
   DEMO_LOCAL_DATE,
@@ -196,6 +198,43 @@ export class SqliteHearthRepository implements HearthRepository {
               message: 'Home Assistant is not connected yet.',
             },
           ],
+    };
+  }
+
+  async getWeather(householdId: string): Promise<WeatherForecast> {
+    this.assertHousehold(householdId);
+    await this.applyLatency();
+    const household = this.readHousehold(householdId);
+    if (this.demoSeedEnabled) {
+      return {
+        ...createDemoWeatherForecast(),
+        householdId,
+        timezone: household.timezone,
+      };
+    }
+    const snapshot = await this.readWeather(household.timezone);
+    const localDate = this.currentLocalDate(householdId);
+    const daily = [...snapshot.daily.entries()]
+      .filter(([date]) => date >= localDate)
+      .slice(0, 7)
+      .map(([date, forecast]) => ({ localDate: date, ...forecast }));
+    return {
+      householdId,
+      locationLabel: this.demoSeedEnabled ? 'Baldivis, WA' : null,
+      timezone: household.timezone,
+      generatedAt: this.clock.now().toISOString(),
+      updatedAt: snapshot.updatedAt,
+      freshness: snapshot.freshness,
+      statusMessage:
+        snapshot.freshness === 'stale'
+          ? 'Updated earlier · Trying again quietly.'
+          : snapshot.freshness === 'offline'
+            ? 'Weather is not set up.'
+            : null,
+      current: snapshot.current?.details ?? null,
+      hourly: [...snapshot.hourly],
+      daily,
+      source: snapshot.current?.summary.source ?? daily[0]?.source ?? null,
     };
   }
 

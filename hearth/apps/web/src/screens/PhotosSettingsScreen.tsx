@@ -158,12 +158,7 @@ export function PhotosSettingsScreen() {
     ? primaryCurationFocusId(data.photos.at(-1)!, selectionMode)
     : 'photo-upload-select';
   return (
-    <AdminPage
-      backLabel="Back to More"
-      backTo="/more"
-      title="Manage photos"
-      subtitle="Add, hide or remove photos shown around Hearth"
-    >
+    <AdminPage backLabel="Back to More" backTo="/more" title="Manage photos">
       <section
         aria-labelledby="photo-upload-title"
         className={`photo-source-guide photo-source-guide--${status}`}
@@ -173,11 +168,7 @@ export function PhotosSettingsScreen() {
             <Icon name="image" />
           </span>
           <div>
-            <h2 id="photo-upload-title">Add photos from this phone</h2>
-            <p>
-              Choose several photos at once. Hearth makes private, orientation-correct copies on
-              your Synology and adds them to the television immediately.
-            </p>
+            <h2 id="photo-upload-title">Add photos</h2>
           </div>
         </div>
         <input
@@ -207,9 +198,7 @@ export function PhotosSettingsScreen() {
           <Icon name="image" />
           {upload.isPending ? 'Adding photos…' : 'Choose photos'}
         </button>
-        <p className="photo-source-guide__formats">
-          Up to 25 MB each · JPEG, PNG, HEIC, HEIF, TIFF, AVIF and WebP
-        </p>
+        <p className="photo-source-guide__formats">JPEG, PNG, HEIC · 25 MB max</p>
       </section>
       {upload.isSuccess ? <UploadResult result={upload.data} /> : null}
       {upload.isError ? <AdminError message={upload.error.message} /> : null}
@@ -221,7 +210,7 @@ export function PhotosSettingsScreen() {
           <div>
             <strong>{data.collection.name}</strong>
             <p>
-              {data.visiblePhotoCount} showing · {data.managedPhotoCount} added in Hearth ·{' '}
+              {data.visiblePhotoCount} showing · {data.managedPhotoCount} in Hearth ·{' '}
               {data.importedPhotoCount} imported
             </p>
           </div>
@@ -236,11 +225,8 @@ export function PhotosSettingsScreen() {
             <Icon name="shield" />
           </span>
           <div>
-            <strong>Optional Synology folder import</strong>
-            <p>
-              {data.folderImport.message} This is useful for adding a large existing folder, but it
-              is not required for everyday phone uploads.
-            </p>
+            <strong>Synology folder import</strong>
+            <p>{canScan ? data.folderImport.message : 'Not connected'}</p>
             <dl className="photo-source-stats">
               <div>
                 <dt>Last check</dt>
@@ -280,17 +266,14 @@ export function PhotosSettingsScreen() {
       {refresh.isError ? <AdminError message={refresh.error.message} /> : null}
       {refresh.isSuccess ? (
         <p className="save-confirmation" role="status">
-          Optional folder checked. {refresh.data.status.importedPhotoCount} photos are imported.
+          Folder checked · {refresh.data.status.importedPhotoCount} imported
         </p>
       ) : null}
       <section className="photo-curation" aria-labelledby="photo-curation-title">
         <header className="photo-curation__header">
           <div>
-            <h2 id="photo-curation-title">Choose family photos</h2>
-            <p>
-              Favourites appear first. Hidden photos stay indexed but never appear on Today, in the
-              collage or in ambient mode.
-            </p>
+            <h2 id="photo-curation-title">Family photos</h2>
+            <p>Favourites first · hidden photos stay hidden</p>
           </div>
           <div className="photo-curation__header-actions">
             <div className="photo-curation__counts" aria-label="Photo visibility summary">
@@ -360,7 +343,7 @@ export function PhotosSettingsScreen() {
         {data.photos.length === 0 ? (
           <div className="photo-curation__empty">
             <Icon name="image" />
-            <p>Choose photos from this phone to start the family collection.</p>
+            <p>No photos yet.</p>
           </div>
         ) : (
           <div className="photo-curation__grid">
@@ -419,11 +402,7 @@ export function PhotosSettingsScreen() {
       ) : null}
       <div className="phase-note">
         <strong>Private Synology storage</strong>
-        <p>
-          Hearth keeps managed photo masters and television copies inside its private data folder.
-          Filesystem paths and original upload names never appear in the browser. Include the Hearth
-          data folder in encrypted Synology backup.
-        </p>
+        <p>Back up Hearth’s private data folder.</p>
       </div>
       <Link
         className="admin-primary-action focusable"
@@ -464,14 +443,16 @@ function UploadResult({
             ? `${added} ${added === 1 ? 'photo' : 'photos'} added.`
             : 'No new photos added.'}
         </strong>
-        <p>
-          {duplicates > 0
-            ? `${duplicates} ${duplicates === 1 ? 'duplicate was' : 'duplicates were'} already in Hearth. `
-            : ''}
-          {result.failures.length > 0
-            ? `${result.failures.length} ${result.failures.length === 1 ? 'photo could' : 'photos could'} not be added.`
-            : 'The family collection is ready.'}
-        </p>
+        {duplicates > 0 || result.failures.length > 0 ? (
+          <p>
+            {duplicates > 0
+              ? `${duplicates} ${duplicates === 1 ? 'duplicate' : 'duplicates'}. `
+              : ''}
+            {result.failures.length > 0
+              ? `${result.failures.length} ${result.failures.length === 1 ? 'photo needs' : 'photos need'} another try.`
+              : ''}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -669,7 +650,6 @@ function PhotoDeleteDialog({
         <span className="photo-delete-dialog__icon">
           <Icon name="trash" />
         </span>
-        <p>Permanent removal</p>
         <h2 id="photo-delete-title">
           Delete {count} Hearth {count === 1 ? 'photo' : 'photos'}?
         </h2>
@@ -736,11 +716,10 @@ function formatPhotoDate(value: string | null): string {
 }
 
 function curationConfirmation(action: string): string {
-  if (action === 'photo.favourite')
-    return 'Photo added to favourites and moved forward in rotation.';
-  if (action === 'photo.unfavourite') return 'Photo will still rotate, after family favourites.';
-  if (action === 'photo.hide') return 'Photo hidden from Today, Photos and ambient mode.';
-  return 'Photo restored to the family rotation.';
+  if (action === 'photo.favourite') return 'Added to favourites.';
+  if (action === 'photo.unfavourite') return 'Removed from favourites.';
+  if (action === 'photo.hide') return 'Photo hidden.';
+  return 'Photo restored.';
 }
 
 function sourceBadge(status: 'ready' | 'unconfigured' | 'unavailable'): string {

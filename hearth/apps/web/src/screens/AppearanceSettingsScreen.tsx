@@ -13,36 +13,31 @@ const themeOptions: {
   {
     value: 'light',
     title: 'Light',
-    description: 'Warm and bright throughout the day',
+    description: 'Always light',
     icon: 'sun',
   },
   {
     value: 'dark',
     title: 'Dark',
-    description: 'Warm charcoal with softer surfaces',
+    description: 'Always dark',
     icon: 'moon',
   },
   {
     value: 'automatic',
     title: 'Automatic',
-    description: 'Follow this device’s light or dark setting',
+    description: 'Matches this device',
     icon: 'sunrise',
   },
 ];
 
 export function AppearanceSettingsScreen() {
-  const { preferences, resolvedTheme, setEveningDimming, setTheme } = useAppearance();
+  const { preferences, setEveningDimming, setTheme } = useAppearance();
   return (
-    <AdminPage
-      backLabel="Back to More"
-      backTo="/more"
-      title="Appearance"
-      subtitle="Make this display comfortable for your room"
-    >
+    <AdminPage backLabel="Back to More" backTo="/more" title="Appearance">
       <section className="appearance-settings" aria-labelledby="theme-choice-heading">
         <div className="appearance-section-heading">
           <h2 id="theme-choice-heading">Theme</h2>
-          <p>Saved on this device</p>
+          <p>This device only</p>
         </div>
         <div className="appearance-options" role="radiogroup" aria-label="Theme">
           {themeOptions.map((option, index) => {
@@ -77,11 +72,6 @@ export function AppearanceSettingsScreen() {
             );
           })}
         </div>
-        <p className="appearance-result" aria-live="polite">
-          {preferences.theme === 'automatic'
-            ? `This device currently uses ${resolvedTheme} mode.`
-            : `${preferences.theme === 'dark' ? 'Dark' : 'Light'} mode is active on this device.`}
-        </p>
       </section>
 
       <section
@@ -90,7 +80,6 @@ export function AppearanceSettingsScreen() {
       >
         <div className="appearance-section-heading">
           <h2 id="comfort-heading">Evening comfort</h2>
-          <p>Independent of the theme</p>
         </div>
         <button
           aria-checked={preferences.eveningDimming}
@@ -109,15 +98,14 @@ export function AppearanceSettingsScreen() {
           </span>
           <span className="appearance-option__copy">
             <strong>Evening dimming</strong>
-            <small>Reduce overall glare, including photos and ambient mode</small>
+            <small>Reduce glare across Hearth</small>
           </span>
           <span className="appearance-switch" aria-hidden="true">
             <span />
           </span>
         </button>
         <p className="appearance-help">
-          This changes Hearth only. It does not run the Home Assistant Evening scene or alter the
-          television’s hardware brightness.
+          Dims Hearth only. It does not change TV brightness or run Home Assistant.
         </p>
       </section>
     </AdminPage>

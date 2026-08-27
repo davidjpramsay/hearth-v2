@@ -35,10 +35,10 @@ Exact numbers may be refined from real-TV testing, but may not be reduced merely
 
 Primary commands are Up, Down, Left, Right, Select and Back.
 
-- A persistent navigation rail or dock exposes Today, Calendar, Chores, Lists, Reminders, Meals,
-  selected Home actions and Photos, in that order; Week and Month are views inside Calendar rather
-  than competing primary destinations. Reminders appears only after a source has produced its first
-  usable snapshot; setup remains phone-first.
+- A persistent navigation rail or dock exposes Today, Calendar, Weather, Chores, Lists, Reminders,
+  Meals, selected Home actions and Photos, in that order; Week and Month are views inside Calendar
+  rather than competing primary destinations. Reminders appears only after a source has produced
+  its first usable snapshot; setup remains phone-first.
 - Every household surface shows the live household-local time and date in shared application chrome: in the television rail and in a compact companion header on phone/admin layouts. Individual screens do not repeat their own clock. Pairing and pre-authentication setup remain uncluttered exceptions.
 - The focused destination and focused action are always visually obvious.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
@@ -62,7 +62,8 @@ The default shared overview:
 - dinner plan
 - one active notice
 - concise list summary
-- an optional bounded summary of incomplete reminders due today
+- an optional bounded summary of all incomplete reminders, ordered overdue, due today, undated and
+  future
 - one orientation-safe family-photo panel that is large enough to read from the sofa while
   remaining secondary to plans and chores; landscape and portrait sources must remain fully
   visible without distortion, and the photo sits directly on the page without a tinted or
@@ -114,7 +115,11 @@ or summary band.
 ### Calendar
 
 - **Week:** primary television planning surface; columns/days must remain legible.
-- Week day headings include a compact, read-only forecast icon and temperature when forecast data is available; the phone agenda carries the same daily cue without compressing its event list. The grouped phone presentation replaces the timeline at narrow widths and must never render as a second block beneath the television Week timeline.
+- Week day headings include a compact, read-only forecast icon, rain probability, low/high and a
+  miniature temperature-range bar when forecast data is available. Every bar uses the same weekly
+  scale. The phone agenda carries a compact daily cue without compressing its event list. The
+  grouped phone presentation replaces the timeline at narrow widths and must never render as a
+  second block beneath the television Week timeline.
 - **Agenda:** a chronological, rolling four-day view containing today and the next three calendar
   days. It never includes past dates or days beyond that window and therefore has no earlier/later
   period controls.
@@ -122,6 +127,21 @@ or summary band.
 - **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact event titles on substantial, readable calendar-colour tinted backgrounds and a deterministic `+N more` summary when the day is dense; faces and solid source colours appear once in a persistent Calendar key. Week event cards use the same deeper tinted-surface language rather than relying on a narrow edge stripe, while text and focus contrast remain accessible in both themes. The six Month rows grow to use the available television height, and the Earlier/current/Later month bar stays at the bottom with the same geometry as Week navigation. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
 
 Event cards must express start time, title, owner/source and conflicts. Location and notes appear in a focused detail surface.
+
+### Weather
+
+- Current conditions show temperature, apparent temperature, today's low/high, condition, rain
+  likelihood and wind without exposing coordinates or provider machinery.
+- One large 24-hour chart switches between Temperature, Rain and Wind. Left/Right moves the selected
+  hour; Up/Down changes the mode. Mode buttons remain directly selectable by touch and keyboard.
+- Temperature plots actual and apparent temperature. Rain plots probability and reports expected
+  millimetres for the selected hour. Wind plots sustained speed and gusts with direction arrows.
+- The next seven days use one shared temperature domain. Each row carries day, condition, rain
+  probability, low, range bar and high; Today also carries a current-temperature marker.
+- Phone presentation stacks naturally without page-level horizontal overflow. A wide chart may
+  scroll within its own bounded region, with explicit previous/next-hour controls.
+- A stale forecast remains visible with a quiet age/status cue. Open-Meteo attribution sits at the
+  end of the Weather surface rather than on Today.
 
 The Calendar view switch is available on both television and phone. Week,
 Month and Agenda keep their own stable URLs beneath `/calendar`; the previous
@@ -177,20 +197,15 @@ the phone More hub.
 
 ### Reminders
 
-- The television and phone show the same read-only, list-grouped Hearth projection from the selected
-  EventKit lists. Incomplete reminders appear before completed reminders, then sort by due date/time
-  and title.
-- Date-only reminders never acquire a misleading midnight time. Timed reminders use the household
-  timezone for display while preserving the source instant.
-- A calm `Updated …` or `Stale` cue reports source freshness. Temporary iPhone/iCloud unavailability
-  leaves cached reminders visible; it does not turn a valid empty result into a connection error.
-- The phone owns pairing, selected-list management and manual refresh. The household surfaces do not
-  edit, complete or delete Apple reminders in v1.
-- The paired native companion also requests best-effort background refresh. Hearth continues to show
-  the last accepted snapshot and its honest freshness when iOS delays or declines that work; the UI
-  never claims a fixed background interval.
-- Today may show only a small due-today subset with an honest overflow link into Reminders. It never
-  consumes all lower-band space or causes the appliance dashboard to scroll.
+- The television and phone show the same Hearth-owned reminder list. Open items are the default;
+  **All** may reveal completed items.
+- A household member can add a reminder quickly, optionally choose a due date, edit it later and use
+  one clear control to complete or reopen it. Removal requires explicit confirmation.
+- Date-only reminders never acquire a misleading midnight time. Open reminders sort overdue, due
+  today, undated and then future, with deterministic title ordering within each group.
+- Today shows a compact summary and honest overflow link into Reminders. It never consumes all
+  lower-band space or causes the appliance dashboard to scroll.
+- There is no Apple pairing, selected-list or source-freshness UI.
 
 ### Meals
 
@@ -230,11 +245,11 @@ the phone More hub.
 - Optional minimal overlay: time, next event and discreet notification badge.
 - Immediate remote exit.
 - Photo storage/import errors should never reveal filesystem paths or technical details to the household.
-- Phone-first Photos administration begins with **Add photos from this phone**, opens the native
+- Phone-first Photos administration begins with **Add photos**, opens the native
   multi-select photo picker and reports added, duplicate and failed counts without sending client
   filenames to the server. Each file is limited to 25 MB and uploads run sequentially so a partial
   failure does not discard successful additions.
-- Phone navigation names the two photo intents explicitly: **View family photos** opens the gallery
+- Phone navigation names the two photo intents explicitly: **Photos** opens the gallery
   and ambient display, while a prominent **Manage photos** row under Manage Hearth opens upload,
   curation and removal. Adults should not have to enter the display gallery to discover the upload
   surface.
@@ -259,9 +274,12 @@ the phone More hub.
 
 - Household, member, integration and permissions management.
 - Optimised for the companion browser rather than the family TV.
+- Visible copy is task-first. A heading or control label is not followed by text that merely repeats
+  it. Keep explanations only when they affect a decision, explain state, or protect privacy,
+  recovery or an irreversible action.
 - The TV may show connection status and pairing QR/code but should not expose secrets.
 - A non-Android television browser that cannot complete passkey authentication offers **Pair this
-  screen as a television**. It creates a short-lived six-character code for approval in phone Admin
+  screen as a television**. It creates a short-lived six-character code for approval in phone More
   → Televisions, then opens the family dashboard with television scope rather than adult Admin
   scope. Recovery codes are never a television sign-in mechanism.
 - Connections > Calendar offers an adult-only, phone-first setup sequence: enter
@@ -285,7 +303,7 @@ the phone More hub.
   and requires a successful current-conditions test before Save is enabled.
 - Phone More is a genuine hub rather than a direct jump into settings: family
   destinations appear first, followed by a clearly labelled Manage Hearth group and device-local
-  appearance. Display and administration verbs stay distinct, including **View family photos** and
+  appearance. Display and administration verbs stay distinct, including **Photos** and
   **Manage photos**. Navigation rows use their self-explanatory titles without repeated descriptive
   subtitles, keeping each bar slim and scannable. The administration root is named Hearth settings
   so it cannot be confused with the Home Assistant action surface. Television pairing is one
@@ -300,8 +318,8 @@ the phone More hub.
 - Today & notices lets an adult publish, edit and remove concise notices, choose
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
   and see which eligible notice currently wins. It also owns the six optional
-  Today summary switches; on a phone these are full-width joined rows with a compact icon, concise
-  description and trailing switch. It is not a general layout editor.
+  Today summary switches; on a phone these are full-width joined rows with a compact icon, title and
+  trailing switch. It is not a general layout editor.
 - Adult access shows every named adult's enrolled passkeys and recovery readiness. An administrator
   can enrol another passkey on that adult's phone, revoke a lost credential and, after confirming
   their current passkey, rotate a one-time recovery code that is displayed only once. The signed-out

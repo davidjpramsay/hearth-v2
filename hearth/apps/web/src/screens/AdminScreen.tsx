@@ -151,8 +151,7 @@ export function AdminScreen() {
           <Icon name="leaf" />
         </span>
         <div>
-          <strong>Everything is running locally</strong>
-          <span>Private to this home and its Tailscale network</span>
+          <strong>Local and private</strong>
         </div>
       </div>
       <div className="admin-setting-groups">

@@ -37,6 +37,9 @@ const PhotosScreen = lazy(async () => ({
 const RemindersScreen = lazy(async () => ({
   default: (await import('./screens/RemindersScreen')).RemindersScreen,
 }));
+const WeatherScreen = lazy(async () => ({
+  default: (await import('./screens/WeatherScreen')).WeatherScreen,
+}));
 const PairingScreen = lazy(async () => ({
   default: (await import('./screens/PairingScreen')).PairingScreen,
 }));
@@ -63,10 +66,6 @@ const CalendarConnectionSettingsScreen = lazy(async () => ({
 const HomeAssistantConnectionSettingsScreen = lazy(async () => ({
   default: (await import('./screens/HomeAssistantConnectionSettingsScreen'))
     .HomeAssistantConnectionSettingsScreen,
-}));
-const ReminderConnectionSettingsScreen = lazy(async () => ({
-  default: (await import('./screens/ReminderConnectionSettingsScreen'))
-    .ReminderConnectionSettingsScreen,
 }));
 const HouseholdSettingsScreen = lazy(async () => ({
   default: (await import('./screens/HouseholdSettingsScreen')).HouseholdSettingsScreen,
@@ -147,6 +146,7 @@ export function App() {
           />
           <Route path="/week" element={<LegacyCalendarRedirect view="week" />} />
           <Route path="/month" element={<LegacyCalendarRedirect view="month" />} />
+          <Route path="/weather" element={<WeatherScreen preparing={preparing} />} />
           <Route
             path="/chores"
             element={<ChoresScreen preparing={preparing} scenario={scenario} />}
@@ -189,10 +189,6 @@ export function App() {
             <Route
               path="/admin/connections/home-assistant"
               element={<HomeAssistantConnectionSettingsScreen />}
-            />
-            <Route
-              path="/admin/connections/reminders"
-              element={<ReminderConnectionSettingsScreen />}
             />
             <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
             <Route path="/admin/lists" element={<ListsSettingsScreen />} />

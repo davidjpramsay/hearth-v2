@@ -32,7 +32,7 @@ export function HouseholdSettingsScreen() {
   }
 
   return (
-    <AdminPage title="Household" subtitle="The basics everyone shares">
+    <AdminPage title="Household">
       <form
         className="admin-form"
         key={`${admin.data.household.name}:${admin.data.household.timezone}`}
@@ -51,9 +51,7 @@ export function HouseholdSettingsScreen() {
             <option value="Australia/Sydney">Sydney, Melbourne or Hobart</option>
           </select>
         </label>
-        <p className="field-help">
-          Hearth uses this timezone for chores, routines and day boundaries.
-        </p>
+        <p className="field-help">Used for chores, routines and each new day.</p>
         {save.isError ? <AdminError message={save.error.message} /> : null}
         {save.isSuccess ? (
           <p className="save-confirmation" role="status">

@@ -24,7 +24,6 @@ Synology DS920+
 
 Input and automation
   Home Assistant Voice Preview Edition
-  Hearth Companion iOS app -> Apple EventKit Reminders (native, read-only proof)
   iPhone Companion apps -> responsive Hearth web administration
   Existing PIR/IR through ESPHome
   Optional Zigbee/Thread and mmWave devices
@@ -78,41 +77,12 @@ A minimal Kotlin Android TV application that provides:
 
 Business logic remains in server/core. Do not create a second chore/calendar implementation in Kotlin.
 
-### `apps/ios`
+### `archive/apple-reminders-bridge`
 
-The first native iOS companion proof is a SwiftUI iOS 17+ target under
-`hearth/apps/ios`. It owns a narrow, read-only `ReminderStore` boundary with a
-real EventKit adapter and a deterministic fake adapter for tests/previews. The
-native surface requests the EventKit full Reminders permission required by iOS
-to read existing reminders, enumerates reminder-capable lists, lets an adult
-select lists and displays safe reminder projections. After adult-approved
-pairing, its separate `ReminderSnapshotClient` may send only the frozen,
-bounded full-snapshot projection to the trusted private Hearth origin using the
-device-scoped `HearthReminderSource` credential. It stores that 32-byte secret
-in Keychain, never uses it as a household/adult session and does not mutate
-EventKit data. The app registers one `BGAppRefreshTask` after launch and submits
-the next best-effort request when it enters the background. A granted task
-rereads EventKit and remains alive until the existing snapshot transport reports
-acceptance or failure; expiration cancels only the transport task and keeps any
-exact pending request available for a later retry. There is no APNs dependency
-or guaranteed refresh interval.
-
-The app root injects a separate `ReminderListSelectionStore` into the reminder
-model. The live implementation uses app-sandboxed `UserDefaults` to retain only
-the sorted opaque identifiers of selected EventKit lists; previews and tests use
-an in-memory implementation. Unset state, an intentional empty selection and a
-saved non-empty selection remain distinct. Every successful list read intersects
-the saved identifiers with the current EventKit lists, so removed lists are
-pruned without persisting reminder titles, dates or completion state. If EventKit
-temporarily returns no lists while a non-empty selection exists, the model keeps
-the prior selection/snapshot stale and emits no clearing snapshot; only an
-explicit empty adult selection can intentionally clear the Hearth projection.
-
-This is an Apple integration surface, not a second household database or a
-replacement for the responsive web companion. A later installed Hearth
-Companion may combine native Apple integrations with the existing authenticated
-web administration session; WKWebView versus opening that authenticated web
-session remains a future evaluated choice outside this proof.
+Contains the retired Swift/EventKit proof, source projection and frozen wire contract for possible
+future research. It is excluded from active application packages, builds and deployment. Restoring
+it requires a new product and security decision; active Hearth has no Apple Reminders credential,
+pairing, snapshot or EventKit boundary.
 
 ### `packages/shared`
 
@@ -126,11 +96,10 @@ Pure household-domain behaviour: recurrence expansion, completion rules, proport
 
 ```text
 Calendar provider -> calendar adapter -> Hearth cache/projection -> Hearth API -> TV/web
-iPhone EventKit -> foreground or best-effort iOS background refresh -> device-scoped full snapshot -> Hearth reminder projection -> Hearth API -> TV/web
+TV/web reminder command -> Hearth API -> native reminder validation -> DB/audit
 TV/web command -> Hearth API -> domain validation -> DB/audit -> optional provider command
 Voice -> Home Assistant Assist -> allowlisted HA script -> Hearth command API
 Hearth UI -> Hearth API -> HA adapter -> allowlisted HA service/script
-Hearth Companion iOS -> EventKit permission -> selected Apple Reminders lists (read-only)
 Synology Jellyfin server -> native Google TV Jellyfin app (outside Hearth)
 Voice music -> Assist custom intent -> Music Assistant -> Jellyfin music source -> named Google Cast player (outside Hearth)
 ```
@@ -250,12 +219,15 @@ an adult, persists an idempotent receipt and records a path-free audit event. Th
 remains source-authoritative and read-only. Import failure does not disable managed uploads or
 existing photos. Each
 `WeekSchedule` day also carries a nullable, presentation-safe daily forecast
-summary (condition code, family-readable label, Celsius temperature and safe provider identity). The
+summary (condition code, family-readable label, low/high Celsius temperatures, rain probability
+and safe provider identity). The
 existing query routes read calendar values from the durable SQLite projection
 rather than from browser fixtures. Demo mode uses deterministic forecasts. Private mode injects the
-server-only Open-Meteo adapter when both deployment coordinates are configured, coalesces concurrent
-requests, caches successful responses for 30 minutes and retains the last safe response during a
-temporary provider outage. Coordinates never enter the browser contract or SQLite.
+server-only Open-Meteo adapter when a saved or fallback location is configured, coalesces concurrent
+requests, caches successful responses for five minutes and retains the last safe response during a
+temporary provider outage. `GET /api/v1/households/:householdId/weather` returns current conditions,
+24 hourly points and seven daily points through one typed projection. The safe location label may
+appear; coordinates never enter this forecast contract.
 
 `MonthSchedule` returns a fixed Monday-first 42-day projection window, calendar
 source descriptors and the normalized events overlapping that window. The
@@ -272,14 +244,12 @@ selects the one active notice by start/expiry window and priority, publishes a
 `today.changed` invalidation and returns explicit visibility flags in
 `TodaySummary`. This is bounded content configuration, not a layout DSL.
 
-The authenticated household Reminders query reads the latest active EventKit projection through
-the same server API on television, phone and future native clients. The browser groups the typed
-projection by list and defaults to incomplete items; an explicit **All** filter may reveal completed
-items, but neither surface emits a reminder mutation. Reminders navigation appears only after an
-active source has produced a current or stale snapshot. `TodaySummary` derives a nullable bounded
-summary from incomplete reminders whose source-local due date equals the household local date. A
-temporarily stale source remains visible with its freshness state; awaiting, revoked and unpaired
-sources contribute no Today reminder content.
+The authenticated household Reminders query reads Hearth-owned reminder rows through the same API
+on television, phone and future native clients. The browser defaults to incomplete items; **All**
+may reveal completed items. Validated create, update, completion/reopen and deletion commands are
+idempotent and audited. `TodaySummary` derives a bounded summary from incomplete reminders, ordered
+overdue, due today, undated and then future, returning the total open count plus at most three
+preview items.
 
 The optional daily-verse flag resolves through an injected `DailyVerseProvider` only when enabled.
 Demo mode returns original fictional copy. Private mode either uses the ESV passage-text API with a
@@ -396,15 +366,16 @@ Use SQLite in WAL mode for the first household deployment:
 
 The database file lives on the Synology container's local volume. Do not put a live SQLite database on an SMB client mount.
 
-Migrations `0001`–`0025` establish the household core, Admin/pairing state, chore runtime, calendar
+Migrations `0001`–`0027` establish the household core, Admin/pairing state, chore runtime, calendar
 projection, household planning, Home Assistant projection, television credentials, photos, pocket
 money, member avatars, calendar setup, companion passkeys/sessions, Today configuration, payment
 history, the Synology photo index, saved-meal preparation metadata, reasoned chore-occurrence
 management history, snapshotted chore windows/order, credential-free Home Assistant connection
 metadata, named-adult passkey recovery, canonical chore time-of-day grouping,
 the tested household weather location, managed photo-upload metadata, optional folder-import status,
-daily-verse visibility, the bounded attributed passage cache and the device-scoped EventKit
-Reminders projection. The live demo server uses the SQLite
+daily-verse visibility, the bounded attributed passage cache and Hearth-owned reminders. The
+short-lived Apple projection remains in forward migration history only and is removed by `0027`.
+The live demo server uses the SQLite
 repository; its in-memory adapter remains only for isolated contract tests.
 
 Postgres is a future option only if concurrency or operational evidence justifies it.
@@ -458,9 +429,6 @@ During the isolated demo, a server-resolved Maya administrator session exercises
 
 - Calendar credentials and Home Assistant URL/token/raw mappings remain in access-restricted,
   external server files; SQLite, browser contracts and audit summaries retain only safe metadata.
-- A paired EventKit companion uses its own hash-only, independently revocable device credential with
-  exactly `reminders.snapshot.write`. It cannot authenticate as a television or companion adult,
-  and an adult passkey session cannot be substituted for snapshot upload.
 - Secrets enter containers through environment/secret files excluded from source control.
 - Tokens are scoped as narrowly as the provider allows.
 - Device and service credentials are independently revocable.

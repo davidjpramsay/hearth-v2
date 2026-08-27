@@ -101,13 +101,10 @@ export function ListsScreen({
             Manage lists
           </Link>
         }
-        eyebrow="Local household lists"
         title="Lists"
-        meta={`${selected.remainingCount} remaining in ${selected.name}`}
+        meta={`${selected.remainingCount} left · ${selected.name}`}
       />
-      {!online ? (
-        <StatusBanner kind="offline">You’re offline · Saved lists remain available.</StatusBanner>
-      ) : null}
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved lists.</StatusBanner> : null}
       <div className="lists-layout">
         <label className="phone-list-picker">
           <span>Choose a list</span>
@@ -117,7 +114,7 @@ export function ListsScreen({
           >
             {query.data.lists.map((list) => (
               <option key={list.id} value={list.id}>
-                {list.name} · {list.remainingCount} remaining
+                {list.name} · {list.remainingCount} left
               </option>
             ))}
           </select>
@@ -141,7 +138,7 @@ export function ListsScreen({
               />
               <span>
                 <strong>{list.name}</strong>
-                <small>{list.remainingCount} waiting</small>
+                <small>{list.remainingCount} left</small>
               </span>
             </button>
           ))}
@@ -150,7 +147,7 @@ export function ListsScreen({
           <div className="active-list__heading">
             <div>
               <h2 id="active-list-heading">{selected.name}</h2>
-              <p>{selected.remainingCount} remaining</p>
+              <p>{selected.remainingCount} left</p>
             </div>
             <Icon name="list" />
           </div>
@@ -192,7 +189,6 @@ export function ListsScreen({
               {add.isPending ? 'Adding…' : 'Add'}
             </button>
           </form>
-          <p className="assist-availability-note">You can also ask Home Assistant to add items.</p>
           {add.isError ? (
             <p className="list-command-error" role="alert">
               {add.error.message}
@@ -262,7 +258,7 @@ function ListItemRow({
             {item.quantity === null ? null : <small>{item.quantity}</small>}
           </span>
           <span className="list-item-state">
-            {pending ? 'Saving…' : item.checked ? 'Checked · Undo' : 'Check item'}
+            {pending ? 'Saving…' : item.checked ? 'Checked' : 'Check item'}
           </span>
           <Icon name="chevron-right" />
         </button>

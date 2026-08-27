@@ -82,6 +82,7 @@ export interface WeatherLocationVerifier {
 
 export interface WeatherLocationRepository {
   get(householdId: string, actorId: string): Promise<WeatherLocation | null>;
+  getDisplayLabel(householdId: string): string | null;
   search(
     householdId: string,
     actorId: string,
@@ -241,6 +242,12 @@ export class WeatherLocationService implements WeatherLocationRepository {
       source: 'environment',
       updatedAt: null,
     });
+  }
+
+  getDisplayLabel(householdId: string): string | null {
+    const row = this.readRow(householdId);
+    if (row !== null) return row.label;
+    return this.options.fallback === undefined ? null : 'Local weather';
   }
 
   async search(

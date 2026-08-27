@@ -42,6 +42,10 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="nav-weather"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="nav-reminders"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
   const schoolBag = page.locator('[data-focus-id="chore-primary"]');
@@ -159,15 +163,17 @@ test('calendar sources remain identifiable and cached Week survives provider out
   await expect(page.getByRole('button', { name: /Nan visits, Family$/ }).first()).toBeVisible();
   await expect(page.locator('.week-grid .week-event__meta .avatar').first()).toBeVisible();
   await expect(page.locator('.week-grid .week-event__family').first()).toHaveText('H');
-  await expect(page.locator('.week-grid .week-day-forecast')).toHaveCount(7);
-  await expect(page.getByLabel('Clear, 16 degrees Celsius').first()).toBeVisible();
+  await expect(page.locator('.week-grid .week-forecast-strip')).toHaveCount(7);
+  await expect(
+    page.getByLabel(/Clear, \d+% chance of rain, low \d+°, high \d+°/).first(),
+  ).toBeVisible();
   await expect(page.locator('.week-agenda')).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   const agenda = page.locator('.week-agenda');
   await expect(agenda).toBeVisible();
-  await expect(agenda.locator('.week-day-forecast')).toHaveCount(7);
+  await expect(agenda.locator('.week-forecast-strip')).toHaveCount(7);
   const dentist = agenda.locator('.agenda-event').filter({ hasText: 'Dentist' });
   await expect(dentist).toBeVisible();
   await expect(dentist.locator('p')).not.toHaveText('Family');

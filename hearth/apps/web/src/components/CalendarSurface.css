@@ -28,14 +28,14 @@
   --timeline-span: 612px;
   display: grid;
   grid-template-columns: 76px repeat(7, minmax(0, 1fr));
-  min-height: calc(79px + var(--timeline-span));
+  min-height: calc(96px + var(--timeline-span));
   border-bottom: 1px solid var(--hairline);
   overflow: visible;
   background: transparent;
 }
 .week-time-axis {
-  padding-top: 79px;
-  height: calc(79px + var(--timeline-span));
+  padding-top: 96px;
+  height: calc(96px + var(--timeline-span));
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -56,14 +56,21 @@
   border-right: 1px solid rgb(218 211 202 / 52%);
 }
 .week-column > header {
-  height: 79px;
+  height: 96px;
   border-bottom: 2px solid var(--hairline);
-  display: flex;
+  display: grid;
+  grid-template-rows: 42px 42px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
   color: var(--muted);
   font-size: 23px;
+}
+.week-day-heading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 .week-column > header .week-day-date {
   width: 42px;
@@ -76,6 +83,45 @@
   border-radius: 50%;
   color: white;
   background: var(--sky);
+}
+.week-forecast-strip {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 22px 33px minmax(50px, auto);
+  grid-template-rows: 22px 5px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 4px;
+  white-space: nowrap;
+}
+.week-forecast-strip > svg {
+  width: 21px;
+  height: 21px;
+  color: var(--marigold);
+}
+.week-forecast-strip__rain {
+  color: var(--sky);
+  font-size: 13px;
+  font-weight: 680;
+}
+.week-forecast-strip__temperatures {
+  color: var(--ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+.week-forecast-strip__range {
+  height: 4px;
+  position: relative;
+  grid-column: 1 / -1;
+  border-radius: 4px;
+  background: var(--surface-muted);
+}
+.week-forecast-strip__range i {
+  height: 100%;
+  position: absolute;
+  border-radius: inherit;
+  background: var(--eucalyptus);
 }
 .week-day-forecast {
   margin-left: 3px;
@@ -476,7 +522,7 @@
   font-size: 14px;
   font-weight: 750;
 }
-.agenda-day > header .week-day-forecast {
+.agenda-day > header .week-forecast-strip {
   margin-left: auto;
 }
 .agenda-day > p {

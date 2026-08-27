@@ -27,12 +27,11 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   arrangePhotoCollage,
   buildPhotoMosaic,
-  fitMosaicInBox,
+  fitPhotoMosaicInBox,
   nextPhotoId,
   PHOTO_COLLAGE_ROTATION_MS,
   photoCollageFeatureSide,
   type PhotoCollageItem,
-  type PhotoMosaicNode,
   type PhotoMosaicRect,
 } from './photoCollage';
 
@@ -60,7 +59,9 @@ export function PhotosScreen({
   );
   const wasAmbient = useRef(false);
   const pendingAutomaticFocusId = useRef<string | null>(null);
-  const [collageRef, collageSize] = useElementSize<HTMLDivElement>();
+  const [collageRef, collageSize] = useElementSize<HTMLDivElement>(
+    !preparing && query.data !== undefined,
+  );
   const householdTime = useHouseholdClock();
 
   const gallery = query.data;
@@ -87,7 +88,10 @@ export function PhotosScreen({
     () => buildPhotoMosaic(visibleCollageItems, collageFeatureSide),
     [collageFeatureSide, visibleCollageItems],
   );
-  const mosaicBox = fitMosaicInBox(mosaic?.root.ratio ?? 1, collageSize.width, collageSize.height);
+  const fittedMosaic =
+    mosaic === null
+      ? { height: 0, rects: {}, width: 0 }
+      : fitPhotoMosaicInBox(mosaic.root, collageSize.width, collageSize.height, collageSize.gap);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -209,10 +213,7 @@ export function PhotosScreen({
       <section className="state-panel photos-empty" aria-labelledby="photos-empty-title">
         <Icon name="image" />
         <h1 id="photos-empty-title">No family photos selected</h1>
-        <p>
-          Add photos from companion administration. Hearth keeps private copies on your Synology and
-          never scans personal folders by default.
-        </p>
+        <p>Add photos in More → Manage photos.</p>
         {scenario === 'empty' ? (
           <button
             className="primary-action focusable"
@@ -231,7 +232,6 @@ export function PhotosScreen({
   return (
     <div className="screen photos-screen">
       <ScreenHeader
-        eyebrow="Family photos"
         title="Photos"
         meta={galleryMeta(
           gallery.collection.photoCount,
@@ -278,9 +278,7 @@ export function PhotosScreen({
           </div>
         }
       />
-      {!online ? (
-        <StatusBanner kind="offline">You’re offline · Showing saved family photos.</StatusBanner>
-      ) : null}
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved photos.</StatusBanner> : null}
       {gallery.freshness === 'stale' && online ? (
         <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
           {gallery.statusMessage}
@@ -323,11 +321,10 @@ export function PhotosScreen({
         >
           {mosaic === null ? null : (
             <PhotoMosaic
-              focusRects={mosaic.rects}
+              focusRects={fittedMosaic.rects}
               items={visibleCollageItems}
-              node={mosaic.root}
               onSelect={selectPhoto}
-              rootBox={mosaicBox}
+              rootBox={fittedMosaic}
               selectedId={selected?.id ?? null}
             />
           )}
@@ -373,17 +370,17 @@ function galleryMeta(photoCount: number, favouriteCount: number, sourceLabel: st
 
 function PhotoThumbnail({
   focusRects,
-  flexGrow,
   item,
   items,
   onSelect,
+  rect,
   selected,
 }: {
   focusRects: Readonly<Record<string, PhotoMosaicRect>>;
-  flexGrow: number;
   item: PhotoCollageItem;
   items: PhotoCollageItem[];
   onSelect: () => void;
+  rect: PhotoMosaicRect | undefined;
   selected: boolean;
 }) {
   const { photo, slot } = item;
@@ -407,9 +404,10 @@ function PhotoThumbnail({
       style={
         {
           '--photo-native-ratio': photo.width / photo.height,
-          '--photo-mosaic-grow': flexGrow,
-          flexBasis: 0,
-          flexGrow,
+          '--photo-mosaic-height': `${(rect?.height ?? 0) * 100}%`,
+          '--photo-mosaic-left': `${(rect?.x ?? 0) * 100}%`,
+          '--photo-mosaic-top': `${(rect?.y ?? 0) * 100}%`,
+          '--photo-mosaic-width': `${(rect?.width ?? 0) * 100}%`,
         } as CSSProperties
       }
       type="button"
@@ -503,88 +501,68 @@ function placementCenter(placement: PhotoMosaicRect | undefined): { x: number; y
 
 function PhotoMosaic({
   focusRects,
-  flexGrow = 1,
   items,
-  node,
   onSelect,
   rootBox,
   selectedId,
 }: {
   focusRects: Readonly<Record<string, PhotoMosaicRect>>;
-  flexGrow?: number;
   items: PhotoCollageItem[];
-  node: PhotoMosaicNode;
   onSelect: (photoId: string) => void;
   rootBox: { height: number; width: number };
   selectedId: string | null;
 }) {
-  if (node.kind === 'photo') {
-    return (
-      <PhotoThumbnail
-        flexGrow={flexGrow}
-        focusRects={focusRects}
-        item={node.item}
-        items={items}
-        onSelect={() => onSelect(node.item.photo.id)}
-        selected={node.item.photo.id === selectedId}
-      />
-    );
-  }
-
-  const root = node.kind === 'row' && node.ratio > 0 && flexGrow === 1;
-  const childWeights = node.children.map((child) =>
-    node.kind === 'row' ? child.ratio : 1 / child.ratio,
-  );
-  const childWeightTotal = childWeights.reduce((sum, weight) => sum + weight, 0);
   return (
     <div
-      className={`photo-mosaic-node photo-mosaic-node--${node.kind}${root ? ' photo-mosaic-node--root' : ''}`}
+      className="photo-mosaic-node photo-mosaic-node--root"
       style={{
-        flexBasis: root ? undefined : 0,
-        flexGrow: root ? undefined : flexGrow,
-        height: root && rootBox.height > 0 ? rootBox.height : undefined,
-        width: root && rootBox.width > 0 ? rootBox.width : undefined,
+        height: rootBox.height > 0 ? rootBox.height : undefined,
+        width: rootBox.width > 0 ? rootBox.width : undefined,
       }}
     >
-      {node.children.map((child, index) => (
-        <PhotoMosaic
-          flexGrow={(childWeights[index] ?? 1) / childWeightTotal}
+      {items.map((item) => (
+        <PhotoThumbnail
           focusRects={focusRects}
+          item={item}
           items={items}
-          key={`${child.kind}-${index}-${child.kind === 'photo' ? child.item.photo.id : child.ratio}`}
-          node={child}
-          onSelect={onSelect}
-          rootBox={rootBox}
-          selectedId={selectedId}
+          key={item.photo.id}
+          onSelect={() => onSelect(item.photo.id)}
+          rect={focusRects[item.photo.id]}
+          selected={item.photo.id === selectedId}
         />
       ))}
     </div>
   );
 }
 
-function useElementSize<T extends HTMLElement>(): [
-  RefObject<T | null>,
-  { height: number; width: number },
-] {
+function useElementSize<T extends HTMLElement>(
+  active: boolean,
+): [RefObject<T | null>, { gap: number; height: number; width: number }] {
   const ref = useRef<T>(null);
-  const [size, setSize] = useState({ height: 0, width: 0 });
+  const [size, setSize] = useState({ gap: 0, height: 0, width: 0 });
 
   useLayoutEffect(() => {
+    if (!active) return;
     const element = ref.current;
     if (element === null) return;
     const update = () => {
-      const rect = element.getBoundingClientRect();
+      const height = element.clientHeight;
+      const width = element.clientWidth;
+      const gap = Number.parseFloat(
+        window.getComputedStyle(element).getPropertyValue('--photo-collage-gap'),
+      );
+      const safeGap = Number.isFinite(gap) ? gap : 0;
       setSize((current) =>
-        current.height === rect.height && current.width === rect.width
+        current.gap === safeGap && current.height === height && current.width === width
           ? current
-          : { height: rect.height, width: rect.width },
+          : { gap: safeGap, height, width },
       );
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [active]);
 
   return [ref, size];
 }

@@ -34,7 +34,7 @@ describe('PrivateHouseholdAccess', () => {
     renderAccess(signedOut);
 
     expect(screen.getByRole('heading', { name: 'Sign in to open Hearth' })).toBeVisible();
-    expect(screen.getByText(/calendar, photos and family information private/i)).toBeVisible();
+    expect(screen.getByText('Use an adult passkey.')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Sign in with a passkey' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('private HTTPS address');
   });
@@ -70,7 +70,7 @@ describe('PrivateHouseholdAccess', () => {
 
     expect(await screen.findByRole('heading', { name: 'Connect this screen' })).toBeVisible();
     expect(await screen.findByLabelText('Pairing code M7PAIR')).toBeVisible();
-    expect(screen.getByText(/Admin → Televisions/)).toBeVisible();
+    expect(screen.getByText(/More → Televisions/)).toBeVisible();
     await waitFor(() => expect(hearthApi.createBrowserTelevisionSession).toHaveBeenCalledOnce());
     const secret = vi.mocked(hearthApi.createBrowserTelevisionSession).mock.calls[0]?.[2];
     expect(secret).toMatch(/^[A-Za-z0-9_-]{43}$/);

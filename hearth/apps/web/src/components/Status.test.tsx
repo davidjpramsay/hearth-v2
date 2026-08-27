@@ -8,7 +8,7 @@ afterEach(cleanup);
 describe('intentional application states', () => {
   it('renders a family-readable loading state', () => {
     render(<LoadingState />);
-    expect(screen.getByRole('heading', { name: 'Gathering today’s plans…' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Loading…' })).toBeVisible();
   });
 
   it('renders the empty bootstrap action', () => {
@@ -37,7 +37,7 @@ describe('intentional application states', () => {
       </StatusBanner>,
     );
     expect(screen.getByRole('status')).toHaveTextContent('Calendar last updated at 6:45');
-    rerender(<StatusBanner kind="offline">You’re offline · Showing saved plans.</StatusBanner>);
+    rerender(<StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner>);
     expect(screen.getByRole('status')).toHaveTextContent('Showing saved plans');
     rerender(
       <StatusBanner kind="unavailable">

@@ -34,7 +34,6 @@ export function NoticeDetailsDialog({
         <div className="notice-detail__icon">
           <Icon name="home" />
         </div>
-        <p>Household notice</p>
         <h2 id="notice-detail-title">Notice</h2>
         <p className="notice-detail__message">{message}</p>
         <button

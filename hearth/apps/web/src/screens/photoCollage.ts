@@ -46,6 +46,12 @@ export interface PhotoMosaicLayout {
   root: PhotoMosaicNode;
 }
 
+export interface FittedPhotoMosaic {
+  height: number;
+  rects: Readonly<Record<string, PhotoMosaicRect>>;
+  width: number;
+}
+
 type Placement = Omit<PhotoCollagePlacement, 'columns' | 'rows'>;
 
 const SUPPORT_SLOTS: PhotoCollageSlot[] = ['support-1', 'support-2', 'support-3', 'support-4'];
@@ -139,6 +145,41 @@ export function fitMosaicInBox(
     : { height: boxWidth / ratio, width: boxWidth };
 }
 
+export function fitPhotoMosaicInBox(
+  root: PhotoMosaicNode,
+  boxWidth: number,
+  boxHeight: number,
+  gap: number,
+): FittedPhotoMosaic {
+  if (boxWidth <= 0 || boxHeight <= 0) return { height: 0, rects: {}, width: 0 };
+
+  const safeGap = Math.max(0, gap);
+  let height = boxHeight;
+  if (nodeWidthAtHeight(root, height, safeGap) > boxWidth) {
+    let lower = 0;
+    let upper = boxHeight;
+    for (let iteration = 0; iteration < 48; iteration += 1) {
+      const candidate = (lower + upper) / 2;
+      if (nodeWidthAtHeight(root, candidate, safeGap) <= boxWidth) lower = candidate;
+      else upper = candidate;
+    }
+    height = lower;
+  }
+
+  const width = nodeWidthAtHeight(root, height, safeGap);
+  if (width <= 0 || height <= 0) return { height: 0, rects: {}, width: 0 };
+
+  const rects: Record<string, PhotoMosaicRect> = {};
+  visitFittedNode(root, { height, width, x: 0, y: 0 }, safeGap, rects);
+  for (const rect of Object.values(rects)) {
+    rect.x /= width;
+    rect.width /= width;
+    rect.y /= height;
+    rect.height /= height;
+  }
+  return { height, rects, width };
+}
+
 function bestSupportColumns(
   items: PhotoCollageItem[],
   featureRatio: number,
@@ -207,6 +248,49 @@ function columnNode(children: PhotoMosaicNode[]): PhotoMosaicNode {
 
 function photoRatio(photo: PhotoAsset): number {
   return photo.width / photo.height;
+}
+
+function nodeWidthAtHeight(node: PhotoMosaicNode, height: number, gap: number): number {
+  if (node.kind === 'photo') return Math.max(0, height) * node.ratio;
+  if (node.kind === 'row') {
+    return (
+      node.children.reduce((sum, child) => sum + nodeWidthAtHeight(child, height, gap), 0) +
+      gap * Math.max(0, node.children.length - 1)
+    );
+  }
+
+  const availableHeight = Math.max(0, height - gap * Math.max(0, node.children.length - 1));
+  const inverseRatio = node.children.reduce((sum, child) => sum + 1 / child.ratio, 0);
+  return inverseRatio > 0 ? availableHeight / inverseRatio : 0;
+}
+
+function visitFittedNode(
+  node: PhotoMosaicNode,
+  rect: PhotoMosaicRect,
+  gap: number,
+  rects: Record<string, PhotoMosaicRect>,
+): void {
+  if (node.kind === 'photo') {
+    rects[node.item.photo.id] = { ...rect };
+    return;
+  }
+
+  if (node.kind === 'row') {
+    let x = rect.x;
+    for (const child of node.children) {
+      const width = nodeWidthAtHeight(child, rect.height, gap);
+      visitFittedNode(child, { height: rect.height, width, x, y: rect.y }, gap, rects);
+      x += width + gap;
+    }
+    return;
+  }
+
+  let y = rect.y;
+  for (const child of node.children) {
+    const height = rect.width / child.ratio;
+    visitFittedNode(child, { height, width: rect.width, x: rect.x, y }, gap, rects);
+    y += height + gap;
+  }
 }
 
 function mosaicRects(root: PhotoMosaicNode): Readonly<Record<string, PhotoMosaicRect>> {

@@ -1105,7 +1105,7 @@ describe('0001 household core migration', () => {
     database.close();
   });
 
-  it('adds a private, bounded Reminders source projection without raw EventKit identifiers', async () => {
+  it('retires the external reminder bridge and adds household-owned reminders', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-migration-'));
     temporaryDirectories.push(directory);
     const database = new Database(join(directory, 'hearth.sqlite'));
@@ -1117,25 +1117,36 @@ describe('0001 household core migration', () => {
     expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 26').get()).toEqual(
       { name: 'today_reminders' },
     );
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version = 27').get()).toEqual(
+      { name: 'native_reminders' },
+    );
     expect(
-      database.prepare('PRAGMA table_info(reminder_items)').all() as Array<{ name: string }>,
+      database.prepare('PRAGMA table_info(hearth_reminders)').all() as Array<{ name: string }>,
     ).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: 'external_id_hash' }),
+        expect.objectContaining({ name: 'household_id' }),
+        expect.objectContaining({ name: 'list_id' }),
+        expect.objectContaining({ name: 'title' }),
         expect.objectContaining({ name: 'due_local_date' }),
         expect.objectContaining({ name: 'has_due_time' }),
-        expect.objectContaining({ name: 'source_updated_at' }),
-        expect.objectContaining({ name: 'removed_at' }),
+        expect.objectContaining({ name: 'is_completed' }),
+        expect.objectContaining({ name: 'deleted_at' }),
       ]),
     );
-    const itemColumns = (
-      database.prepare('PRAGMA table_info(reminder_items)').all() as Array<{ name: string }>
-    ).map((column) => column.name);
-    expect(itemColumns).not.toContain('external_id');
-    const listColumns = (
-      database.prepare('PRAGMA table_info(reminder_lists)').all() as Array<{ name: string }>
-    ).map((column) => column.name);
-    expect(listColumns).not.toContain('external_id');
+    for (const retiredTable of [
+      'reminder_sources',
+      'reminder_source_devices',
+      'reminder_source_pairing_requests',
+      'reminder_lists',
+      'reminder_items',
+      'reminder_snapshot_receipts',
+    ]) {
+      expect(
+        database
+          .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+          .get(retiredTable),
+      ).toBeUndefined();
+    }
 
     database.exec(`
       INSERT INTO households VALUES ('household_reminder', 'Home', 'Australia/Perth', 'en-AU', 1, 'now', 'now');
@@ -1143,12 +1154,14 @@ describe('0001 household core migration', () => {
         (household_id, show_dinner, show_list_summary, show_notice, show_photo,
          show_daily_verse, updated_at)
       VALUES ('household_reminder', 1, 1, 1, 1, 0, 'now');
-      INSERT INTO reminder_sources
-        (id, household_id, display_name, source_kind, created_at, revoked_at,
-         revoked_request_id, last_snapshot_sequence, last_snapshot_id,
-         last_snapshot_generated_at, last_snapshot_received_at)
-      VALUES ('reminder_source_one', 'household_reminder', 'Apple Reminders', 'eventkit',
-              'now', NULL, NULL, 0, NULL, NULL, NULL);
+      INSERT INTO hearth_reminder_lists
+        (id, household_id, title, created_at, updated_at, archived_at)
+      VALUES ('reminder_list_one', 'household_reminder', 'Reminders', 'now', 'now', NULL);
+      INSERT INTO hearth_reminders
+        (id, household_id, list_id, title, due_local_date, due_at, has_due_time,
+         is_completed, completed_at, created_at, updated_at, deleted_at)
+      VALUES ('reminder_one', 'household_reminder', 'reminder_list_one', 'Bins', NULL, NULL,
+              0, 0, NULL, 'now', 'now', NULL);
     `);
     expect(
       database
@@ -1161,15 +1174,14 @@ describe('0001 household core migration', () => {
         .run('household_reminder'),
     ).toThrow(/CHECK/);
     expect(() =>
-      database.exec(`
-        INSERT INTO reminder_sources
-          (id, household_id, display_name, source_kind, created_at, revoked_at,
-           revoked_request_id, last_snapshot_sequence, last_snapshot_id,
-           last_snapshot_generated_at, last_snapshot_received_at)
-        VALUES ('reminder_source_two', 'household_reminder', 'Another source', 'eventkit',
-                'now', NULL, NULL, 0, NULL, NULL, NULL);
-      `),
-    ).toThrow(/UNIQUE/);
+      database
+        .prepare(
+          `UPDATE hearth_reminders
+           SET has_due_time = 1
+           WHERE id = 'reminder_one'`,
+        )
+        .run(),
+    ).toThrow(/CHECK/);
     expect(database.pragma('foreign_keys', { simple: true })).toBe(1);
     database.close();
   });

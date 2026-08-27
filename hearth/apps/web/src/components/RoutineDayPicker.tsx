@@ -20,7 +20,7 @@ export function RoutineDayPicker({ initialDays }: { initialDays: readonly string
   return (
     <fieldset className="routine-days">
       <legend>Repeat on</legend>
-      <p>Tap each day the chore should appear.</p>
+      <p>Select each day.</p>
       {routineDayOptions.map(([value, label]) => {
         const checked = selectedDays.includes(value);
         return (

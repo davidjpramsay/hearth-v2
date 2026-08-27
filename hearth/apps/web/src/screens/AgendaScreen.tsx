@@ -31,15 +31,12 @@ export function AgendaScreen({
   return (
     <div className="screen agenda-screen">
       <ScreenHeader
-        eyebrow="Calendar"
         title="Agenda"
         meta={agendaRange(days, runtime.locale)}
         actions={<span className="agenda-count">{agendaCount(events.length)}</span>}
       />
       <CalendarViewSwitch />
-      {!online ? (
-        <StatusBanner kind="offline">You’re offline · Showing saved plans.</StatusBanner>
-      ) : null}
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
       {week.freshness === 'stale' && online ? (
         <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
           {week.statusMessage}

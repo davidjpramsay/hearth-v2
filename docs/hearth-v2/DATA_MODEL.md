@@ -240,44 +240,26 @@ checked items soft-archives them; it does not erase their audit or command
 history. An archived list remains recoverable, and the final active list cannot
 be archived.
 
-## Reminders projection
+## Reminders
 
-### Reminder source pairing request
+### Reminder list
 
-- opaque request/pairing identifiers and six-character code
-- device name, platform and application version
-- SHA-256 credential digest only
-- pending/approved/exchanged/expired/cancelled state and ten-minute expiry
-- approving household/member references populated only after an adult command
+- household-owned opaque identifier and title
+- incomplete count derived from active reminders
+- archive timestamp reserved for later multi-list management
 
-### Reminder source and source device
+### Reminder
 
-- one active EventKit source per household in v1
-- one active device credential per source
-- device-scoped `reminders.snapshot.write` scope, pairing/last-seen/revocation timestamps
-- last accepted snapshot sequence/identifier plus source-generated and Hearth-received timestamps
-- revocation request identity for command replay
+- household and reminder-list relationship
+- title and optional date-only due date
+- optional due instant with an explicit `hasDueTime` flag for future timed-reminder support
+- completion flag and completion timestamp
+- created/updated timestamps and a soft-delete timestamp
 
-### Reminder list and reminder item
-
-- stable Hearth ID derived from a source-scoped external-ID hash
-- SHA-256 external-ID hash only; raw EventKit identifiers are not persisted
-- list/title projection and internal removal tombstone
-- reminder title, list relationship, date-only due date, optional due instant and explicit
-  `hasDueTime`
-- completion flag plus optional completion/source-updated timestamps
-
-### Reminder snapshot receipt
-
-- source, snapshot, request and strictly increasing sequence identities
-- canonical payload hash and immutable typed response
-- unique constraints on every idempotency dimension
-
-Each successful full snapshot transaction marks the previous projection removed, upserts all
-included rows, advances source freshness, writes the receipt and records one audit event. Missing
-rows are internal tombstones; the client never sends incremental deletes. Cached rows survive
-temporary source unavailability. A revoked source is intentionally hidden rather than served stale.
-The complete wire and identifier rules are in `REMINDERS_COMPANION_CONTRACT.md`.
+Create, edit, complete, reopen and remove commands use opaque request IDs. The reminder mutation,
+command receipt and audit event commit atomically. Retrying the same request replays the original
+typed result rather than duplicating work. Migration `0027_native_reminders.sql` removes the retired
+Apple source/device/projection/receipt tables and creates the Hearth-owned reminder tables.
 
 ## Meals
 
@@ -561,11 +543,10 @@ asset, authenticated adult, content hash and bounded byte size, and persists pat
 folder-import health. Client filenames, source paths and image bytes do not enter SQLite.
 
 Migration `0024_daily_bible_verse.sql` adds the off-by-default Today verse preference and bounded
-attributed fallback cache. Migration `0025_reminder_source_projection.sql` adds approval-gated
-EventKit source/device state, hash-only identifiers, atomic full-snapshot projection and replay
-receipts. It stores no Apple credential or raw EventKit identifier. Migration
-`0026_today_reminders.sql` adds the default-on bounded Today Reminders visibility preference; it
-does not duplicate reminder rows or add a writeback path.
+attributed fallback cache. Migrations `0025` and `0026` are retained only as forward migration
+history for installations that briefly ran the retired Apple proof. Migration
+`0027_native_reminders.sql` deletes that projection and all source credential hashes, creates
+household-owned reminders and retains the default-on Today Reminders visibility preference.
 
 The Phase 4 runtime stores list, meal, pocket-money and recurring-chore administration
 on the same SQLite connection. Voice list commands resolve a normalized list

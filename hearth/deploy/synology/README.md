@@ -1,61 +1,17 @@
-# Synology deployment scaffold
+# Synology deployment
 
-This directory builds Hearth as two small, same-origin containers:
+Hearth runs as two pull-only containers:
 
-- `server`: the private Fastify service and SQLite database owner
-- `web`: the static React application and `/api` reverse proxy
+- `server` — private Fastify service and SQLite owner
+- `web` — static React app and same-origin `/api` proxy
 
-The web container binds only to Synology loopback. DSM Reverse Proxy must provide the stable private
-HTTPS origin required by adult passkeys and the television release app. The repository deliberately
-does not choose or create the household hostname, certificate, router rule or live Synology folders.
-DSM Reverse Proxy and the bundled nginx container are the two trusted HTTP proxy hops. Fastify
-trusts exactly those two hops so client-address rate limiting resolves the household device rather
-than collapsing every request to DSM/nginx or accepting a longer arbitrary forwarding chain.
+The web port binds to Synology loopback. DSM Reverse Proxy supplies the stable private HTTPS origin
+used by passkeys and the TV app. Hearth is LAN/Tailscale-first; do not add router port forwarding or
+public exposure.
 
-`compose.demo.yaml` remains available for temporary local or pre-commission television testing. It
-contains fictional data and accepts no provider credentials. Do not keep that pilot running on a
-commissioned household NAS unless a short, explicit test requires it; remove it again after the test.
-The private instance is the only long-lived Synology deployment.
+## Private data
 
-## Local validation
-
-From `hearth/`:
-
-```sh
-docker compose \
-  --env-file deploy/synology/.env.example \
-  -f deploy/synology/compose.yaml \
-  config
-
-docker compose \
-  --env-file deploy/synology/.env.example \
-  -f deploy/synology/compose.yaml \
-  -f deploy/synology/compose.build.yaml \
-  config
-
-docker build \
-  --target server \
-  -f deploy/synology/Dockerfile \
-  -t hearth-v2-server:local .
-
-docker build \
-  --target web \
-  -f deploy/synology/Dockerfile \
-  -t hearth-v2-web:local .
-```
-
-The images use pinned Node 24 LTS and nginx stable tags, run application processes as non-root,
-drop Linux capabilities, use read-only root filesystems in Compose, retain only bounded container
-logs and expose separate liveness/readiness endpoints. SQL migrations are copied into the server
-production build and run forward-only at startup. The native SQLite binding is compiled in the
-pinned build image so it does not depend on a prebuilt binary from a different Linux runtime.
-
-## Deployment inputs
-
-The generic `.env.example` below describes a fresh or isolated deployment. It is not the live
-household path. The commissioned private instance keeps its release source under
-`/volume1/docker/hearth-v2` but keeps household state and secrets in the separate protected share
-`/volume1/hearth-v2-private`:
+Keep source and household state separate:
 
 ```text
 /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/
@@ -66,278 +22,82 @@ household path. The commissioned private instance keeps its release source under
   secrets/
 ```
 
-Its `HEARTH_SECRETS_DIR` is `/volume1/hearth-v2-private/secrets`, mounted inside the server as
-`/run/hearth-secrets`. Do not create provider secrets under the source checkout or under the old
-`/volume1/docker/hearth` deployment.
+Never copy the private directory, credentials or photos into Git, images, commands, chat or another
+household. Calendar, Home Assistant and ESV secrets remain external files. Managed photos and
+SQLite backups live under the restricted data directory.
 
-Before any approved Synology commissioning:
+## Validate locally
 
-1. Copy `.env.example` to an access-restricted `.env` outside source control.
-2. Set `HEARTH_IMAGE_REGISTRY` to the approved private package namespace and replace
-   `HEARTH_VERSION` with the full 40-character verified Git commit.
-3. Set `HEARTH_UID` and `HEARTH_GID` to a dedicated, non-root Synology service account.
-4. Create the separate v2 data and secret directories described in `OPERATIONS.md`; grant only that
-   service account read/write access and never use world-writable permissions.
-5. Keep the secret directory writable by the server because approved Calendar and Home Assistant
-   companion setup uses atomic `0600` writes. Never place either resulting JSON file in Compose,
-   Git, an image or a command line.
-6. Select one stable private hostname and a certificate trusted by both iPhone and Google TV.
-7. Set `HEARTH_AUTH_RP_ID` to that hostname and `HEARTH_AUTH_ORIGIN` to its exact HTTPS origin.
-   They are validated together at startup and must not be temporary addresses.
-8. Generate the one-time local setup code as an access-restricted file named `first-use-code` in
-   `HEARTH_SECRETS_DIR`. For example, from a shell already restricted to the Synology administrator:
+From `hearth/`:
+
+```sh
+docker compose --env-file deploy/synology/.env.example   -f deploy/synology/compose.yaml config
+
+docker build --target server -f deploy/synology/Dockerfile -t hearth-v2-server:local .
+docker build --target web -f deploy/synology/Dockerfile -t hearth-v2-web:local .
+```
+
+Images run as non-root with read-only root filesystems, dropped capabilities and bounded logs.
+Forward-only SQL migrations run at server startup.
+
+## Commission once
+
+Before entering household data:
+
+1. Create the dedicated non-root service account, private folders and exact DSM permissions.
+2. Configure the stable private hostname, trusted certificate and DSM Reverse Proxy.
+3. Set `HEARTH_AUTH_RP_ID` and `HEARTH_AUTH_ORIGIN` to that exact hostname/origin.
+4. Create the one-use `first-use-code` file inside the restricted secrets directory.
+5. Configure only approved optional provider files and one narrow read-only photo import folder.
+6. Install the fixed Hearth release helper from an owner-controlled terminal:
 
    ```sh
-   umask 077
-   openssl rand -base64 32 > "${HEARTH_SECRETS_DIR}/first-use-code"
+   hearth/deploy/synology/install-release-helper.sh
    ```
 
-   Read that code locally during first setup; do not place it in Compose, Git, chat or a URL. Hearth
-   consumes the file after the first adult passkey and household are created.
+The helper grants passwordless access only to the fixed Hearth activation command. It also installs
+the one-shot Docker firewall hook required by the hardened Synology network. It is not a watchdog
+and does not grant a root shell.
 
-9. Configure DSM Reverse Proxy from that HTTPS origin to `http://127.0.0.1:8432`, preserving `Host`
-   and `X-Forwarded-Proto`. Do not create a router port-forward or public DNS exposure.
+Detailed commissioning, firewall and recovery requirements are authoritative in
+[`../../../docs/hearth-v2/OPERATIONS.md`](../../../docs/hearth-v2/OPERATIONS.md).
 
-10. Family photos require no shared-folder setup. Authenticated adults use **More → Admin → Photos
-    → Choose photos**; Hearth writes normalized managed masters under `/data/photo-uploads` and
-    display/thumbnail WebPs under `/data/photo-derivatives`, both inside `HEARTH_DATA_DIR`. To bulk
-    import an existing collection only, approve one exact Synology folder, set
-    `HEARTH_PHOTO_HOST_DIR` to that host folder and set `HEARTH_PHOTO_SOURCE_DIR=/photos-source`.
-    Production Compose always keeps this one narrow host path mounted read-only; set it to a
-    dedicated empty folder when import is unused. The optional importer ignores symlinks and
-    returns only opaque asset URLs. Never mount the Synology Photos library root. Leaving the source
-    blank disables only optional folder import, not managed phone uploads.
+## Release
 
-11. Leave Home Assistant unconfigured until its current backup and rollback path are verified. An
-    adult can then use **More → Connections → Home Assistant** to test the private root address and
-    a dedicated long-lived access token, and map exactly four safety states plus Evening,
-    Goodnight and Screen off. The browser receives only opaque choices and friendly labels; the
-    resulting URL, token and raw entity IDs remain in `/run/hearth-secrets/home-assistant.json`.
-
-12. Daily Bible verse is optional. After creating or rotating an ESV API token, put only the token
-    in `${HEARTH_SECRETS_DIR}/esv-api-key`, set mode `0600` and ownership to the Hearth service
-    UID/GID, then restart the Hearth server and enable it in **Today & notices**. The current server
-    reads this optional secret at process startup. Never add the token to this Compose file, `.env`,
-    Git, an image layer, logs or screenshots.
-
-13. Keep `HEARTH_BACKUP_RETENTION=14` and `HEARTH_BACKUP_INTERVAL_HOURS=24` initially. The server
-    writes consistent SQLite online backups under `/data/backups`; this directory is already inside
-    the restricted data mount. Configure encrypted Synology Hyper Backup for the complete host data
-    and secrets directories so a NAS-volume failure does not remove the database, managed photo
-    files and every local copy. The Hearth backup button itself copies only SQLite: it does not copy
-    managed image files, provider secrets, optional folder-import originals or the separate Home
-    Assistant appliance.
-
-14. If Synology network hardening uses a `FORWARD_FIREWALL` chain before Docker's forwarding chains,
-    keep the Docker-origin compatibility rule installed by `ensure-docker-firewall.sh`. It permits
-    packets arriving from a `docker+` bridge to continue into Docker's own isolation and policy
-    chains, while inbound LAN/Tailscale/WAN packets remain subject to DSM's existing rules. It does
-    not expose a host port, reorder Docker ahead of the firewall or add an output-interface bypass. The
-    private release activator installs it as
-    `/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`. The hook applies the narrow rules once at
-    startup; it does not poll. The release activator reapplies it after container replacement.
-    After an explicit DSM firewall reload, run the hook's `start` action once, confirm its `status`
-    action, and verify the web
-    container's request to `http://server:4310/api/v1/readiness`, and public `/api/v1/readiness`
-    after a firewall reload or Docker network recreation.
-
-The hostname and certificate mechanism are intentionally unresolved deployment inputs. The passkey
-contract is implemented, but enrolment remains inert until those values and the first-use code file
-are supplied. Changing the WebAuthn relying-party origin later invalidates the intended trust
-boundary.
-
-## Fictional-data M7 pilot
-
-Use this path only for the temporary household-screen pilot. Copy `demo.env.example` to an
-access-restricted `.env.demo` outside source control, set the immutable tested commit, the dedicated
-Synology UID/GID, the Synology's exact LAN address and a separate demo data directory, then validate:
-
-```sh
-docker compose --env-file /volume1/docker/hearth-v2/env/hearth-demo.env \
-  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/compose.demo.yaml \
-  config --quiet
-```
-
-After explicit approval, start it with the same arguments plus `up --detach --build`. Open
-`http://<synology-lan-address>:8432` in the M7 Internet app. The demo exposes its reset and visual
-scenario controls to the local network, so it must stay fictional and LAN-only. Stop and delete the
-pilot project and its separate data directory once private HTTPS is commissioned. Never copy the
-private database, secrets or approved photo mount into a demo or local development environment.
-
-## Updating the commissioned private instance
-
-Private household state is not stored in an image or source checkout. Recreating `hearth-v2`
-preserves `/volume1/hearth-v2-private`, including managed photo files, and the narrow read-only
-`/volume1/hearth-photos` import mount.
-
-### GHCR visibility and one-time private authentication
-
-The GitHub source repository is public, but GHCR package visibility is configured separately. The
-existing verified server and web packages remain private until the owner explicitly changes them.
-For private packages, create a separately revocable GitHub Personal Access Token (classic) with only
-`read:packages`. In an interactive NAS administrator SSH session, run the command below and enter
-the GitHub username and token only at its prompts:
-
-```sh
-sudo /var/packages/ContainerManager/target/usr/bin/docker login ghcr.io
-```
-
-Docker retains that reader under root's access-restricted configuration because private releases
-run Compose through `sudo`. Never place it in `.env`, Compose, Git, a command argument, chat or a
-screenshot. Keep the packages private unless publishing the image artifacts is separately approved.
-Registry sign-in grants persistent package access and therefore requires explicit owner
-confirmation when performed. Public packages need no NAS registry credential; images may be public
-only after confirming they contain no household data, secrets, private URLs or commissioned config.
-
-### Normal pull-only update
-
-After the exact full commit has passed all hosted checks and the publish job has produced both
-`linux/amd64` images, install the commissioned NAS's root-owned Hearth release helper once from a
-visible owner-controlled terminal:
-
-```sh
-hearth/deploy/synology/install-release-helper.sh
-```
-
-That is the final interactive Synology privilege step. A genuine `sudo` prompt echoes no characters
-while the owner types. The installer grants the deployment user passwordless access only to the
-fixed `/usr/local/sbin/hearth-v2-activate-staged` command; it does not grant a root shell, general
-Docker access or other `sudo` commands. It also installs the root-owned one-shot firewall boot hook
-that returns Docker-origin traffic to Docker's generated isolation and policy chains without a
-background monitor or per-application subnet exceptions.
-
-For subsequent releases, run this from the repository root:
+Only deploy a full commit whose hosted verification and GHCR images are complete:
 
 ```sh
 hearth/deploy/synology/activate-private-release.sh <full-verified-commit>
 ```
 
-The scripts use the `hearth-synology` SSH alias by default. If that alias needs a hostname override,
-set `HEARTH_DEPLOY_SSH_HOSTNAME=<private-nas-hostname>` for the command. Normal activation uses
-`sudo -n`; Hearth never reads or stores the administrator password. Rerun the one-time installer
-deliberately whenever the canonical production Compose or firewall helper changes.
+Use `HEARTH_DEPLOY_SSH_HOSTNAME=<tailscale-or-lan-host>` only when the saved SSH alias needs an
+explicit host override. Activation stages the exact revision, pulls both images before replacement,
+runs the fixed helper, waits for readiness and preserves the previous image version for rollback.
+The Synology does not compile ordinary releases.
 
-The activation first stages the exact source revision and copies the canonical pull-only production
-Compose into the preserved private project. The staging guard also refuses a release whose Compose
-file omits the server-side ESV secret path. It then pulls both images while the old containers are
-still serving, recreates the project with the requested full commit and waits for the loopback
-readiness route. Only a ready release becomes the recorded active version; the former active version
-is then retained as the rollback image version. Release markers are replaced atomically by the
-deployment account, which also repairs markers left root-owned by older releases. An
-image-authentication or download failure occurs before replacement, so it does not deliberately
-stop the working release. Confirm the private routes too:
+Verify both internal state and the private origin:
 
 ```sh
-curl --fail --silent --show-error \
-  https://<private-hearth-origin>/api/v1/readiness
-curl --fail --silent --show-error \
-  https://<private-hearth-origin>/api/v1/runtime
+curl --fail --silent --show-error https://<private-origin>/api/v1/readiness
+curl --fail --silent --show-error https://<private-origin>/api/v1/runtime
+curl --fail --silent --show-error https://<private-origin>/api/v1/health
 ```
 
-Perform this from the home LAN or connected Tailscale because the private origin denies other
-networks. Do not deploy an uncommitted working tree or automatically follow an unverified branch.
-Do not choose Container Manager **Build** for an ordinary update; production Compose deliberately
-contains no build context.
+A source build is a slow, explicit recovery fallback only. Do not deploy an uncommitted tree, use
+Container Manager **Build**, follow an unverified branch or leave temporary root tasks behind.
 
-`stage-private-release.sh <full-verified-commit>` remains available when an operator intentionally
-wants to stage without restarting. If the private registry is unavailable, a deliberately slow
-source recovery build remains possible by combining `compose.yaml` and `compose.build.yaml`. This
-is an explicit fallback only and must not occur automatically on the DS920+.
+## Backup and recovery
 
-### Root-owned release-helper boundary and DSM browser fallback
+Hearth creates integrity-checked SQLite backups under the private data directory. Synology Hyper
+Backup must also protect the complete data and secrets directories because SQLite copies do not
+include photos or provider files.
 
-A normal release is pull-only: GitHub Actions builds the images and the Synology does not compile
-Hearth. It still requires one privileged operation because DSM restricts Docker and a private GHCR
-login belongs to root. The owner enters the DSM password once for `install-release-helper.sh`. The
-installed root-owned helper accepts no release argument, reads one validated staged commit marker,
-uses root-owned Compose/environment files, operates only the fixed `hearth-v2` project and waits for
-readiness before recording success.
-
-When that one-time password prompt cannot be surfaced, use DSM Task Scheduler only as a temporary
-fallback:
-
-1. Stage the exact green commit and transfer a short release script as a file.
-2. Create a disabled root-owned user-defined task that runs that file.
-3. Have the owner submit the DSM password while saving, then run the task manually.
-4. Verify exact image tags, readiness and the private origin.
-5. Delete the temporary task, script and logs.
-
-Do not paste a long script into DSM's text editor, use Container Manager **Build**, leave a reusable
-root task behind or store a DSM/GitHub credential in the task. The permanent helper above is the
-explicitly approved, validated replacement for repeated interactive deployment prompts.
-
-### Commissioning another household
-
-Reuse the verified code and images, not the commissioned household. A second NAS needs its own
-origin, service identity, runtime/data paths, database, managed photos, integration secrets,
-passkeys/recovery material and registry reader if packages remain private. Never copy the first
-household's private directory or credentials. Verify CPU architecture, Container Manager, storage
-and LAN/Tailscale access before activation.
-
-## Backup verification and clean-location restore
-
-The Admin **System Health** page reports only safe database, backup and version state. An adult may
-request a new online copy there. It never exposes a filename or downloadable household database.
-
-From a restricted Synology administrator shell, choose one retained file and verify it inside the
-server image. On the commissioned private instance, use the preserved private project paths:
+Use the built server recovery command to verify a retained copy and restore only to a new location:
 
 ```sh
-docker compose \
-  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
-  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
-  exec server \
-  node dist/recovery-cli.js verify /data/backups/<backup-file>.sqlite
+node apps/server/dist/recovery-cli.js verify /absolute/path/to/backup.sqlite
+node apps/server/dist/recovery-cli.js restore /absolute/path/to/backup.sqlite   /absolute/new/location/hearth.sqlite
 ```
 
-For the required drill, restore to a new location only:
-
-```sh
-docker compose \
-  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
-  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
-  exec server \
-  node dist/recovery-cli.js restore /data/backups/<backup-file>.sqlite \
-  /data/restore-drill/hearth.sqlite
-```
-
-The tool verifies the source and restored database and refuses to overwrite any existing
-destination or restore work file. Confirm the migration version and inspect the isolated database
-before considering a live swap. Replacing the active database requires a stopped server,
-preservation of the current file and explicit approval; it is deliberately not an Admin button.
-
-## Start and inspect
-
-Only after explicit approval to change the live Synology. On the commissioned private instance:
-
-```sh
-docker compose \
-  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
-  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
-  up -d
-
-docker compose \
-  --env-file /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/.env \
-  -f /volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project/docker-compose.yml \
-  ps
-```
-
-Expected checks:
-
-- `GET /api/v1/health` reports process liveness.
-- `GET /api/v1/readiness` reports database and migration readiness.
-- the private origin displays adult/household first-use setup, creates a named passkey and never
-  seeds Ezra or Maya.
-- stopping the service sends `SIGTERM` and closes Fastify/SQLite cleanly within 30 seconds.
-- Admin → Photos accepts adult multi-select phone uploads, reports added/duplicate/failed counts and
-  never reveals a client filename or storage path. If the optional folder is configured, **Check
-  folder** creates an adult audit event and an import outage does not block managed uploads.
-- Admin → Connections can test and save Home Assistant without returning the token, URL or raw
-  entity IDs to the browser, SQLite, receipts or audit summaries.
-- Admin → System Health reports migration, version and recovery-copy state; “Create backup now”
-  creates an adult audit event and the chosen copy passes the clean-location restore command above.
-
-Before relying on the appliance, complete real-device passkey enrolment, a second-adult recovery
-path, encrypted off-device backup, an actual restore drill and a focused security review. The
-private origin, certificate, service identity, data folders and network allowlist must be
-commissioned before entering household or provider data.
+Replacing the active database requires a stopped server, preservation of the current file and
+explicit approval.

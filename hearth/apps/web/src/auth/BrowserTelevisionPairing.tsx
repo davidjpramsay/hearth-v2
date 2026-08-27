@@ -87,10 +87,8 @@ export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Pro
   if (!active) {
     return (
       <div className="browser-tv-pairing-entry">
-        <strong>Using a television browser?</strong>
-        <span>
-          Pair this screen from an adult’s phone without giving the television Admin access.
-        </span>
+        <strong>Television browser</strong>
+        <span>Pair without giving the screen admin access.</span>
         <button className="button button--secondary" onClick={begin} type="button">
           Pair this screen as a television
         </button>
@@ -101,7 +99,6 @@ export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Pro
   return createPortal(
     <main className="runtime-gate runtime-gate--setup browser-tv-pairing-overlay">
       <img alt="" src="/brand/hearth-mark.png" />
-      <p className="eyebrow">PRIVATE HEARTH</p>
       <h1>Connect this screen</h1>
       {pairing === undefined && error === null ? (
         <p role="status">Creating a private television pairing code…</p>
@@ -109,7 +106,7 @@ export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Pro
       {error === null && pairing !== undefined ? (
         <section className="browser-tv-pairing" aria-labelledby="browser-tv-pairing-instructions">
           <p id="browser-tv-pairing-instructions">
-            On your phone, open <strong>More → Admin → Televisions</strong> and approve this code.
+            On your phone, open <strong>More → Televisions</strong> and approve this code.
           </p>
           <div aria-label={`Pairing code ${pairing.code}`} className="browser-tv-pairing__code">
             {pairing.code.split('').map((character, index) => (
@@ -121,7 +118,7 @@ export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Pro
               ? 'Approved. Opening Hearth…'
               : pairing.status === 'expired'
                 ? 'This code has expired.'
-                : 'Waiting for an adult’s approval…'}
+                : 'Waiting for approval…'}
           </p>
         </section>
       ) : null}

@@ -83,6 +83,8 @@
   min-height: 0;
 }
 .photos-collage {
+  --photo-collage-gap: 12px;
+
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -93,21 +95,18 @@
 .photo-mosaic-node {
   min-width: 0;
   min-height: 0;
-  display: flex;
-  gap: 12px;
 }
 .photo-mosaic-node--root {
+  position: relative;
   max-width: 100%;
   max-height: 100%;
 }
-.photo-mosaic-node--row {
-  flex-direction: row;
-}
-.photo-mosaic-node--column {
-  flex-direction: column;
-}
 .photo-thumbnail {
-  position: relative;
+  position: absolute;
+  top: var(--photo-mosaic-top);
+  left: var(--photo-mosaic-left);
+  width: var(--photo-mosaic-width);
+  height: var(--photo-mosaic-height);
   min-width: 0;
   min-height: 0;
   padding: 0;
@@ -217,10 +216,9 @@
     height: clamp(460px, 62vh, 560px);
   }
   .photos-collage {
+    --photo-collage-gap: 9px;
+
     padding-inline: 2px;
-  }
-  .photo-mosaic-node {
-    gap: 9px;
   }
 }
 
@@ -284,6 +282,8 @@
     display: contents;
   }
   .photo-thumbnail {
+    position: relative;
+    inset: auto;
     width: 100%;
     height: auto;
     aspect-ratio: var(--photo-native-ratio);
@@ -343,10 +343,19 @@
   .photo-mosaic-node {
     display: flex;
   }
+  .photo-mosaic-node--root {
+    position: static;
+    width: 100% !important;
+    height: 100% !important;
+    gap: var(--photo-collage-gap);
+  }
   .photo-thumbnail {
+    position: relative;
+    inset: auto;
+    width: auto;
     height: 100%;
-    aspect-ratio: auto;
-    flex: var(--photo-mosaic-grow) 1 0 !important;
+    aspect-ratio: var(--photo-native-ratio);
+    flex: none !important;
   }
 }
 

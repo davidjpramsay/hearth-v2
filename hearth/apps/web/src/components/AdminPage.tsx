@@ -11,7 +11,7 @@ export function AdminPage({
   backLabel = 'Back to Hearth settings',
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: ReactNode;
   backTo?: string;
   backLabel?: string;
@@ -29,7 +29,7 @@ export function AdminPage({
         </Link>
         <div>
           <h1>{title}</h1>
-          <p>{subtitle}</p>
+          {subtitle === undefined ? null : <p>{subtitle}</p>}
         </div>
       </header>
       {children}
@@ -40,7 +40,7 @@ export function AdminPage({
 export function AdminLoading() {
   return (
     <div aria-live="polite" className="admin-feedback" role="status">
-      Loading Hearth settings…
+      Loading…
     </div>
   );
 }

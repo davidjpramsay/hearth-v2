@@ -77,6 +77,23 @@ A change is complete only when:
   TV/forecast responses or logs. A provider outage retains the last safe forecast and a first-load
   failure leaves calendar and household content usable with an unavailable weather cue.
 
+### Weather
+
+- Weather appears immediately after Calendar in television and phone navigation.
+- Current conditions include temperature, apparent temperature, today's low/high, condition, rain
+  likelihood and wind. The forecast response exposes a family-readable location but no coordinates.
+- The 24-hour graph switches between Temperature, Rain and Wind. D-pad Left/Right changes the
+  selected hour and Up/Down changes mode; the same modes and hour controls are touch-operable on a
+  phone.
+- Temperature distinguishes actual and apparent values, Rain combines probability with the selected
+  hour's expected millimetres, and Wind distinguishes sustained speed and gusts with direction.
+- Seven daily rows use one common temperature scale and Today marks the current temperature.
+  Calendar Week shows seven compact icon/rain/low-high/range summaries using its own common scale.
+- A failed refresh retains the last successful forecast with a quiet stale cue. With no configured
+  or cached forecast, Weather offers the household settings path without breaking Today or Calendar.
+- The Weather screen has no page-level horizontal overflow at 1920x1080 or 390x844, passes serious
+  and critical automated accessibility checks, and is inspected in both colour schemes.
+
 Phase 3 evidence as of 2026-08-03: the first five read/degraded-mode scenarios
 are automated against the fake adapter, SQLite cache and rendered Today/Week/Month
 surfaces. The selected CalDAV/iCloud adapter additionally has contract coverage
@@ -98,98 +115,26 @@ date-navigation, event-detail focus restoration and automated accessibility
 coverage. Browser-plugin control was unavailable, so the installed Playwright
 Chromium fallback produced the retained evidence.
 
-### Native Reminders bridge
+### Hearth reminders
 
-- On iOS 17+, the native companion requests full Reminders access through the
-  current EventKit API and includes the required full-access privacy string;
-  deprecated `requestAccess(to:)` APIs are not used.
-- The first-use screen explains that iOS requires full permission even though
-  this proof is read-only. Denied, restricted and insufficient-access states
-  remain explicit and provide safe next actions.
-- The app includes an explicit Local Network usage description for a private Hearth origin, waits
-  for the first connectivity decision and performs no Bonjour browsing or advertising.
-- An adult can see reminder-capable lists, select one or more lists, refresh
-  them and read reminder title, list, due date/time and completion state.
-- The selected-list choice survives termination and relaunch using app-local
-  storage of opaque list identifiers only. A deliberate no-list selection
-  remains empty, and identifiers for deleted/unavailable lists are pruned rather
-  than causing a read failure or broadening access to every list.
-- While the companion is open, an EventKit store-change notification refetches
-  the selected lists automatically, and returning to the foreground refetches
-  them as a safety check. A manual pull or toolbar refresh remains available.
-- After a paired companion enters the background, it submits one permitted app-refresh request with
-  a fifteen-minute earliest start. An OS-granted run performs a safe EventKit read and waits for the
-  existing source transport to accept the snapshot; expiration cancels the transport and preserves
-  the prior projection/pending retry. No acceptance claim implies that iOS runs it at a fixed time.
-- Refreshing keeps the last successful reminder content in place until the
-  replacement read completes; the screen does not flicker into a separate
-  loading layout during an ordinary refresh.
-- Loading, no-list/no-reminder, success, stale cached data and retryable failure
-  states are intentional, accessible, Dynamic Type-safe and usable in dark mode.
-- The proof explicitly does not claim Apple Reminders Sections hierarchy
-  support because EventKit does not expose those user-created sections.
-- The physical read proof used no server write path. The bridge adds only the frozen source-pairing
-  and bounded full-snapshot transport plus best-effort iOS background refresh; it has no APNs,
-  persistent execution, two-way completion, Apple
-  ID, iCloud app-specific password, private Apple/calendar URL or NAS credential and invokes no
-  EventKit mutation. The trusted private Hearth origin is stored separately from the source secret.
-- Fake-adapter unit tests cover permission, list selection/filtering, stale
-  fallback and failure transitions. Simulator build/run and screenshots prove
-  app wiring and presentation only.
-- Native contract tests decode all four committed language-neutral fixtures and cover the distinct
-  source authorization scheme, approved pairing, bounded selected-list mapping, exact retry,
-  stale-sequence recovery, revoked-source repair and protection against accidental empty uploads.
-  These tests and the fake accepted-snapshot screen pass in Simulator. The canonical product suite
-  has 32 passing tests, including explicit JSON-null encoding and background read-to-acceptance
-  coordination. The isolated evidence build added
-  one DEBUG-only exact-replay test and passed 31 before that evidence seam was deliberately omitted
-  from the product branch.
-- Physical EventKit acceptance passed on 2026-08-25 on an iPhone 17e running
-  iOS 26.6: the owner's current `Reminders` and `Family Reminders` lists and
-  live reminder fields were visible. A remote change appeared automatically in
-  about nine seconds, and a completion change made in Apple Reminders on the
-  Mac appeared in about five seconds without a pull. Repeated manual refresh no
-  longer produced the reported graphical flicker.
-- The physical run confirmed that reminder completion is displayed but cannot
-  be changed in Hearth Companion. This is the intentional read-only boundary,
-  not a missing control in this proof.
-
-- An iPhone creates a ten-minute pairing request with a locally generated Keychain secret; an adult
-  administrator can approve it, a child cannot, and exchange returns only the
-  `reminders.snapshot.write` source session.
-- A reminder-source credential cannot authenticate as a television or adult companion, cannot write
-  another source and becomes unusable immediately after adult revocation.
-- The v1 Swift DTOs decode the committed golden pairing/session/snapshot/receipt fixtures without
-  schema drift.
-- One full snapshot atomically projects selected lists and reminders, correctly distinguishes no
-  due date, date-only and timed due dates, and preserves completion state. Raw EventKit identifiers
-  appear in neither SQLite nor household responses.
-- Snapshot sequence gaps are accepted; lower sequences return `STALE_SNAPSHOT`; an exact retry
-  returns `replayed: true`; changing content while reusing request, snapshot or sequence identity
-  returns `CONFLICT`.
-- A successful empty full snapshot intentionally clears the active projection. Query/permission
-  failure does not upload an accidental empty snapshot.
-- Temporary phone/iCloud unavailability keeps the last valid rows visible and changes freshness to
-  stale after 15 minutes. Intentional revocation hides the source and requires fresh pairing.
-- Payloads above 50 lists, 1,000 reminders or 1.5 MB are rejected without partial application.
-- After a usable first snapshot, television navigation and the phone **More** surface expose a
-  dedicated Reminders page grouped by selected EventKit list. **Open** is the default filter;
-  **All** may show completed rows, and every row remains read-only.
-- Today may show only incomplete reminders due on the household local date. Its bounded summary
-  links to the full Reminders page, can be disabled independently in **Today & notices**, and keeps
-  a valid stale projection visible with an honest freshness cue.
-- The dedicated page and Today module pass typed server integration, 1920x1080 and 390x844 rendered
-  inspection, phone overflow inspection and D-pad entry/rail-return checks against fictional data.
-- Physical-device evidence now covers current personal/shared-family EventKit reads, selected-list
-  persistence across terminate/relaunch, adult-approved Hearth pairing, source-token exchange, real
-  full-snapshot upload and an exact retry returning `replayed: true`. The privacy-safe production
-  aggregate remained at sequence/receipt 6 after replay with one active list and four active
-  reminders, so the replay added no receipt and changed no projection count.
-- Signed household endpoint/rendered-dashboard readback remains a separate open checkpoint; it is
-  not inferred from the aggregate transport evidence. Physical revocation and forced-stale recovery
-  are also not run, although their deterministic tests pass. OS-scheduled background execution and
-  its real-world latency remain a separate physical-device checkpoint.
-- Apple Reminders Sections, writeback, completion and deletion are absent from v1.
+- Reminders are household-owned and require no Apple account, companion app, EventKit permission or
+  external reminder source.
+- A household member can create a reminder with a title and optional date, edit it, complete it,
+  reopen it and remove it after confirmation.
+- Retrying a create, update, completion or deletion request does not duplicate the mutation and
+  returns the original typed result.
+- Every accepted mutation records a safe audit event; rejected or unauthenticated writes change
+  neither reminder state nor receipts.
+- **Open** is the default view and **All** may reveal completed reminders. Date-only reminders do
+  not display a fabricated time.
+- Today reports the total open count, previews overdue items before due-today, undated and future
+  items, links to Reminders and shows **No open reminders** only when the count is zero.
+- The dedicated page and Today module pass typed integration, television/mobile rendering,
+  accessibility and D-pad/Back checks.
+- The former Apple pairing/snapshot endpoints are absent. Migration `0027_native_reminders.sql`
+  removes the old source, device, projection and receipt tables including credential hashes.
+- The retired proof remains only under `hearth/archive/apple-reminders-bridge/` and does not enter
+  active builds or deployment images.
 
 ### Household people
 
@@ -426,9 +371,9 @@ live-system commissioning tasks requiring owner approval.
   explicit confirmation. The managed master, display and thumbnail files disappear, the command is
   idempotent and one path-free audit event remains. Imported originals cannot be deleted through
   Hearth and the UI explains the source-folder plus **Check folder** workflow.
-- Phone More exposes **View family photos** at `/photos` and a separately labelled, visually prominent
+- Phone More exposes **Photos** at `/photos` and a separately labelled, visually prominent
   **Manage photos** action at `/admin/photos`. The latter opens the phone upload/curation surface,
-  including **Add photos from this phone**, and its Back control returns to More. Hearth settings also
+  including **Add photos**, and its Back control returns to More. Hearth settings also
   places Manage photos first under Family content rather than hiding it behind a generic household row.
 - More and the Hearth settings root use compact title-only navigation rows with slightly squared joined
   group corners. Repeated row subtitles are absent; destination screens retain the explanatory copy

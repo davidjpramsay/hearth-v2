@@ -1,129 +1,76 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  MAX_REMINDER_SNAPSHOT_ITEMS,
-  ReminderSnapshotItemInputSchema,
-  ReminderSourceDeviceSessionSchema,
-  ReplaceReminderSnapshotRequestSchema,
+  CreateReminderRequestSchema,
+  HearthReminderSchema,
+  ReminderOverviewSchema,
 } from './reminders.js';
 
-const baseSnapshot = {
-  contractVersion: 1 as const,
-  requestId: 'request_reminders_snapshot_001',
-  snapshotId: 'snapshot_reminders_001',
-  sequence: 1,
-  generatedAt: '2026-08-25T10:00:00+08:00',
-  lists: [{ sourceListId: 'eventkit-list-family', title: 'Family Reminders' }],
-  reminders: [
-    {
-      sourceReminderId: 'eventkit-reminder-bins',
-      sourceListId: 'eventkit-list-family',
-      title: 'Put the bins out',
-      dueLocalDate: '2026-08-25',
-      dueAt: '2026-08-25T18:00:00+08:00',
-      hasDueTime: true,
-      isCompleted: false,
-      completedAt: null,
-      sourceUpdatedAt: '2026-08-25T09:55:00+08:00',
-    },
-  ],
-};
-
-describe('Reminders v1 wire contract', () => {
-  it('accepts one bounded full EventKit snapshot', () => {
-    const snapshot = ReplaceReminderSnapshotRequestSchema.parse(baseSnapshot);
-    expect(snapshot).toMatchObject({
-      contractVersion: 1,
-      sequence: 1,
-      lists: [{ title: 'Family Reminders' }],
-      reminders: [{ title: 'Put the bins out', hasDueTime: true }],
-    });
-  });
-
-  it('normalizes blank user-facing titles without changing source identifiers', () => {
-    const snapshot = ReplaceReminderSnapshotRequestSchema.parse({
-      ...baseSnapshot,
-      lists: [{ sourceListId: '  exact-list-id  ', title: ' ' }],
-      reminders: [
-        {
-          ...baseSnapshot.reminders[0],
-          sourceReminderId: '  exact-reminder-id  ',
-          sourceListId: '  exact-list-id  ',
-          title: '',
-        },
-      ],
-    });
-    expect(snapshot.lists[0]).toEqual({
-      sourceListId: '  exact-list-id  ',
-      title: 'Reminders',
-    });
-    expect(snapshot.reminders[0]?.title).toBe('Untitled reminder');
-    expect(snapshot.reminders[0]?.sourceReminderId).toBe('  exact-reminder-id  ');
-  });
-
-  it('rejects duplicate, orphaned and internally inconsistent reminder rows', () => {
+describe('Hearth reminders contract', () => {
+  it('accepts a concise native reminder', () => {
     expect(
-      ReplaceReminderSnapshotRequestSchema.safeParse({
-        ...baseSnapshot,
-        lists: [...baseSnapshot.lists, ...baseSnapshot.lists],
+      CreateReminderRequestSchema.parse({
+        requestId: 'request_reminder_create_001',
+        title: 'Put the bins out',
+        dueLocalDate: '2026-08-27',
+        dueAt: null,
+        hasDueTime: false,
+      }),
+    ).toMatchObject({ title: 'Put the bins out', dueLocalDate: '2026-08-27' });
+  });
+
+  it('rejects blank titles and inconsistent due fields', () => {
+    expect(
+      CreateReminderRequestSchema.safeParse({
+        requestId: 'request_reminder_create_002',
+        title: ' ',
+        dueLocalDate: null,
+        dueAt: null,
+        hasDueTime: false,
       }).success,
     ).toBe(false);
     expect(
-      ReplaceReminderSnapshotRequestSchema.safeParse({
-        ...baseSnapshot,
-        reminders: [
-          {
-            ...baseSnapshot.reminders[0],
-            sourceListId: 'eventkit-list-not-in-snapshot',
-          },
-        ],
-      }).success,
-    ).toBe(false);
-    expect(
-      ReminderSnapshotItemInputSchema.safeParse({
-        ...baseSnapshot.reminders[0],
+      CreateReminderRequestSchema.safeParse({
+        requestId: 'request_reminder_create_003',
+        title: 'School pickup',
+        dueLocalDate: '2026-08-27',
         dueAt: null,
         hasDueTime: true,
       }).success,
     ).toBe(false);
-    expect(
-      ReminderSnapshotItemInputSchema.safeParse({
-        ...baseSnapshot.reminders[0],
-        isCompleted: false,
-        completedAt: '2026-08-25T10:00:00+08:00',
-      }).success,
-    ).toBe(false);
   });
 
-  it('accepts an intentional empty full snapshot and rejects payloads beyond the v1 bound', () => {
+  it('keeps native reminders free of external-source fields', () => {
+    const reminder = HearthReminderSchema.parse({
+      id: 'reminder_bins',
+      listId: 'reminder_list_home',
+      title: 'Put the bins out',
+      dueLocalDate: null,
+      dueAt: null,
+      hasDueTime: false,
+      isCompleted: false,
+      completedAt: null,
+      createdAt: '2026-08-27T10:00:00.000Z',
+      updatedAt: '2026-08-27T10:00:00.000Z',
+    });
+    expect(JSON.stringify(reminder)).not.toMatch(/eventkit|source|snapshot|device/i);
+  });
+
+  it('returns a household-owned overview without a connected source', () => {
     expect(
-      ReplaceReminderSnapshotRequestSchema.parse({
-        ...baseSnapshot,
-        lists: [],
+      ReminderOverviewSchema.parse({
+        householdId: 'household_demo',
+        generatedAt: '2026-08-27T10:00:00.000Z',
+        lists: [
+          {
+            id: 'reminder_list_home',
+            title: 'Reminders',
+            reminderCount: 0,
+            incompleteCount: 0,
+          },
+        ],
         reminders: [],
       }),
-    ).toMatchObject({ lists: [], reminders: [] });
-
-    const reminders = Array.from({ length: MAX_REMINDER_SNAPSHOT_ITEMS + 1 }, (_, index) => ({
-      ...baseSnapshot.reminders[0],
-      sourceReminderId: `eventkit-reminder-${index}`,
-    }));
-    expect(
-      ReplaceReminderSnapshotRequestSchema.safeParse({ ...baseSnapshot, reminders }).success,
-    ).toBe(false);
-  });
-
-  it('keeps native source sessions narrowly scoped', () => {
-    const session = ReminderSourceDeviceSessionSchema.parse({
-      contractVersion: 1,
-      householdId: 'household_ramsay',
-      deviceId: 'reminder_device_001',
-      sourceId: 'reminder_source_001',
-      scopes: ['reminders.snapshot.write'],
-      pairedAt: '2026-08-25T10:00:00+08:00',
-      nextSnapshotSequence: 1,
-    });
-    expect(session.scopes).toEqual(['reminders.snapshot.write']);
-    expect(JSON.stringify(session)).not.toMatch(/calendar|chores|lists.change/i);
+    ).not.toHaveProperty('source');
   });
 });

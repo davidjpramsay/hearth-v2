@@ -4,7 +4,7 @@ These instructions apply to everything under `hearth/` and supplement the root `
 
 ## Intended monorepo
 
-Create a pnpm workspace with this stable package shape unless a documented decision changes it:
+Keep this pnpm workspace shape unless a documented decision changes it:
 
 ```text
 hearth/
@@ -12,6 +12,7 @@ hearth/
     server/       TypeScript Fastify API and background jobs
     web/          React television and responsive companion interface
     tv/           Kotlin Android TV shell
+  archive/        Retired, build-excluded proofs; never import from active code
   packages/
     shared/       Schemas, API contracts and shared types
     core/         Pure household-domain logic
@@ -52,6 +53,8 @@ Avoid introducing Next.js, Electron, Supabase, Kubernetes, Redis, a message brok
 - Domain logic belongs in `packages/core`; transport and storage adapters belong in `apps/server`.
 - Shared schemas are the contract. Generate or consume typed clients rather than duplicating request types by hand.
 - Calendar, Home Assistant and approved photo-source connections must sit behind small adapter interfaces. Native Google TV media apps and the separate Home Assistant/Music Assistant voice-music path are outside Hearth's integration boundary.
+- Reminders are Hearth-owned records. Do not add Apple Reminders, EventKit, CalDAV VTODO, companion snapshot or reminder-source code to active packages; the historical proof under `archive/apple-reminders-bridge/` is reference-only.
+- Weather data comes through the server-side Open-Meteo adapter and cache. Keep provider attribution discreet but present on the Weather surface or settings.
 - Do not add Music Assistant, Jellyfin, Cast, generic Android-intent or media-player modules to Hearth. Home Assistant may return only the existing generic protected-media boolean to Hearth for television power safety.
 - UI code must not call Home Assistant or calendar providers directly.
 - Mutations use request identifiers where retries could duplicate work.
@@ -60,4 +63,4 @@ Avoid introducing Next.js, Electron, Supabase, Kubernetes, Redis, a message brok
 
 ## Work sequencing
 
-Follow `docs/hearth-v2/ROADMAP.md`. The first coding session should establish the workspace and implement the Phase 1 television interaction prototype; it should not attempt every integration at once.
+Follow `docs/hearth-v2/ROADMAP.md` and close only the acceptance gates affected by the change. Do not infer completion from an older phase label, generated screenshot, successful build or simulator run.

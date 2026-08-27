@@ -46,11 +46,11 @@ export const queryKeys = {
   get weatherLocation() {
     return [householdId(getHearthRuntime()), 'weather-location'] as const;
   },
+  get weather() {
+    return [householdId(getHearthRuntime()), 'weather'] as const;
+  },
   get homeAssistantConnection() {
     return [householdId(getHearthRuntime()), 'home-assistant-connection'] as const;
-  },
-  get reminderSources() {
-    return [householdId(getHearthRuntime()), 'reminder-sources'] as const;
   },
   get reminders() {
     return [householdId(getHearthRuntime()), 'reminders'] as const;

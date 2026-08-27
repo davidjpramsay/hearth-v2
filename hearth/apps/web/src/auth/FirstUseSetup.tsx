@@ -22,14 +22,8 @@ export function FirstUseSetup({
   if (!auth.configured) {
     return (
       <SetupFrame title="Finish private access first">
-        <p>
-          Choose Hearth’s permanent private HTTPS name, then configure the relying-party name,
-          matching origin and local first-use code file on the server.
-        </p>
-        <p className="runtime-gate__detail">
-          No household or passkey has been created. This avoids tying your passkey to a temporary
-          address.
-        </p>
+        <p>Configure Hearth’s permanent private HTTPS address and first-use code on the server.</p>
+        <p className="runtime-gate__detail">No household or passkey has been created yet.</p>
       </SetupFrame>
     );
   }
@@ -49,15 +43,10 @@ export function FirstUseSetup({
 
   return (
     <SetupFrame title="Set up this Hearth">
-      <p>
-        Create the real household and its first adult administrator. Demo family data stays out.
-      </p>
+      <p>Create the household and first adult.</p>
       <div className="first-use-tv-guidance">
         <strong>Finish setup on your iPhone</strong>
-        <span>
-          Open this same private Hearth address on your phone, then create the household and its
-          first passkey there.
-        </span>
+        <span>Open this private Hearth address on your phone.</span>
       </div>
       <form className="first-use-form" onSubmit={submit}>
         <label>

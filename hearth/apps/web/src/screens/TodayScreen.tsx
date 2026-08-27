@@ -182,9 +182,7 @@ export function TodayScreen({
           </div>
         }
       />
-      {!online ? (
-        <StatusBanner kind="offline">You’re offline · Showing saved plans.</StatusBanner>
-      ) : null}
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
       {today.freshness === 'stale' && online ? (
         <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
           {today.statusMessage}
@@ -360,17 +358,31 @@ export function TodayScreen({
                 ) : null}
                 {showReminderSummary && today.reminderSummary !== null ? (
                   <SummaryBand
-                    ariaLabel="Open Apple Reminders shared with Hearth"
+                    ariaLabel="Open reminders"
                     focus={summaryFocus('today-summary-reminders')}
                     icon="bell"
                     label="Reminders"
                     to="/reminders"
                   >
-                    {today.reminderSummary.dueTodayCount === 0
-                      ? 'Nothing due today'
-                      : today.reminderSummary.dueTodayCount === 1
-                        ? (today.reminderSummary.items[0]?.title ?? '1 due today')
-                        : `${today.reminderSummary.dueTodayCount} due today · ${today.reminderSummary.items[0]?.title ?? 'Open reminders'}`}
+                    {today.reminderSummary.openCount === 0 ? (
+                      'No open reminders'
+                    ) : (
+                      <>
+                        <span className="today-reminder-summary__count">
+                          {today.reminderSummary.openCount}{' '}
+                          {today.reminderSummary.openCount === 1
+                            ? 'open reminder'
+                            : 'open reminders'}
+                        </span>
+                        <br />
+                        <span className="today-reminder-summary__preview">
+                          {today.reminderSummary.items[0]?.title ?? 'Open reminders'}
+                          {today.reminderSummary.openCount > 1
+                            ? ` · +${today.reminderSummary.openCount - 1} more`
+                            : ''}
+                        </span>
+                      </>
+                    )}
                   </SummaryBand>
                 ) : null}
               </div>

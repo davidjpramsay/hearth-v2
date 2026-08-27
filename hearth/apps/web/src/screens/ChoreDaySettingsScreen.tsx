@@ -63,16 +63,13 @@ export function ChoreDaySettingsScreen() {
       backLabel="Back to Family planning"
       backTo="/admin/planning"
       title="Today’s chores"
-      subtitle={`${chores.data.displayDate} · exceptions and history`}
+      subtitle={chores.data.displayDate}
     >
       <div className="chore-management-note">
         <Icon name="shield" />
         <div>
-          <strong>Keep pocket money fair</strong>
-          <p>
-            Skipped jobs stay incomplete. Excused jobs are removed from the weekly calculation.
-            Every adult change keeps its reason in history.
-          </p>
+          <strong>Skip or excuse?</strong>
+          <p>Skipped jobs remain incomplete. Excused jobs do not reduce pocket money.</p>
         </div>
       </div>
       {confirmation === null ? null : (
@@ -238,7 +235,7 @@ function ChoreOccurrenceManager({
         <section className="chore-history" aria-label={`History for ${occurrence.title}`}>
           <h3>History</h3>
           {detail.data?.history.length === 0 ? (
-            <p>No changes have been recorded for this occurrence yet.</p>
+            <p>No changes.</p>
           ) : (
             <ol>
               {detail.data?.history.map((entry) => (

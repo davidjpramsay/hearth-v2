@@ -7,6 +7,7 @@ import type {
   IntegrationState,
   Member,
   TodayPhotoSummary,
+  WeatherForecast,
   WeekDay,
 } from '@hearth/shared';
 
@@ -213,25 +214,126 @@ function integration(
 
 export function demoForecastForDay(index: number): DailyForecast {
   const forecasts: DailyForecast[] = [
-    { temperatureCelsius: 16, condition: 'clear', label: 'Clear', source: 'demo' },
     {
-      temperatureCelsius: 18,
+      temperatureCelsius: 21,
+      lowTemperatureCelsius: 11,
+      highTemperatureCelsius: 21,
+      precipitationProbabilityPercent: 10,
+      condition: 'clear',
+      label: 'Clear',
+      source: 'demo',
+    },
+    {
+      temperatureCelsius: 23,
+      lowTemperatureCelsius: 10,
+      highTemperatureCelsius: 23,
+      precipitationProbabilityPercent: 10,
       condition: 'partly-cloudy',
       label: 'Partly cloudy',
       source: 'demo',
     },
-    { temperatureCelsius: 17, condition: 'rain', label: 'Showers', source: 'demo' },
-    { temperatureCelsius: 18, condition: 'cloudy', label: 'Cloudy', source: 'demo' },
-    { temperatureCelsius: 19, condition: 'clear', label: 'Clear', source: 'demo' },
+    {
+      temperatureCelsius: 24,
+      lowTemperatureCelsius: 11,
+      highTemperatureCelsius: 24,
+      precipitationProbabilityPercent: 0,
+      condition: 'clear',
+      label: 'Clear',
+      source: 'demo',
+    },
+    {
+      temperatureCelsius: 22,
+      lowTemperatureCelsius: 12,
+      highTemperatureCelsius: 22,
+      precipitationProbabilityPercent: 10,
+      condition: 'partly-cloudy',
+      label: 'Partly cloudy',
+      source: 'demo',
+    },
     {
       temperatureCelsius: 20,
-      condition: 'partly-cloudy',
-      label: 'Partly cloudy',
+      lowTemperatureCelsius: 13,
+      highTemperatureCelsius: 20,
+      precipitationProbabilityPercent: 40,
+      condition: 'rain',
+      label: 'Showers',
       source: 'demo',
     },
-    { temperatureCelsius: 17, condition: 'rain', label: 'Rain', source: 'demo' },
+    {
+      temperatureCelsius: 18,
+      lowTemperatureCelsius: 12,
+      highTemperatureCelsius: 18,
+      precipitationProbabilityPercent: 60,
+      condition: 'rain',
+      label: 'Rain',
+      source: 'demo',
+    },
+    {
+      temperatureCelsius: 19,
+      lowTemperatureCelsius: 12,
+      highTemperatureCelsius: 19,
+      precipitationProbabilityPercent: 30,
+      condition: 'cloudy',
+      label: 'Cloudy',
+      source: 'demo',
+    },
   ];
   return forecasts[index % forecasts.length] ?? forecasts[0]!;
+}
+
+export function createDemoWeatherForecast(): WeatherForecast {
+  const temperatures = [
+    14, 13, 13, 14, 15, 17, 19, 21, 22, 22, 21, 19, 17, 16, 15, 14, 13, 13, 12, 12, 12, 11, 11, 11,
+  ];
+  const startHour = 8;
+  return {
+    householdId: DEMO_HOUSEHOLD_ID,
+    locationLabel: 'Baldivis, WA',
+    timezone: 'Australia/Perth',
+    generatedAt: DEMO_NOW,
+    updatedAt: DEMO_NOW,
+    freshness: 'current',
+    statusMessage: null,
+    current: {
+      time: '2026-08-03T08:00',
+      temperatureCelsius: 14,
+      apparentTemperatureCelsius: 13,
+      condition: 'partly-cloudy',
+      label: 'Partly cloudy',
+      precipitationProbabilityPercent: 10,
+      windSpeedKph: 15,
+      windGustKph: 24,
+      windDirectionDegrees: 270,
+    },
+    hourly: temperatures.map((temperature, index) => {
+      const absoluteHour = startHour + index;
+      const localDate = absoluteHour < 24 ? '2026-08-03' : '2026-08-04';
+      const hour = absoluteHour % 24;
+      const rainChance = index >= 10 && index <= 13 ? 35 : index >= 14 ? 20 : 10;
+      return {
+        time: `${localDate}T${String(hour).padStart(2, '0')}:00`,
+        temperatureCelsius: temperature,
+        apparentTemperatureCelsius: temperature - (index < 6 || index > 16 ? 2 : 1),
+        condition: rainChance >= 35 ? 'rain' : hour >= 18 || hour < 6 ? 'cloudy' : 'partly-cloudy',
+        label:
+          rainChance >= 35
+            ? 'Possible shower'
+            : hour >= 18 || hour < 6
+              ? 'Cloudy'
+              : 'Partly cloudy',
+        precipitationProbabilityPercent: rainChance,
+        precipitationMillimetres: rainChance >= 35 ? 0.6 : 0,
+        windSpeedKph: 13 + Math.round(Math.sin(index / 4) * 4),
+        windGustKph: 22 + Math.round(Math.sin(index / 4) * 7),
+        windDirectionDegrees: (260 + index * 5) % 360,
+      };
+    }),
+    daily: Array.from({ length: 7 }, (_, index) => ({
+      localDate: `2026-08-${String(3 + index).padStart(2, '0')}`,
+      ...demoForecastForDay(index),
+    })),
+    source: 'demo',
+  };
 }
 
 function day(

@@ -88,12 +88,15 @@ allowlist and safe SQLite projection are replaced together.
 Only authenticated CalDAV account connections are supported. Calendar web interfaces and
 alternate URL-ingestion paths remain outside the integration boundary.
 
-### Experimental iCloud Reminders capability check
+### Retired iCloud Reminders research (historical)
 
-Hearth does not treat direct iCloud Reminders through CalDAV as a supported product integration. An
-operator-only, read-only capability probe may use the already commissioned CalDAV credential to
-check the [CalDAV standards boundary](https://www.rfc-editor.org/rfc/rfc4791.html) before any such
-feature is proposed. The probe discovers every CalDAV collection, queries only collections that
+Apple Reminders is not an active Hearth integration. The former probe and native bridge are archived
+under `hearth/archive/apple-reminders-bridge/` and are excluded from builds and deployment. The
+following record is retained only to explain why neither CalDAV nor EventKit is currently used.
+
+The former operator-only, read-only capability probe used the commissioned CalDAV credential to
+check the [CalDAV standards boundary](https://www.rfc-editor.org/rfc/rfc4791.html). It discovered
+every CalDAV collection, queried only collections that
 explicitly advertise `VTODO`, and retrieves at most ten small reminder samples. Its result contains
 collection names, advertised component names, aggregate resource counts and the bounded
 title/status/due/completion sample only. It never returns or persists the account, password,
@@ -120,10 +123,10 @@ reminders. All advertised objects were included within the bounded sample. This 
 the CalDAV surface is not a reliable source for modern iCloud Reminders, so Hearth must not build a
 direct iCloud Reminders sync on it.
 
-### Native EventKit Reminders bridge
+### Retired native EventKit Reminders bridge (historical)
 
-The supported next boundary for modern Apple Reminders is a native SwiftUI
-companion under `hearth/apps/ios`. It uses a narrow `ReminderStore` protocol,
+The retired proof used a native SwiftUI companion now stored under
+`hearth/archive/apple-reminders-bridge/ios`. It used a narrow `ReminderStore` protocol,
 an `EventKitReminderStore` implementation and a deterministic
 `FakeReminderStore` for previews/tests. On iOS 17 and later, the app requests
 `requestFullAccessToReminders` because Apple does not offer a read-only
@@ -193,8 +196,9 @@ Apple references: [Accessing the event store](https://developer.apple.com/docume
 [TN3179: Understanding local network privacy](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy).
 
 Pairing, the distinct source credential, identifier privacy, list/reminder fields, atomic snapshot
-replacement, ordering, freshness, retry, revocation and Swift client seam are frozen in
-`REMINDERS_COMPANION_CONTRACT.md`. The server implements that v1 contract. Native transport proof
+replacement, ordering, freshness, retry, revocation and Swift client seam remain documented in the
+archived `REMINDERS_COMPANION_CONTRACT.md`. The active server no longer implements that contract.
+Historical native transport proof
 now includes Keychain secret storage, the distinct URLSession authorization scheme, fixture-checked
 Swift DTOs, selected-list wire mapping and deterministic pairing/retry/stale/revocation tests.
 Physical evidence now also covers selected-list terminate/relaunch persistence, adult-approved
@@ -219,18 +223,20 @@ fallback for existing installations only. A saved household location takes
 precedence. The TV and normal forecast read models never receive coordinates;
 the adult-only settings contract exposes them only under an Advanced disclosure.
 
-The adapter requests only current temperature/condition and daily maximum temperature/condition,
-normalizes WMO codes into Hearth's compact presentation contract and caches one successful response
-for 30 minutes. Concurrent reads share the same request. If a refresh fails, the last safe response
-remains available; if no safe response exists, Today shows **Forecast unavailable** and Week omits
-the weather cue without affecting calendars or household data. Household-facing dashboards contain
-only the useful forecast. Open-Meteo attribution and link remain visible in the adult Weather
-settings surface alongside the location controls, satisfying the provider credit without adding
-technical branding to the family dashboard.
+The adapter requests current temperature, apparent temperature, condition and wind; 24 hourly
+temperature, apparent-temperature, precipitation, wind and direction points; and daily low/high,
+condition and maximum rain probability. It normalizes WMO codes into Hearth's compact presentation
+contract and caches one successful response for five minutes. Concurrent reads share the same
+request. If a refresh fails, the last safe response remains available as stale; if no safe response
+exists, Today shows **Forecast unavailable**, Week omits the cue and Weather offers setup without
+affecting calendars or household data. Household-facing contracts contain only the useful forecast
+and the saved family-readable location label, never coordinates. Open-Meteo attribution and link
+remain visible at the end of the dedicated Weather surface and in adult settings, not on Today.
 
-Open-Meteo's official forecast contract documents `current`, `daily`, `timezone`, `past_days` and
-`forecast_days` at <https://open-meteo.com/en/docs>; attribution requirements are documented at
-<https://open-meteo.com/en/licence>.
+Open-Meteo's official forecast contract documents the selected `current`, `hourly`, `daily`,
+`timezone`, `forecast_hours`, `past_days` and `forecast_days` fields at
+<https://open-meteo.com/en/docs>; attribution requirements are documented at
+<https://open-meteo.com/en/terms>.
 
 ## Optional ESV daily verse
 
@@ -495,18 +501,15 @@ The automation sends a supported network/IR standby command. It does not hard-cu
 
 ## iPhones
 
-Use the native Hearth Companion proof for the Apple Reminders read path. Use the Home Assistant Companion app for:
+There is no active Apple Reminders read path. Use the Home Assistant Companion app for:
 
 - Assist from Action Button, lock screen, Control Centre or Shortcut
 - presence only if the household explicitly enables it
 - notifications for adult-facing integration failures where useful
 
-Use the responsive Hearth web companion for detailed editing during native migration. The native
-iPhone app has a demonstrated EventKit advantage for Reminders and should consume the same Hearth
-household API/business rules for later features rather than creating a second domain implementation.
-A future installed Hearth Companion may add authenticated web administration alongside native
-Apple integrations; WKWebView versus opening an authenticated web session remains deliberately out
-of this bridge proof.
+Use the responsive Hearth web companion for detailed editing. A future native iPhone client should
+consume the same Hearth household API/business rules rather than creating a second domain
+implementation. Reusing the retired EventKit proof requires a new product and security decision.
 
 ## Failure reporting
 

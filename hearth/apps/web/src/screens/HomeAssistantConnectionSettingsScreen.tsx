@@ -45,7 +45,7 @@ export function HomeAssistantConnectionSettingsScreen() {
       setTestResult(result);
       setMappings(defaultMappings(result));
       setAccessToken('');
-      setConfirmation('Connection worked. Confirm the few things Hearth may use.');
+      setConfirmation('Connected. Choose what Hearth may use.');
     },
   });
   const save = useMutation({
@@ -71,7 +71,7 @@ export function HomeAssistantConnectionSettingsScreen() {
       setConfirmRemove(false);
       setEditing(false);
       setTestResult(null);
-      setConfirmation('Home Assistant connection removed. Hearth’s family features still work.');
+      setConfirmation('Home Assistant disconnected.');
     },
   });
 
@@ -116,19 +116,13 @@ export function HomeAssistantConnectionSettingsScreen() {
   }
 
   return (
-    <AdminPage
-      backLabel="Back to Connections"
-      backTo="/admin/connections"
-      title="Home Assistant"
-      subtitle="Connect only the household signals and actions Hearth needs"
-    >
+    <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Home Assistant">
       <div className="calendar-privacy-note home-assistant-privacy-note">
         <Icon name="shield" />
         <div>
           <strong>Strictly limited</strong>
           <p>
-            Home Assistant keeps control of voice, devices and automations. Hearth reads four safety
-            signals and may run only Evening, Goodnight and Screen off.
+            Hearth reads four safety signals and may run only Evening, Goodnight and Screen off.
           </p>
         </div>
       </div>
@@ -180,9 +174,7 @@ export function HomeAssistantConnectionSettingsScreen() {
                   type="url"
                 />
               </label>
-              <p className="field-help">
-                Use the root address reachable from the Hearth server, without an API path.
-              </p>
+              <p className="field-help">Use the root address without an API path.</p>
               <label>
                 Long-lived access token
                 <input
@@ -200,8 +192,7 @@ export function HomeAssistantConnectionSettingsScreen() {
                 />
               </label>
               <p className="field-help">
-                The token is stored only in Hearth’s private server secret file. It is cleared from
-                this form after testing.
+                Stored only in Hearth’s private server file and cleared here after testing.
               </p>
               <button className="admin-submit" disabled={testConnection.isPending} type="submit">
                 {testConnection.isPending ? 'Testing securely…' : 'Test connection'}
@@ -242,10 +233,7 @@ export function HomeAssistantConnectionSettingsScreen() {
               className="calendar-picker home-assistant-mapping"
             >
               <header>
-                <div>
-                  <h2 id="home-assistant-mapping-title">Choose what Hearth may use</h2>
-                  <p>Friendly labels are saved; raw entity IDs stay in the server secret file.</p>
-                </div>
+                <h2 id="home-assistant-mapping-title">Choose what Hearth may use</h2>
                 <span className="connection-badge connection-badge--healthy">Connection works</span>
               </header>
 
@@ -401,7 +389,7 @@ function ConnectionSummary({
             role="group"
           >
             <strong>Remove this connection?</strong>
-            <span>Home actions will stop, but calendars, chores and plans keep working.</span>
+            <span>Home actions will stop. Other Hearth features keep working.</span>
             <button className="admin-danger" disabled={removing} onClick={onRemove} type="button">
               {removing ? 'Removing…' : 'Yes, remove'}
             </button>

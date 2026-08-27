@@ -37,7 +37,7 @@ export function ChoresScreen({
     return (
       <EmptyState
         title="No chores due today"
-        description="Repeating chores appear here on the days they are scheduled."
+        description="Scheduled chores appear automatically."
       />
     );
   }
@@ -115,11 +115,11 @@ function ChoreColumn({
           <Avatar member={group.member} />
           <div>
             <h2>{group.member.displayName}</h2>
-            <p>
-              {group.occurrences.length === 0
-                ? 'Nothing due today'
-                : `${completedCount} of ${group.occurrences.length} done today`}
-            </p>
+            {group.occurrences.length === 0 ? null : (
+              <p>
+                {completedCount} of {group.occurrences.length} done today
+              </p>
+            )}
           </div>
         </div>
         {group.member.role === 'child' ? (
@@ -129,8 +129,7 @@ function ChoreColumn({
       <div className="chore-list">
         {group.occurrences.length === 0 ? (
           <div className="chore-column-empty">
-            <strong>No chores due today</strong>
-            <span>Scheduled jobs will appear here automatically.</span>
+            <strong>No chores today</strong>
           </div>
         ) : (
           group.occurrences.map((occurrence, rowIndex) => (

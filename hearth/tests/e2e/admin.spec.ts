@@ -35,7 +35,7 @@ test('phone More opens setup and household/member changes survive reload', async
   await expect(page.getByRole('heading', { name: 'More' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Lists/ })).toBeVisible();
   await expect(page.locator('.more-card small')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: /View family photos/ })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Photos', exact: true })).toHaveAttribute(
     'href',
     '/photos',
   );
@@ -100,7 +100,7 @@ test('Adult access explains private passkeys and recovery without exposing demo 
 
   await expect(page).toHaveURL(/\/admin\/access$/);
   await expect(page.getByRole('heading', { name: 'Adult access' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'No shared admin password' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Adult passkeys' })).toBeVisible();
   await expect(page.getByText(/real passkeys and recovery codes are available only/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add passkey' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Create recovery code' })).toBeDisabled();
@@ -125,116 +125,48 @@ test('Connections contains only services used directly by Hearth', async ({ page
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
   await expect(page.locator('[data-focus-id="connection-calendar"]')).toBeVisible();
   await expect(page.getByText('Home Assistant', { exact: true })).toBeVisible();
-  await expect(page.getByText('Apple Reminders', { exact: true })).toBeVisible();
+  await expect(page.getByText('Apple Reminders', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Jellyfin', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Music Assistant', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('Private services Hearth reads from')).toBeVisible();
+  await expect(page.locator('[data-focus-id="connection-calendar"]')).toContainText('Set up');
   expect(consoleProblems).toEqual([]);
 });
 
-test('adult can approve, inspect and revoke the read-only iPhone Reminders bridge', async ({
-  page,
-  request,
-}) => {
-  const pairingSecret = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-  const pairingResponse = await request.post(
-    'http://127.0.0.1:4310/api/v1/reminder-source-pairing-requests',
-    {
-      data: {
-        requestId: 'request_reminder_e2e_pair',
-        deviceName: "David's iPhone",
-        platform: 'ios',
-        applicationVersion: '1.0',
-        pairingSecret,
-      },
-    },
-  );
-  expect(pairingResponse.ok()).toBe(true);
-  const pairing = (await pairingResponse.json()) as { id: string; code: string };
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/admin/connections/reminders');
-  await expect(page.getByRole('heading', { name: 'Apple Reminders' })).toBeVisible();
-  await page.getByLabel('Pairing code').fill(pairing.code.toLowerCase());
-  await expect(page.getByLabel('Pairing code')).toHaveValue(pairing.code);
-  await page.getByRole('button', { name: 'Approve iPhone' }).click();
-  await expect(page.getByRole('status')).toContainText('Pairing approved');
-
-  const exchangeResponse = await request.post(
-    `http://127.0.0.1:4310/api/v1/reminder-source-pairing-requests/${pairing.id}/exchanges`,
-    {
-      data: {
-        requestId: 'request_reminder_e2e_exchange',
-        pairingSecret,
-      },
-    },
-  );
-  expect(exchangeResponse.ok()).toBe(true);
-  const session = (await exchangeResponse.json()) as { sourceId: string };
-  const snapshotResponse = await request.put(
-    `http://127.0.0.1:4310/api/v1/reminder-sources/${session.sourceId}/snapshots/current`,
-    {
-      headers: { authorization: `HearthReminderSource ${pairingSecret}` },
-      data: {
-        requestId: 'request_reminder_e2e_snapshot',
-        contractVersion: 1,
-        snapshotId: 'snapshot_reminder_e2e_001',
-        sequence: 1,
-        generatedAt: '2026-08-03T07:41:00+08:00',
-        lists: [{ sourceListId: 'eventkit-list-family', title: 'Family Reminders' }],
-        reminders: [
-          {
-            sourceReminderId: 'eventkit-reminder-test',
-            sourceListId: 'eventkit-list-family',
-            title: 'Test Reminder',
-            dueLocalDate: '2026-08-03',
-            dueAt: null,
-            hasDueTime: false,
-            isCompleted: false,
-            completedAt: null,
-            sourceUpdatedAt: null,
-          },
-          {
-            sourceReminderId: 'eventkit-reminder-complete',
-            sourceListId: 'eventkit-list-family',
-            title: 'Completed Reminder',
-            dueLocalDate: '2026-08-03',
-            dueAt: null,
-            hasDueTime: false,
-            isCompleted: true,
-            completedAt: '2026-08-03T06:30:00+08:00',
-            sourceUpdatedAt: '2026-08-03T06:30:00+08:00',
-          },
-        ],
-      },
-    },
-  );
-  expect(snapshotResponse.ok()).toBe(true);
-
-  await expect(page.getByText('Up to date', { exact: true })).toBeVisible();
-  await expect(page.locator('.reminder-source-facts')).toContainText('Incomplete1');
-
+test('household can create, complete and review Hearth reminders', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/reminders');
-  await expect(page.getByRole('heading', { name: 'Reminders', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Reminders', exact: true }),
+  ).toBeVisible();
   await expect(page.locator('[data-focus-id="nav-reminders"]')).toBeVisible();
-  await expect(page.locator('[data-focus-id="reminders-filter-open"]')).toBeFocused();
-  await expect(page.getByText('Test Reminder')).toBeVisible();
-  await expect(page.getByText('Completed Reminder')).toHaveCount(0);
+  await expect(page.locator('[data-focus-id="reminder-create-title"]')).toBeFocused();
+  await page.getByPlaceholder('Add a reminder').fill('Test Reminder');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="reminder-create-date"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="reminder-create-submit"]')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Test Reminder', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Complete Test Reminder' }).click();
+  await expect(page.getByText('Test Reminder', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'All' }).click();
-  await expect(page.getByText('Completed Reminder')).toBeVisible();
+  await expect(page.getByText('Test Reminder', { exact: true })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByPlaceholder('Add a reminder')).toBeVisible();
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(
+    accessibility.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
 
   await page.goto('/today');
   const reminderBand = page.locator('[data-focus-id="today-summary-reminders"]');
-  await expect(reminderBand).toContainText('Test Reminder');
+  await expect(reminderBand).toContainText('open reminders');
   await reminderBand.click();
   await expect(page).toHaveURL(/\/reminders$/);
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/admin/connections/reminders');
-  await page.getByRole('button', { name: 'Disconnect iPhone' }).click();
-  await page.getByRole('button', { name: 'Disconnect iPhone' }).click();
-  await expect(page.getByRole('button', { name: 'Approve iPhone' })).toBeVisible();
 });
 
 test('adult can test, select, map, save and remove a read-only calendar connection', async ({
@@ -330,7 +262,8 @@ test('private calendar setup does not describe the live connection as a local de
 
   await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
   await expect(page.getByText(/Local demo:/)).toHaveCount(0);
-  await expect(page.getByText(/For iCloud, keep the CalDAV address above/)).toBeVisible();
+  await expect(page.getByText(/For iCloud, use an app-specific password/)).toBeVisible();
+  await expect(page.getByText('Keep this address for iCloud.')).toBeVisible();
   await expect(page.getByLabel('Apple Account email or CalDAV username')).toBeVisible();
 });
 
@@ -446,11 +379,9 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 26 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 27 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
-  await expect(
-    page.getByText('Provider tokens stay in the separate protected secrets folder.'),
-  ).toBeVisible();
+  await expect(page.getByText('Exclude secrets and photos.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connections and photos' })).toBeVisible();
   const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });
   await expect(calendar).toContainText('Not set up');
@@ -460,7 +391,7 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await expect(homeAssistant).toContainText('Not set up');
   const photos = page.locator('.system-connection-row').filter({ hasText: 'Family photos' });
   await expect(photos).toContainText('Ready');
-  const create = page.getByRole('button', { name: 'Create backup now' });
+  const create = page.getByRole('button', { name: 'Create now' });
   await create.scrollIntoViewIfNeeded();
   await create.click();
   await expect(page.getByRole('status')).toContainText('Recovery copy created and checked');
@@ -509,8 +440,7 @@ test('adult reviews family-readable activity and filters it without technical id
 test('recent activity explains empty and unavailable states', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/activity');
-  await expect(page.getByText('No changes recorded yet')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Nothing has changed yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No activity yet' })).toBeVisible();
 
   await page.route('**/activity?limit=50', async (route) => {
     await route.fulfill({
@@ -551,7 +481,7 @@ test('system backup retry keeps the same command identity after a lost response'
   });
 
   await page.goto('/admin/system');
-  const create = page.getByRole('button', { name: 'Create backup now' });
+  const create = page.getByRole('button', { name: 'Create now' });
   await create.scrollIntoViewIfNeeded();
   await create.click();
   await expect(page.getByRole('alert')).toContainText('Hearth could not confirm the recovery copy');
@@ -583,7 +513,7 @@ test('one unavailable connection does not hide the remaining system status', asy
   await page.goto('/admin/system');
   const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });
   await expect(calendar).toContainText('Unavailable');
-  await expect(calendar).toContainText('Hearth could not read calendar setup just now.');
+  await expect(calendar).toContainText('Could not read calendar status.');
   await expect(
     page.locator('.system-connection-row').filter({ hasText: 'Home Assistant' }),
   ).toContainText('Not set up');
@@ -767,7 +697,6 @@ for (const path of [
   '/admin/connections',
   '/admin/connections/calendar',
   '/admin/connections/home-assistant',
-  '/admin/connections/reminders',
   '/admin/system',
   '/admin/activity',
 ]) {
@@ -822,7 +751,7 @@ for (const viewport of [
 test('@visual System health recovery action at phone portrait', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/system');
-  const create = page.getByRole('button', { name: 'Create backup now' });
+  const create = page.getByRole('button', { name: 'Create now' });
   await create.scrollIntoViewIfNeeded();
   await captureEvidence(page, {
     path: resolve(systemEvidence, 'system-health-actions-phone-portrait.png'),

@@ -13,43 +13,36 @@ import { useTodayConfigurationQuery } from '../hooks/useTodayQueries';
 const sectionOptions: Array<{
   key: keyof TodaySectionVisibility;
   title: string;
-  description: string;
   icon: IconName;
 }> = [
   {
     key: 'dinner',
     title: 'Dinner',
-    description: 'Tonight’s meal from the family plan',
     icon: 'meal',
   },
   {
     key: 'listSummary',
     title: 'List summary',
-    description: 'Items left on the main list',
     icon: 'list',
   },
   {
     key: 'notice',
     title: 'Notice',
-    description: 'The highest-priority active notice',
     icon: 'bell',
   },
   {
     key: 'dailyVerse',
     title: 'Daily Bible verse',
-    description: 'One ESV passage selected for the household’s local day',
     icon: 'book-open',
   },
   {
     key: 'reminders',
     title: 'Reminders',
-    description: 'Open Apple Reminders that are due today',
     icon: 'today',
   },
   {
     key: 'photo',
     title: 'Family photo',
-    description: 'A substantial photo from the private Hearth collection',
     icon: 'image',
   },
 ];
@@ -141,7 +134,7 @@ export function TodaySettingsScreen() {
 
   const error = saveSections.error ?? saveNotice.error ?? archiveNotice.error;
   return (
-    <AdminPage title="Today & notices" subtitle="Choose what appears on the family dashboard">
+    <AdminPage title="Today & notices">
       <section className="today-admin-section">
         <div className="today-admin-section__heading">
           <h2>Show on Today</h2>
@@ -169,7 +162,6 @@ export function TodaySettingsScreen() {
                 </span>
                 <span className="today-section-switch__copy">
                   <strong>{option.title}</strong>
-                  <small>{option.description}</small>
                 </span>
                 <span className="settings-toggle" aria-hidden="true">
                   <span />
@@ -182,10 +174,7 @@ export function TodaySettingsScreen() {
 
       <section className="today-admin-section">
         <div className="today-admin-section__heading">
-          <div>
-            <p className="admin-kicker">Household notices</p>
-            <h2>{editing === null ? 'Create a notice' : 'Edit notice'}</h2>
-          </div>
+          <h2>{editing === null ? 'Create a notice' : 'Edit notice'}</h2>
           <Icon name="today" />
         </div>
         <form
@@ -265,14 +254,11 @@ export function TodaySettingsScreen() {
 
       <section className="today-admin-section">
         <div className="today-admin-section__heading">
-          <div>
-            <p className="admin-kicker">Notice queue</p>
-            <h2>Current and scheduled</h2>
-          </div>
+          <h2>Notices</h2>
           <span>{sortedNotices.length}</span>
         </div>
         {sortedNotices.length === 0 ? (
-          <p className="notice-empty">No notices yet. Today will simply omit the notice text.</p>
+          <p className="notice-empty">No notices.</p>
         ) : (
           <div className="notice-list">
             {sortedNotices.map((notice) => (

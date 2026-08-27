@@ -21,11 +21,13 @@ import type {
   DemoScenario,
   MonthSchedule,
   TodaySummary,
+  WeatherForecast,
   WeekSchedule,
 } from '@hearth/shared';
 
 import {
   createDemoSeed,
+  createDemoWeatherForecast,
   DEMO_HOUSEHOLD_ID,
   DEMO_LOCAL_DATE,
   DEMO_NOW,
@@ -57,6 +59,7 @@ export class RepositoryError extends Error {
 
 export interface HearthRepository {
   getToday(householdId: string, localDate: string): Promise<TodaySummary>;
+  getWeather(householdId: string): Promise<WeatherForecast>;
   getWeek(householdId: string, startDate: string): Promise<WeekSchedule>;
   getMonth(householdId: string, month: string): Promise<MonthSchedule>;
   getChores(householdId: string, localDate: string): Promise<ChoreList>;
@@ -187,6 +190,31 @@ export class InMemoryHearthRepository implements HearthRepository {
           : integration,
       ),
     };
+  }
+
+  async getWeather(householdId: string): Promise<WeatherForecast> {
+    this.assertHousehold(householdId);
+    await this.applyLatency();
+    const forecast = createDemoWeatherForecast();
+    if (this.scenario === 'unavailable') {
+      return {
+        ...forecast,
+        freshness: 'stale',
+        statusMessage: 'Updated earlier · Trying again quietly.',
+      };
+    }
+    if (this.scenario === 'empty') {
+      return {
+        ...forecast,
+        current: null,
+        hourly: [],
+        daily: [],
+        source: null,
+        freshness: 'offline',
+        statusMessage: 'Weather is not set up.',
+      };
+    }
+    return forecast;
   }
 
   async getWeek(householdId: string, startDate: string): Promise<WeekSchedule> {

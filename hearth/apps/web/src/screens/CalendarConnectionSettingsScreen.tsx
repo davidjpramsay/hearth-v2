@@ -52,7 +52,7 @@ export function CalendarConnectionSettingsScreen() {
         ),
       );
       setAppPassword('');
-      setConfirmation('Connection worked. Choose the calendars Hearth may show.');
+      setConfirmation('Connected. Choose calendars.');
     },
   });
   const refreshSelection = useMutation({
@@ -80,7 +80,7 @@ export function CalendarConnectionSettingsScreen() {
         ),
       );
       setEditMode('selection');
-      setConfirmation('Calendars refreshed using the saved connection. Choose what Hearth shows.');
+      setConfirmation('Calendars refreshed.');
     },
   });
   const save = useMutation({
@@ -114,7 +114,7 @@ export function CalendarConnectionSettingsScreen() {
       setConfirmRemove(false);
       setEditMode('none');
       setTestResult(null);
-      setConfirmation('Calendar connection removed. Saved event copies will age out safely.');
+      setConfirmation('Calendar disconnected. Saved events remain temporarily available.');
     },
   });
   const updateMappings = useMutation({
@@ -126,7 +126,7 @@ export function CalendarConnectionSettingsScreen() {
         queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
       ]);
       setMappingOwners({});
-      setConfirmation('Calendar assignments saved. The TV will use the updated faces and colours.');
+      setConfirmation('Calendar assignments saved.');
     },
   });
 
@@ -183,21 +183,12 @@ export function CalendarConnectionSettingsScreen() {
   }
 
   return (
-    <AdminPage
-      backLabel="Back to Connections"
-      backTo="/admin/connections"
-      title="Calendar"
-      subtitle="Connect iCloud or another CalDAV account"
-    >
+    <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Calendar">
       <div className="calendar-privacy-note">
         <Icon name="shield" />
         <div>
-          <strong>Read-only by design</strong>
-          <p>
-            Hearth stores the calendar credential only in its private server secret file. For
-            iCloud, use a dedicated app-specific password—not the main Apple Account password.
-            Hearth never sends it back to the phone or TV and cannot change calendar events.
-          </p>
+          <strong>Read-only</strong>
+          <p>For iCloud, use an app-specific password—never your Apple Account password.</p>
         </div>
       </div>
 
@@ -289,8 +280,8 @@ export function CalendarConnectionSettingsScreen() {
               <Icon name="home" />
             </span>
             <p>
-              <strong>Whole family calendars</strong> use Hearth&apos;s green household mark and
-              family colour. Assign a calendar to one person to use their photo and colour instead.
+              <strong>Whole family</strong> uses Hearth green. Assign a person to use their photo
+              and colour.
             </p>
           </div>
           <div className="calendar-connection-actions">
@@ -374,10 +365,7 @@ export function CalendarConnectionSettingsScreen() {
                   type="url"
                 />
               </label>
-              <p className="field-help">
-                For iCloud, keep the CalDAV address above. Hearth will securely discover the
-                calendars available to this account.
-              </p>
+              <p className="field-help">Keep this address for iCloud.</p>
               <label>
                 Apple Account email or CalDAV username
                 <input
@@ -403,10 +391,7 @@ export function CalendarConnectionSettingsScreen() {
                   value={appPassword}
                 />
               </label>
-              <p className="field-help">
-                For iCloud, create a dedicated app-specific password in Apple Account → Sign-In and
-                Security. Never enter your main Apple Account password.
-              </p>
+              <p className="field-help">Create one in Apple Account → Sign-In and Security.</p>
               <button className="admin-submit" disabled={testConnection.isPending} type="submit">
                 {testConnection.isPending ? 'Testing securely…' : 'Test connection'}
               </button>
@@ -458,14 +443,7 @@ export function CalendarConnectionSettingsScreen() {
           {testResult === null ? null : (
             <section className="calendar-picker" aria-labelledby="calendar-picker-title">
               <header>
-                <div>
-                  <h2 id="calendar-picker-title">Choose calendars</h2>
-                  <p>
-                    {editMode === 'selection'
-                      ? 'Add or remove calendars without changing the saved account.'
-                      : 'Only selected calendars will be read by Hearth.'}
-                  </p>
-                </div>
+                <h2 id="calendar-picker-title">Choose calendars</h2>
                 <span className="connection-badge connection-badge--healthy">
                   {editMode === 'selection' ? 'Saved sign-in' : 'Connection works'}
                 </span>
@@ -475,8 +453,8 @@ export function CalendarConnectionSettingsScreen() {
                   <Icon name="home" />
                 </span>
                 <p>
-                  Choose <strong>Whole family</strong> for a shared calendar. Hearth shows the green
-                  household mark rather than one person&apos;s photo.
+                  <strong>Whole family</strong> uses Hearth green instead of one person&apos;s
+                  photo.
                 </p>
               </div>
               <div className="calendar-picker__list">

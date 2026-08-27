@@ -90,17 +90,7 @@ export function ListsSettingsScreen() {
   }
 
   return (
-    <AdminPage
-      backLabel="Back to Family planning"
-      backTo="/admin/planning"
-      title="Household lists"
-      subtitle="Organise shared lists without making the television complicated"
-    >
-      <div className="list-settings-intro">
-        <Icon name="list" />
-        <p>Adults organise lists here. Everyone can still check and undo items from the TV.</p>
-      </div>
-
+    <AdminPage backLabel="Back to Family planning" backTo="/admin/planning" title="Household lists">
       {confirmation === null ? null : (
         <p className="save-confirmation" role="status">
           {confirmation}
@@ -125,7 +115,7 @@ export function ListsSettingsScreen() {
         <header>
           <div>
             <h2 id="active-lists-heading">Active lists</h2>
-            <p>Move the most-used list to the top.</p>
+            <p>The top list appears first.</p>
           </div>
           <button
             className="admin-secondary list-settings-new"
@@ -166,7 +156,7 @@ export function ListsSettingsScreen() {
                 <span>
                   <strong>{list.name}</strong>
                   <small>
-                    {list.remainingCount} waiting · {list.totalCount} total
+                    {list.remainingCount} left · {list.totalCount} total
                   </small>
                 </span>
                 <Icon name="chevron-right" />
@@ -295,7 +285,6 @@ export function ListsSettingsScreen() {
       {settings.data.archivedLists.length === 0 ? null : (
         <section className="archived-list-settings" aria-labelledby="archived-lists-heading">
           <h2 id="archived-lists-heading">Archived lists</h2>
-          <p>Archived lists stay recoverable and keep their household history.</p>
           {settings.data.archivedLists.map((list) => (
             <article key={list.id}>
               <span className="list-settings-card__swatch" style={{ background: list.color }} />
@@ -372,7 +361,6 @@ function ListEditor({
           <span className="list-settings-card__swatch" style={{ background: list.color }} />
           <div>
             <h2 id="list-editor-heading">Edit {list.name}</h2>
-            <p>Names and quantities update everywhere immediately.</p>
           </div>
         </div>
       </header>
@@ -402,10 +390,7 @@ function ListEditor({
 
       <div className="list-settings-items">
         <div className="list-settings-items__heading">
-          <div>
-            <h3>Items</h3>
-            <p>Completed items remain visible until an adult clears them.</p>
-          </div>
+          <h3>Items</h3>
           {checkedCount === 0 ? null : (
             <div className="clear-checked-actions">
               <button
@@ -455,7 +440,7 @@ function ListEditor({
         </form>
 
         {list.items.length === 0 ? (
-          <p className="list-settings-empty">This list is ready for its first item.</p>
+          <p className="list-settings-empty">No items.</p>
         ) : (
           <div className="list-settings-item-list">
             {list.items.map((item, index, items) => (

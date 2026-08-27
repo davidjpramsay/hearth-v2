@@ -33,11 +33,13 @@ If two documents disagree, do not silently choose one. Report the contradiction 
 
 ## Product invariants
 
-- The primary display is a landscape 4K Google TV controlled by D-pad remote, voice and iPhone. Touch must never be required.
+- The primary display is a landscape 4K Google TV controlled by D-pad remote, voice and the phone web app. Touch must never be required on television.
 - Hearth is a product of its own. Do not reproduce Skylight names, branding, copy, artwork, screenshots or pixel-level layout.
 - Layouts are code. Do not build a visual layout editor, layout DSL or user-configurable grid in the first release.
-- Hearth owns household members, chores, routines, proportional pocket-money settings/payments, lists, meals, announcements and its own audit trail.
+- Hearth owns household members, reminders, chores, routines, proportional pocket-money settings/payments, lists, meals, announcements and its own audit trail.
+- Reminders are native Hearth records. The retired Apple/EventKit proof is preserved only under `hearth/archive/apple-reminders-bridge/` and must not enter active builds, routes or deployment without a new recorded product and security decision.
 - The connected calendar provider remains the calendar source of truth. Hearth syncs through an adapter and does not invent a second authoritative calendar.
+- Open-Meteo remains the weather provider. Keep its required attribution off the Today dashboard and visible on the dedicated Weather screen or settings.
 - Home Assistant owns physical devices, presence, scenes, television control and voice pipelines.
 - The Synology Jellyfin server remains the media-library authority. The native Google TV Jellyfin client owns normal browsing and manual playback. Outside Hearth, Home Assistant may use Music Assistant to search the Jellyfin music library and cast voice-requested audio to a named television or speaker. Hearth does not connect to, control or launch Jellyfin, Music Assistant or Cast; it may receive only the generic media-active state needed to prevent unsafe television power automation.
 - The television uses its native Google TV apps. The Raspberry Pi is a headless Home Assistant appliance and is not in the HDMI path.
@@ -53,6 +55,7 @@ If two documents disagree, do not silently choose one. Report the contradiction 
 - Treat all externally triggered writes as authenticated commands with validation, idempotency where relevant and an audit record.
 - Prefer small, typed modules over broad abstractions. Do not generalise for hypothetical households until a real second use case requires it.
 - Preserve existing user changes. This workspace may not be a Git repository, so verify changes by direct readback and tests rather than assuming Git is available.
+- Keep public and human-facing README files short. Put durable detail in the authoritative specifications, evidence notes and operational runbooks.
 
 ## Verification requirements
 

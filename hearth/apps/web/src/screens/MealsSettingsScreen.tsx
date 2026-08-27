@@ -116,22 +116,7 @@ export function MealsSettingsScreen() {
   }
 
   return (
-    <AdminPage
-      backLabel="Back to Family planning"
-      backTo="/admin/planning"
-      title="Meal planning"
-      subtitle="Plan the week quickly and keep reusable family favourites"
-    >
-      <div className="meal-settings-intro">
-        <Icon name="meal" />
-        <div>
-          <strong>Dinner stays simple on the television</strong>
-          <p>
-            Edit several nights together here. Breakfast and lunch remain available later if needed.
-          </p>
-        </div>
-      </div>
-
+    <AdminPage backLabel="Back to Family planning" backTo="/admin/planning" title="Meal planning">
       {confirmation === null ? null : (
         <p className="save-confirmation" role="status">
           {confirmation}
@@ -155,7 +140,6 @@ export function MealsSettingsScreen() {
       <section className="meal-week-settings" aria-labelledby="meal-week-settings-heading">
         <header>
           <div>
-            <p className="admin-kicker">Seven-night plan</p>
             <h2 id="meal-week-settings-heading">{currentPlan.displayRange}</h2>
           </div>
           <div className="meal-settings-week-nav">
@@ -350,9 +334,8 @@ export function MealsSettingsScreen() {
       >
         <header>
           <div>
-            <p className="admin-kicker">Reusable ideas</p>
             <h2 id="saved-meal-library-heading">Saved family meals</h2>
-            <p>{savedMealLibrary.activeMeals.length} active meals · favourites appear first</p>
+            <p>{savedMealLibrary.activeMeals.length} meals</p>
           </div>
           <button
             className="admin-secondary"
@@ -385,7 +368,7 @@ export function MealsSettingsScreen() {
         </label>
 
         {visibleMeals.length === 0 ? (
-          <p className="saved-meal-empty">No saved meals match that search.</p>
+          <p className="saved-meal-empty">No matches.</p>
         ) : (
           <div className="saved-meal-cards">
             {visibleMeals.map((meal) => (
@@ -423,12 +406,10 @@ export function MealsSettingsScreen() {
         {savedMealLibrary.archivedMeals.length === 0 ? null : (
           <details className="archived-saved-meals">
             <summary>Archived meals · {savedMealLibrary.archivedMeals.length}</summary>
-            <p>Archived meals remain in past plans and can be restored.</p>
             {savedMealLibrary.archivedMeals.map((meal) => (
               <div className="archived-saved-meal" key={meal.id}>
                 <span>
                   <strong>{meal.name}</strong>
-                  <small>Archived safely</small>
                 </span>
                 <button
                   className="admin-secondary"
@@ -548,7 +529,7 @@ function SavedMealFields({ meal }: { meal?: SavedMeal }) {
           defaultValue={meal?.description ?? ''}
           maxLength={320}
           name="description"
-          placeholder="Why it works, serving ideas or preparation notes"
+          placeholder="Serving or preparation notes"
           rows={3}
         />
       </label>

@@ -121,12 +121,7 @@ export function PocketMoneySettingsScreen() {
   );
 
   return (
-    <AdminPage
-      backLabel="Back to Family planning"
-      backTo="/admin/planning"
-      title="Pocket money"
-      subtitle="Set the rules once, then review progress and payments"
-    >
+    <AdminPage backLabel="Back to Family planning" backTo="/admin/planning" title="Pocket money">
       {missingSettings.length === 0 ? null : (
         <div className="pocket-money-setup-warning" role="alert">
           <Icon name="warning" />
@@ -143,7 +138,7 @@ export function PocketMoneySettingsScreen() {
         <header>
           <div>
             <h2 id="pocket-money-rules-title">Weekly settings</h2>
-            <p>Set these once. They repeat every week until an adult changes them.</p>
+            <p>Repeats weekly until changed.</p>
           </div>
           <Icon name="wallet" />
         </header>
@@ -205,12 +200,8 @@ export function PocketMoneySettingsScreen() {
         <div className="pocket-money-intro">
           <Icon name="wallet" />
           <div>
-            <strong>Chores decide the amount due</strong>
-            <p>
-              Hearth calculates each child’s share from every chore scheduled for the full week.
-              Excused and cancelled chores do not count against them; skipped chores remain
-              incomplete.
-            </p>
+            <strong>Based on the full week</strong>
+            <p>Excused and cancelled chores do not count. Skipped chores remain incomplete.</p>
           </div>
         </div>
         {isCurrentWeek ? null : (
@@ -283,7 +274,6 @@ function PocketMoneyRuleForm({
         <Avatar member={child.member} />
         <div>
           <h3>{child.member.displayName}</h3>
-          <span>Repeats every week until changed</span>
         </div>
       </header>
       <form
@@ -472,12 +462,12 @@ function PaymentHistory({
       <header>
         <div>
           <h2 id="pocket-money-history-title">Payment history</h2>
-          <p>Payment records stay visible even after a correction.</p>
+          <p>Corrections remain visible.</p>
         </div>
         <Icon name="wallet" />
       </header>
       {payments.length === 0 ? (
-        <p className="pocket-money-history__empty">No payments have been recorded yet.</p>
+        <p className="pocket-money-history__empty">No payments yet.</p>
       ) : (
         <div className="pocket-money-history__list">
           {payments.map((payment) => {

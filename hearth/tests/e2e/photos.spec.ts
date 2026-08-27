@@ -24,7 +24,7 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
   await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
-  for (let step = 0; step < 6; step += 1) await page.keyboard.press('ArrowDown');
+  for (let step = 0; step < 8; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-photos"]')).toBeFocused();
   await page.keyboard.press('Enter');
 
@@ -439,7 +439,7 @@ test('Photos has deliberate empty, cached-unavailable and failure/retry states',
   await expect(page.locator('.photos-grid img')).toHaveCount(5);
 
   await page.goto('/photos?scenario=fail-next');
-  await expect(page.getByRole('heading', { name: 'Hearth couldn’t load this view' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Couldn’t load this view' })).toBeVisible();
   await page.getByRole('button', { name: /Try again/ }).click();
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   await expect(page.locator('.photos-grid img')).toHaveCount(5);
@@ -464,9 +464,7 @@ test('cached Photos remain visible through a real browser offline event', async 
     .toBe(true);
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Showing saved family photos' }),
-  ).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Showing saved photos' })).toBeVisible();
   await expect(photos).toHaveCount(5);
   await context.setOffline(false);
 });
@@ -491,16 +489,16 @@ test('@visual phone administration uploads and curates the private photo collect
   await page.goto('/admin/photos');
   await expect(page.getByRole('heading', { name: 'Manage photos', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Choose photos' })).toBeFocused();
-  await expect(page.getByRole('heading', { name: 'Add photos from this phone' })).toBeVisible();
-  await expect(page.getByText('Optional Synology folder import', { exact: true })).toBeVisible();
-  await expect(page.getByText('5 showing · 5 added in Hearth · 0 imported')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add photos' })).toBeVisible();
+  await expect(page.getByText('Synology folder import', { exact: true })).toBeVisible();
+  await expect(page.getByText('5 showing · 5 in Hearth · 0 imported')).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'family-photo.jpg',
     mimeType: 'image/jpeg',
     buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
   });
   await expect(page.getByRole('status')).toContainText('1 photo added.');
-  await expect(page.getByRole('heading', { name: 'Choose family photos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Family photos' })).toBeVisible();
   await expect(page.getByText('5 showing', { exact: true })).toBeVisible();
   await expect(page.getByText('0 hidden', { exact: true })).toBeVisible();
   await expect(page.locator('body')).not.toContainText('/volume1');
@@ -516,7 +514,7 @@ test('@visual phone administration uploads and curates the private photo collect
     animations: 'disabled',
   });
 
-  const curationHeading = page.getByRole('heading', { name: 'Choose family photos' });
+  const curationHeading = page.getByRole('heading', { name: 'Family photos' });
   const firstFavourite = page.locator(
     '[data-focus-id="photo-curation-favourite-photo_coastal_picnic"]',
   );
@@ -539,11 +537,7 @@ test('@visual phone administration uploads and curates the private photo collect
     page.locator('[data-focus-id="photo-curation-hide-photo_coastal_picnic"]'),
   ).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: 'Photo hidden from Today, Photos and ambient mode.' }),
-  ).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Photo hidden.' })).toBeVisible();
   await expect(page.getByText('4 showing', { exact: true })).toBeVisible();
   await expect(page.getByText('1 hidden', { exact: true })).toBeVisible();
   const firstRestore = page.locator(
@@ -556,16 +550,12 @@ test('@visual phone administration uploads and curates the private photo collect
     animations: 'disabled',
   });
   await page.keyboard.press('Enter');
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Photo restored to the family rotation.' }),
-  ).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Photo restored.' })).toBeVisible();
   await expect(firstFavourite).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(firstFavourite).toHaveAttribute('aria-pressed', 'false');
   await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: 'Photo will still rotate, after family favourites.' }),
+    page.getByRole('status').filter({ hasText: 'Removed from favourites.' }),
   ).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(firstFavourite).toHaveAttribute('aria-pressed', 'true');
@@ -608,7 +598,7 @@ test('phone administration explains an unavailable optional import without block
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/photos');
-  await expect(page.getByRole('heading', { name: 'Add photos from this phone' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add photos' })).toBeVisible();
   await expect(page.getByText(/cannot read the optional import folder right now/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Choose photos' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Check folder' })).toBeVisible();
@@ -695,7 +685,7 @@ test('@visual photo curation remains calm in dark phone landscape', async ({ pag
   await page.setViewportSize({ width: 844, height: 390 });
   await page.goto('/admin/photos');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  const heading = page.getByRole('heading', { name: 'Choose family photos' });
+  const heading = page.getByRole('heading', { name: 'Family photos' });
   await heading.scrollIntoViewIfNeeded();
   await expect(page.locator('.photo-curation-card')).toHaveCount(5);
   const overflow = await page.locator('.photo-curation__grid').evaluate((element) => ({
@@ -751,7 +741,7 @@ test('@visual Photos empty, unavailable, failure, portrait and ambient states', 
   });
 
   await page.goto('/photos?scenario=fail-next');
-  await expect(page.getByRole('heading', { name: 'Hearth couldn’t load this view' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Couldn’t load this view' })).toBeVisible();
   await captureEvidence(page, {
     path: resolve(evidence, 'photos-state-failure.png'),
     animations: 'disabled',

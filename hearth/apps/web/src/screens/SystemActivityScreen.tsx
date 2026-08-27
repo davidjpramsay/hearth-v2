@@ -51,19 +51,14 @@ export function SystemActivityScreen() {
   const visibleCount = groups.reduce((total, group) => total + group.entries.length, 0);
 
   return (
-    <AdminPage
-      backLabel="Back to System health"
-      backTo="/admin/system"
-      title="Recent activity"
-      subtitle="A private record of changes made on this Hearth"
-    >
+    <AdminPage backLabel="Back to System health" backTo="/admin/system" title="Recent activity">
       <section className="activity-privacy" aria-label="Activity privacy">
         <span className="activity-privacy__icon">
           <Icon name="shield" />
         </span>
         <div>
-          <strong>Stored only on this Hearth</strong>
-          <p>Passwords, provider tokens and private calendar details are never included.</p>
+          <strong>Private</strong>
+          <p>Passwords, tokens and calendar details are excluded.</p>
         </div>
       </section>
 
@@ -91,23 +86,16 @@ export function SystemActivityScreen() {
         })}
       </div>
 
-      <div className="activity-count" role="status">
-        {visibleCount === 0
-          ? filter === 'all'
-            ? 'No changes recorded yet'
-            : `No ${activityFilters.find((option) => option.id === filter)?.label.toLowerCase()} changes`
-          : `${visibleCount} recent change${visibleCount === 1 ? '' : 's'}`}
-      </div>
+      {visibleCount > 0 ? (
+        <div className="activity-count" role="status">
+          {visibleCount} recent change{visibleCount === 1 ? '' : 's'}
+        </div>
+      ) : null}
 
       {groups.length === 0 ? (
         <section className="activity-empty">
           <Icon name="refresh" />
-          <h2>{filter === 'all' ? 'Nothing has changed yet' : 'No matching activity'}</h2>
-          <p>
-            {filter === 'all'
-              ? 'Household changes will appear here after an adult, television or approved service makes them.'
-              : 'Choose another filter to review the rest of the household history.'}
-          </p>
+          <h2>{filter === 'all' ? 'No activity yet' : 'No matching activity'}</h2>
         </section>
       ) : (
         <div className="activity-groups">
@@ -151,8 +139,7 @@ export function SystemActivityScreen() {
       )}
 
       <p className="activity-retention-note">
-        Showing the latest {activity.data.entries.length} of up to 50 changes. Recovery copies keep
-        the complete audit history with the household database.
+        Latest {activity.data.entries.length} of 50 · full history stays in recovery copies
       </p>
     </AdminPage>
   );

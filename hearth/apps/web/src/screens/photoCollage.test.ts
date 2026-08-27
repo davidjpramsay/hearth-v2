@@ -5,6 +5,7 @@ import {
   arrangePhotoCollage,
   buildPhotoMosaic,
   fitMosaicInBox,
+  fitPhotoMosaicInBox,
   nextPhotoId,
   photoCollageFeatureSide,
   photoCollageMode,
@@ -120,6 +121,35 @@ describe('photo collage arrangement', () => {
   it('fits a mosaic into the available stage without changing its ratio', () => {
     expect(fitMosaicInBox(2, 1000, 400)).toEqual({ height: 400, width: 800 });
     expect(fitMosaicInBox(2, 600, 400)).toEqual({ height: 300, width: 600 });
+  });
+
+  it('accounts for real gutters while preserving every rendered photo ratio', () => {
+    const arranged = arrangePhotoCollage(
+      [...photos, photo('portrait-2', 'portrait')],
+      'portrait-1',
+    );
+    const mosaic = buildPhotoMosaic(arranged, 'start');
+    expect(mosaic).not.toBeNull();
+
+    const fitted = fitPhotoMosaicInBox(mosaic!.root, 1800, 690, 12);
+    expect(fitted.width).toBeLessThanOrEqual(1800);
+    expect(fitted.height).toBeLessThanOrEqual(690);
+
+    for (const item of arranged) {
+      const rect = fitted.rects[item.photo.id];
+      expect(rect).toBeDefined();
+      const renderedRatio = (rect!.width * fitted.width) / (rect!.height * fitted.height);
+      expect(renderedRatio).toBeCloseTo(item.photo.width / item.photo.height, 6);
+      expect(rect!.x).toBeGreaterThanOrEqual(0);
+      expect(rect!.y).toBeGreaterThanOrEqual(0);
+      expect(rect!.x + rect!.width).toBeLessThanOrEqual(1.000_001);
+      expect(rect!.y + rect!.height).toBeLessThanOrEqual(1.000_001);
+    }
+
+    expect(Math.max(...Object.values(fitted.rects).map((rect) => rect.height))).toBeCloseTo(1, 6);
+    expect(
+      Math.max(...Object.values(fitted.rects).map((rect) => rect.y + rect.height)),
+    ).toBeCloseTo(1, 6);
   });
 
   it('uses the selected landscape as the large anchor when no portrait exists', () => {

@@ -22,7 +22,7 @@ export function ReminderConnectionSettingsScreen() {
     mutationFn: remindersApi.approvePairing,
     onSuccess: () => {
       setCode('');
-      setConfirmation('Pairing approved. Keep Hearth Companion open while it uploads reminders.');
+      setConfirmation('Paired. Keep Hearth Companion open for the first upload.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.reminderSources });
     },
   });
@@ -30,7 +30,7 @@ export function ReminderConnectionSettingsScreen() {
     mutationFn: remindersApi.revokeDevice,
     onSuccess: () => {
       setConfirmRemove(false);
-      setConfirmation('The iPhone Reminders bridge has been disconnected.');
+      setConfirmation('iPhone disconnected.');
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.reminderSources }),
         queryClient.invalidateQueries({ queryKey: queryKeys.reminders }),
@@ -51,20 +51,12 @@ export function ReminderConnectionSettingsScreen() {
   }
 
   return (
-    <AdminPage
-      backLabel="Back to Connections"
-      backTo="/admin/connections"
-      title="Apple Reminders"
-      subtitle="Pair the read-only bridge on a trusted iPhone"
-    >
+    <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Apple Reminders">
       <div className="calendar-privacy-note">
         <Icon name="shield" />
         <div>
-          <strong>Apple stays authoritative</strong>
-          <p>
-            Hearth receives only the selected reminder lists through EventKit. It cannot edit or
-            complete Apple reminders, and no Apple ID or iCloud password enters Hearth.
-          </p>
+          <strong>Read-only</strong>
+          <p>Hearth receives selected lists only. No Apple ID or iCloud password is shared.</p>
         </div>
       </div>
 
@@ -84,9 +76,9 @@ export function ReminderConnectionSettingsScreen() {
           )}
           <h2>Connect Hearth Companion</h2>
           <ol className="reminder-pairing-steps">
-            <li>Open Hearth Companion on the iPhone and choose the reminder lists to share.</li>
-            <li>Tap Pair with Hearth and enter this Hearth address in the app.</li>
-            <li>Enter the six-character code shown on the iPhone below.</li>
+            <li>In Hearth Companion, select the lists to share.</li>
+            <li>Tap Pair with Hearth and enter this Hearth address.</li>
+            <li>Enter the six-character code below.</li>
           </ol>
           <label>
             Pairing code
@@ -113,7 +105,7 @@ export function ReminderConnectionSettingsScreen() {
               value={code}
             />
           </label>
-          <p className="field-help">Codes expire after ten minutes and can be used only once.</p>
+          <p className="field-help">Expires in 10 minutes · one use</p>
           <button className="admin-submit" disabled={approve.isPending || code.length !== 6}>
             {approve.isPending ? 'Approving securely…' : 'Approve iPhone'}
           </button>
@@ -192,10 +184,7 @@ function ReminderSourceSummaryCard({
       </dl>
       {confirmRemove ? (
         <div className="reminder-source-remove-confirmation">
-          <p>
-            Disconnect this iPhone? Cached reminders will disappear from Hearth and the device
-            credential will stop working.
-          </p>
+          <p>Disconnect this iPhone? Its reminders will be removed from Hearth.</p>
           <button className="admin-danger" disabled={removing} onClick={onRemove} type="button">
             {removing ? 'Disconnecting…' : 'Disconnect iPhone'}
           </button>

@@ -33,7 +33,7 @@ export function PrivateHouseholdAccess({
   if (auth.authenticated) {
     return (
       <AccessFrame title="This account cannot open this Hearth">
-        <p>The signed-in household member does not have permission to view this home.</p>
+        <p>This household member does not have access.</p>
         {signOut.isError ? (
           <p className="form-message form-message--error" role="alert">
             {signOut.error.message}
@@ -63,7 +63,7 @@ export function PrivateHouseholdAccess({
   }
   return (
     <AccessFrame title="Sign in to open Hearth">
-      <p>Your passkey keeps this home’s calendar, photos and family information private.</p>
+      <p>Use an adult passkey.</p>
       {!available ? (
         <p className="form-message form-message--error" role="alert">
           Open Hearth from its private HTTPS address on a passkey-capable device.
@@ -118,8 +118,8 @@ function RecoveryAccess({
   return (
     <AccessFrame title="Recover adult access">
       <p>
-        Enter the one-time code saved outside Hearth. Recovery removes the old passkeys and
-        signed-in sessions for this adult, then creates a replacement passkey on this device.
+        Enter the saved one-time code. This removes this adult’s old passkeys and sessions, then
+        creates a new passkey here.
       </p>
       <form className="runtime-recovery-form" onSubmit={submit}>
         <label>
@@ -175,7 +175,6 @@ function AccessFrame({ title, children }: { title: string; children: ReactNode }
   return (
     <main className="runtime-gate runtime-gate--setup">
       <img alt="" src="/brand/hearth-mark.png" />
-      <p className="eyebrow">PRIVATE HEARTH</p>
       <h1>{title}</h1>
       {children}
     </main>

@@ -70,6 +70,7 @@ export function useRealtimeInvalidation(): void {
       if (parsed.data.kind === 'weather.changed') {
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.weatherLocation }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.weather }),
           queryClient.invalidateQueries({ queryKey: queryKeys.today }),
           queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
         ]);
@@ -89,7 +90,6 @@ export function useRealtimeInvalidation(): void {
       }
       if (parsed.data.kind === 'reminders.changed') {
         void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.reminderSources }),
           queryClient.invalidateQueries({ queryKey: queryKeys.reminders }),
           queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         ]);

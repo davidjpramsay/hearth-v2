@@ -1280,3 +1280,59 @@ Official platform references:
 - Consequence: Viewing and administering photos are discoverable as separate intents, upload no longer
   depends on finding the gallery or a generic household row, and Today controls remain legible at the
   390-pixel companion width. Routes, permissions and the underlying photo/Today contracts do not change.
+
+## D-076 — Today summarises all open Apple reminders
+
+- Date: 2026-08-27
+- Status: superseded by D-078; ordering retained for Hearth-owned reminders
+- Context: Most household reminders have no due date. Restricting the Today card to reminders due on
+  the household local date therefore produced **Nothing due today** while useful open reminders were
+  present on the dedicated page.
+- Choice: Keep the Today module bounded, read-only and linked to Reminders, but derive it from every
+  incomplete projected reminder. Order the preview as overdue, due today, no due date and future;
+  sort deterministically within each group. Return the total open count and at most three preview
+  items. Render the count and first title with an overflow summary, and reserve **No open reminders**
+  for a genuinely empty open projection.
+- Consequence: Undated reminders remain visible at a glance without turning Today into a second task
+  list. The dedicated page remains the complete read-only destination, stale-cache and source
+  visibility behaviour do not change, and Apple remains authoritative.
+
+## D-077 — Weather uses one comparative hourly graph and weekly scale
+
+- Date: 2026-08-27
+- Status: accepted and implemented; extends D-049 and D-051
+- Context: Today and Calendar exposed only small forecast cues. A family may need hourly rain, wind
+  and apparent-temperature detail, but three simultaneous charts are noisy at television distance
+  and a second weather provider would widen the integration surface unnecessarily.
+- Choice: Add Weather immediately after Calendar. Extend the existing server-only Open-Meteo
+  request and typed cache to current conditions, 24 hourly points and seven daily points. Present
+  one graph with Temperature, Rain and Wind modes, D-pad hour/mode navigation and touch controls.
+  Compare seven daily temperature ranges on one weekly domain and use the same approach in compact
+  Calendar Week summaries. Refresh the server cache every five minutes, retain stale data on failure
+  and keep provider attribution at the end of Weather rather than on Today.
+- Consequence: Hearth gains useful forecast depth without another credential, provider or competing
+  graph. The browser never receives coordinates, Week remains glanceable, and outage behaviour stays
+  consistent with the appliance model. The visual hierarchy is original Hearth work rather than a
+  copy of any operating-system weather screen.
+
+## D-078 — Retire Apple Reminders and make reminders Hearth-owned
+
+- Date: 2026-08-27
+- Status: accepted and implemented
+- Context: Modern iCloud Reminders required a separate physical iPhone bridge, full EventKit
+  permission, pairing, a device credential, snapshot replacement and best-effort background
+  scheduling. Even after the proof worked, Apple controlled propagation and background execution,
+  making this disproportionate to a calm household reminder feature.
+- Choice: Remove Apple Reminders from the active product. Archive the Swift proof, CalDAV probe,
+  frozen contract, source projection and former browser UI under
+  `hearth/archive/apple-reminders-bridge/`, outside all active packages. Replace the projection with
+  household-owned reminders supporting create, edit, complete, reopen and confirmed removal.
+  Preserve historical migrations `0025` and `0026` for forward upgrade integrity; migration `0027`
+  drops the Apple source/device/list/item/receipt tables and their credential hashes before creating
+  native reminder tables.
+- Consequence: Hearth reminders work without an iPhone companion, Apple permission or external
+  freshness state. The old Apple reminder data is intentionally not imported because its ownership
+  and identity semantics differ from Hearth content. Deploying `0027` permanently removes that
+  projection from the live database; rollback therefore requires restoring a pre-migration backup.
+  Any future Apple integration needs a new product decision, threat review and physical acceptance
+  campaign rather than re-enabling archived code.

@@ -151,11 +151,10 @@ export function RoutinesSettingsScreen() {
       backLabel="Back to Family planning"
       backTo="/admin/planning"
       title="Routines and chores"
-      subtitle="Who does what and when"
     >
       <div className="history-safe-note">
         <Icon name="refresh" />
-        <p>Changes apply from today forward. Past chore completions stay intact.</p>
+        <p>Changes start today. History stays intact.</p>
       </div>
       {confirmation === null ? null : (
         <p className="save-confirmation" role="status">
@@ -191,7 +190,6 @@ export function RoutinesSettingsScreen() {
       {showCreate ? (
         <form className="admin-form routine-add-form" onSubmit={addRoutine}>
           <h2>Add a chore</h2>
-          <p>Choose one day for an extra job, or set a calm repeating schedule.</p>
           <RoutineFields members={activeMembers} today={runtime.localDate} />
           <button className="admin-submit" disabled={create.isPending} type="submit">
             {create.isPending ? 'Adding…' : 'Add chore'}
@@ -239,7 +237,6 @@ export function RoutinesSettingsScreen() {
             Archived chores ·{' '}
             {templates.data.templates.filter((template) => template.archived).length}
           </summary>
-          <p>Archived chores retain their past completions and no longer create new jobs.</p>
           {templates.data.templates
             .filter((template) => template.archived)
             .map((template) => (
@@ -490,7 +487,7 @@ function RoutineFields({
       </label>
       <fieldset className="routine-time-window">
         <legend>Time window</legend>
-        <p>Optional · use either time or both. Hearth keeps the label compact on television.</p>
+        <p>Optional · use either time or both.</p>
         <div className="admin-form__split routine-fields__split">
           <label>
             Available from

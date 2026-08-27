@@ -41,6 +41,7 @@ export function WeatherLocationSettings() {
     onSuccess: async (result) => {
       queryClient.setQueryData(queryKeys.weatherLocation, result.location);
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.weather }),
         queryClient.invalidateQueries({ queryKey: queryKeys.today }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
       ]);
@@ -100,11 +101,11 @@ export function WeatherLocationSettings() {
         </span>
         <div>
           <h2 id="weather-location-title">Weather location</h2>
-          <p>Choose where Hearth gets the forecast. This is separate from the home timezone.</p>
+          <p>Separate from the home timezone.</p>
         </div>
       </header>
 
-      {saved.isPending ? <p className="field-help">Checking the saved weather location…</p> : null}
+      {saved.isPending ? <p className="field-help">Checking…</p> : null}
       {saved.isError ? <AdminError message={saved.error.message} /> : null}
       {saved.data === null || saved.data === undefined ? null : (
         <div className="weather-saved-location">
@@ -112,11 +113,9 @@ export function WeatherLocationSettings() {
             <Icon name="check" />
           </span>
           <div>
-            <span>Current weather location</span>
+            <span>Current</span>
             <strong>{saved.data.label}</strong>
-            {saved.data.source === 'environment' ? (
-              <small>Using the server fallback until you save a location here.</small>
-            ) : null}
+            {saved.data.source === 'environment' ? <small>Using the server fallback.</small> : null}
             <CoordinateDisclosure latitude={saved.data.latitude} longitude={saved.data.longitude} />
           </div>
         </div>
@@ -145,7 +144,7 @@ export function WeatherLocationSettings() {
       </form>
 
       {search.isSuccess && results.length === 0 ? (
-        <p className="weather-location-note">No matching places found. Try a nearby suburb.</p>
+        <p className="weather-location-note">No matches. Try a nearby suburb.</p>
       ) : null}
       {results.length === 0 ? null : (
         <div className="weather-search-results" aria-label="Matching places">
@@ -182,15 +181,14 @@ export function WeatherLocationSettings() {
         {locating ? 'Getting this phone’s location…' : 'Use this phone’s location'}
       </button>
       <p className="field-help">
-        Your browser asks once for permission. Hearth saves only the resulting coordinates on your
-        home server.
+        Your browser asks permission once. Only the coordinates are saved.
       </p>
       {phoneError === null ? null : <p className="admin-inline-error">{phoneError}</p>}
 
       {candidate === null ? null : (
         <div className="weather-location-candidate">
           <div>
-            <span>Location to test</span>
+            <span>Test location</span>
             <strong>{candidate.label ?? 'This phone’s current location'}</strong>
             <CoordinateDisclosure latitude={candidate.latitude} longitude={candidate.longitude} />
           </div>
@@ -209,7 +207,7 @@ export function WeatherLocationSettings() {
         <div className="weather-test-success" role="status">
           <Icon name="sun" />
           <div>
-            <span>Weather is working for</span>
+            <span>Weather works for</span>
             <strong>{tested.location.label}</strong>
             <small>
               {tested.current.temperatureCelsius}° · {tested.current.condition}
@@ -234,7 +232,7 @@ export function WeatherLocationSettings() {
       {error === null ? null : <AdminError message={error.message} />}
       {save.isSuccess ? (
         <p className="save-confirmation" role="status">
-          Weather location saved. Today and Calendar will refresh automatically.
+          Weather location saved.
         </p>
       ) : null}
       <p className="weather-location-attribution">

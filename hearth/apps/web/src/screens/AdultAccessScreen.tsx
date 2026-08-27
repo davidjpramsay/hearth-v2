@@ -84,41 +84,22 @@ export function AdultAccessScreen() {
   }
 
   return (
-    <AdminPage title="Adult access" subtitle="Passkeys, trusted devices and local recovery">
+    <AdminPage title="Adult access">
       {runtime.mode === 'private' ? null : (
         <div className="admin-demo-note">
           Demo preview: real passkeys and recovery codes are available only on the private HTTPS
           Hearth.
         </div>
       )}
-      <section className="adult-access-intro" aria-labelledby="adult-access-intro-title">
-        <span>
-          <Icon name="shield" />
-        </span>
-        <div>
-          <h2 id="adult-access-intro-title">No shared admin password</h2>
-          <p>
-            Each adult uses a named passkey. Keep a recovery code somewhere safe outside Hearth so a
-            lost phone cannot lock the family out.
-          </p>
-        </div>
-      </section>
-
       {!available && runtime.mode === 'private' ? (
         <p className="form-message form-message--error" role="alert">
-          Open Hearth from its private HTTPS address on a passkey-capable phone to change adult
-          access.
+          Open Hearth from its private HTTPS address on a passkey-capable phone.
         </p>
       ) : null}
 
       <section className="adult-access-section" aria-labelledby="adult-passkeys-title">
         <header>
-          <div>
-            <h2 id="adult-passkeys-title">Adult passkeys</h2>
-            <p>
-              Give each adult their own access and remove a lost device without affecting the TV.
-            </p>
-          </div>
+          <h2 id="adult-passkeys-title">Adult passkeys</h2>
         </header>
         <div className="adult-access-accounts">
           {data.adults.map((adult) => (
@@ -167,7 +148,7 @@ export function AdultAccessScreen() {
       <form className="adult-access-add" onSubmit={submitPasskey}>
         <div>
           <h2>Add a passkey</h2>
-          <p>Do this on the phone or tablet the adult will use.</p>
+          <p>Use the adult’s device.</p>
         </div>
         <label>
           Adult
@@ -211,10 +192,7 @@ export function AdultAccessScreen() {
       <section className="adult-recovery" aria-labelledby="adult-recovery-title">
         <div>
           <h2 id="adult-recovery-title">Your recovery code</h2>
-          <p>
-            Creating a new code replaces your previous one. Hearth stores only a one-way check, so
-            this code is shown once.
-          </p>
+          <p>A new code replaces the old one and is shown once.</p>
         </div>
         {revealedCode === null ? null : (
           <div className="adult-recovery-reveal" role="status">

@@ -48,7 +48,7 @@ export function PairingScreen() {
         <h1>{approved ? 'Television connected' : 'Connect this television'}</h1>
         <p>
           {approved
-            ? 'Maya approved this screen for the Hearth Demo Home.'
+            ? 'This screen is approved.'
             : 'On your phone, open Hearth → More → Pair a television'}
         </p>
         {approved ? null : (
@@ -69,7 +69,7 @@ export function PairingScreen() {
           </Link>
         ) : (
           <>
-            <p className="pairing-expiry">This code expires in under 10 minutes</p>
+            <p className="pairing-expiry">Expires in under 10 minutes</p>
             <button
               className="pairing-primary focusable"
               data-focus-entry="true"
@@ -84,9 +84,9 @@ export function PairingScreen() {
       </div>
       <footer className="pairing-footer">
         <span className={`pairing-pulse${approved ? ' pairing-pulse--approved' : ''}`} />
-        <strong>{approved ? 'Approved and ready' : 'Waiting for an adult’s approval…'}</strong>
+        <strong>{approved ? 'Ready' : 'Waiting for approval…'}</strong>
         <Link to="/today">
-          <Icon name="chevron-left" /> Back · Cancel
+          <Icon name="chevron-left" /> Cancel
         </Link>
       </footer>
     </section>

@@ -466,82 +466,32 @@ physical-TCL comfort assessment remains part of the household pilot.
 - Synology, Pi, router and TV restart scenarios recover without developer intervention.
 - The system passes `ACCEPTANCE.md` on actual target hardware.
 
-## Phase 8 — Native Reminders bridge and iPhone foundation
+## Phase 8 — Hearth-owned reminders
 
-Status as of 2026-08-26: source, fake-adapter tests and simulator build/run are
-implemented locally, and the physical-iPhone EventKit proof has passed on an
-iPhone 17e running iOS 26.6. The current `Reminders` and `Family Reminders`
-lists were readable, remote changes appeared automatically without a pull, and
-the companion remained read-only. The server-side v1 pairing, source authentication,
-full-snapshot projection, household read and revocation contract is frozen and tested. The native
-Keychain, URLSession, EventKit-to-wire adapter, pairing/repair UI, foreground full-snapshot
-state machine and best-effort `BGAppRefreshTask` path are now implemented; 32 canonical native tests and deterministic simulator
-pairing/upload pass. A separate 31-test DEBUG evidence build proved exact replay and was not merged
-into the product branch.
-On the physical phone, selected-list terminate/relaunch persistence, adult-approved pairing,
-exchange, real full-snapshot upload and exact idempotent replay now pass against private Hearth.
-Signed household endpoint/rendered-dashboard readback, physical revocation and physical
-forced-stale recovery remain open and are not inferred from simulator or aggregate evidence.
+Status as of 2026-08-27: the Apple/EventKit bridge is retired and archived under
+`hearth/archive/apple-reminders-bridge/`. Its pairing, credential and snapshot routes are absent
+from the active server, and migration `0027_native_reminders.sql` removes the former projection and
+credential hashes. Reminders now belong to Hearth and require no companion app.
 
 ### Work
 
-- Add the iOS 17+ SwiftUI target under `hearth/apps/ios`.
-- Request the current EventKit full Reminders permission and handle all newer
-  authorization states without using deprecated request APIs.
-- Enumerate reminder-capable lists, allow an adult to choose lists and display
-  title, list, due date/time and completion state.
-- Keep the adapter boundary narrow and read-only with deterministic fake data
-  for tests/previews.
-- Provide intentional first-use, permission, denied/restricted, loading, empty,
-  success, stale and failure states with accessibility, Dynamic Type and dark
-  mode support.
-- Observe foreground EventKit store changes, refetch selected lists
-  automatically, and keep the last successful content stable during refresh.
-- Register a paired-source-only `BGAppRefreshTask` that requests another run no earlier than fifteen
-  minutes after suspension, performs one safe full read/upload when iOS grants runtime and cancels
-  cleanly on expiration without claiming fixed-latency sync.
-- Persist only selected list identifiers in the app sandbox, preserving the
-  difference between no prior choice and an intentional empty selection, and
-  prune identifiers for lists EventKit no longer exposes.
-- State the supported EventKit boundary clearly: Apple Reminders Sections are
-  not exposed by EventKit and are deferred rather than inferred.
-- Document that the eventual installed Hearth Companion may combine these
-  native Apple integrations with the existing responsive web administration UI;
-  evaluate WKWebView versus opening an authenticated web session later.
-- Implement the hand-written Swift `ReminderSnapshotClient` against
-  `REMINDERS_COMPANION_CONTRACT.md`; store only the generated source secret in Keychain.
-- Prove approval-gated pairing, session recovery, exact retry, stale-sequence recovery, full
-  snapshot upload and revocation on the physical phone and private Hearth server.
-- The dedicated, read-only Reminders surface and optional bounded Today module are implemented.
-  They reuse the same household API on web and TV that the eventual native client will consume,
-  keep stale cached content visible and expose no Apple-reminder mutation.
-- Retain the responsive companion as fallback while migrating additional phone features natively;
-  do not fork Hearth business rules into Swift.
+- Provide one fast reminder-creation form with an optional due date.
+- Support edit, complete, reopen and confirmed removal through validated, idempotent commands.
+- Keep Open and All filters, a compact Today summary and deterministic overdue/today/undated/future
+  ordering.
+- Keep every mutation authenticated and audited through the same household boundary as other
+  Hearth content.
+- Retain the former Swift/EventKit proof only as non-deployed historical source.
 
 ### Completion criteria
 
-- Unit tests prove permission, list selection, reminder filtering, stale-cache
-  and failure transitions through the fake adapter, plus automatic refresh and
-  stable content during refresh. They also prove local selected-list restore,
-  intentional empty restore, removed-list pruning and the `UserDefaults` adapter.
-- The app builds and runs on an iOS Simulator, with relevant states visually
-  inspected; simulator evidence is kept separate from live EventKit evidence.
-- A physical iPhone grants Reminders access, exposes the owner's current
-  `Reminders` and `Family Reminders` lists and shows the prepared test
-  reminders with correct due/completion fields.
-- The physical-device check confirms the app makes no reminder mutation and
-  retains no Apple ID, app-specific password, private URL or NAS credential.
-- The native client makes no EventKit mutation, APNs integration, two-way completion or WebView.
-  Its best-effort background refresh reuses the frozen, bounded snapshot-source transport and does
-  not claim continuous execution or fixed delivery time.
-- Every Native Reminders scenario in `ACCEPTANCE.md` passes, including physical-device live
-  upload/readback and terminate/relaunch selection evidence.
-- Raw EventKit identifiers and the source secret are absent from SQLite, logs, browser responses,
-  fixtures and audit summaries.
-- Temporary phone/iCloud failure retains cached reminders with honest freshness; revocation stops
-  uploads immediately.
-- The dedicated and Today surfaces pass television/mobile rendering, accessibility and D-pad/Back
-  checks without adding Apple-reminder mutation.
+- Shared-schema, repository and HTTP integration tests cover the native reminder lifecycle and
+  command replay.
+- The old source pairing and snapshot endpoints return not found, and migration tests prove the
+  external-source tables are gone.
+- Reminders and Today pass television/mobile rendering, accessibility and D-pad/Back checks.
+- No Apple credential, EventKit identifier, source token or companion background task remains in
+  the active build.
 
 ## Deferred opportunities
 

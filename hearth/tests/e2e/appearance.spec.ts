@@ -36,7 +36,6 @@ test('theme choices persist and Automatic follows the device setting', async ({ 
   await page.getByRole('radio', { name: /^Automatic/ }).click();
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.getByText('This device currently uses dark mode.')).toBeVisible();
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
@@ -99,7 +98,9 @@ test('evening dimming is separate, persistent and family-readable', async ({ pag
   await dimming.click();
   await expect(dimming).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('html')).toHaveAttribute('data-evening-dim', 'true');
-  await expect(page.getByText(/does not run the Home Assistant Evening scene/)).toBeVisible();
+  await expect(
+    page.getByText(/It does not change TV brightness or run Home Assistant/),
+  ).toBeVisible();
   await page.reload();
   await expect(page.getByRole('switch', { name: /Evening dimming/ })).toHaveAttribute(
     'aria-checked',
@@ -160,19 +161,18 @@ test('dark phone Connections stays readable while a connection is focused', asyn
   const focusedStyles = await calendar.evaluate((element) => {
     const card = getComputedStyle(element);
     const title = getComputedStyle(element.querySelector('strong')!);
-    const description = getComputedStyle(element.querySelector('p')!);
+    const badge = getComputedStyle(element.querySelector('.connection-badge')!);
     return {
       background: card.backgroundColor,
       title: title.color,
-      description: description.color,
+      badge: badge.color,
     };
   });
   expect(focusedStyles).toEqual({
     background: 'rgb(43, 52, 48)',
     title: 'rgb(241, 238, 231)',
-    description: 'rgb(182, 191, 187)',
+    badge: 'rgb(182, 191, 187)',
   });
-  await expect(page.locator('.phase-note p')).toHaveCSS('color', 'rgb(182, 191, 187)');
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(
@@ -196,7 +196,7 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/appearance$/);
@@ -221,7 +221,7 @@ test('television rail opens the per-display Appearance control', async ({ page }
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/appearance$/);

@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import type { CalendarEvent, DailyForecast, WeekDay } from '@hearth/shared';
 
 import { Icon } from './Icon';
-import { eventsForDay, forecastIcon } from '../utils/calendar';
+import { eventsForDay, forecastIcon, weekTemperatureDomain } from '../utils/calendar';
 import { formatEventTime } from '../utils/date';
 
 export function CalendarAgenda({
@@ -19,6 +19,7 @@ export function CalendarAgenda({
   onSelect: (event: CalendarEvent) => void;
   className?: string;
 }) {
+  const forecastDomain = weekTemperatureDomain(days);
   const focusableEvents = days.flatMap((day) =>
     eventsForDay(events, day.localDate).map((event) => ({ day: day.localDate, event })),
   );
@@ -32,7 +33,7 @@ export function CalendarAgenda({
               <strong>{day.dayLabel}</strong>
               <span className="agenda-day__date">{day.dateLabel}</span>
               {day.isToday ? <span className="agenda-day__today">Today</span> : null}
-              <DayForecast forecast={day.forecast} />
+              <WeekForecast domain={forecastDomain} forecast={day.forecast} />
             </header>
             {dayEvents.length === 0 ? (
               <p>Nothing planned</p>
@@ -82,19 +83,33 @@ export function CalendarAgenda({
   );
 }
 
-export function DayForecast({ forecast }: { forecast: DailyForecast | null }) {
-  if (forecast === null) return null;
-  const accessibleLabel = `${forecast.label}, ${forecast.temperatureCelsius} degrees Celsius`;
+export function WeekForecast({
+  forecast,
+  domain,
+}: {
+  forecast: DailyForecast | null;
+  domain: readonly [number, number] | null;
+}) {
+  if (forecast === null || domain === null) return null;
+  const start = temperaturePercent(forecast.lowTemperatureCelsius, domain);
+  const end = temperaturePercent(forecast.highTemperatureCelsius, domain);
+  const accessibleLabel = `${forecast.label}, ${forecast.precipitationProbabilityPercent}% chance of rain, low ${forecast.lowTemperatureCelsius}°, high ${forecast.highTemperatureCelsius}°`;
   return (
-    <span
-      aria-label={accessibleLabel}
-      className={`week-day-forecast week-day-forecast--${forecast.condition}`}
-      title={accessibleLabel}
-    >
+    <span aria-label={accessibleLabel} className="week-forecast-strip" title={accessibleLabel}>
       <Icon name={forecastIcon(forecast.condition)} />
-      <strong>{forecast.temperatureCelsius}°</strong>
+      <span className="week-forecast-strip__rain">{forecast.precipitationProbabilityPercent}%</span>
+      <span className="week-forecast-strip__temperatures">
+        {forecast.lowTemperatureCelsius}° / {forecast.highTemperatureCelsius}°
+      </span>
+      <span className="week-forecast-strip__range" aria-hidden="true">
+        <i style={{ left: `${start}%`, width: `${Math.max(5, end - start)}%` }} />
+      </span>
     </span>
   );
+}
+
+function temperaturePercent(value: number, [minimum, maximum]: readonly [number, number]): number {
+  return Math.max(0, Math.min(100, ((value - minimum) / (maximum - minimum)) * 100));
 }
 
 function agendaFocusId(localDate: string, eventId: string): string {

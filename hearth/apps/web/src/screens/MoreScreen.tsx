@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import './MoreScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
-import { useRemindersQuery } from '../hooks/useReminderQueries';
 
 interface MoreLink {
   title: string;
@@ -16,11 +15,12 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
   {
     title: 'Family',
     links: [
+      { title: 'Reminders', icon: 'bell', path: '/reminders' },
       { title: 'Lists', icon: 'list', path: '/lists' },
       { title: 'Meals', icon: 'meal', path: '/meals' },
       { title: 'Home controls', icon: 'home', path: '/home' },
       {
-        title: 'View family photos',
+        title: 'Photos',
         icon: 'image',
         path: '/photos',
       },
@@ -100,30 +100,12 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
 ];
 
 export function MoreScreen() {
-  const reminders = useRemindersQuery();
-  const reminderStatus = reminders.data?.source?.status;
-  const showReminders = reminderStatus === 'current' || reminderStatus === 'stale';
-  const groups = baseGroups.map((group) =>
-    group.title === 'Family' && showReminders
-      ? {
-          ...group,
-          links: [
-            {
-              title: 'Reminders',
-              icon: 'bell' as const,
-              path: '/reminders',
-            },
-            ...group.links,
-          ],
-        }
-      : group,
-  );
+  const groups = baseGroups;
   const flattened = groups.flatMap((group) => group.links);
   return (
     <div className="screen more-screen">
       <header className="more-screen__header">
         <h1>More</h1>
-        <span>Everything for your family and Hearth</span>
       </header>
       {groups.map((group) => (
         <section className="more-group" key={group.title}>

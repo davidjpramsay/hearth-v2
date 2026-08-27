@@ -274,6 +274,7 @@ describe('Hearth v2 API', () => {
 
     const privateReadUrls = [
       `${base}/today?date=2026-08-03`,
+      `${base}/weather`,
       `${base}/week?start=2026-08-03`,
       `${base}/month?month=2026-08`,
       `${base}/photos`,
@@ -381,12 +382,16 @@ describe('Hearth v2 API', () => {
     expect(televisionReminders.statusCode).toBe(200);
   });
 
-  it('returns schema-valid Today, Week, Month and Chores projections', async () => {
+  it('returns schema-valid Today, Weather, Week, Month and Chores projections', async () => {
     const app = server();
-    const [today, week, month, chores] = await Promise.all([
+    const [today, weather, week, month, chores] = await Promise.all([
       app.inject({
         method: 'GET',
         url: '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
+      }),
+      app.inject({
+        method: 'GET',
+        url: '/api/v1/households/household_hearth_demo/weather',
       }),
       app.inject({
         method: 'GET',
@@ -401,9 +406,13 @@ describe('Hearth v2 API', () => {
         url: '/api/v1/households/household_hearth_demo/chore-occurrences?date=2026-08-03',
       }),
     ]);
-    expect([today.statusCode, week.statusCode, month.statusCode, chores.statusCode]).toEqual([
-      200, 200, 200, 200,
-    ]);
+    expect([
+      today.statusCode,
+      weather.statusCode,
+      week.statusCode,
+      month.statusCode,
+      chores.statusCode,
+    ]).toEqual([200, 200, 200, 200, 200]);
     expect(today.json().events).toHaveLength(3);
     expect(today.json().calendars).toEqual(
       expect.arrayContaining([
@@ -426,9 +435,23 @@ describe('Hearth v2 API', () => {
       width: 1200,
       height: 800,
     });
+    expect(weather.json()).toMatchObject({
+      householdId: 'household_hearth_demo',
+      locationLabel: 'Baldivis, WA',
+      freshness: 'current',
+      current: {
+        temperatureCelsius: 14,
+        apparentTemperatureCelsius: 13,
+      },
+    });
+    expect(weather.json().hourly).toHaveLength(24);
+    expect(weather.json().daily).toHaveLength(7);
     expect(week.json().days).toHaveLength(7);
     expect(week.json().days[0].forecast).toEqual({
-      temperatureCelsius: 16,
+      temperatureCelsius: 21,
+      lowTemperatureCelsius: 11,
+      highTemperatureCelsius: 21,
+      precipitationProbabilityPercent: 10,
       condition: 'clear',
       label: 'Clear',
       source: 'demo',

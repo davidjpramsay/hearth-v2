@@ -237,11 +237,52 @@ export const WeatherSummarySchema = z.object({
   source: z.enum(['demo', 'open-meteo']),
 });
 
+export const WeatherConditionSchema = z.enum(['clear', 'partly-cloudy', 'cloudy', 'rain']);
+
 export const DailyForecastSchema = z.object({
   temperatureCelsius: z.number().int().min(-30).max(60),
-  condition: z.enum(['clear', 'partly-cloudy', 'cloudy', 'rain']),
+  lowTemperatureCelsius: z.number().int().min(-30).max(60),
+  highTemperatureCelsius: z.number().int().min(-30).max(60),
+  precipitationProbabilityPercent: z.number().int().min(0).max(100),
+  condition: WeatherConditionSchema,
   label: z.string().min(1).max(80),
   source: z.enum(['demo', 'open-meteo']),
+});
+
+const WeatherLocalDateTimeSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/);
+
+export const WeatherCurrentConditionsSchema = z.object({
+  time: WeatherLocalDateTimeSchema,
+  temperatureCelsius: z.number().int().min(-30).max(60),
+  apparentTemperatureCelsius: z.number().int().min(-50).max(70),
+  condition: WeatherConditionSchema,
+  label: z.string().min(1).max(80),
+  precipitationProbabilityPercent: z.number().int().min(0).max(100),
+  windSpeedKph: z.number().int().min(0).max(500),
+  windGustKph: z.number().int().min(0).max(500),
+  windDirectionDegrees: z.number().int().min(0).max(360),
+});
+
+export const HourlyWeatherForecastSchema = WeatherCurrentConditionsSchema.extend({
+  precipitationMillimetres: z.number().min(0).max(1_000),
+});
+
+export const WeatherForecastDaySchema = DailyForecastSchema.extend({
+  localDate: LocalDateSchema,
+});
+
+export const WeatherForecastSchema = z.object({
+  householdId: OpaqueIdSchema,
+  locationLabel: z.string().min(1).max(120).nullable(),
+  timezone: TimezoneSchema,
+  generatedAt: TimestampSchema,
+  updatedAt: TimestampSchema.nullable(),
+  freshness: z.enum(['current', 'stale', 'offline']),
+  statusMessage: z.string().max(180).nullable(),
+  current: WeatherCurrentConditionsSchema.nullable(),
+  hourly: z.array(HourlyWeatherForecastSchema).max(48),
+  daily: z.array(WeatherForecastDaySchema).max(16),
+  source: z.enum(['demo', 'open-meteo']).nullable(),
 });
 
 const SameOriginAssetUrlSchema = z
@@ -359,8 +400,7 @@ export const TodaySectionVisibilitySchema = z.object({
 
 export const TodayReminderSummarySchema = z
   .object({
-    sourceStatus: z.enum(['current', 'stale']),
-    dueTodayCount: z.number().int().nonnegative(),
+    openCount: z.number().int().nonnegative(),
     items: z
       .array(
         z
@@ -374,7 +414,30 @@ export const TodayReminderSummarySchema = z
       )
       .max(3),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.openCount === 0 && value.items.length > 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A reminder summary with no open reminders must not include preview items.',
+        path: ['items'],
+      });
+    }
+    if (value.openCount > 0 && value.items.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'An open reminder summary requires at least one preview item.',
+        path: ['items'],
+      });
+    }
+    if (value.items.length > value.openCount) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A reminder summary cannot preview more reminders than are open.',
+        path: ['items'],
+      });
+    }
+  });
 
 export const DailyVerseSummarySchema = z.object({
   text: z.string().trim().min(1).max(1200),
@@ -1080,9 +1143,12 @@ export const AuditSummarySchema = z.object({
     'member.archive',
     'device.pair',
     'device.revoke',
-    'reminder-source.pair',
-    'reminder-source.revoke',
-    'reminders.snapshot.replace',
+    'reminder.integration.retired',
+    'reminder.create',
+    'reminder.update',
+    'reminder.complete',
+    'reminder.reopen',
+    'reminder.delete',
     'chore-template.create',
     'chore-template.update',
     'chore-template.archive',
@@ -1837,6 +1903,11 @@ export type ChoreOccurrence = z.infer<typeof ChoreOccurrenceSchema>;
 export type TodaySummary = z.infer<typeof TodaySummarySchema>;
 export type DailyVerseSummary = z.infer<typeof DailyVerseSummarySchema>;
 export type WeatherSummary = z.infer<typeof WeatherSummarySchema>;
+export type WeatherCondition = z.infer<typeof WeatherConditionSchema>;
+export type WeatherCurrentConditions = z.infer<typeof WeatherCurrentConditionsSchema>;
+export type HourlyWeatherForecast = z.infer<typeof HourlyWeatherForecastSchema>;
+export type WeatherForecastDay = z.infer<typeof WeatherForecastDaySchema>;
+export type WeatherForecast = z.infer<typeof WeatherForecastSchema>;
 export type TodaySectionVisibility = z.infer<typeof TodaySectionVisibilitySchema>;
 export type HouseholdNotice = z.infer<typeof HouseholdNoticeSchema>;
 export type TodayConfiguration = z.infer<typeof TodayConfigurationSchema>;

@@ -148,9 +148,7 @@ Requires the reminder-source authorization header. Body:
   "snapshotId": "snapshot_reminders_001",
   "sequence": 1,
   "generatedAt": "2026-08-25T10:00:00+08:00",
-  "lists": [
-    { "sourceListId": "opaque-eventkit-list-id", "title": "Family Reminders" }
-  ],
+  "lists": [{ "sourceListId": "opaque-eventkit-list-id", "title": "Family Reminders" }],
   "reminders": [
     {
       "sourceReminderId": "opaque-eventkit-reminder-id",

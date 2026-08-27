@@ -3,7 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAppearance } from '../appearance/appearance';
 import { HouseholdClockProvider } from '../hooks/useHouseholdClock';
-import { useRemindersQuery } from '../hooks/useReminderQueries';
 import { useHearthRuntime } from '../runtime/context';
 import { HouseholdDateTime } from './HouseholdDateTime';
 import { Icon, type IconName } from './Icon';
@@ -18,6 +17,8 @@ interface NavigationItem {
 const baseNavigation: NavigationItem[] = [
   { label: 'Today', path: '/today', icon: 'today', enabled: true },
   { label: 'Calendar', path: '/calendar/week', icon: 'calendar', enabled: true },
+  { label: 'Weather', path: '/weather', icon: 'cloud-sun', enabled: true },
+  { label: 'Reminders', path: '/reminders', icon: 'bell', enabled: true },
   { label: 'Chores', path: '/chores', icon: 'chores', enabled: true },
   { label: 'Lists', path: '/lists', icon: 'list', enabled: true },
   { label: 'Meals', path: '/meals', icon: 'meal', enabled: true },
@@ -26,7 +27,7 @@ const baseNavigation: NavigationItem[] = [
 ];
 
 const phoneNavigation = baseNavigation.filter((item) =>
-  ['Today', 'Calendar', 'Chores'].includes(item.label),
+  ['Today', 'Calendar', 'Weather', 'Chores'].includes(item.label),
 );
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -41,17 +42,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { preferences } = useAppearance();
   const runtime = useHearthRuntime();
-  const reminders = useRemindersQuery(false, runtime.household !== null);
-  const reminderStatus = reminders.data?.source?.status;
-  const showReminders =
-    pathname === '/reminders' || reminderStatus === 'current' || reminderStatus === 'stale';
-  const navigation = showReminders
-    ? [
-        ...baseNavigation.slice(0, 2),
-        { label: 'Reminders', path: '/reminders', icon: 'bell', enabled: true } as const,
-        ...baseNavigation.slice(2),
-      ]
-    : baseNavigation;
+  const navigation = baseNavigation;
   if (pathname === '/pair') {
     return (
       <main className="pair-shell" id="main-content">
@@ -132,7 +123,7 @@ function PhoneNavigation() {
       <NavLink
         className={`phone-tab${moreActive ? ' phone-tab--active' : ''}`}
         data-focus-id="phone-tab-more"
-        data-focus-left="phone-tab-chores"
+        data-focus-left={`phone-tab-${phoneNavigation.at(-1)?.label.toLowerCase() ?? 'today'}`}
         data-focus-right="phone-tab-more"
         to="/more"
       >
@@ -213,8 +204,8 @@ function PhoneTab({
           : `phone-tab-${phoneNavigation[index - 1]?.label.toLowerCase()}`
       }
       data-focus-right={
-        index === 2
-          ? 'phone-tab-chores'
+        index === phoneNavigation.length - 1
+          ? 'phone-tab-more'
           : `phone-tab-${phoneNavigation[index + 1]?.label.toLowerCase()}`
       }
       to={item.path}

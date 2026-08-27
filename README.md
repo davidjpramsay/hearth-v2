@@ -1,11 +1,16 @@
 # Hearth v2
 
-This workspace is the clean foundation for a new, original family command-centre product. Application code belongs under `hearth/`; its authoritative specifications are indexed in `docs/hearth-v2/README.md`.
+Hearth is a private, television-first family dashboard for calendars, reminders, chores, meals,
+lists, photos, weather and selected Home Assistant actions.
 
-Hearth v2 is inspired by the family outcomes of products such as Skylight Calendar—shared calendars, chores, routines, rewards, meals, lists and photos—but is not a copy of Skylight branding or interface. Hearth adds television-scale remote navigation, local data ownership and first-class Home Assistant voice/control while coexisting cleanly with Jellyfin and other native Google TV media apps.
+The application lives in [`hearth/`](hearth/). Product and operational decisions live in
+[`docs/hearth-v2/`](docs/hearth-v2/README.md).
 
-New development sessions must read `AGENTS.md` before making changes. The prepared kickoff prompt is in `prompts/START_HEARTH_DEVELOPMENT.md`.
+```sh
+cd hearth
+pnpm install --frozen-lockfile
+pnpm dev
+```
 
-## Start development
-
-Open a fresh Codex chat in this project and use the current continuation prompt in `prompts/START_HEARTH_DEVELOPMENT.md`. It preserves the implemented Phases 0–6 work, finishes physical-TCL validation and then continues with Phase 7. Live Home Assistant/Music Assistant commissioning remains a separately approved operational workstream.
+Read [`AGENTS.md`](AGENTS.md) before changing the product. Hearth is LAN/Tailscale-first and must
+not contain household credentials or be exposed publicly without an explicit security review.

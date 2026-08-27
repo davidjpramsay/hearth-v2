@@ -2,31 +2,55 @@ import { z } from 'zod';
 
 import {
   DailyForecastSchema,
+  HourlyWeatherForecastSchema,
+  WeatherCurrentConditionsSchema,
   WeatherSummarySchema,
   type DailyForecast,
+  type HourlyWeatherForecast,
+  type WeatherCurrentConditions,
   type WeatherSummary,
 } from '@hearth/shared';
 
 const OPEN_METEO_FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
-const DEFAULT_CACHE_MILLISECONDS = 30 * 60 * 1_000;
+const DEFAULT_CACHE_MILLISECONDS = 5 * 60 * 1_000;
 const DEFAULT_TIMEOUT_MILLISECONDS = 4_000;
 
 const OpenMeteoResponseSchema = z.object({
   current: z.object({
     time: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
     temperature_2m: z.number().finite(),
+    apparent_temperature: z.number().finite(),
     weather_code: z.number().int().min(0).max(99),
+    wind_speed_10m: z.number().finite().nonnegative(),
+    wind_gusts_10m: z.number().finite().nonnegative(),
+    wind_direction_10m: z.number().finite().min(0).max(360),
+  }),
+  hourly: z.object({
+    time: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)).min(1),
+    temperature_2m: z.array(z.number().finite().nullable()).min(1),
+    apparent_temperature: z.array(z.number().finite().nullable()).min(1),
+    precipitation_probability: z.array(z.number().finite().min(0).max(100).nullable()).min(1),
+    precipitation: z.array(z.number().finite().nonnegative().nullable()).min(1),
+    weather_code: z.array(z.number().int().min(0).max(99).nullable()).min(1),
+    wind_speed_10m: z.array(z.number().finite().nonnegative().nullable()).min(1),
+    wind_gusts_10m: z.array(z.number().finite().nonnegative().nullable()).min(1),
+    wind_direction_10m: z.array(z.number().finite().min(0).max(360).nullable()).min(1),
   }),
   daily: z.object({
     time: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1),
     weather_code: z.array(z.number().int().min(0).max(99).nullable()).min(1),
+    temperature_2m_min: z.array(z.number().finite().nullable()).min(1),
     temperature_2m_max: z.array(z.number().finite().nullable()).min(1),
+    precipitation_probability_max: z.array(z.number().finite().min(0).max(100).nullable()).min(1),
   }),
 });
 
 export interface WeatherForecastSnapshot {
-  current: { localDate: string; summary: WeatherSummary } | null;
+  current: { localDate: string; summary: WeatherSummary; details: WeatherCurrentConditions } | null;
+  hourly: readonly HourlyWeatherForecast[];
   daily: ReadonlyMap<string, DailyForecast>;
+  updatedAt: string | null;
+  freshness: 'current' | 'stale' | 'offline';
 }
 
 export interface WeatherProvider {
@@ -114,7 +138,7 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
         return snapshot;
       })
       .catch((error: unknown) => {
-        if (staleSnapshot !== null) return staleSnapshot;
+        if (staleSnapshot !== null) return { ...staleSnapshot, freshness: 'stale' as const };
         if (error instanceof WeatherUnavailableError) throw error;
         throw new WeatherUnavailableError();
       })
@@ -129,11 +153,22 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
     const url = new URL(this.options.endpoint ?? OPEN_METEO_FORECAST_URL);
     url.searchParams.set('latitude', String(this.configuration.latitude));
     url.searchParams.set('longitude', String(this.configuration.longitude));
-    url.searchParams.set('current', 'temperature_2m,weather_code');
-    url.searchParams.set('daily', 'weather_code,temperature_2m_max');
+    url.searchParams.set(
+      'current',
+      'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m',
+    );
+    url.searchParams.set(
+      'hourly',
+      'temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m',
+    );
+    url.searchParams.set(
+      'daily',
+      'weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max',
+    );
     url.searchParams.set('temperature_unit', 'celsius');
     url.searchParams.set('timezone', timezone);
     url.searchParams.set('forecast_days', '16');
+    url.searchParams.set('forecast_hours', '24');
     url.searchParams.set('past_days', '7');
 
     const controller = new AbortController();
@@ -149,7 +184,10 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
       if (!response.ok) throw new WeatherUnavailableError();
       const parsed = OpenMeteoResponseSchema.safeParse(await response.json());
       if (!parsed.success) throw new WeatherUnavailableError();
-      return mapOpenMeteoResponse(parsed.data);
+      return mapOpenMeteoResponse(
+        parsed.data,
+        new Date((this.options.now ?? Date.now)()).toISOString(),
+      );
     } catch (error) {
       if (error instanceof WeatherUnavailableError) throw error;
       throw new WeatherUnavailableError();
@@ -180,40 +218,129 @@ export function resolveOpenMeteoWeatherConfiguration(
 }
 
 export function emptyWeatherSnapshot(): WeatherForecastSnapshot {
-  return { current: null, daily: new Map() };
+  return {
+    current: null,
+    hourly: [],
+    daily: new Map(),
+    updatedAt: null,
+    freshness: 'offline',
+  };
 }
 
 function mapOpenMeteoResponse(
   response: z.infer<typeof OpenMeteoResponseSchema>,
+  updatedAt: string,
 ): WeatherForecastSnapshot {
   const daily = new Map<string, DailyForecast>();
   for (const [index, localDate] of response.daily.time.entries()) {
     const weatherCode = response.daily.weather_code[index];
-    const temperature = response.daily.temperature_2m_max[index];
-    if (weatherCode == null || temperature == null) continue;
+    const lowTemperature = response.daily.temperature_2m_min[index];
+    const highTemperature = response.daily.temperature_2m_max[index];
+    const precipitationProbability = response.daily.precipitation_probability_max[index];
+    if (
+      weatherCode == null ||
+      lowTemperature == null ||
+      highTemperature == null ||
+      precipitationProbability == null
+    )
+      continue;
     const condition = describeWeatherCode(weatherCode);
     daily.set(
       localDate,
       DailyForecastSchema.parse({
-        temperatureCelsius: Math.round(temperature),
+        temperatureCelsius: Math.round(highTemperature),
+        lowTemperatureCelsius: Math.round(lowTemperature),
+        highTemperatureCelsius: Math.round(highTemperature),
+        precipitationProbabilityPercent: Math.round(precipitationProbability),
         condition: condition.normalized,
         label: condition.label,
         source: 'open-meteo',
       }),
     );
   }
+
+  const firstHourlyIndex = Math.max(
+    0,
+    response.hourly.time.findIndex((time) => time >= response.current.time),
+  );
+  const hourly: HourlyWeatherForecast[] = [];
+  for (
+    let index = firstHourlyIndex;
+    index < Math.min(firstHourlyIndex + 24, response.hourly.time.length);
+    index += 1
+  ) {
+    const entry = hourlyEntry(response.hourly, index);
+    if (entry !== null) hourly.push(entry);
+  }
+
   const currentCondition = describeWeatherCode(response.current.weather_code);
+  const currentHour = hourly[0];
+  const details = WeatherCurrentConditionsSchema.parse({
+    time: response.current.time,
+    temperatureCelsius: Math.round(response.current.temperature_2m),
+    apparentTemperatureCelsius: Math.round(response.current.apparent_temperature),
+    condition: currentCondition.normalized,
+    label: currentCondition.label,
+    precipitationProbabilityPercent: currentHour?.precipitationProbabilityPercent ?? 0,
+    windSpeedKph: Math.round(response.current.wind_speed_10m),
+    windGustKph: Math.round(response.current.wind_gusts_10m),
+    windDirectionDegrees: Math.round(response.current.wind_direction_10m),
+  });
   return {
     current: {
       localDate: response.current.time.slice(0, 10),
+      details,
       summary: WeatherSummarySchema.parse({
         temperatureCelsius: Math.round(response.current.temperature_2m),
         condition: currentCondition.label,
         source: 'open-meteo',
       }),
     },
+    hourly,
     daily,
+    updatedAt,
+    freshness: 'current',
   };
+}
+
+function hourlyEntry(
+  hourly: z.infer<typeof OpenMeteoResponseSchema>['hourly'],
+  index: number,
+): HourlyWeatherForecast | null {
+  const time = hourly.time[index];
+  const temperature = hourly.temperature_2m[index];
+  const apparentTemperature = hourly.apparent_temperature[index];
+  const precipitationProbability = hourly.precipitation_probability[index];
+  const precipitation = hourly.precipitation[index];
+  const weatherCode = hourly.weather_code[index];
+  const windSpeed = hourly.wind_speed_10m[index];
+  const windGust = hourly.wind_gusts_10m[index];
+  const windDirection = hourly.wind_direction_10m[index];
+  if (
+    time === undefined ||
+    temperature == null ||
+    apparentTemperature == null ||
+    precipitationProbability == null ||
+    precipitation == null ||
+    weatherCode == null ||
+    windSpeed == null ||
+    windGust == null ||
+    windDirection == null
+  )
+    return null;
+  const condition = describeWeatherCode(weatherCode);
+  return HourlyWeatherForecastSchema.parse({
+    time,
+    temperatureCelsius: Math.round(temperature),
+    apparentTemperatureCelsius: Math.round(apparentTemperature),
+    condition: condition.normalized,
+    label: condition.label,
+    precipitationProbabilityPercent: Math.round(precipitationProbability),
+    precipitationMillimetres: Math.round(precipitation * 10) / 10,
+    windSpeedKph: Math.round(windSpeed),
+    windGustKph: Math.round(windGust),
+    windDirectionDegrees: Math.round(windDirection),
+  });
 }
 
 function describeWeatherCode(code: number): {

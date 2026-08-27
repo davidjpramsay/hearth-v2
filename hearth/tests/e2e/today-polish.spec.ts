@@ -16,6 +16,47 @@ test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
 });
 
+test('Today summarises every open reminder and links to the complete list', async ({ page }) => {
+  let openCount = 3;
+  await page.route('**/api/v1/households/*/today?date=*', async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      reminderSummary: unknown;
+      sections: { reminders: boolean };
+    };
+    payload.sections.reminders = true;
+    payload.reminderSummary = {
+      openCount,
+      items:
+        openCount === 0
+          ? []
+          : [
+              {
+                dueAt: null,
+                hasDueTime: false,
+                id: 'reminder_house',
+                title: 'House reminder',
+              },
+            ],
+    };
+    await route.fulfill({ response, json: payload });
+  });
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/today');
+  const reminderCard = page.locator('[data-focus-id="today-summary-reminders"]');
+  await expect(reminderCard).toContainText('3 open reminders');
+  await expect(reminderCard).toContainText('House reminder · +2 more');
+  await reminderCard.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/reminders$/);
+
+  openCount = 0;
+  await page.goto('/today');
+  await expect(reminderCard).toContainText('No open reminders');
+  await expect(reminderCard).not.toContainText('due today');
+});
+
 test('@visual @a11y Today exposes real details, honest overflow and useful destinations', async ({
   page,
 }) => {
@@ -218,6 +259,12 @@ for (const viewport of [
       Math.max(columnsBox!.y + columnsBox!.height, photoBox!.y + photoBox!.height) + 12,
     );
     expect(summariesBox!.width).toBeGreaterThan(dashboardBox!.width * 0.97);
+    const summaryBandHeights = await page
+      .locator('.summary-band')
+      .evaluateAll((bands) => bands.map((band) => band.getBoundingClientRect().height));
+    expect(summaryBandHeights.length).toBeGreaterThan(0);
+    expect(summariesBox!.height).toBeCloseTo(Math.max(...summaryBandHeights), 0);
+    expect(summariesBox!.height).toBeLessThanOrEqual(132);
     expect(photoBox!.height).toBeGreaterThan(summariesBox!.height * 1.5);
 
     const lastChore = page.locator('.chore-row').last();
@@ -233,6 +280,8 @@ for (const viewport of [
     await expect(page.locator('[data-focus-id="today-summary-list"]')).toBeFocused();
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('[data-focus-id="today-summary-notice"]')).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('[data-focus-id="today-summary-reminders"]')).toBeFocused();
     await page.keyboard.press('ArrowUp');
     await expect(page.locator('[data-focus-id="today-photo"]')).toBeFocused();
     await page.keyboard.press('ArrowLeft');
@@ -302,14 +351,13 @@ test('Today covers every optional-module subset across representative native pho
         width?: number;
       };
       reminderSummary: null | {
-        dueTodayCount: number;
+        openCount: number;
         items: Array<{
           dueAt: string | null;
           hasDueTime: boolean;
           id: string;
           title: string;
         }>;
-        sourceStatus: 'current' | 'stale';
       };
       sections: {
         dailyVerse: boolean;
@@ -331,7 +379,7 @@ test('Today covers every optional-module subset across representative native pho
     };
     payload.reminderSummary = payload.sections.reminders
       ? {
-          dueTodayCount: 2,
+          openCount: 2,
           items: [
             {
               dueAt: null,
@@ -340,7 +388,6 @@ test('Today covers every optional-module subset across representative native pho
               title: 'Return library books',
             },
           ],
-          sourceStatus: 'current',
         }
       : null;
     payload.photo =
