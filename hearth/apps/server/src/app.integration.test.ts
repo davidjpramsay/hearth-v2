@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildServer, LOGGER_REDACT_PATHS } from './app.js';
+import type { ApplianceUpdateRepository } from './appliance-update.js';
 import type { CompanionAuthRepository } from './companion-auth.js';
 import { LATEST_MIGRATION_VERSION } from './database.js';
 import { HomeService } from './home-repository.js';
@@ -89,6 +90,9 @@ function privateCompanionAuth(): CompanionAuthRepository {
     },
     session,
     authenticate: (token) => ({ id: session(token).memberId, type: 'member', source: 'companion' }),
+    assertRecentAuthentication: (token) => {
+      session(token);
+    },
     signOut: () => undefined,
     sessionCookie: (token) => `hearth_session=${token}; HttpOnly; SameSite=Strict`,
     clearSessionCookie: () => 'hearth_session=; Max-Age=0; HttpOnly; SameSite=Strict',
@@ -202,6 +206,126 @@ describe('Hearth v2 API', () => {
       payload: {},
     });
     expect(invalid.statusCode).toBe(400);
+  });
+
+  it('keeps appliance updates behind an adult session and fresh passkey confirmation', async () => {
+    const targetVersion = 'b'.repeat(40);
+    const status = {
+      supported: true as const,
+      platform: 'synology' as const,
+      installedVersion: 'a'.repeat(40),
+      checkedAt: '2026-08-02T23:42:00.000Z',
+      availableRelease: {
+        version: targetVersion,
+        publishedAt: '2026-08-02T22:00:00.000Z',
+        summary: 'Verified household release',
+      },
+      updateAvailable: true,
+      canInstall: true,
+      checks: {
+        internet: { state: 'ready' as const, message: 'Release service is ready.' },
+        storage: { state: 'ready' as const, message: 'Storage check passed.' },
+        power: { state: 'unavailable' as const, message: 'Power check unavailable.' },
+      },
+      operation: {
+        phase: 'idle' as const,
+        progress: 0,
+        message: 'Ready to update.',
+        targetVersion: null,
+        startedAt: null,
+        completedAt: null,
+      },
+    };
+    const update: ApplianceUpdateRepository = {
+      getStatus: async () => status,
+      install: async (_householdId, actorId) => ({
+        status: {
+          ...status,
+          canInstall: false,
+          operation: {
+            phase: 'queued',
+            progress: 10,
+            message: 'Update queued.',
+            targetVersion,
+            startedAt: '2026-08-02T23:42:00.000Z',
+            completedAt: null,
+          },
+        },
+        backup: {
+          state: 'ready',
+          scheduled: true,
+          retentionCount: 14,
+          lastSuccessfulAt: '2026-08-02T23:42:00.000Z',
+          sizeBytes: 2_457_600,
+          message: 'Recovery copy ready.',
+        },
+        audit: {
+          id: 'audit_update_http',
+          actorType: 'member',
+          actorId,
+          source: 'companion',
+          action: 'system.update.install',
+          targetId: 'release_verified_http',
+          occurredAt: '2026-08-02T23:42:00.000Z',
+          result: 'succeeded',
+        },
+        replayed: false,
+      }),
+    };
+    const auth = privateCompanionAuth();
+    const app = buildServer({
+      logger: false,
+      companionAuth: auth,
+      applianceUpdate: update,
+      runtime: {
+        mode: 'private',
+        householdId: 'household_hearth_demo',
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(app);
+    const url = '/api/v1/households/household_hearth_demo/appliance-update';
+    expect((await app.inject({ method: 'GET', url })).statusCode).toBe(401);
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url,
+          headers: { cookie: 'hearth_session=private-session' },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const installed = await app.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/appliance-updates',
+      headers: { cookie: 'hearth_session=private-session' },
+      payload: { requestId: 'request_update_http', targetVersion },
+    });
+    expect(installed.statusCode).toBe(200);
+    expect(installed.json()).toMatchObject({
+      status: { operation: { phase: 'queued' } },
+      audit: { actorId: 'member_maya', action: 'system.update.install' },
+    });
+
+    const { assertRecentAuthentication: _recentAuthentication, ...authWithoutConfirmation } = auth;
+    const noConfirmation = buildServer({
+      logger: false,
+      companionAuth: authWithoutConfirmation,
+      applianceUpdate: update,
+      runtime: {
+        mode: 'private',
+        householdId: 'household_hearth_demo',
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(noConfirmation);
+    const blocked = await noConfirmation.inject({
+      method: 'POST',
+      url: '/api/v1/households/household_hearth_demo/appliance-updates',
+      headers: { cookie: 'hearth_session=private-session' },
+      payload: { requestId: 'request_update_without_confirmation', targetVersion },
+    });
+    expect(blocked.statusCode).toBe(503);
   });
 
   it('publishes deterministic test runtime dates and the current household name', async () => {

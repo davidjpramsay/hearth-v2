@@ -1184,6 +1184,8 @@ export const AuditSummarySchema = z.object({
     'home-assistant.connection.save',
     'home-assistant.connection.remove',
     'system.backup.create',
+    'system.update.install',
+    'system.update.complete',
     'photo.upload',
     'photo.source.refresh',
     'photo.favourite',
@@ -1726,6 +1728,67 @@ export const SystemBackupCommandResultSchema = z.object({
   replayed: z.boolean(),
 });
 
+export const ApplianceReleaseVersionSchema = z
+  .string()
+  .regex(/^[a-f0-9]{40}$/, 'Use a complete verified release identifier');
+
+export const ApplianceUpdatePhaseSchema = z.enum([
+  'idle',
+  'queued',
+  'installing',
+  'checking-health',
+  'rolling-back',
+  'succeeded',
+  'failed',
+]);
+
+export const ApplianceUpdateCheckSchema = z.object({
+  state: z.enum(['ready', 'attention', 'unavailable']),
+  message: z.string().trim().min(1).max(160),
+});
+
+export const ApplianceUpdateOperationSchema = z.object({
+  phase: ApplianceUpdatePhaseSchema,
+  progress: z.number().int().min(0).max(100),
+  message: z.string().trim().min(1).max(180),
+  targetVersion: ApplianceReleaseVersionSchema.nullable(),
+  startedAt: TimestampSchema.nullable(),
+  completedAt: TimestampSchema.nullable(),
+});
+
+export const ApplianceUpdateStatusSchema = z.object({
+  supported: z.boolean(),
+  platform: z.enum(['synology', 'termux', 'development']),
+  installedVersion: z.string().trim().min(1).max(80),
+  checkedAt: TimestampSchema,
+  availableRelease: z
+    .object({
+      version: ApplianceReleaseVersionSchema,
+      publishedAt: TimestampSchema,
+      summary: z.string().trim().min(1).max(180),
+    })
+    .nullable(),
+  updateAvailable: z.boolean(),
+  canInstall: z.boolean(),
+  checks: z.object({
+    internet: ApplianceUpdateCheckSchema,
+    storage: ApplianceUpdateCheckSchema,
+    power: ApplianceUpdateCheckSchema,
+  }),
+  operation: ApplianceUpdateOperationSchema,
+});
+
+export const InstallApplianceUpdateRequestSchema = CommandRequestSchema.extend({
+  targetVersion: ApplianceReleaseVersionSchema,
+}).strict();
+
+export const ApplianceUpdateCommandResultSchema = z.object({
+  status: ApplianceUpdateStatusSchema,
+  backup: SystemBackupStatusSchema,
+  audit: AuditSummarySchema,
+  replayed: z.boolean(),
+});
+
 function isPrivateHomeAssistantHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (
@@ -2067,6 +2130,13 @@ export type SystemBackupStatus = z.infer<typeof SystemBackupStatusSchema>;
 export type SystemStatus = z.infer<typeof SystemStatusSchema>;
 export type CreateSystemBackupRequest = z.infer<typeof CreateSystemBackupRequestSchema>;
 export type SystemBackupCommandResult = z.infer<typeof SystemBackupCommandResultSchema>;
+export type ApplianceReleaseVersion = z.infer<typeof ApplianceReleaseVersionSchema>;
+export type ApplianceUpdatePhase = z.infer<typeof ApplianceUpdatePhaseSchema>;
+export type ApplianceUpdateCheck = z.infer<typeof ApplianceUpdateCheckSchema>;
+export type ApplianceUpdateOperation = z.infer<typeof ApplianceUpdateOperationSchema>;
+export type ApplianceUpdateStatus = z.infer<typeof ApplianceUpdateStatusSchema>;
+export type InstallApplianceUpdateRequest = z.infer<typeof InstallApplianceUpdateRequestSchema>;
+export type ApplianceUpdateCommandResult = z.infer<typeof ApplianceUpdateCommandResultSchema>;
 export type UpdateHouseholdRequest = z.infer<typeof UpdateHouseholdRequestSchema>;
 export type CreateMemberRequest = z.infer<typeof CreateMemberRequestSchema>;
 export type UpdateMemberRequest = z.infer<typeof UpdateMemberRequestSchema>;

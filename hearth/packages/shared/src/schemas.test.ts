@@ -11,6 +11,8 @@ import {
   SaveCalendarConnectionRequestSchema,
   SaveHomeAssistantConnectionRequestSchema,
   SystemBackupCommandResultSchema,
+  ApplianceUpdateStatusSchema,
+  InstallApplianceUpdateRequestSchema,
   SystemStatusSchema,
   CalendarSourceSchema,
   CreateMemberRequestSchema,
@@ -61,6 +63,45 @@ import {
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
+  it('keeps appliance updates pinned to an exact release without command or credential fields', () => {
+    const version = 'a'.repeat(40);
+    const status = ApplianceUpdateStatusSchema.parse({
+      supported: true,
+      platform: 'synology',
+      installedVersion: 'b'.repeat(40),
+      checkedAt: '2026-08-28T00:30:00.000Z',
+      availableRelease: {
+        version,
+        publishedAt: '2026-08-28T00:15:00.000Z',
+        summary: 'Verified household release',
+      },
+      updateAvailable: true,
+      canInstall: true,
+      checks: {
+        internet: { state: 'ready', message: 'Ready.' },
+        storage: { state: 'ready', message: 'Ready.' },
+        power: { state: 'unavailable', message: 'Not available.' },
+      },
+      operation: {
+        phase: 'idle',
+        progress: 0,
+        message: 'Ready.',
+        targetVersion: null,
+        startedAt: null,
+        completedAt: null,
+      },
+    });
+    expect(status.availableRelease?.version).toBe(version);
+    expect(JSON.stringify(status)).not.toMatch(/shell|password|token|repositoryUrl|command/i);
+    expect(
+      InstallApplianceUpdateRequestSchema.safeParse({
+        requestId: 'request_update_schema',
+        targetVersion: version,
+        command: 'docker compose up',
+      }).success,
+    ).toBe(false);
+  });
+
   it('keeps adult access typed without exposing credential material or recovery secrets', () => {
     const access = AdultAccessSummarySchema.parse({
       householdId: 'household_private',

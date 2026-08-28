@@ -15,6 +15,8 @@ trap cleanup EXIT HUP INT TERM
 sh -n "$script_dir/stage-private-release.sh"
 sh -n "$script_dir/activate-private-release.sh"
 sh -n "$script_dir/activate-staged-release-on-nas.sh"
+sh -n "$script_dir/appliance-update-agent-hook.sh"
+sh -n "$script_dir/appliance-update-agent-on-nas.sh"
 sh -n "$script_dir/install-release-helper-on-nas.sh"
 sh -n "$script_dir/install-release-helper.sh"
 

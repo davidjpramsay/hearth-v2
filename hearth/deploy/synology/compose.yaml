@@ -24,6 +24,11 @@ services:
       HEARTH_BACKUP_DIR: /data/backups
       HEARTH_BACKUP_RETENTION: ${HEARTH_BACKUP_RETENTION:-14}
       HEARTH_BACKUP_INTERVAL_HOURS: ${HEARTH_BACKUP_INTERVAL_HOURS:-24}
+      HEARTH_UPDATE_PLATFORM: synology
+      HEARTH_UPDATE_CONTROL_DIR: /run/hearth-update
+      HEARTH_UPDATE_REPOSITORY: davidjpramsay/hearth-v2
+      HEARTH_UPDATE_WORKFLOW: verify.yml
+      HEARTH_UPDATE_BRANCH: main
       HEARTH_AUTH_RP_ID: ${HEARTH_AUTH_RP_ID:?Set the permanent private Hearth hostname}
       HEARTH_AUTH_ORIGIN: ${HEARTH_AUTH_ORIGIN:?Set the matching private HTTPS origin}
       HEARTH_FIRST_USE_CODE_PATH: /run/hearth-secrets/first-use-code
@@ -41,6 +46,7 @@ services:
     volumes:
       - ${HEARTH_DATA_DIR:?Set HEARTH_DATA_DIR}:/data
       - ${HEARTH_SECRETS_DIR:?Set HEARTH_SECRETS_DIR}:/run/hearth-secrets
+      - /volume1/docker/hearth-v2/update-agent:/run/hearth-update
       # The mount remains narrow and read-only. Leave HEARTH_PHOTO_SOURCE_DIR blank to disable import.
       - ${HEARTH_PHOTO_HOST_DIR:?Set the dedicated photo-import folder}:/photos-source:ro
     healthcheck:

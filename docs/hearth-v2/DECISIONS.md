@@ -1336,3 +1336,24 @@ Official platform references:
   projection from the live database; rollback therefore requires restoring a pre-migration backup.
   Any future Apple integration needs a new product decision, threat review and physical acceptance
   campaign rather than re-enabling archived code.
+
+## D-079 — Appliance updates use an authenticated coordinator and fixed host agent
+
+- Date: 2026-08-28
+- Status: accepted and implemented for Synology; live installation not yet run
+- Context: Exact-commit Synology releases are reliable but still require an operator. Letting the
+  browser run Docker or shell commands would turn a web compromise into host control, while blindly
+  following `main` could install a release whose verification or images are incomplete.
+- Choice: Add a System Health update card only when a platform adapter is configured. The server
+  discovers the newest successful `main` push from the fixed verification workflow, accepts only its
+  exact 40-character commit, creates and verifies an online database backup, then writes a bounded
+  request to a mode-restricted FIFO. A separately installed root-owned Synology agent blocks on that
+  FIFO, invokes only the fixed Hearth release helper, health-checks the replacement and restores the
+  previous database and images on failure. Update reads require an adult administrator; installation
+  also requires a passkey session created within five minutes. Development hides the card. Termux
+  may use the same typed coordinator only after its platform agent and rollback path are separately
+  commissioned.
+- Consequence: The normal browser and containers receive neither Docker access nor a general shell.
+  Release start and terminal result are audited, progress survives the web container restart, and a
+  failed release returns to the prior working state. The first live Synology use still requires one
+  approved rerun of the root helper installer to install the new fixed agent and Compose mount.

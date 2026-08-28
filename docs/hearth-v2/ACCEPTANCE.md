@@ -479,6 +479,17 @@ not yet complete.
 ### Operations and recovery
 
 - Hearth server restarts automatically after Synology restart.
+- Only an authenticated household administrator can read appliance-update state. Starting an update
+  requires a passkey-authenticated companion session created within the previous five minutes;
+  television, child, expired, revoked and cross-household credentials fail closed.
+- The browser can request only the exact full commit returned by the fixed successful-release
+  provider. It cannot send a repository, image, Compose file or shell command, and neither
+  application container receives Docker/root access.
+- Before activation Hearth creates and checks an online backup. The root-owned agent then preserves
+  a stopped-database rollback copy, verifies readiness and restores the previous database plus image
+  tags if activation fails. Start and terminal result appear in Recent activity.
+- Development hides the update card. A platform without its separately commissioned fixed agent
+  reports unsupported rather than pretending an update can run.
 - A normal verified release pulls immutable full-commit server and web images before recreating the
   project; it does not install dependencies or compile native code on the Synology.
 - Private image pulls use a separately revocable read-only registry credential that is absent from

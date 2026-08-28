@@ -1,12 +1,16 @@
 import {
   ActivityFeedSchema,
   AdminOverviewSchema,
+  ApplianceUpdateCommandResultSchema,
+  ApplianceUpdateStatusSchema,
   MemberAvatarCommandResultSchema,
   MemberSchema,
   PairedDeviceSchema,
   SystemBackupCommandResultSchema,
   SystemStatusSchema,
   type ActivityFeed,
+  type ApplianceUpdateCommandResult,
+  type ApplianceUpdateStatus,
   type SystemBackupCommandResult,
   type SystemStatus,
 } from '@hearth/shared';
@@ -31,6 +35,19 @@ export const adminApi = {
       method: 'POST',
       headers: demoAdminHeaders,
       body: JSON.stringify({ requestId }),
+    }),
+  getApplianceUpdate: (): Promise<ApplianceUpdateStatus> =>
+    request(`${householdApiBase()}/appliance-update`, ApplianceUpdateStatusSchema, {
+      headers: demoAdminHeaders,
+    }),
+  installApplianceUpdate: (
+    requestId: string,
+    targetVersion: string,
+  ): Promise<ApplianceUpdateCommandResult> =>
+    request(`${householdApiBase()}/appliance-updates`, ApplianceUpdateCommandResultSchema, {
+      method: 'POST',
+      headers: demoAdminHeaders,
+      body: JSON.stringify({ requestId, targetVersion }),
     }),
   updateHousehold: (input: { requestId: string; name: string; timezone: string }) =>
     request(`${householdApiBase()}/settings`, AdminOverviewSchema, {

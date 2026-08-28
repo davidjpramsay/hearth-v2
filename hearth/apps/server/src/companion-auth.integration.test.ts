@@ -91,9 +91,17 @@ describe('companion passkey authentication', () => {
       id: 'credential_private_adult',
     });
     expect(harness.auth.session(signedIn.token)).toMatchObject({ displayName: 'David' });
+    expect(() =>
+      harness.auth.assertRecentAuthentication(signedIn.token, 5 * 60 * 1000),
+    ).not.toThrow();
     expect(harness.database.prepare('SELECT counter FROM passkey_credentials').get()).toEqual({
       counter: 7,
     });
+
+    harness.advance(5 * 60 * 1000 + 1);
+    expect(() => harness.auth.assertRecentAuthentication(signedIn.token, 5 * 60 * 1000)).toThrow(
+      /Confirm this update with an adult passkey/,
+    );
 
     harness.auth.signOut(signedIn.token);
     expect(() => harness.auth.session(signedIn.token)).toThrow(/Sign in to continue/);

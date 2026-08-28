@@ -81,6 +81,11 @@ describe('activity presentation', () => {
       filter: 'family',
       icon: 'image',
     });
+    expect(presentationForActivity('system.update.complete')).toMatchObject({
+      title: 'Hearth update finished',
+      filter: 'system',
+      icon: 'refresh',
+    });
   });
 
   it('resolves household actors without exposing opaque identifiers', () => {

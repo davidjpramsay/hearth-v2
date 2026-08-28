@@ -60,6 +60,9 @@ export const queryKeys = {
   get systemStatus() {
     return [householdId(getHearthRuntime()), 'system-status'] as const;
   },
+  get applianceUpdate() {
+    return [householdId(getHearthRuntime()), 'appliance-update'] as const;
+  },
   get lists() {
     return [householdId(getHearthRuntime()), 'lists'] as const;
   },

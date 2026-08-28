@@ -24,3 +24,21 @@ export function useSystemStatusQuery(enabled = true) {
     retry: false,
   });
 }
+
+export function useApplianceUpdateQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.applianceUpdate,
+    queryFn: adminApi.getApplianceUpdate,
+    enabled,
+    retry: false,
+    refetchInterval: (query) => {
+      const phase = query.state.data?.operation.phase;
+      return phase === 'queued' ||
+        phase === 'installing' ||
+        phase === 'checking-health' ||
+        phase === 'rolling-back'
+        ? 2_000
+        : false;
+    },
+  });
+}

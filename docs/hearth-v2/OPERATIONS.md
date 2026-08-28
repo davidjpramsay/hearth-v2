@@ -440,6 +440,34 @@ restarting. Do not choose Container Manager **Build** for a normal update: produ
 build context. If GHCR is unavailable and an operator explicitly accepts a slow NAS recovery build,
 combine `compose.yaml` with `compose.build.yaml`; never silently fall back to compilation.
 
+### Adult in-app update
+
+After the updated fixed helper has been installed once, an authenticated adult can use **System
+health > Hearth update**. The card compares the installed commit with the newest successful push of
+the repository's fixed `verify.yml` workflow. Installing requires a fresh passkey confirmation,
+creates and checks an online SQLite backup, downloads immutable images, creates a stopped-database
+rollback copy, activates the release and waits for readiness. Failure restores the old database and
+image tags automatically. Start and terminal result are separate audit entries.
+
+The browser never supplies a repository, image, Compose file or command. The application container
+has no Docker socket and cannot execute the host helper. It can write only `request-id commit` to a
+mode-restricted FIFO consumed by the root-owned agent. The agent blocks while idle, so there is no
+polling watchdog. Internet access is outbound-only to the existing GitHub API/GHCR paths; no router
+port or inbound public access is required.
+
+Rerun the following installer once when first deploying D-079 or whenever the pinned Compose/helper
+changes:
+
+```sh
+hearth/deploy/synology/install-release-helper.sh
+```
+
+That approved live step installs the agent, boot hook and control directory. Until it is run, the
+card fails closed with a one-time setup message. Development installations hide it. A Termux phone
+must keep using its verified `hearth-update <full-commit>` command until an equivalent platform
+agent with automatic database rollback is commissioned; setting `HEARTH_UPDATE_PLATFORM=termux`
+without that agent is unsupported.
+
 ### Root-owned release-helper boundary
 
 The NAS no longer compiles Hearth during a normal release. GitHub Actions builds both `linux/amd64`

@@ -1,18 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import './SystemHealthScreen.css';
 
-import type { SystemBackupStatus } from '@hearth/shared';
+import type { ApplianceUpdateStatus, SystemBackupStatus } from '@hearth/shared';
 
 import { adminApi as hearthApi } from '../api/admin';
 import { HearthApiError } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
+import { authenticateWithPasskey } from '../auth/passkeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon, type IconName } from '../components/Icon';
 import { focusById } from '../focus/focusGraph';
-import { useSystemStatusQuery } from '../hooks/useAdminQueries';
+import { useApplianceUpdateQuery, useSystemStatusQuery } from '../hooks/useAdminQueries';
 import {
   useCalendarConnectionQuery,
   useHomeAssistantConnectionQuery,
@@ -24,10 +25,14 @@ export function SystemHealthScreen() {
   const runtime = useHearthRuntime();
   const queryClient = useQueryClient();
   const query = useSystemStatusQuery();
+  const applianceUpdate = useApplianceUpdateQuery(runtime.mode === 'private');
   const calendar = useCalendarConnectionQuery();
   const homeAssistant = useHomeAssistantConnectionQuery();
   const photos = usePhotoSourceQuery();
   const pendingRequestId = useRef<string | null>(null);
+  const pendingUpdateRequestId = useRef<string | null>(null);
+  const [waitingForRestart, setWaitingForRestart] = useState(false);
+  const refetchApplianceUpdate = applianceUpdate.refetch;
   const createBackup = useMutation({
     mutationFn: () => {
       pendingRequestId.current ??= `request_system_backup_${crypto.randomUUID()}`;
@@ -38,6 +43,39 @@ export function SystemHealthScreen() {
       queryClient.setQueryData(queryKeys.systemStatus, result.status);
     },
   });
+  const installUpdate = useMutation({
+    mutationFn: async (targetVersion: string) => {
+      await authenticateWithPasskey();
+      pendingUpdateRequestId.current ??= `request_appliance_update_${crypto.randomUUID()}`;
+      return hearthApi.installApplianceUpdate(pendingUpdateRequestId.current, targetVersion);
+    },
+    onSuccess: (result) => {
+      pendingUpdateRequestId.current = null;
+      setWaitingForRestart(true);
+      queryClient.setQueryData(queryKeys.applianceUpdate, result.status);
+      queryClient.setQueryData(queryKeys.systemStatus, (current: typeof query.data) =>
+        current === undefined ? current : { ...current, backup: result.backup },
+      );
+    },
+    onError: () => {
+      setWaitingForRestart(true);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.applianceUpdate });
+    },
+  });
+
+  useEffect(() => {
+    if (!waitingForRestart) return;
+    const timer = window.setInterval(() => {
+      void refetchApplianceUpdate().then((result) => {
+        const phase = result.data?.operation.phase;
+        if (phase === 'succeeded' || phase === 'failed') {
+          window.clearInterval(timer);
+          setWaitingForRestart(false);
+        }
+      });
+    }, 2_000);
+    return () => window.clearInterval(timer);
+  }, [refetchApplianceUpdate, waitingForRestart]);
 
   useLayoutEffect(() => {
     if (createBackup.isError) focusById('system-backup-retry');
@@ -167,7 +205,11 @@ export function SystemHealthScreen() {
           <button
             className="button button--primary focusable"
             data-focus-entry="true"
-            data-focus-down="system-create-backup"
+            data-focus-down={
+              applianceUpdate.data?.updateAvailable
+                ? 'system-update-install'
+                : 'system-create-backup'
+            }
             data-focus-id="system-create-backup"
             data-focus-left="system-create-backup"
             data-focus-right="system-create-backup"
@@ -208,6 +250,15 @@ export function SystemHealthScreen() {
         ) : null}
       </section>
 
+      {applianceUpdate.data?.supported ? (
+        <ApplianceUpdateCard
+          error={installUpdate.error}
+          installing={installUpdate.isPending || waitingForRestart}
+          onInstall={(targetVersion) => installUpdate.mutate(targetVersion)}
+          status={applianceUpdate.data}
+        />
+      ) : null}
+
       <section
         className="system-recovery-boundary"
         aria-labelledby="system-recovery-boundary-title"
@@ -226,6 +277,115 @@ export function SystemHealthScreen() {
         <small>{status.mode === 'private' ? 'Private' : 'Demo'}</small>
       </footer>
     </AdminPage>
+  );
+}
+
+function ApplianceUpdateCard({
+  error,
+  installing,
+  onInstall,
+  status,
+}: {
+  error: Error | null;
+  installing: boolean;
+  onInstall: (targetVersion: string) => void;
+  status: ApplianceUpdateStatus;
+}) {
+  const release = status.availableRelease;
+  const active = ['queued', 'installing', 'checking-health', 'rolling-back'].includes(
+    status.operation.phase,
+  );
+  const terminal = status.operation.phase === 'succeeded' || status.operation.phase === 'failed';
+  return (
+    <section className="system-update" aria-labelledby="system-update-title">
+      <div className="system-section-heading">
+        <div>
+          <h2 id="system-update-title">Hearth update</h2>
+          <p>
+            {active || terminal
+              ? status.operation.message
+              : status.updateAvailable
+                ? 'A verified update is ready.'
+                : release === null
+                  ? status.checks.internet.message
+                  : 'Hearth is up to date.'}
+          </p>
+        </div>
+        <span className={`system-update__state system-update__state--${updateTone(status)}`}>
+          {updateLabel(status)}
+        </span>
+      </div>
+
+      {release === null ? null : (
+        <div className="system-update__release">
+          <strong>{release.summary}</strong>
+          <small>
+            Installed {shortVersion(status.installedVersion)} · Ready{' '}
+            {shortVersion(release.version)}
+          </small>
+        </div>
+      )}
+
+      {active || terminal ? (
+        <div className="system-update__progress" role="status">
+          <div
+            aria-label="Update progress"
+            aria-valuemax={100}
+            aria-valuemin={0}
+            aria-valuenow={status.operation.progress}
+            className="system-update__progress-track"
+            role="progressbar"
+          >
+            <span style={{ width: `${status.operation.progress}%` }} />
+          </div>
+          <small>{status.operation.progress}%</small>
+        </div>
+      ) : null}
+
+      <div className="system-update__checks" aria-label="Update checks">
+        <UpdateCheck label="Internet" state={status.checks.internet.state} />
+        <UpdateCheck label="Storage" state={status.checks.storage.state} />
+        <UpdateCheck label="Power" state={status.checks.power.state} />
+      </div>
+
+      {status.updateAvailable && release !== null ? (
+        <button
+          className="button button--primary focusable"
+          data-focus-down="system-update-install"
+          data-focus-id="system-update-install"
+          data-focus-left="system-update-install"
+          data-focus-right="system-update-install"
+          data-focus-up="system-create-backup"
+          disabled={!status.canInstall || installing}
+          onClick={() => onInstall(release.version)}
+          type="button"
+        >
+          <Icon name="refresh" />
+          {installing ? 'Updating…' : 'Confirm with passkey'}
+        </button>
+      ) : null}
+
+      {error === null ? null : (
+        <p className="system-update__error" role="alert">
+          {updateErrorMessage(error)}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function UpdateCheck({
+  label,
+  state,
+}: {
+  label: string;
+  state: ApplianceUpdateStatus['checks']['internet']['state'];
+}) {
+  return (
+    <span className={`system-update__check system-update__check--${state}`}>
+      <Icon name={state === 'ready' ? 'check' : 'warning'} />
+      {label}
+    </span>
   );
 }
 
@@ -398,6 +558,39 @@ function backupDetail(backup: SystemBackupStatus): string {
   }
   const size = backup.sizeBytes === null ? '' : ` · ${formatBytes(backup.sizeBytes)}`;
   return `Last backup ${formatDateTime(backup.lastSuccessfulAt)}${size}`;
+}
+
+function updateLabel(status: ApplianceUpdateStatus): string {
+  if (status.operation.phase === 'succeeded') return 'Installed';
+  if (status.operation.phase === 'failed') return 'Restored';
+  if (
+    ['queued', 'installing', 'checking-health', 'rolling-back'].includes(status.operation.phase)
+  ) {
+    return 'Updating';
+  }
+  if (status.updateAvailable) return 'Available';
+  if (status.availableRelease === null) return 'Check needed';
+  return 'Current';
+}
+
+function updateTone(status: ApplianceUpdateStatus): 'healthy' | 'attention' | 'neutral' {
+  if (status.operation.phase === 'failed' || status.availableRelease === null) return 'attention';
+  if (status.operation.phase === 'succeeded' || !status.updateAvailable) return 'healthy';
+  return 'neutral';
+}
+
+function shortVersion(version: string): string {
+  return /^[a-f0-9]{40}$/.test(version) ? version.slice(0, 8) : version;
+}
+
+function updateErrorMessage(error: Error): string {
+  if (error instanceof HearthApiError) {
+    if (error.payload.error.code === 'CONFIRMATION_REQUIRED') {
+      return 'Confirm again with an adult passkey.';
+    }
+    return error.message;
+  }
+  return 'Hearth may be restarting. Reconnecting…';
 }
 
 function formatDateTime(value: string): string {

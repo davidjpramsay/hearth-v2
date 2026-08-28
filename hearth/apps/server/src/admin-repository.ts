@@ -157,7 +157,9 @@ export class InMemoryAdminRepository implements AdminRepository {
     if (householdId !== this.household.id) {
       throw new RepositoryError('NOT_FOUND', 'That household could not be found.');
     }
-    this.audits.push(structuredClone(audit));
+    if (!this.audits.some((entry) => entry.id === audit.id)) {
+      this.audits.push(structuredClone(audit));
+    }
   }
 
   async updateHousehold(
@@ -530,7 +532,7 @@ export class SqliteAdminRepository implements AdminRepository {
     this.readHousehold(householdId);
     this.database
       .prepare(
-        `INSERT INTO audit_events
+        `INSERT OR IGNORE INTO audit_events
           (id, occurred_at, household_id, actor_type, actor_id, source_channel, action_type,
            target_type, target_id, request_id, result, safe_summary_json)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')`,
@@ -543,7 +545,11 @@ export class SqliteAdminRepository implements AdminRepository {
         audit.actorId,
         audit.source,
         audit.action,
-        audit.action === 'system.backup.create' ? 'system-backup' : 'household',
+        audit.action === 'system.backup.create'
+          ? 'system-backup'
+          : audit.action === 'system.update.install' || audit.action === 'system.update.complete'
+            ? 'system-update'
+            : 'household',
         audit.targetId,
         requestId,
         audit.result,

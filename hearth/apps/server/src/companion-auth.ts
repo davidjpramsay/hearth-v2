@@ -292,6 +292,7 @@ export interface CompanionAuthRepository {
   ): PasskeyRevocationResult;
   session(token: string): PasskeySession;
   authenticate(token: string): CommandActor;
+  assertRecentAuthentication?(token: string, maximumAgeMs: number): void;
   signOut(token: string): void;
   sessionCookie(token: string): string;
   clearSessionCookie(): string;
@@ -899,6 +900,22 @@ export class CompanionAuthService implements CompanionAuthRepository {
   authenticate(token: string): CommandActor {
     const session = this.session(token);
     return { id: session.memberId, type: 'member', source: 'companion' };
+  }
+
+  assertRecentAuthentication(token: string, maximumAgeMs: number): void {
+    const row = this.database
+      .prepare(
+        `SELECT created_at FROM companion_sessions
+         WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > ?`,
+      )
+      .get(tokenDigest(token), this.now().toISOString()) as { created_at: string } | undefined;
+    const createdAt = row === undefined ? Number.NaN : Date.parse(row.created_at);
+    if (!Number.isFinite(createdAt) || this.now().getTime() - createdAt > maximumAgeMs) {
+      throw new RepositoryError(
+        'CONFIRMATION_REQUIRED',
+        'Confirm this update with an adult passkey.',
+      );
+    }
   }
 
   signOut(token: string): void {

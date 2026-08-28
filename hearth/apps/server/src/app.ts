@@ -14,6 +14,8 @@ import {
   AdditionalPasskeyOptionsRequestSchema,
   ActivityFeedSchema,
   AdminOverviewSchema,
+  ApplianceUpdateCommandResultSchema,
+  ApplianceUpdateStatusSchema,
   AdultAccessSummarySchema,
   ApiErrorSchema,
   AssistAddListItemRequestSchema,
@@ -65,6 +67,7 @@ import {
   HomeAssistantConnectionTestRequestSchema,
   HomeAssistantConnectionTestResultSchema,
   HomeStatusSchema,
+  InstallApplianceUpdateRequestSchema,
   ListItemCommandResultSchema,
   ListSettingsCommandResultSchema,
   LocalDateSchema,
@@ -162,6 +165,10 @@ import {
   credentialHash,
   type AdminRepository,
 } from './admin-repository.js';
+import {
+  UnavailableApplianceUpdateService,
+  type ApplianceUpdateRepository,
+} from './appliance-update.js';
 import {
   CalendarConnectionService,
   FakeCalendarConnectionVerifier,
@@ -298,6 +305,7 @@ export interface BuildServerOptions {
   calendarConnectionRepository?: CalendarConnectionRepository;
   homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
   systemOperations?: SystemOperationsRepository;
+  applianceUpdate?: ApplianceUpdateRepository;
   companionAuth?: CompanionAuthRepository;
   todayContentRepository?: TodayContentRepository;
   dailyVerseProvider?: DailyVerseProvider;
@@ -395,6 +403,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     new InMemorySystemOperations(adminRepository, {
       version: process.env.HEARTH_VERSION ?? 'development',
       mode: runtime.mode,
+      clock: runtime.clock,
+    });
+  const applianceUpdate =
+    options.applianceUpdate ??
+    new UnavailableApplianceUpdateService(adminRepository, {
+      installedVersion: process.env.HEARTH_VERSION ?? 'development',
       clock: runtime.clock,
     });
   const server = Fastify({
@@ -702,6 +716,28 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         ),
       ),
     );
+  });
+
+  server.get('/api/v1/households/:householdId/appliance-update', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    return run(reply, async () =>
+      ApplianceUpdateStatusSchema.parse(
+        await applianceUpdate.getStatus(params.householdId, actorId(request.headers, options)),
+      ),
+    );
+  });
+
+  server.post('/api/v1/households/:householdId/appliance-updates', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(InstallApplianceUpdateRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    return run(reply, async () => {
+      assertRecentUpdateConfirmation(request.headers, options);
+      return ApplianceUpdateCommandResultSchema.parse(
+        await applianceUpdate.install(params.householdId, actorId(request.headers, options), body),
+      );
+    });
   });
 
   server.get('/api/v1/households/:householdId/today-configuration', async (request, reply) => {
@@ -2823,6 +2859,21 @@ function companionActor(
     throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
   }
   return options.companionAuth.authenticate(companionCredential(headers));
+}
+
+function assertRecentUpdateConfirmation(
+  headers: Record<string, string | string[] | undefined>,
+  options: BuildServerOptions,
+): void {
+  if (!isPrivateMode(options)) return;
+  const auth = options.companionAuth;
+  if (auth?.assertRecentAuthentication === undefined) {
+    throw new RepositoryError(
+      'INTEGRATION_UNAVAILABLE',
+      'Adult passkey confirmation is not available.',
+    );
+  }
+  auth.assertRecentAuthentication(companionCredential(headers), 5 * 60 * 1000);
 }
 
 function companionCredential(headers: Record<string, string | string[] | undefined>): string {

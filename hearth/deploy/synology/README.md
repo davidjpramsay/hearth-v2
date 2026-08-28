@@ -56,8 +56,8 @@ Before entering household data:
    ```
 
 The helper grants passwordless access only to the fixed Hearth activation command. It also installs
-the one-shot Docker firewall hook required by the hardened Synology network. It is not a watchdog
-and does not grant a root shell.
+the Docker firewall hook and blocking in-app update agent. Neither is a polling watchdog, Docker
+socket proxy or root shell.
 
 Detailed commissioning, firewall and recovery requirements are authoritative in
 [`../../../docs/hearth-v2/OPERATIONS.md`](../../../docs/hearth-v2/OPERATIONS.md).
@@ -74,6 +74,10 @@ Use `HEARTH_DEPLOY_SSH_HOSTNAME=<tailscale-or-lan-host>` only when the saved SSH
 explicit host override. Activation stages the exact revision, pulls both images before replacement,
 runs the fixed helper, waits for readiness and preserves the previous image version for rollback.
 The Synology does not compile ordinary releases.
+
+After this helper version is installed, adults can also use **System health > Hearth update**. A
+fresh passkey is required; Hearth backs up first, installs only the newest verified full commit and
+rolls back automatically if readiness fails. No inbound internet exposure is added.
 
 Verify both internal state and the private origin:
 

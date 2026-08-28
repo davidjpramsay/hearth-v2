@@ -423,6 +423,13 @@ and sessions. Hearth never places a shared admin token in a URL and does not per
 passkey to be revoked before recovery exists. Passkeys still require a stable private hostname and
 HTTPS secure origin before real household data is entered.
 
+Appliance update status is an administrator-only service, not a browser privilege. Starting an
+update requires a new passkey-authenticated session no more than five minutes old. The server accepts
+only the exact release exposed by its fixed verified-workflow provider, creates an online recovery
+copy and sends a two-field request through a mode-restricted local FIFO. It has no Docker socket,
+root credential or general command endpoint. A separately installed platform agent performs the
+fixed host operation and publishes only bounded progress/result state. See D-079.
+
 During the isolated demo, a server-resolved Maya administrator session exercises the same role/capability checks without pretending to be production authentication. This demo actor header is disabled outside demo mode. See D-014.
 
 ### Service integrations
@@ -531,6 +538,13 @@ uses SQLite online backup into the restricted data volume, verifies and prunes t
 serves only a typed aggregate status to authenticated adults. Restore is intentionally outside the
 HTTP application: the production image contains a CLI that verifies a retained copy and writes it
 to a new clean destination without overwriting an existing database. See D-043.
+
+On Synology, the optional update agent is root-owned and blocks on a dedicated FIFO; it does not poll
+GitHub or expose a socket. The unprivileged server selects the newest successful fixed workflow
+release, while the agent independently accepts only a request ID and full hexadecimal commit. The
+agent uses the existing pinned Compose/image helper, stops SQLite only for the final checked rollback
+copy, health-checks the new containers and restores both database and image tags if activation fails.
+Development has no agent and does not render update controls.
 
 ## Observability
 

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { RuntimeMode } from '@hearth/shared';
 
 import { SqliteAdminRepository } from './admin-repository.js';
+import { createApplianceUpdateRepository } from './appliance-update.js';
 import { buildServer } from './app.js';
 import {
   CalendarConnectionService,
@@ -183,6 +184,12 @@ const systemOperations: SystemOperationsRepository = demoMode
       clock,
       ...systemOperationsConfiguration,
     });
+const applianceUpdate = createApplianceUpdateRepository({
+  environment: process.env,
+  adminRepository,
+  systemOperations,
+  clock,
+});
 const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
   ? undefined
   : {
@@ -271,6 +278,7 @@ const server = buildServer({
   calendarConnectionRepository,
   homeAssistantConnectionRepository,
   systemOperations,
+  applianceUpdate,
   ...(companionAuth === undefined ? {} : { companionAuth }),
   ...(trustProxyHops === undefined ? {} : { trustProxyHops }),
   readiness: () => {

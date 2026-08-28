@@ -73,6 +73,8 @@ const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> 
   'home-assistant.connection.save': connections('Home Assistant connected', 'home'),
   'home-assistant.connection.remove': connections('Home Assistant disconnected', 'home'),
   'system.backup.create': system('Recovery copy created', 'refresh'),
+  'system.update.install': system('Hearth update started', 'refresh'),
+  'system.update.complete': system('Hearth update finished', 'refresh'),
   'photo.upload': connections('Family photo added', 'image'),
   'photo.source.refresh': connections('Family photos refreshed', 'image'),
   'photo.favourite': family('Family photo favourited', 'star'),
