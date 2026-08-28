@@ -29,6 +29,20 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   await expect(page.locator('.weather-week__rows')).toHaveCSS('border-top-width', '0px');
   await expect(page.locator('.weather-day--today')).toHaveCSS('border-top-width', '0px');
 
+  const weatherSectionSpacing = await page.evaluate(() => {
+    const screen = document.querySelector('.weather-screen')?.getBoundingClientRect();
+    const hourly = document.querySelector('.weather-hourly')?.getBoundingClientRect();
+    const week = document.querySelector('.weather-week__rows')?.getBoundingClientRect();
+    if (screen === undefined || hourly === undefined || week === undefined) return null;
+    return {
+      graphToWeek: week.top - hourly.bottom,
+      weekToScreenBottom: screen.bottom - week.bottom,
+    };
+  });
+  expect(weatherSectionSpacing).not.toBeNull();
+  expect(weatherSectionSpacing?.graphToWeek).toBeGreaterThanOrEqual(20);
+  expect(weatherSectionSpacing?.weekToScreenBottom).toBeLessThanOrEqual(40);
+
   const chart = page.locator('[data-focus-id="weather-chart"]');
   await expect(page.locator('[data-focus-id="weather-mode-temperature"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
@@ -37,9 +51,18 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
 
   const firstHourAlignment = await page.evaluate(() => {
     const marker = document.querySelector('.weather-chart__marker');
+    const markerStrip = document.querySelector('.weather-chart__markers');
     const selectedLine = document.querySelector('.weather-chart__selected-line');
     const firstHour = document.querySelector('.weather-chart__hour');
-    if (marker === null || selectedLine === null || firstHour === null) return null;
+    const chartSvg = document.querySelector('.weather-chart__canvas > svg');
+    if (
+      marker === null ||
+      markerStrip === null ||
+      selectedLine === null ||
+      firstHour === null ||
+      chartSvg === null
+    )
+      return null;
 
     const centre = (element: Element) => {
       const bounds = element.getBoundingClientRect();
@@ -49,11 +72,16 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
     return {
       markerToHour: Math.abs(centre(marker) - centre(firstHour)),
       markerToSelection: Math.abs(centre(marker) - centre(selectedLine)),
+      markerBottom: marker.getBoundingClientRect().bottom,
+      markerStripBottom: markerStrip.getBoundingClientRect().bottom,
+      svgTop: chartSvg.getBoundingClientRect().top,
     };
   });
   expect(firstHourAlignment).not.toBeNull();
   expect(firstHourAlignment?.markerToHour).toBeLessThanOrEqual(1);
   expect(firstHourAlignment?.markerToSelection).toBeLessThanOrEqual(1);
+  expect(firstHourAlignment?.markerBottom).toBeLessThanOrEqual(firstHourAlignment?.svgTop ?? 0);
+  expect(firstHourAlignment?.markerStripBottom).toBeCloseTo(firstHourAlignment?.svgTop ?? 0, 0);
 
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.weather-selected-hour')).toContainText('9 am');

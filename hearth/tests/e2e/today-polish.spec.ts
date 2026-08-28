@@ -294,7 +294,7 @@ for (const viewport of [
   });
 }
 
-test('@visual Today aligns landscape media with the optional-summary rail', async ({ page }) => {
+test('@visual Today anchors summaries below landscape media', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
 
@@ -308,13 +308,79 @@ test('@visual Today aligns landscape media with the optional-summary rail', asyn
   expect(choreRail).not.toBeNull();
   expect(summaries).not.toBeNull();
   expect(photo).not.toBeNull();
+  const dashboardBox = await dashboard.boundingBox();
+  expect(dashboardBox).not.toBeNull();
   expect(Math.abs(eventRail!.y - choreRail!.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs(summaries!.y - photo!.y)).toBeLessThanOrEqual(1);
-  expect(photo!.width).toBeGreaterThan((await dashboard.boundingBox())!.width * 0.35);
+  expect(photo!.y).toBeLessThan(summaries!.y);
+  expect(
+    Math.abs(summaries!.y + summaries!.height - (dashboardBox!.y + dashboardBox!.height)),
+  ).toBeLessThanOrEqual(1);
+  expect(photo!.width).toBeGreaterThan(dashboardBox!.width * 0.35);
   expect(await hasTelevisionOverflow(page)).toBe(false);
 
   await captureEvidence(page, {
     path: resolve(evidence, 'today-aligned-landscape-tv-1080.png'),
+    animations: 'disabled',
+  });
+});
+
+test('@visual Today gives a sparse summary shelf room for long-form content', async ({ page }) => {
+  await useSparseReadableSummaries(page);
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'hearth.appearance.v1',
+      JSON.stringify({ theme: 'dark', eveningDimming: false }),
+    );
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/today');
+
+  const dashboard = page.locator('.today-dashboard');
+  const summaries = page.locator('.summary-details');
+  const cards = summaries.locator('.summary-band');
+  const verseCopy = page.locator('[data-focus-id="today-summary-daily-verse"] p');
+  await expect(dashboard).toHaveAttribute('data-photo-orientation', 'portrait');
+  await expect(dashboard).toHaveAttribute('data-summary-count', '2');
+  await expect(cards).toHaveCount(2);
+
+  const dashboardBox = await dashboard.boundingBox();
+  const summariesBox = await summaries.boundingBox();
+  const cardBoxes = await cards.evaluateAll((elements) =>
+    elements.map((element) => {
+      const bounds = element.getBoundingClientRect();
+      return { height: bounds.height, width: bounds.width };
+    }),
+  );
+  expect(dashboardBox).not.toBeNull();
+  expect(summariesBox).not.toBeNull();
+  expect(cardBoxes).toHaveLength(2);
+  expect(cardBoxes.every((card) => card.height >= 160)).toBe(true);
+  expect(Math.abs(cardBoxes[0]!.height - cardBoxes[1]!.height)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(summariesBox!.y + summariesBox!.height - (dashboardBox!.y + dashboardBox!.height)),
+  ).toBeLessThanOrEqual(1);
+
+  const verseFit = await verseCopy.evaluate((element) => {
+    const styles = window.getComputedStyle(element);
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const lineRects = [...range.getClientRects()].filter(
+      (rect) => rect.width > 0 && rect.height > 0,
+    );
+    return {
+      contentBottom: range.getBoundingClientRect().bottom,
+      elementBottom: element.getBoundingClientRect().bottom,
+      lineClamp: styles.webkitLineClamp,
+      lineCount: new Set(lineRects.map((rect) => Math.round(rect.top))).size,
+    };
+  });
+  expect(verseFit.lineClamp).toBe('4');
+  expect(verseFit.lineCount).toBeLessThanOrEqual(4);
+  expect(verseFit.contentBottom).toBeLessThanOrEqual(verseFit.elementBottom + 1);
+  expect(await hasTelevisionOverflow(page)).toBe(false);
+
+  await captureEvidence(page, {
+    path: resolve(evidence, 'today-sparse-reading-shelf-tv-1080.png'),
     animations: 'disabled',
   });
 });
@@ -551,6 +617,56 @@ async function usePortraitPhoto(page: Page): Promise<void> {
       alt: 'Ezra and Maya water herbs in the family garden.',
       orientation: 'portrait',
       url: '/demo/photos/garden-morning.webp',
+    };
+    await route.fulfill({ response, json: payload });
+  });
+}
+
+async function useSparseReadableSummaries(page: Page): Promise<void> {
+  await page.route('**/api/v1/households/*/today?date=*', async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      dailyVerse: unknown;
+      photo: null | {
+        alt: string;
+        height?: number;
+        orientation: 'landscape' | 'portrait' | 'square';
+        url: string;
+        width?: number;
+      };
+      reminderSummary: unknown;
+      sections: {
+        dailyVerse: boolean;
+        dinner: boolean;
+        listSummary: boolean;
+        notice: boolean;
+        photo: boolean;
+        reminders: boolean;
+      };
+    };
+    payload.sections = {
+      dailyVerse: true,
+      dinner: false,
+      listSummary: false,
+      notice: false,
+      photo: true,
+      reminders: true,
+    };
+    payload.dailyVerse = {
+      freshness: 'current',
+      reference: 'Philippians 4:6–7',
+      sourceUrl: null,
+      statusMessage: null,
+      text: 'Do not be anxious about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God.',
+      translation: 'ESV',
+    };
+    payload.reminderSummary = { items: [], openCount: 0 };
+    payload.photo = {
+      alt: 'Ezra and Maya water herbs in the family garden.',
+      height: 1600,
+      orientation: 'portrait',
+      url: '/demo/photos/garden-morning.webp',
+      width: 900,
     };
     await route.fulfill({ response, json: payload });
   });

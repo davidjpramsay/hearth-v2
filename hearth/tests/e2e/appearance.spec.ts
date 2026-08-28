@@ -260,6 +260,20 @@ test('@visual dark Today and phone Appearance', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+  await expect(page.locator('.today-dashboard .summary-details')).toHaveCSS(
+    'background-color',
+    'rgba(0, 0, 0, 0)',
+  );
+  const summaryShelfAlignment = await page.evaluate(() => {
+    const dashboard = document.querySelector('.today-dashboard')?.getBoundingClientRect();
+    const summaries = document
+      .querySelector('.today-dashboard .summary-details')
+      ?.getBoundingClientRect();
+    if (dashboard === undefined || summaries === undefined) return null;
+    return dashboard.bottom - summaries.bottom;
+  });
+  expect(summaryShelfAlignment).not.toBeNull();
+  expect(Math.abs(summaryShelfAlignment ?? 100)).toBeLessThanOrEqual(1);
   await captureEvidence(page, {
     path: resolve(screenshotDirectory, 'dark-today-tv-1080.png'),
     animations: 'disabled',

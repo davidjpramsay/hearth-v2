@@ -309,7 +309,7 @@ function WeatherChart({
             className="weather-chart__selected-line"
             x1={selectedX}
             x2={selectedX}
-            y1="42"
+            y1="18"
             y2="258"
           />
           <circle
@@ -434,7 +434,7 @@ function chartGeometry(
     mode === 'rain'
       ? 100
       : Math.max(minValue + 5, Math.ceil(Math.max(...primaryValues, ...secondaryValues) / 5) * 5);
-  const top = 78;
+  const top = 20;
   const baseline = 258;
   const plotWidth = canvasWidth - 76;
   const x = (index: number) => 58 + (plotWidth * index) / Math.max(1, hours.length - 1);

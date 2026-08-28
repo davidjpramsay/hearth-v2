@@ -890,8 +890,8 @@
     min-height: 0;
     flex: 1 1 auto;
     display: grid;
-    grid-template-rows: auto auto;
-    align-content: start;
+    grid-template-rows: auto minmax(min-content, 1fr);
+    align-content: stretch;
     gap: 18px;
   }
   .today-dashboard .today-columns {
@@ -944,14 +944,15 @@
   }
   .today-dashboard .summary-row {
     min-height: 0;
+    height: 100%;
     margin: 0;
-    align-self: start;
-    align-items: stretch;
+    align-self: stretch;
+    align-items: start;
   }
   .today-dashboard .summary-details {
     min-width: 0;
     height: fit-content;
-    align-self: start;
+    align-self: end;
     border: 0;
     background: transparent;
     display: grid;
@@ -960,12 +961,15 @@
   }
   .today-dashboard .summary-details--count-1 {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(clamp(148px, 17vh, 180px), max-content);
   }
   .today-dashboard .summary-details--count-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(clamp(132px, 15vh, 164px), max-content);
   }
   .today-dashboard .summary-details--count-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: minmax(clamp(104px, 12vh, 124px), max-content);
   }
   .today-dashboard .summary-details--count-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1008,6 +1012,20 @@
   .today-dashboard .summary-band p {
     font-size: 20px;
     -webkit-line-clamp: 2;
+  }
+  .today-dashboard .summary-details--count-1 .summary-band,
+  .today-dashboard .summary-details--count-2 .summary-band {
+    padding: clamp(18px, 2.2vh, 24px) 22px;
+  }
+  .today-dashboard .summary-details--count-1 .summary-band p,
+  .today-dashboard .summary-details--count-2 .summary-band p {
+    padding-bottom: 2px;
+    font-size: clamp(20px, 1.35vw, 24px);
+    line-height: 1.25;
+    -webkit-line-clamp: 4;
+  }
+  .today-dashboard .summary-details--count-3 .summary-band p {
+    -webkit-line-clamp: 3;
   }
   .today-dashboard .today-photo-action {
     min-height: 0;
@@ -1073,13 +1091,13 @@
   }
   .today-dashboard--photo-portrait {
     grid-template-columns: minmax(0, 1fr) clamp(280px, 26%, 400px);
-    grid-template-rows: auto auto;
+    grid-template-rows: auto minmax(min-content, 1fr);
     column-gap: 18px;
     row-gap: clamp(14px, 1.7vh, 20px);
   }
   .today-dashboard--photo-portrait:not([data-summary-count='0']) {
-    grid-template-rows: auto auto;
-    align-content: start;
+    grid-template-rows: auto minmax(min-content, 1fr);
+    align-content: stretch;
   }
   .today-dashboard--photo-portrait .today-columns {
     grid-column: 1;
@@ -5817,6 +5835,9 @@
 :root[data-theme='dark'] .saved-meal-card,
 :root[data-theme='dark'] .today-admin-section {
   background: var(--surface-glass);
+}
+:root[data-theme='dark'] .today-dashboard .summary-details {
+  background: transparent;
 }
 :root[data-theme='dark'] .admin-setting-list {
   border-color: var(--hairline);
