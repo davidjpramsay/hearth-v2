@@ -1,20 +1,33 @@
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 
-import type { HourlyWeatherForecast, WeatherCondition, WeatherForecastDay } from '@hearth/shared';
+import type {
+  DemoScenario,
+  HourlyWeatherForecast,
+  WeatherCondition,
+  WeatherForecastDay,
+} from '@hearth/shared';
 
 import './WeatherScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
 import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useWeatherForecastQuery } from '../hooks/useWeatherForecastQuery';
 
 type WeatherMode = 'temperature' | 'rain' | 'wind';
 
 const MODES: readonly WeatherMode[] = ['temperature', 'rain', 'wind'];
 
-export function WeatherScreen({ preparing }: { preparing: boolean }) {
+export function WeatherScreen({
+  preparing,
+  scenario,
+}: {
+  preparing: boolean;
+  scenario: DemoScenario | 'offline';
+}) {
   const query = useWeatherForecastQuery(!preparing);
+  const online = useOnlineStatus(scenario === 'offline');
   const [mode, setMode] = useState<WeatherMode>('temperature');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -41,69 +54,75 @@ export function WeatherScreen({ preparing }: { preparing: boolean }) {
       <header className="weather-hero">
         <div className="weather-hero__title">
           <h1>Weather</h1>
-          <p>{forecast.locationLabel ?? 'Local weather'}</p>
-          <span>{updatedLabel(forecast.updatedAt, forecast.generatedAt)}</span>
+          <p>
+            {forecast.locationLabel ?? 'Local weather'} <Icon name="location" />
+          </p>
+          <span className="weather-updated">
+            <i aria-hidden="true" /> {updatedLabel(forecast.updatedAt, forecast.generatedAt)}
+          </span>
         </div>
         <div className="weather-current" aria-label={currentConditionsLabel(forecast.current)}>
-          <Icon name={conditionIcon(forecast.current.condition)} />
-          <strong>{forecast.current.temperatureCelsius}°</strong>
-          <div>
-            <b>{forecast.current.label}</b>
-            <span>Feels {forecast.current.apparentTemperatureCelsius}°</span>
+          <div className="weather-current__temperature">
+            <Icon name={conditionIcon(forecast.current.condition)} />
+            <strong>{forecast.current.temperatureCelsius}°</strong>
           </div>
-          <dl>
+          <div className="weather-current__feels">
+            <span>Feels like {forecast.current.apparentTemperatureCelsius}°</span>
+            <strong>
+              {today?.lowTemperatureCelsius ?? '–'}° / {today?.highTemperatureCelsius ?? '–'}°
+            </strong>
+          </div>
+          <div className="weather-current__detail">
+            <strong>{forecast.current.label}</strong>
             <div>
-              <dt>Low / high</dt>
-              <dd>
-                {today?.lowTemperatureCelsius ?? '–'}° / {today?.highTemperatureCelsius ?? '–'}°
-              </dd>
-            </div>
-            <div>
-              <dt>Rain</dt>
-              <dd>{forecast.current.precipitationProbabilityPercent}%</dd>
-            </div>
-            <div>
-              <dt>Wind</dt>
-              <dd>
-                {forecast.current.windSpeedKph} km/h{' '}
+              <span>
+                <Icon name="droplet" /> {forecast.current.precipitationProbabilityPercent}%
+              </span>
+              <span>
+                <Icon name="wind" /> {forecast.current.windSpeedKph} km/h{' '}
                 {compassDirection(forecast.current.windDirectionDegrees)}
-              </dd>
+              </span>
             </div>
-          </dl>
+          </div>
         </div>
       </header>
 
-      {forecast.freshness === 'stale' ? (
+      {!online ? (
+        <StatusBanner kind="offline">Offline · Showing saved weather.</StatusBanner>
+      ) : forecast.freshness === 'stale' ? (
         <StatusBanner kind="stale">Showing the last saved forecast.</StatusBanner>
       ) : null}
 
+      <div aria-label="Weather graph" className="weather-mode-switch" role="group">
+        {MODES.map((candidate, index) => (
+          <button
+            aria-pressed={mode === candidate}
+            className="focusable"
+            data-focus-entry={index === 0 ? 'true' : undefined}
+            data-focus-id={`weather-mode-${candidate}`}
+            data-focus-left={index === 0 ? 'nav-weather' : `weather-mode-${MODES[index - 1]}`}
+            data-focus-right={
+              index === MODES.length - 1
+                ? `weather-mode-${candidate}`
+                : `weather-mode-${MODES[index + 1]}`
+            }
+            data-focus-down="weather-chart"
+            key={candidate}
+            onClick={() => setMode(candidate)}
+            type="button"
+          >
+            {capitalise(candidate)}
+          </button>
+        ))}
+      </div>
+
       <section className="weather-hourly" aria-labelledby="weather-hourly-title">
+        <h2 className="sr-only" id="weather-hourly-title">
+          Next 24 hours
+        </h2>
         <div className="weather-hourly__topline">
-          <div>
-            <h2 id="weather-hourly-title">Next 24 hours</h2>
-            <SelectedHourSummary hour={selected} mode={mode} />
-          </div>
-          <div aria-label="Weather graph" className="weather-mode-switch" role="group">
-            {MODES.map((candidate, index) => (
-              <button
-                aria-pressed={mode === candidate}
-                className="focusable"
-                data-focus-id={`weather-mode-${candidate}`}
-                data-focus-left={index === 0 ? 'nav-weather' : `weather-mode-${MODES[index - 1]}`}
-                data-focus-right={
-                  index === MODES.length - 1
-                    ? `weather-mode-${candidate}`
-                    : `weather-mode-${MODES[index + 1]}`
-                }
-                data-focus-down="weather-chart"
-                key={candidate}
-                onClick={() => setMode(candidate)}
-                type="button"
-              >
-                {capitalise(candidate)}
-              </button>
-            ))}
-          </div>
+          <SelectedHourSummary hour={selected} mode={mode} />
+          <ChartLegend mode={mode} />
         </div>
 
         <div className="weather-chart-shell">
@@ -140,10 +159,6 @@ export function WeatherScreen({ preparing }: { preparing: boolean }) {
         currentTemperature={forecast.current.temperatureCelsius}
         days={forecast.daily}
       />
-
-      <footer className="weather-attribution">
-        Weather data by <a href="https://open-meteo.com/">Open-Meteo</a>
-      </footer>
     </div>
   );
 
@@ -190,8 +205,25 @@ function WeatherChart({
   selectedIndex: number;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
 }) {
-  const geometry = useMemo(() => chartGeometry(hours, mode), [hours, mode]);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasWidth, setCanvasWidth] = useState(1000);
+  const geometry = useMemo(
+    () => chartGeometry(hours, mode, canvasWidth),
+    [canvasWidth, hours, mode],
+  );
   const selectedX = geometry.x(selectedIndex);
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas === null) return undefined;
+    const updateWidth = () => setCanvasWidth(Math.max(360, Math.round(canvas.clientWidth)));
+    updateWidth();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
       aria-label={`${capitalise(mode)} forecast. Use left and right to inspect hours, or up and down to change graph.`}
@@ -200,7 +232,6 @@ function WeatherChart({
       aria-valuenow={selectedIndex}
       aria-valuetext={`${hourLabel(hours[selectedIndex]?.time ?? hours[0]?.time ?? '00:00')}, ${selectedPrimaryValue(hours[selectedIndex] ?? hours[0]!, mode)}`}
       className="weather-chart focusable"
-      data-focus-entry="true"
       data-focus-id="weather-chart"
       data-focus-left="nav-weather"
       data-focus-up={`weather-mode-${mode}`}
@@ -208,95 +239,100 @@ function WeatherChart({
       role="slider"
       tabIndex={0}
     >
-      <ChartLegend mode={mode} />
-      <svg aria-hidden="true" viewBox="0 0 1000 300">
-        {geometry.ticks.map((tick) => (
-          <g className="weather-chart__grid" key={tick.value}>
-            <line x1="58" x2="982" y1={tick.y} y2={tick.y} />
-            <text x="48" y={tick.y + 5} textAnchor="end">
-              {tick.label}
-            </text>
-          </g>
-        ))}
-        {hours.map((hour, index) =>
-          index % 3 === 0 ? (
-            <text
-              className="weather-chart__condition"
-              key={`condition-${hour.time}`}
-              textAnchor="middle"
-              x={geometry.x(index)}
-              y="31"
-            >
-              {conditionGlyph(hour.condition, hour.time)}
-            </text>
-          ) : null,
-        )}
-        {mode === 'rain' ? (
-          <g className="weather-chart__rain-bars">
-            {hours.map((hour, index) => {
-              const y = geometry.y(hour.precipitationProbabilityPercent);
-              return (
-                <rect
-                  height={geometry.baseline - y}
-                  key={hour.time}
-                  rx="3"
-                  width="24"
-                  x={geometry.x(index) - 12}
-                  y={y}
-                />
-              );
-            })}
-          </g>
-        ) : (
-          <>
-            <polyline className="weather-chart__primary" points={geometry.primaryPoints} />
-            <polyline className="weather-chart__secondary" points={geometry.secondaryPoints} />
-          </>
-        )}
-        {mode === 'wind' ? (
-          <g className="weather-chart__directions">
-            {hours.map((hour, index) =>
-              index % 3 === 0 ? (
-                <text
-                  key={`direction-${hour.time}`}
-                  transform={`rotate(${hour.windDirectionDegrees} ${geometry.x(index)} 64)`}
-                  x={geometry.x(index)}
-                  y="69"
-                  textAnchor="middle"
-                >
-                  ↑
-                </text>
-              ) : null,
-            )}
-          </g>
-        ) : null}
-        <line
-          className="weather-chart__selected-line"
-          x1={selectedX}
-          x2={selectedX}
-          y1="42"
-          y2="258"
-        />
-        <circle
-          className="weather-chart__selected-point"
-          cx={selectedX}
-          cy={geometry.primaryY(selectedIndex)}
-          r="7"
-        />
-        {hours.map((hour, index) =>
-          index % 4 === 0 || index === hours.length - 1 ? (
-            <text
-              className="weather-chart__hour"
-              key={`hour-${hour.time}`}
-              textAnchor="middle"
-              x={geometry.x(index)}
-              y="287"
-            >
-              {hourLabel(hour.time)}
-            </text>
-          ) : null,
-        )}
-      </svg>
+      <div className="weather-chart__canvas" ref={canvasRef}>
+        <div
+          className={`weather-chart__markers weather-chart__markers--${mode}`}
+          aria-hidden="true"
+        >
+          {hours.map((hour, index) =>
+            index % 2 === 0 ? (
+              <span
+                className={`weather-chart__marker weather-chart__marker--${hourlyMarkerTone(hour)}`}
+                key={`marker-${hour.time}`}
+                style={{ left: `${geometry.x(index)}px` }}
+              >
+                {mode === 'wind' ? (
+                  <i style={{ transform: `rotate(${hour.windDirectionDegrees}deg)` }}>↑</i>
+                ) : (
+                  <Icon name={hourlyConditionIcon(hour)} />
+                )}
+              </span>
+            ) : null,
+          )}
+        </div>
+        <svg aria-hidden="true" preserveAspectRatio="none" viewBox={`0 0 ${canvasWidth} 300`}>
+          <defs>
+            <linearGradient id={`weather-area-${mode}`} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stopColor="var(--eucalyptus)" stopOpacity="0.32" />
+              <stop offset="1" stopColor="var(--eucalyptus)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {geometry.ticks.map((tick) => (
+            <g className="weather-chart__grid" key={tick.value}>
+              <line x1="58" x2={canvasWidth - 18} y1={tick.y} y2={tick.y} />
+              <text x="48" y={tick.y + 5} textAnchor="end">
+                {tick.label}
+              </text>
+            </g>
+          ))}
+          {mode === 'rain' ? (
+            <>
+              <g className="weather-chart__rain-bars">
+                {hours.map((hour, index) => {
+                  const y = geometry.y(hour.precipitationProbabilityPercent);
+                  return (
+                    <rect
+                      height={geometry.baseline - y}
+                      key={hour.time}
+                      rx="3"
+                      width="24"
+                      x={geometry.x(index) - 12}
+                      y={y}
+                    />
+                  );
+                })}
+              </g>
+              <path className="weather-chart__rain-amount" d={geometry.secondaryPath} />
+            </>
+          ) : (
+            <>
+              <path
+                className="weather-chart__area"
+                d={geometry.areaPath}
+                fill={`url(#weather-area-${mode})`}
+              />
+              <path className="weather-chart__primary" d={geometry.primaryPath} />
+              <path className="weather-chart__secondary" d={geometry.secondaryPath} />
+            </>
+          )}
+          <line
+            className="weather-chart__selected-line"
+            x1={selectedX}
+            x2={selectedX}
+            y1="42"
+            y2="258"
+          />
+          <circle
+            className="weather-chart__selected-point"
+            cx={selectedX}
+            cy={geometry.primaryY(selectedIndex)}
+            r="7"
+          />
+          {hours.map((hour, index) =>
+            index % 4 === 0 || index === hours.length - 1 ? (
+              <text
+                className="weather-chart__hour"
+                key={`hour-${hour.time}`}
+                textAnchor="middle"
+                x={geometry.x(index)}
+                y="287"
+              >
+                {hourLabel(hour.time)}
+              </text>
+            ) : null,
+          )}
+        </svg>
+      </div>
       <p className="sr-only">{chartTextSummary(hours, mode)}</p>
     </div>
   );
@@ -308,16 +344,16 @@ function ChartLegend({ mode }: { mode: WeatherMode }) {
       ? (['Actual', 'Feels like'] as const)
       : mode === 'wind'
         ? (['Wind', 'Gusts'] as const)
-        : (['Rain chance', 'Expected amount on selection'] as const);
+        : (['Rain chance', 'Expected rain'] as const);
   return (
-    <span className={`weather-chart-legend weather-chart-legend--${mode}`} aria-hidden="true">
+    <div className={`weather-chart-legend weather-chart-legend--${mode}`} aria-hidden="true">
       <span>
         <i /> {labels[0]}
       </span>
       <span>
         <i /> {labels[1]}
       </span>
-    </span>
+    </div>
   );
 }
 
@@ -331,17 +367,25 @@ function SevenDayForecast({
   const domain = temperatureDomain(days);
   return (
     <section className="weather-week" aria-labelledby="weather-week-title">
-      <h2 id="weather-week-title">Seven days</h2>
+      <h2 className="sr-only" id="weather-week-title">
+        Seven days
+      </h2>
       <div className="weather-week__rows">
         {days.slice(0, 7).map((day, index) => {
           const rangeStart = rangePercent(day.lowTemperatureCelsius, domain);
           const rangeEnd = rangePercent(day.highTemperatureCelsius, domain);
           const current = rangePercent(currentTemperature, domain);
           return (
-            <article className="weather-day" key={day.localDate}>
+            <article
+              className={`weather-day${index === 0 ? ' weather-day--today' : ''}`}
+              key={day.localDate}
+            >
               <strong>{index === 0 ? 'Today' : weekday(day.localDate)}</strong>
               <Icon name={conditionIcon(day.condition)} />
-              <span className="weather-day__rain">{day.precipitationProbabilityPercent}%</span>
+              <span className="weather-day__condition">{day.label}</span>
+              <span className="weather-day__rain">
+                <Icon name="droplet" /> {day.precipitationProbabilityPercent}%
+              </span>
               <span className="weather-day__low">{day.lowTemperatureCelsius}°</span>
               <span className="weather-day__range" aria-hidden="true">
                 <i
@@ -365,7 +409,11 @@ function SevenDayForecast({
   );
 }
 
-function chartGeometry(hours: readonly HourlyWeatherForecast[], mode: WeatherMode) {
+function chartGeometry(
+  hours: readonly HourlyWeatherForecast[],
+  mode: WeatherMode,
+  canvasWidth: number,
+) {
   const primaryValues = hours.map((hour) =>
     mode === 'temperature'
       ? hour.temperatureCelsius
@@ -388,14 +436,20 @@ function chartGeometry(hours: readonly HourlyWeatherForecast[], mode: WeatherMod
       : Math.max(minValue + 5, Math.ceil(Math.max(...primaryValues, ...secondaryValues) / 5) * 5);
   const top = 78;
   const baseline = 258;
-  const plotWidth = 924;
+  const plotWidth = canvasWidth - 76;
   const x = (index: number) => 58 + (plotWidth * index) / Math.max(1, hours.length - 1);
   const y = (value: number) =>
     baseline - ((value - minValue) / (maxValue - minValue)) * (baseline - top);
-  const primaryPoints = primaryValues.map((value, index) => `${x(index)},${y(value)}`).join(' ');
-  const secondaryPoints = secondaryValues
-    .map((value, index) => `${x(index)},${mode === 'rain' ? baseline : y(value)}`)
-    .join(' ');
+  const primaryCoordinates = primaryValues.map((value, index) => [x(index), y(value)] as const);
+  const secondaryScaleMaximum =
+    mode === 'rain' ? Math.max(3, ...secondaryValues) : Math.max(0.2, ...secondaryValues);
+  const secondaryCoordinates = secondaryValues.map(
+    (value, index) =>
+      [
+        x(index),
+        mode === 'rain' ? baseline - (value / secondaryScaleMaximum) * (baseline - top) : y(value),
+      ] as const,
+  );
   const ticks = Array.from({ length: 5 }, (_, index) => {
     const value = minValue + ((maxValue - minValue) * index) / 4;
     return {
@@ -410,10 +464,11 @@ function chartGeometry(hours: readonly HourlyWeatherForecast[], mode: WeatherMod
     };
   });
   return {
+    areaPath: `${smoothPath(primaryCoordinates)} L ${x(hours.length - 1)} ${baseline} L ${x(0)} ${baseline} Z`,
     baseline,
-    primaryPoints,
+    primaryPath: smoothPath(primaryCoordinates),
     primaryY: (index: number) => y(primaryValues[index] ?? minValue),
-    secondaryPoints,
+    secondaryPath: smoothPath(secondaryCoordinates),
     ticks,
     x,
     y,
@@ -427,12 +482,31 @@ function conditionIcon(condition: WeatherCondition): IconName {
   return 'cloud';
 }
 
-function conditionGlyph(condition: WeatherCondition, time: string): string {
-  const hour = Number(time.slice(11, 13));
-  if (condition === 'rain') return '☂';
-  if (condition === 'cloudy') return '●';
-  if (condition === 'partly-cloudy') return hour >= 18 || hour < 6 ? '☾' : '◒';
-  return hour >= 18 || hour < 6 ? '☾' : '☀';
+function hourlyConditionIcon(hour: HourlyWeatherForecast): IconName {
+  const localHour = Number(hour.time.slice(11, 13));
+  if (hour.condition === 'rain') return 'cloud-rain';
+  if (localHour >= 19 || localHour < 6) return 'moon';
+  return conditionIcon(hour.condition);
+}
+
+function hourlyMarkerTone(hour: HourlyWeatherForecast): 'day' | 'night' | 'rain' | 'cloud' {
+  const localHour = Number(hour.time.slice(11, 13));
+  if (hour.condition === 'rain') return 'rain';
+  if (localHour >= 19 || localHour < 6) return 'night';
+  if (hour.condition === 'cloudy') return 'cloud';
+  return 'day';
+}
+
+function smoothPath(points: readonly (readonly [number, number])[]): string {
+  const first = points[0];
+  if (first === undefined) return '';
+  if (points.length === 1) return `M ${first[0]} ${first[1]}`;
+
+  return points.slice(1).reduce((path, point, index) => {
+    const previous = points[index]!;
+    const midpointX = (previous[0] + point[0]) / 2;
+    return `${path} C ${midpointX} ${previous[1]}, ${midpointX} ${point[1]}, ${point[0]} ${point[1]}`;
+  }, `M ${first[0]} ${first[1]}`);
 }
 
 function selectedPrimaryValue(hour: HourlyWeatherForecast, mode: WeatherMode): string {

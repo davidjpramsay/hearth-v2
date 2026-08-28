@@ -135,9 +135,9 @@ summaries and stable family-safe API errors. The implemented routes are:
 - adult-only `POST .../:occurrenceId/reassignments` with
   `{ requestId, reason, assigneeId }`
 - `GET /api/v1/households/:id/events` as a same-origin Server-Sent Events invalidation stream
-- the versioned native Reminders endpoints, schemas and retry rules in
-  `REMINDERS_COMPANION_CONTRACT.md`, including approval-gated pairing, a distinct
-  `HearthReminderSource` credential, full-snapshot replacement and ordinary household reads
+- household-owned reminder reads and authenticated create, update, completion and reversal
+  commands; the retired native bridge contract remains reference-only under
+  `hearth/archive/apple-reminders-bridge/`
 - `GET /api/v1/households/:id/admin` and typed household/member setup commands
 - adult-only `GET /api/v1/households/:id/activity?limit=` for the newest 1–100 safe audit
   summaries; the companion currently requests 50 and presents family-readable filters without

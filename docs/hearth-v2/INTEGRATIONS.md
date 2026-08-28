@@ -231,7 +231,7 @@ request. If a refresh fails, the last safe response remains available as stale; 
 exists, Today shows **Forecast unavailable**, Week omits the cue and Weather offers setup without
 affecting calendars or household data. Household-facing contracts contain only the useful forecast
 and the saved family-readable location label, never coordinates. Open-Meteo attribution and link
-remain visible at the end of the dedicated Weather surface and in adult settings, not on Today.
+remain visible in adult Weather location settings, not on household-facing Weather or Today.
 
 Open-Meteo's official forecast contract documents the selected `current`, `hourly`, `daily`,
 `timezone`, `forecast_hours`, `past_days` and `forecast_days` fields at

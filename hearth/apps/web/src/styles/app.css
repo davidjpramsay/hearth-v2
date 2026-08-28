@@ -1389,6 +1389,12 @@
   background: var(--warm-ivory);
   box-shadow: 0 0 48px rgb(53 42 48 / 10%);
 }
+.companion-main {
+  min-width: 0;
+}
+.admin-desktop-rail {
+  display: none;
+}
 .companion-content {
   min-height: calc(100dvh - 58px);
   padding-bottom: 90px;
@@ -1427,6 +1433,160 @@
   color: var(--plum);
   background: var(--plum-soft);
   font-weight: 720;
+}
+
+@media (min-width: 901px) {
+  .companion-shell--admin {
+    width: min(100%, 1440px);
+    display: grid;
+    grid-template-columns: 238px minmax(0, 1fr);
+    align-items: start;
+    background: var(--warm-ivory);
+  }
+  .companion-shell--admin .admin-desktop-rail {
+    height: 100dvh;
+    min-height: 0;
+    padding: 16px 15px 14px;
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border-right: 1px solid var(--hairline);
+    background: var(--surface);
+    scrollbar-width: thin;
+  }
+  .admin-desktop-brand {
+    min-height: 48px;
+    padding: 4px 10px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    text-decoration: none;
+  }
+  .admin-desktop-brand img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+  }
+  .admin-desktop-brand span,
+  .admin-desktop-brand strong,
+  .admin-desktop-brand small {
+    display: block;
+  }
+  .admin-desktop-brand strong {
+    font-size: 20px;
+    line-height: 1.05;
+  }
+  .admin-desktop-brand small {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .admin-desktop-nav {
+    margin-top: 16px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .admin-desktop-nav section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .admin-desktop-nav h2 {
+    margin: 0 10px 3px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 780;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .admin-desktop-link,
+  .admin-desktop-exit {
+    min-height: 40px;
+    padding: 0 11px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 680;
+    text-decoration: none;
+  }
+  .admin-desktop-link svg,
+  .admin-desktop-exit svg {
+    width: 21px;
+    height: 21px;
+    flex: 0 0 auto;
+  }
+  .admin-desktop-link:hover,
+  .admin-desktop-exit:hover {
+    color: var(--ink);
+    background: var(--surface-raised);
+  }
+  .admin-desktop-link:focus-visible,
+  .admin-desktop-exit:focus-visible,
+  .admin-desktop-brand:focus-visible {
+    outline: 3px solid var(--sky);
+    outline-offset: 1px;
+  }
+  .admin-desktop-link--active {
+    color: var(--eucalyptus);
+    background: var(--eucalyptus-soft);
+  }
+  .admin-desktop-exit {
+    margin-top: 10px;
+    border-top: 1px solid var(--hairline);
+    border-radius: 0;
+    padding-top: 14px;
+  }
+  .companion-shell--admin .companion-content {
+    min-height: calc(100dvh - 58px);
+    padding-bottom: 0;
+  }
+  .companion-shell--admin .phone-tabs {
+    display: none;
+  }
+  .companion-shell--admin .admin-home,
+  .companion-shell--admin .admin-page {
+    width: min(100%, 1040px);
+    margin: 0 auto;
+    padding: 36px 42px 54px;
+  }
+  .companion-shell--admin .admin-home__topbar {
+    justify-content: flex-end;
+  }
+  .companion-shell--admin .admin-home__topbar > img {
+    display: none;
+  }
+  .companion-shell--admin .admin-home__title {
+    margin-top: 10px;
+  }
+  .companion-shell--admin .admin-setting-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 22px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1120px) {
+  .companion-shell--admin {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  .companion-shell--admin .admin-home,
+  .companion-shell--admin .admin-page {
+    padding-right: 28px;
+    padding-left: 28px;
+  }
 }
 
 .admin-home,
@@ -5710,6 +5870,14 @@
 :root[data-theme='dark'] .pocket-money-admin-card header span,
 :root[data-theme='dark'] .pocket-payment__summary span {
   color: var(--muted);
+}
+:root[data-theme='dark'] .pair-instructions p,
+:root[data-theme='dark'] .phase-note p,
+:root[data-theme='dark'] .device-row > div > span {
+  color: var(--muted);
+}
+:root[data-theme='dark'] .chore-management-state {
+  color: var(--ink);
 }
 :root[data-theme='dark'] .connection-row--action:hover,
 :root[data-theme='dark'] .connection-row--action:focus-visible {

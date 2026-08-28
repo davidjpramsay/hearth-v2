@@ -62,6 +62,7 @@ test('weather location supports search, advanced coordinates, test, save and rel
 
   await expect(page.getByLabel('Timezone')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Weather location' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open-Meteo' })).toBeVisible();
   await page.getByLabel('Search suburb or postcode').fill('6171');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await page.getByRole('button', { name: /Baldivis, WA/ }).click();

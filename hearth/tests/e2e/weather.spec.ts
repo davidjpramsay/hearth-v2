@@ -25,10 +25,36 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   await expect(page.locator('.weather-day')).toHaveCount(7);
   await expect(page.locator('.weather-day').first()).toContainText('11°');
   await expect(page.locator('.weather-day').first()).toContainText('21°');
+  await expect(page.getByText('Weather data by')).toHaveCount(0);
+  await expect(page.locator('.weather-week__rows')).toHaveCSS('border-top-width', '0px');
+  await expect(page.locator('.weather-day--today')).toHaveCSS('border-top-width', '0px');
 
   const chart = page.locator('[data-focus-id="weather-chart"]');
+  await expect(page.locator('[data-focus-id="weather-mode-temperature"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(chart).toBeFocused();
   await expect(page.locator('.weather-selected-hour')).toContainText('8 am');
+
+  const firstHourAlignment = await page.evaluate(() => {
+    const marker = document.querySelector('.weather-chart__marker');
+    const selectedLine = document.querySelector('.weather-chart__selected-line');
+    const firstHour = document.querySelector('.weather-chart__hour');
+    if (marker === null || selectedLine === null || firstHour === null) return null;
+
+    const centre = (element: Element) => {
+      const bounds = element.getBoundingClientRect();
+      return (bounds.left + bounds.right) / 2;
+    };
+
+    return {
+      markerToHour: Math.abs(centre(marker) - centre(firstHour)),
+      markerToSelection: Math.abs(centre(marker) - centre(selectedLine)),
+    };
+  });
+  expect(firstHourAlignment).not.toBeNull();
+  expect(firstHourAlignment?.markerToHour).toBeLessThanOrEqual(1);
+  expect(firstHourAlignment?.markerToSelection).toBeLessThanOrEqual(1);
+
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.weather-selected-hour')).toContainText('9 am');
   await page.keyboard.press('ArrowDown');
@@ -47,6 +73,12 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   await expect(page.locator('.weather-selected-hour')).toContainText('8 am');
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-weather"]')).toBeFocused();
+
+  await page.getByRole('button', { name: 'Temperature', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Temperature', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 
   expect(
     await page.evaluate(() => {
@@ -115,6 +147,7 @@ test('@visual Weather stacks without page overflow on phone', async ({ page }) =
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   ).toBe(true);
+  await expect(page.locator('.weather-chart')).toHaveCSS('scrollbar-width', 'none');
 
   await captureEvidence(page, {
     path: resolve(evidence, 'weather-phone-portrait.png'),

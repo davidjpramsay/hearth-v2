@@ -140,8 +140,9 @@ Event cards must express start time, title, owner/source and conflicts. Location
   probability, low, range bar and high; Today also carries a current-temperature marker.
 - Phone presentation stacks naturally without page-level horizontal overflow. A wide chart may
   scroll within its own bounded region, with explicit previous/next-hour controls.
-- A stale forecast remains visible with a quiet age/status cue. Open-Meteo attribution sits at the
-  end of the Weather surface rather than on Today.
+- A stale or offline cached forecast remains visible with one quiet status cue. Provider
+  attribution stays in the adult Weather location settings so household-facing Weather and Today
+  remain clean.
 
 The Calendar view switch is available on both television and phone. Week,
 Month and Agenda keep their own stable URLs beneath `/calendar`; the previous
@@ -354,6 +355,8 @@ The same web application may present a phone-oriented shell for:
 - managing named adult passkeys and one-time local recovery
 
 The companion is responsive, not a shrunken TV canvas. Shared domain components are encouraged; television navigation chrome need not be reused on mobile.
+At desktop widths, administration uses a persistent settings rail and a wider content canvas. Phone
+widths retain the compact bottom navigation and single-column flow.
 
 Pocket-money administration separates standing **Weekly settings** from **Weekly progress**. Each
 child's amount and payday are configured once and repeat until changed. A labelled **Week to review**

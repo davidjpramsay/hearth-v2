@@ -87,6 +87,40 @@ test('Hearth settings groups household tasks and keeps remote movement continuou
   await expect(page.locator('[data-focus-id="admin-household"]')).toBeFocused();
 });
 
+test('desktop admin uses a full workspace while phone admin stays compact', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/admin/chore-day');
+
+  await expect(page.getByRole('heading', { name: 'Today’s chores' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Administration' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Planning', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await expect(page.locator('.companion-shell--admin .phone-tabs')).toBeHidden();
+
+  const desktopPage = await page.locator('.admin-page').boundingBox();
+  expect(desktopPage?.width).toBeGreaterThan(800);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+
+  await page.getByRole('link', { name: 'Photos', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/photos$/);
+  await expect(page.getByRole('heading', { name: 'Manage photos' })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/chore-day');
+  await expect(page.getByRole('complementary', { name: 'Administration' })).toBeHidden();
+  await expect(page.locator('.companion-shell--admin .phone-tabs')).toBeVisible();
+
+  const phonePage = await page.locator('.admin-page').boundingBox();
+  expect(phonePage?.width).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
 test('Adult access explains private passkeys and recovery without exposing demo controls', async ({
   page,
 }) => {

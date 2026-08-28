@@ -377,7 +377,7 @@
   background: var(--sky);
 }
 .month-cell--outside {
-  color: #707573;
+  color: var(--muted);
   background: rgb(240 237 229 / 35%);
 }
 .month-events {

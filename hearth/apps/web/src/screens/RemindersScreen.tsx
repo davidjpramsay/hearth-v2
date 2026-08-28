@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import './RemindersScreen.css';
 
-import type { HearthReminder } from '@hearth/shared';
+import type { DemoScenario, HearthReminder } from '@hearth/shared';
 
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -14,11 +14,18 @@ import {
   useSetReminderCompletion,
   useUpdateReminder,
 } from '../hooks/useReminderQueries';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
 
 type ReminderFilter = 'open' | 'all';
 
-export function RemindersScreen({ preparing }: { preparing: boolean }) {
+export function RemindersScreen({
+  preparing,
+  scenario,
+}: {
+  preparing: boolean;
+  scenario: DemoScenario | 'offline';
+}) {
   const [filter, setFilter] = useState<ReminderFilter>('open');
   const [title, setTitle] = useState('');
   const [dueLocalDate, setDueLocalDate] = useState('');
@@ -28,6 +35,7 @@ export function RemindersScreen({ preparing }: { preparing: boolean }) {
   const completion = useSetReminderCompletion();
   const deleteReminder = useDeleteReminder();
   const runtime = useHearthRuntime();
+  const online = useOnlineStatus(scenario === 'offline');
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
@@ -94,6 +102,10 @@ export function RemindersScreen({ preparing }: { preparing: boolean }) {
           </div>
         }
       />
+
+      {!online ? (
+        <StatusBanner kind="offline">Offline · Showing saved reminders.</StatusBanner>
+      ) : null}
 
       <form className="reminder-create" onSubmit={submit}>
         <label>

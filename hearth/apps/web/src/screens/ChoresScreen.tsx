@@ -12,19 +12,21 @@ import type {
 import { Avatar } from '../components/Avatar';
 import { ChoreRow } from '../components/ChoreRow';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { EmptyState, FailureState, LoadingState } from '../components/Status';
+import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useChoreMutation } from '../hooks/useChoreMutation';
 import { useChoresQuery } from '../hooks/useChoreQueries';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { usePocketMoneyQuery } from '../hooks/usePocketMoneyQuery';
 
 export function ChoresScreen({
-  scenario: _scenario,
+  scenario,
   preparing,
 }: {
   scenario: DemoScenario | 'offline';
   preparing: boolean;
 }) {
   const query = useChoresQuery(!preparing);
+  const online = useOnlineStatus(scenario === 'offline');
   const pocketMoney = usePocketMoneyQuery(undefined, undefined, !preparing);
   const mutation = useChoreMutation();
   if (preparing || query.isPending) return <LoadingState />;
@@ -56,6 +58,7 @@ export function ChoresScreen({
             : `${chores.completedCount} of ${chores.totalCount} complete`
         }
       />
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved chores.</StatusBanner> : null}
       {chores.totalCount === 0 ? null : (
         <div
           className="progress-track"

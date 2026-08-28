@@ -23,6 +23,11 @@ A change is complete only when:
 - Resume after overnight television standby restores Hearth without manual process recovery.
 - Every primary screen is reachable with D-pad and Back.
 - Focus never disappears, becomes trapped or lands behind an overlay.
+- Every current household and admin route remains horizontally contained at television and phone
+  sizes in both themes; household television routes retain a visible D-pad focus target and admin
+  forms retain ordinary keyboard focus.
+- At desktop widths, administration presents a persistent settings rail and a wider content canvas;
+  at phone widths the rail is absent and the existing bottom navigation remains available.
 - Resuming Hearth after normal Google TV app switching restores the previous Hearth screen or a documented safe default.
 - Demo/test dates are deterministic, while private mode derives today, Monday
   week start and current month from the configured household timezone.

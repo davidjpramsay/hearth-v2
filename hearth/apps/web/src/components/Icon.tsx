@@ -14,6 +14,7 @@ export type IconName =
   | 'cloud-rain'
   | 'cloud-sun'
   | 'cloud-off'
+  | 'droplet'
   | 'eye'
   | 'eye-off'
   | 'home'
@@ -21,6 +22,7 @@ export type IconName =
   | 'leaf'
   | 'link'
   | 'list'
+  | 'location'
   | 'meal'
   | 'mic'
   | 'moon'
@@ -39,7 +41,8 @@ export type IconName =
   | 'trash'
   | 'users'
   | 'wallet'
-  | 'warning';
+  | 'warning'
+  | 'wind';
 
 const paths: Record<IconName, React.ReactNode> = {
   bell: (
@@ -90,6 +93,7 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M5.8 5.8A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 3.8-6.9M8.7 3.6A7 7 0 0 1 19 9.3" />
     </>
   ),
+  droplet: <path d="M12 2.5S5.5 9.4 5.5 14a6.5 6.5 0 0 0 13 0C18.5 9.4 12 2.5 12 2.5Z" />,
   eye: (
     <>
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
@@ -132,6 +136,12 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="M8 6h13M8 12h13M8 18h13" />
       <path d="M3 6h.01M3 12h.01M3 18h.01" />
+    </>
+  ),
+  location: (
+    <>
+      <path d="m21 3-8.1 18-2.2-7.7L3 10.9 21 3Z" />
+      <path d="m10.7 13.3 4-4" />
     </>
   ),
   meal: (
@@ -227,6 +237,13 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="M10.3 3.4 2.2 18a2 2 0 0 0 1.8 3h16a2 2 0 0 0 1.8-3L13.7 3.4a2 2 0 0 0-3.4 0Z" />
       <path d="M12 9v4M12 17h.01" />
+    </>
+  ),
+  wind: (
+    <>
+      <path d="M3 8h11.5a3 3 0 1 0-2.1-5.1" />
+      <path d="M3 12h16a3 3 0 1 1-2.1 5.1" />
+      <path d="M3 16h7" />
     </>
   ),
 };

@@ -146,7 +146,10 @@ export function App() {
           />
           <Route path="/week" element={<LegacyCalendarRedirect view="week" />} />
           <Route path="/month" element={<LegacyCalendarRedirect view="month" />} />
-          <Route path="/weather" element={<WeatherScreen preparing={preparing} />} />
+          <Route
+            path="/weather"
+            element={<WeatherScreen preparing={preparing} scenario={scenario} />}
+          />
           <Route
             path="/chores"
             element={<ChoresScreen preparing={preparing} scenario={scenario} />}
@@ -163,7 +166,10 @@ export function App() {
             path="/photos"
             element={<PhotosScreen preparing={preparing} scenario={scenario} />}
           />
-          <Route path="/reminders" element={<RemindersScreen preparing={preparing} />} />
+          <Route
+            path="/reminders"
+            element={<RemindersScreen preparing={preparing} scenario={scenario} />}
+          />
           <Route path="/home" element={<HomeScreen preparing={preparing} scenario={scenario} />} />
           <Route path="/more" element={<MoreScreen />} />
           <Route path="/appearance" element={<AppearanceSettingsScreen />} />

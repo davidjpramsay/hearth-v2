@@ -7,12 +7,13 @@ import type { DemoScenario } from '@hearth/shared';
 
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { FailureState, LoadingState } from '../components/Status';
+import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useMealPlanQuery } from '../hooks/useMealQueries';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
 
 export function MealsScreen({
-  scenario: _scenario,
+  scenario,
   preparing,
 }: {
   scenario: DemoScenario | 'offline';
@@ -22,6 +23,7 @@ export function MealsScreen({
   const [startDate, setStartDate] = useState(() => weekStart);
   const [selectedDate, setSelectedDate] = useState(() => weekStart);
   const plan = useMealPlanQuery(startDate, !preparing);
+  const online = useOnlineStatus(scenario === 'offline');
 
   if (preparing || plan.isPending) return <LoadingState />;
   if (plan.data === undefined) return <FailureState onRetry={() => void plan.refetch()} />;
@@ -42,6 +44,7 @@ export function MealsScreen({
         title="Meals"
         meta={plan.data.displayRange}
       />
+      {!online ? <StatusBanner kind="offline">Offline · Showing saved meals.</StatusBanner> : null}
       <section className="tonight-band" aria-labelledby="tonight-heading">
         <Icon name="meal" />
         <div>

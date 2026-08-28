@@ -1281,21 +1281,20 @@ Official platform references:
   depends on finding the gallery or a generic household row, and Today controls remain legible at the
   390-pixel companion width. Routes, permissions and the underlying photo/Today contracts do not change.
 
-## D-076 — Today summarises all open Apple reminders
+## D-076 — Today summarises all open reminders
 
 - Date: 2026-08-27
 - Status: superseded by D-078; ordering retained for Hearth-owned reminders
 - Context: Most household reminders have no due date. Restricting the Today card to reminders due on
   the household local date therefore produced **Nothing due today** while useful open reminders were
   present on the dedicated page.
-- Choice: Keep the Today module bounded, read-only and linked to Reminders, but derive it from every
-  incomplete projected reminder. Order the preview as overdue, due today, no due date and future;
+- Choice: Keep the Today module bounded and linked to Reminders, but derive it from every incomplete
+  Hearth reminder. Order the preview as overdue, due today, no due date and future;
   sort deterministically within each group. Return the total open count and at most three preview
   items. Render the count and first title with an overflow summary, and reserve **No open reminders**
   for a genuinely empty open projection.
 - Consequence: Undated reminders remain visible at a glance without turning Today into a second task
-  list. The dedicated page remains the complete read-only destination, stale-cache and source
-  visibility behaviour do not change, and Apple remains authoritative.
+  list. The dedicated page remains the complete destination and Hearth remains authoritative.
 
 ## D-077 — Weather uses one comparative hourly graph and weekly scale
 
@@ -1309,7 +1308,8 @@ Official platform references:
   one graph with Temperature, Rain and Wind modes, D-pad hour/mode navigation and touch controls.
   Compare seven daily temperature ranges on one weekly domain and use the same approach in compact
   Calendar Week summaries. Refresh the server cache every five minutes, retain stale data on failure
-  and keep provider attribution at the end of Weather rather than on Today.
+  and keep provider attribution in adult Weather location settings rather than on household-facing
+  Weather or Today.
 - Consequence: Hearth gains useful forecast depth without another credential, provider or competing
   graph. The browser never receives coordinates, Week remains glanceable, and outage behaviour stays
   consistent with the appliance model. The visual hierarchy is original Hearth work rather than a
