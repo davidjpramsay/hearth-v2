@@ -171,8 +171,11 @@ test('dark phone Connections stays readable while a connection is focused', asyn
   expect(focusedStyles).toEqual({
     background: 'rgb(43, 52, 48)',
     title: 'rgb(241, 238, 231)',
-    badge: 'rgb(182, 191, 187)',
+    badge: 'rgb(241, 238, 231)',
   });
+
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="connection-home-assistant"]')).toBeFocused();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(

@@ -212,7 +212,7 @@
   font-size: 18px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .lists-screen .screen-header {
     gap: 12px;
   }
@@ -349,7 +349,7 @@
   }
 }
 
-@media (min-width: 600px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 1199px) {
   .phone-list-add {
     grid-template-columns: minmax(0, 1fr) 104px 94px;
   }

@@ -190,7 +190,7 @@
   text-decoration: line-through;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .reminders-list-grid,
   .reminder-create {
     grid-template-columns: minmax(0, 1fr);

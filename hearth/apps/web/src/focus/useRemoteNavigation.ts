@@ -8,6 +8,7 @@ import {
   nextFocusId,
   type FocusDirection,
 } from './focusGraph';
+import { COMPANION_MAX_WIDTH } from '../layout/viewportQueries';
 import { isNativeBackMessage, requestNativeExit } from '../native/nativeBridge';
 
 const arrowDirection: Partial<Record<string, FocusDirection>> = {
@@ -52,7 +53,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     }
     const fallbackId = `nav-${location.pathname.slice(1) || 'today'}`;
     const target = focusMemory.current.recall(location.pathname, defaultFocusId);
-    const scrollOnEntry = routeChanged || window.innerWidth > 900;
+    const scrollOnEntry = routeChanged || window.innerWidth > COMPANION_MAX_WIDTH;
     // Route content has committed by the time this layout effect runs. Move focus
     // before paint so a fast follow-up D-pad key cannot act on the old rail item.
     if (routeChanged) focusById(target);

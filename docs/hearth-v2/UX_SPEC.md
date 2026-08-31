@@ -354,9 +354,11 @@ The same web application may present a phone-oriented shell for:
 - configuring Home Assistant actions
 - managing named adult passkeys and one-time local recovery
 
-The companion is responsive, not a shrunken TV canvas. Shared domain components are encouraged; television navigation chrome need not be reused on mobile.
-At desktop widths, administration uses a persistent settings rail and a wider content canvas. Phone
-widths retain the compact bottom navigation and single-column flow.
+The companion is responsive, not a shrunken TV canvas. Phone, tablet and television use the same
+components and data, with deliberate responsive compositions rather than duplicated screens. Tablet
+household views retain companion navigation and use one or two content columns according to
+orientation. At desktop widths, administration uses a persistent settings rail and a wider content
+canvas. Phone widths retain the compact bottom navigation and single-column flow.
 
 Pocket-money administration separates standing **Weekly settings** from **Weekly progress**. Each
 child's amount and payday are configured once and repeat until changed. A labelled **Week to review**
@@ -408,6 +410,8 @@ At minimum inspect:
 - 3840×2160 at target TV scale
 - 1920×1080
 - 1366×768 for constrained testing
+- 820×1180 iPad portrait
+- 1180×820 iPad landscape
 - 390×844 iPhone portrait
 - 844×390 iPhone landscape
 

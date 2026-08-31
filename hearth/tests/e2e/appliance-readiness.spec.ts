@@ -39,6 +39,10 @@ const adminRoutes = [
 ] as const;
 
 const themes = ['light', 'dark'] as const;
+const tabletViewports = [
+  { name: 'portrait', width: 820, height: 1180, theme: 'light' },
+  { name: 'landscape', width: 1180, height: 820, theme: 'dark' },
+] as const;
 
 test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
@@ -74,6 +78,27 @@ for (const route of householdRoutes) {
   }
 }
 
+for (const route of householdRoutes) {
+  for (const viewport of tabletViewports) {
+    test(`appliance tablet ${viewport.name} route ${route.path} is contained and companion-ready`, async ({
+      page,
+    }) => {
+      await prepareRoute(page, route.path, route.title, viewport.theme, viewport);
+      await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
+      await expect(page.locator('.tv-rail')).toBeHidden();
+      await page.keyboard.press('Tab');
+      expect(
+        await page.evaluate(
+          () =>
+            document.activeElement instanceof HTMLElement &&
+            document.activeElement !== document.body,
+        ),
+      ).toBe(true);
+      await expectNoSeriousAccessibilityViolations(page);
+    });
+  }
+}
+
 for (const route of adminRoutes) {
   for (const theme of themes) {
     test(`admin phone route ${route.path} is ${theme}, accessible and horizontally contained`, async ({
@@ -87,6 +112,31 @@ for (const route of adminRoutes) {
       page,
     }) => {
       await prepareRoute(page, route.path, route.title, theme, { width: 1920, height: 1080 });
+      expect(
+        await page.evaluate(
+          () =>
+            document.activeElement instanceof HTMLElement &&
+            document.activeElement !== document.body,
+        ),
+      ).toBe(true);
+      await expectNoSeriousAccessibilityViolations(page);
+    });
+  }
+}
+
+for (const route of adminRoutes) {
+  for (const viewport of tabletViewports) {
+    test(`admin tablet ${viewport.name} route ${route.path} is contained and keyboard-ready`, async ({
+      page,
+    }) => {
+      await prepareRoute(page, route.path, route.title, viewport.theme, viewport);
+      if (viewport.name === 'landscape') {
+        await expect(page.locator('.admin-desktop-rail')).toBeVisible();
+        await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeHidden();
+      } else {
+        await expect(page.locator('.admin-desktop-rail')).toBeHidden();
+        await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
+      }
       expect(
         await page.evaluate(
           () =>

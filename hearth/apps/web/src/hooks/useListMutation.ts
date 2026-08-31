@@ -6,6 +6,7 @@ import type { HouseholdLists, ListItem, ListItemCommandResult } from '@hearth/sh
 import { createRequestId, HearthApiError } from '../api/core';
 import { listsApi as hearthApi } from '../api/lists';
 import { queryKeys } from '../api/queryKeys';
+import { COMPANION_QUERY } from '../layout/viewportQueries';
 
 interface ListMutationVariables {
   item: ListItem;
@@ -26,7 +27,7 @@ export function useListMutation() {
     MutationContext
   >({
     mutationFn: ({ item }) => {
-      const source = window.matchMedia('(max-width: 900px)').matches ? 'companion' : 'tv';
+      const source = window.matchMedia(COMPANION_QUERY).matches ? 'companion' : 'tv';
       return item.checked
         ? hearthApi.undoListItem(item.id, createRequestId('list_undo'), source)
         : hearthApi.completeListItem(item.id, createRequestId('list_complete'), source);

@@ -527,7 +527,7 @@
   transform: translate(-50%, -50%);
 }
 
-@media (max-width: 1500px) and (min-width: 901px) {
+@media (max-width: 1500px) and (min-width: 1200px) {
   .weather-screen {
     gap: 9px;
     padding-top: 30px;
@@ -635,7 +635,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .weather-screen {
     gap: 14px;
     overflow: visible;

@@ -495,6 +495,9 @@ credential hashes. Reminders now belong to Hearth and require no companion app.
 
 ## Deferred opportunities
 
+- Google Calendar OAuth support, read-only first, while retaining one active calendar account per
+  household; support simultaneous provider accounts only after real household demand justifies the
+  additional setup, credential and migration complexity
 - General conversational agent over the allowlisted command layer
 - Dedicated local-AI mini-PC
 - Full native iOS feature parity and retirement of the responsive companion

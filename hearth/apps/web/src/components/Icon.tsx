@@ -179,8 +179,10 @@ const paths: Record<IconName, React.ReactNode> = {
   ),
   refresh: (
     <>
-      <path d="M20 7h-6V1" />
-      <path d="M20 7a9 9 0 1 0 1 8" />
+      <path d="M20 11a8 8 0 0 0-14.9-4L3 10" />
+      <path d="M3 4v6h6" />
+      <path d="M4 13a8 8 0 0 0 14.9 4l2.1-3" />
+      <path d="M21 20v-6h-6" />
     </>
   ),
   shield: (

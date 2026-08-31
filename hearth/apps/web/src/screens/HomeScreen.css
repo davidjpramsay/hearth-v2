@@ -240,7 +240,7 @@
   border-color: var(--hairline);
 }
 
-@media (max-width: 1500px) and (min-width: 901px) {
+@media (max-width: 1500px) and (min-width: 1200px) {
   .home-layout {
     grid-template-columns: minmax(0, 1fr) minmax(430px, 0.94fr);
     gap: 30px;
@@ -287,7 +287,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .home-screen .screen-header {
     margin-bottom: 18px;
   }
@@ -400,7 +400,7 @@
   }
 }
 
-@media (max-width: 900px) and (orientation: landscape) {
+@media (max-width: 1199px) and (orientation: landscape) {
   .home-screen .screen-header {
     min-height: 58px;
     margin-bottom: 10px;

@@ -23,7 +23,11 @@ export function ConnectionsSettingsScreen() {
         <Link
           className="connection-row connection-row--action focusable"
           data-focus-entry="true"
+          data-focus-down="connection-home-assistant"
           data-focus-id="connection-calendar"
+          data-focus-left="connection-calendar"
+          data-focus-right="connection-calendar"
+          data-focus-up="connection-calendar"
           to="/admin/connections/calendar"
         >
           <span className="admin-setting-row__icon">
@@ -44,7 +48,11 @@ export function ConnectionsSettingsScreen() {
         </Link>
         <Link
           className="connection-row connection-row--action focusable"
+          data-focus-down="connection-home-assistant"
           data-focus-id="connection-home-assistant"
+          data-focus-left="connection-home-assistant"
+          data-focus-right="connection-home-assistant"
+          data-focus-up="connection-calendar"
           to="/admin/connections/home-assistant"
         >
           <span className="admin-setting-row__icon">

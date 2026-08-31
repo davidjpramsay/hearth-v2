@@ -201,7 +201,7 @@
   background: var(--eucalyptus-soft);
 }
 
-@media (max-width: 1500px) and (min-width: 901px) {
+@media (max-width: 1500px) and (min-width: 1200px) {
   .photos-rotation-action,
   .photos-ambient-action {
     min-height: 62px;
@@ -222,7 +222,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .photos-screen {
     padding-bottom: 102px;
   }
@@ -322,7 +322,7 @@
   }
 }
 
-@media (max-width: 900px) and (orientation: landscape) {
+@media (max-width: 1199px) and (orientation: landscape) {
   .photos-screen {
     padding-bottom: 88px;
   }

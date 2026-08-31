@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
+import { COMPANION_QUERY } from './viewportQueries';
+
 export type TodayPhotoOrientation = 'landscape' | 'none' | 'portrait' | 'square';
 export type TodayViewportClass = 'companion' | 'compact-tv' | 'full-tv';
 export type TodayRailCapacity = 3 | 4 | 5;
 
-const COMPANION_QUERY = '(max-width: 900px)';
-const FULL_TV_QUERY = '(min-width: 901px) and (min-height: 900px)';
+const FULL_TV_QUERY = '(min-width: 1200px) and (min-height: 900px)';
 
 export function getTodayRailCapacity({
   photoOrientation,

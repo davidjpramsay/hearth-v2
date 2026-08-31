@@ -24,6 +24,7 @@ import { usePhotoRotationPreference } from '../hooks/usePhotoRotationPreference'
 import { usePhotosQuery } from '../hooks/usePhotoQueries';
 import { useHouseholdClock } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { COMPANION_LANDSCAPE_QUERY } from '../layout/viewportQueries';
 import {
   arrangePhotoCollage,
   buildPhotoMosaic,
@@ -55,7 +56,7 @@ export function PhotosScreen({
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
   const [compactLandscape, setCompactLandscape] = useState(
-    () => window.matchMedia('(max-width: 900px) and (orientation: landscape)').matches,
+    () => window.matchMedia(COMPANION_LANDSCAPE_QUERY).matches,
   );
   const wasAmbient = useRef(false);
   const pendingAutomaticFocusId = useRef<string | null>(null);
@@ -101,7 +102,7 @@ export function PhotosScreen({
   }, []);
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 900px) and (orientation: landscape)');
+    const media = window.matchMedia(COMPANION_LANDSCAPE_QUERY);
     const onChange = (event: MediaQueryListEvent) => setCompactLandscape(event.matches);
     media.addEventListener('change', onChange);
     return () => media.removeEventListener('change', onChange);

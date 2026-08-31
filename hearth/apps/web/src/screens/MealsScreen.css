@@ -149,7 +149,7 @@
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .meals-screen .screen-header__actions {
     margin-left: auto;
   }
@@ -239,7 +239,7 @@
   }
 }
 
-@media (max-width: 900px) and (orientation: landscape) {
+@media (max-width: 1199px) and (orientation: landscape) {
   .meals-screen .tonight-band {
     min-height: 92px;
     padding: 10px 16px;

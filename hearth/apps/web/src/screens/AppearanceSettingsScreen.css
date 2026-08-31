@@ -144,7 +144,7 @@
   transform: translateX(21px);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .appearance-settings {
     padding: 16px;
     border-radius: 18px;
