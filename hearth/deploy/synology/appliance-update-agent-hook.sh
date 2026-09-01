@@ -31,6 +31,16 @@ stop_agents() {
   done
 }
 
+agents_running() {
+  for process_dir in /proc/[0-9]*; do
+    test -r "$process_dir/cmdline" || continue
+    if tr '\000' '\n' < "$process_dir/cmdline" | grep -Fx "$agent" >/dev/null; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 ready() {
   running && test -s "$status_file"
 }
@@ -41,27 +51,27 @@ case "${1:-}" in
       exit 0
     fi
     stop_agents
+    attempt=0
+    while agents_running && [ "$attempt" -lt 5 ]; do
+      attempt=$((attempt + 1))
+      sleep 1
+    done
     rm -f -- "$pid_file"
     rm -f -- "$status_file"
     : > "$log_file"
     chmod 0600 "$log_file"
     nohup "$agent" >> "$log_file" 2>&1 </dev/null &
-    printf '%s\n' "$!" > "$pid_file"
-    chmod 0600 "$pid_file"
+    launcher_pid=$!
     attempt=0
-    while [ "$attempt" -lt 5 ]; do
+    while [ "$attempt" -lt 8 ]; do
       if ready; then
         exit 0
-      fi
-      if ! pid_alive; then
-        break
       fi
       attempt=$((attempt + 1))
       sleep 1
     done
-    if pid_alive; then
-      kill "$(sed -n '1p' "$pid_file")" 2>/dev/null || true
-    fi
+    kill "$launcher_pid" 2>/dev/null || true
+    stop_agents
     rm -f -- "$pid_file" "$status_file"
     echo 'Hearth update agent did not become ready.' >&2
     if test -s "$log_file"; then
@@ -71,6 +81,11 @@ case "${1:-}" in
     ;;
   stop)
     stop_agents
+    attempt=0
+    while agents_running && [ "$attempt" -lt 5 ]; do
+      attempt=$((attempt + 1))
+      sleep 1
+    done
     rm -f -- "$pid_file" "$status_file"
     ;;
   status)

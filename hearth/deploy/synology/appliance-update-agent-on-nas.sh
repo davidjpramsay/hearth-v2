@@ -12,6 +12,15 @@ status_file="$control_root/status.json"
 staged_version="$release_root/staged-source-version"
 environment=/usr/local/etc/hearth-v2/.env
 activation_helper=/usr/local/sbin/hearth-v2-activate-staged
+pid_file=/var/run/hearth-v2-update-agent.pid
+
+cleanup() {
+  if [ -r "$pid_file" ] && [ "$(sed -n '1p' "$pid_file")" = "$$" ]; then
+    rm -f -- "$pid_file"
+  fi
+}
+trap 'exit 0' HUP INT TERM
+trap cleanup EXIT
 
 service_uid=$(sed -n 's/^HEARTH_UID=//p' "$environment")
 service_gid=$(sed -n 's/^HEARTH_GID=//p' "$environment")
@@ -61,6 +70,8 @@ write_status() {
 }
 
 refresh_storage
+printf '%s\n' "$$" > "$pid_file"
+chmod 0600 "$pid_file"
 write_status idle 0 'Ready to install a verified update.' null null null null
 
 while :; do
