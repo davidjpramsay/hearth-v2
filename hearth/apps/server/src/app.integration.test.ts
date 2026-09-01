@@ -129,9 +129,13 @@ class DerivativePhotoSourceProvider extends FakePhotoSourceProvider {
 
 describe('Hearth v2 API', () => {
   it('distinguishes process health from database readiness', async () => {
-    const ready = server();
-    expect((await ready.inject({ method: 'GET', url: '/api/v1/health' })).json()).toMatchObject({
+    const ready = buildServer({ logger: false, releaseVersion: 'release-test-123' });
+    servers.push(ready);
+    const health = await ready.inject({ method: 'GET', url: '/api/v1/health' });
+    expect(health.headers['cache-control']).toBe('no-store');
+    expect(health.json()).toMatchObject({
       status: 'ok',
+      version: 'release-test-123',
     });
     expect((await ready.inject({ method: 'GET', url: '/api/v1/readiness' })).json()).toMatchObject({
       status: 'ready',

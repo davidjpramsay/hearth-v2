@@ -414,6 +414,12 @@ Authentication-option issuance is rate-limited per resolved client address, pend
 globally capped, and expired ceremonies/address windows are physically removed before new options
 are created. This keeps the unauthenticated passkey entry point memory-bounded.
 
+The process health response includes the active immutable release identifier and is explicitly
+non-cacheable. Open browser and television WebView clients compare it when their existing realtime
+connection opens or reconnects, once per visible minute, and when the page returns to the foreground
+or network. A changed release causes one full page reload; credentials and paired-device storage are
+untouched. Hidden pages do not run the interval check.
+
 Adult access supports several named adult accounts and several independently revocable passkeys per
 adult. Adding a passkey or issuing a replacement recovery code requires a current administrator
 session; issuing the code additionally re-verifies the current passkey. The 128-bit recovery code

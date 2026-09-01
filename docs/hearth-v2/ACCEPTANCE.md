@@ -494,6 +494,9 @@ not yet complete.
   reports unsupported rather than pretending an update can run.
 - A normal verified release pulls immutable full-commit server and web images before recreating the
   project; it does not install dependencies or compile native code on the Synology.
+- A browser or television WebView already left open detects the replacement release when realtime
+  reconnects, within one visible minute, when it returns to the foreground or when the network
+  returns, then reloads once without clearing its route, passkey session or television pairing.
 - Private image pulls use a separately revocable read-only registry credential that is absent from
   source, Compose, workflow logs and application containers.
 - Home Assistant recovers after Pi restart.

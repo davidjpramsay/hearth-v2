@@ -311,6 +311,7 @@ export interface BuildServerOptions {
   dailyVerseProvider?: DailyVerseProvider;
   weatherLocationRepository?: WeatherLocationRepository;
   runtime?: RuntimeConfiguration;
+  releaseVersion?: string;
   trustProxyHops?: number;
   readiness?: () => Promise<void> | void;
 }
@@ -330,6 +331,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           clock: new FixedClock(DEMO_NOW),
         });
   const demoMode = runtime.mode !== 'private';
+  const releaseVersion =
+    options.releaseVersion?.trim() || process.env.HEARTH_VERSION?.trim() || 'development';
   const repository = options.repository ?? new InMemoryHearthRepository();
   const adminRepository =
     options.adminRepository ?? new InMemoryAdminRepository(() => runtime.clock.now());
@@ -401,14 +404,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const systemOperations =
     options.systemOperations ??
     new InMemorySystemOperations(adminRepository, {
-      version: process.env.HEARTH_VERSION ?? 'development',
+      version: releaseVersion,
       mode: runtime.mode,
       clock: runtime.clock,
     });
   const applianceUpdate =
     options.applianceUpdate ??
     new UnavailableApplianceUpdateService(adminRepository, {
-      installedVersion: process.env.HEARTH_VERSION ?? 'development',
+      installedVersion: releaseVersion,
       clock: runtime.clock,
     });
   const server = Fastify({
@@ -646,12 +649,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
-  server.get('/api/v1/health', async () => ({
-    status: 'ok',
-    database: options.adminRepository === undefined ? 'in-memory-test' : 'sqlite-ready',
-    mode: runtime.mode,
-    now: runtime.clock.now().toISOString(),
-  }));
+  server.get('/api/v1/health', async (_request, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    return {
+      status: 'ok',
+      database: options.adminRepository === undefined ? 'in-memory-test' : 'sqlite-ready',
+      mode: runtime.mode,
+      version: releaseVersion,
+      now: runtime.clock.now().toISOString(),
+    };
+  });
 
   server.get('/api/v1/readiness', async (_request, reply) => {
     try {

@@ -437,6 +437,12 @@ uses `sudo -n` and fails closed with an installation instruction if the fixed he
 policy is missing. The database, managed photos, optional read-only import and integration secrets
 stay in their existing external mounts.
 
+Open Hearth pages compare the non-cacheable health release identifier when their realtime stream
+reconnects, once per visible minute and when the app returns to the foreground or network. A
+successful replacement therefore reloads the page once without clearing a television pairing or
+adult session. The first deployment that introduces this behaviour still needs one ordinary page/app
+restart; later releases are automatic.
+
 `stage-private-release.sh` remains available when an operator deliberately wants to stage without
 restarting. Do not choose Container Manager **Build** for a normal update: production Compose has no
 build context. If GHCR is unavailable and an operator explicitly accepts a slow NAS recovery build,

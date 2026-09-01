@@ -1357,3 +1357,17 @@ Official platform references:
   Release start and terminal result are audited, progress survives the web container restart, and a
   failed release returns to the prior working state. The first live Synology use still requires one
   approved rerun of the root helper installer to install the new fixed agent and Compose mount.
+
+## D-080 — Open clients reload after a verified release changes
+
+- Date: 2026-09-01
+- Status: accepted and implemented
+- Context: A television WebView can remain alive across a Synology container replacement and keep
+  rendering its already loaded JavaScript even though the new non-cached HTML is live.
+- Choice: Expose the non-secret active release identifier from the non-cacheable health route. The
+  shared web client compares it on initial load, realtime connection/reconnection, foreground and
+  network return, with a once-per-minute fallback while visible. It reloads the document once only
+  when the identifier changes; hidden pages do not run the interval check.
+- Consequence: Future server/web patches appear without clearing application data or repairing the
+  television. A temporary outage leaves the current screen intact and retries at the next lifecycle
+  signal or visible interval.

@@ -6,6 +6,7 @@ import { RealtimeEventSchema } from '@hearth/shared';
 import { invalidateCalendarDisplays } from '../api/calendarCache';
 import { queryKeys } from '../api/queryKeys';
 import { getRealtimeUrl } from '../api/realtime';
+import { hostedReleaseMonitor } from '../runtime/hostedRelease';
 
 export function useRealtimeInvalidation(): void {
   const queryClient = useQueryClient();
@@ -13,6 +14,9 @@ export function useRealtimeInvalidation(): void {
   useEffect(() => {
     if (typeof EventSource === 'undefined') return undefined;
     const source = new EventSource(getRealtimeUrl());
+    const connected = () => {
+      void hostedReleaseMonitor.check();
+    };
     const receive = (message: MessageEvent<string>) => {
       let payload: unknown;
       try {
@@ -103,6 +107,7 @@ export function useRealtimeInvalidation(): void {
         queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
       ]);
     };
+    source.addEventListener('open', connected);
     source.addEventListener('chore.changed', receive as EventListener);
     source.addEventListener('household.changed', receive as EventListener);
     source.addEventListener('list.changed', receive as EventListener);
@@ -115,6 +120,9 @@ export function useRealtimeInvalidation(): void {
     source.addEventListener('weather.changed', receive as EventListener);
     source.addEventListener('photos.changed', receive as EventListener);
     source.addEventListener('reminders.changed', receive as EventListener);
-    return () => source.close();
+    return () => {
+      source.removeEventListener('open', connected);
+      source.close();
+    };
   }, [queryClient]);
 }

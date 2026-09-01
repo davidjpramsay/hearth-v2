@@ -6,6 +6,7 @@ import { AppShell } from './components/AppShell';
 import { LoadingState } from './components/Status';
 import { useRemoteNavigation } from './focus/useRemoteNavigation';
 import { useScenario } from './hooks/useScenario';
+import { useHostedReleaseRefresh } from './hooks/useHostedReleaseRefresh';
 import { useRealtimeInvalidation } from './hooks/useRealtimeInvalidation';
 import { TodayScreen } from './screens/TodayScreen';
 
@@ -114,6 +115,7 @@ export function App() {
   const location = useLocation();
   const { preferences } = useAppearance();
   const { scenario, preparing, error } = useScenario();
+  useHostedReleaseRefresh();
   useRealtimeInvalidation();
   const initialFocus =
     location.pathname === '/appearance' ? `appearance-${preferences.theme}` : 'screen-entry';
