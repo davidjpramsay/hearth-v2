@@ -7,14 +7,11 @@ action=${1:-start}
 docker_bin=${HEARTH_DOCKER_BIN:-/var/packages/ContainerManager/target/usr/bin/docker}
 iptables_bin=${HEARTH_IPTABLES_BIN:-/sbin/iptables}
 network_name=${HEARTH_DOCKER_NETWORK:-hearth-v2_default}
-attempt=0
 
 if [ "$action" = status ]; then
   if ! "$iptables_bin" -w 2 -S FORWARD_FIREWALL >/dev/null 2>&1; then
-    if "$iptables_bin" -w 2 -S FORWARD >/dev/null 2>&1; then
-      echo 'Synology forwarding firewall is not active; no Docker-origin rule is required.'
-      exit 0
-    fi
+    echo 'Synology forwarding firewall is not active; no Docker-origin rule is required.'
+    exit 0
   fi
   if "$iptables_bin" -w 2 -C FORWARD_FIREWALL -i 'docker+' -j RETURN 2>/dev/null; then
     echo 'Docker-origin forwarding rule is installed.'
@@ -42,8 +39,7 @@ delete_rule_if_present() {
   done
 }
 
-while [ "$attempt" -lt 24 ]; do
-  if "$iptables_bin" -w 2 -S FORWARD_FIREWALL >/dev/null 2>&1; then
+if "$iptables_bin" -w 2 -S FORWARD_FIREWALL >/dev/null 2>&1; then
     if ! "$iptables_bin" -w 2 -C FORWARD_FIREWALL -i 'docker+' -j RETURN 2>/dev/null; then
       "$iptables_bin" -w 2 -I FORWARD_FIREWALL 3 -i 'docker+' -j RETURN
     fi
@@ -72,17 +68,7 @@ while [ "$attempt" -lt 24 ]; do
         delete_rule_if_present -s "$subnet" -d "$dns_server" -p udp --dport 53 -j RETURN
       fi
     fi
-    exit 0
-  fi
+  exit 0
+fi
 
-  if "$iptables_bin" -w 2 -S FORWARD >/dev/null 2>&1; then
-    echo 'Synology forwarding firewall is not active; no Docker-origin rule is required.'
-    exit 0
-  fi
-
-  attempt=$((attempt + 1))
-  sleep 5
-done
-
-echo 'Synology FORWARD_FIREWALL was not ready; Docker-origin rule not installed.' >&2
-exit 1
+echo 'Synology forwarding firewall is not active; no Docker-origin rule is required.'
