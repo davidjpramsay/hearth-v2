@@ -437,6 +437,11 @@ uses `sudo -n` and fails closed with an installation instruction if the fixed he
 policy is missing. The database, managed photos, optional read-only import and integration secrets
 stay in their existing external mounts.
 
+Before an externally initiated activation reports success, the helper also verifies that the fixed
+update agent has both a live process and a non-empty status file. A stale PID without status is
+stopped and replaced. If System Health instead says to finish the one-time appliance update setup,
+rerun the installer below once; this is an agent-readiness failure, not evidence of low NAS storage.
+
 Open Hearth pages compare the non-cacheable health release identifier when their realtime stream
 reconnects, once per visible minute and when the app returns to the foreground or network. A
 successful replacement therefore reloads the page once without clearing a television pairing or
@@ -521,7 +526,8 @@ Manager version, storage paths and private LAN/Tailscale reachability before act
   active WAL database. `HEARTH_BACKUP_DIR` must be absolute; Compose sets it to `/data/backups`.
 - `HEARTH_BACKUP_INTERVAL_HOURS` defaults to 24 and `HEARTH_BACKUP_RETENTION` defaults to 14.
   The first scheduled check runs after startup, skips a still-current copy and retries later after
-  a family-safe failure. An adult may also choose **System Health → Create backup now**.
+  a family-safe failure. Updates create and verify their own copy. The uncommon manual action is
+  **System Health → Advanced recovery → Create extra copy**.
 - Every copy is verified with SQLite `quick_check`, foreign-key checks and a schema-version read,
   retained as one mode-`0600` database file inside a mode-`0700` directory and pruned to the
   configured count. The browser sees only status, time, size and retention—not a path or download.

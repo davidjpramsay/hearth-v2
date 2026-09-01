@@ -135,19 +135,47 @@ describe('SystemHealthScreen appliance update', () => {
     expect(screen.getByRole('heading', { name: 'Hearth update' })).toBeVisible();
     expect(screen.getByText('Verified household release')).toBeVisible();
     expect(screen.getByText('Installed aaaaaaaa · Ready bbbbbbbb')).toBeVisible();
-    expect(screen.getByText('Power')).toBeVisible();
+    expect(screen.queryByText(installedVersion, { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByText('Backup and rollback are automatic.')).toBeVisible();
+    expect(screen.queryByText('Power')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'Recovery copies' })).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm with passkey' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Install update' }));
     await waitFor(() => expect(authenticateWithPasskey).toHaveBeenCalledOnce());
     await waitFor(() => expect(install).toHaveBeenCalledOnce());
     expect(install.mock.calls[0]?.[1]).toBe(targetVersion);
+  });
+
+  it('shows the appliance setup blocker instead of a button that cannot work', () => {
+    mockQueries({
+      ...updateStatus,
+      canInstall: false,
+      checks: {
+        ...updateStatus.checks,
+        storage: {
+          state: 'attention',
+          message: 'Finish the one-time appliance update setup.',
+        },
+      },
+      operation: {
+        ...updateStatus.operation,
+        message: 'Update service is not ready.',
+      },
+    });
+
+    renderScreen();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Finish the one-time appliance update setup.',
+    );
+    expect(screen.queryByRole('button', { name: 'Install update' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Storage')).not.toBeInTheDocument();
   });
 
   it('does not render an update action when the platform capability is absent', () => {
     mockQueries({ ...updateStatus, supported: false, platform: 'development' });
     renderScreen();
     expect(screen.queryByRole('heading', { name: 'Hearth update' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Confirm with passkey' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Install update' })).not.toBeInTheDocument();
   });
 });
 

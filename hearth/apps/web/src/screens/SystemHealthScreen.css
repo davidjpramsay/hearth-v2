@@ -51,23 +51,19 @@
 .system-health-summary p,
 .system-health-card h2,
 .system-health-card p,
-.system-backup-actions h2,
-.system-backup-actions p,
-.system-recovery-boundary h2 {
+.system-advanced-recovery p {
   margin: 0;
 }
 
 .system-health-summary h2,
-.system-health-card h2,
-.system-backup-actions h2,
-.system-recovery-boundary h2 {
+.system-health-card h2 {
   font-size: 20px;
   line-height: 1.15;
 }
 
 .system-health-summary p,
 .system-health-card p,
-.system-backup-actions p {
+.system-advanced-recovery p {
   margin-top: 4px;
   color: var(--muted);
   line-height: 1.45;
@@ -88,6 +84,16 @@
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
   gap: 11px 13px;
+}
+
+.system-health-summary,
+.system-health-card,
+.system-connection-health,
+.system-activity-entry,
+.system-update {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .system-health-card__icon--attention {
@@ -113,11 +119,8 @@
   font-size: 13px;
 }
 
-.system-backup-actions,
 .system-connection-health,
-.system-recovery-boundary,
-.system-update,
-.system-version {
+.system-update {
   margin-top: 14px;
   padding: 17px;
   border: 1px solid var(--hairline);
@@ -146,6 +149,7 @@
 }
 
 .system-update__release {
+  min-width: 0;
   margin-top: 14px;
   padding: 12px 13px;
   border: 1px solid var(--hairline);
@@ -160,45 +164,13 @@
 
 .system-update__release strong {
   font-size: 16px;
+  overflow-wrap: anywhere;
 }
 
 .system-update__release small {
   margin-top: 3px;
   color: var(--muted);
-}
-
-.system-update__checks {
-  margin: 13px 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.system-update__check {
-  padding: 5px 8px;
-  border-radius: 9px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--muted);
-  background: var(--surface-muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.system-update__check svg {
-  width: 15px;
-  height: 15px;
-}
-
-.system-update__check--ready {
-  color: var(--eucalyptus);
-  background: var(--eucalyptus-soft);
-}
-
-.system-update__check--attention {
-  color: var(--brick);
-  background: var(--brick-soft);
+  overflow-wrap: anywhere;
 }
 
 .system-update__progress {
@@ -233,11 +205,44 @@
   margin: 10px 0 0;
 }
 
+.system-update__safety,
+.system-update__blocker {
+  margin: 13px 0 0;
+  padding: 10px 11px;
+  border-radius: 11px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.system-update__safety {
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
+}
+
+.system-update__blocker {
+  color: var(--brick);
+  background: var(--brick-soft);
+}
+
+.system-update__safety svg,
+.system-update__blocker svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
 .system-section-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.system-section-heading > * {
+  min-width: 0;
 }
 
 .system-section-heading h2,
@@ -410,7 +415,7 @@
   color: var(--muted);
 }
 
-.system-backup-actions .button,
+.system-advanced-recovery .button,
 .system-update .button {
   width: 100%;
   min-height: 52px;
@@ -428,21 +433,21 @@
   cursor: pointer;
 }
 
-.system-backup-actions .button:disabled,
+.system-advanced-recovery .button:disabled,
 .system-update .button:disabled {
   cursor: wait;
   opacity: 0.72;
 }
 
-.system-backup-actions .button svg,
+.system-advanced-recovery .button svg,
 .system-update .button svg {
   width: 21px;
   height: 21px;
 }
 
 .system-backup-unconfigured,
-.system-backup-actions .admin-success,
-.system-backup-actions .inline-command-error {
+.system-advanced-recovery .admin-success,
+.system-advanced-recovery .inline-command-error {
   margin: 13px 0 0;
   padding: 11px 13px;
   border-radius: 12px;
@@ -454,17 +459,17 @@
   background: var(--ochre-soft);
 }
 
-.system-backup-actions .admin-success {
+.system-advanced-recovery .admin-success {
   color: #496148;
   background: var(--sage-soft);
 }
 
-.system-backup-actions .inline-command-error {
+.system-advanced-recovery .inline-command-error {
   color: var(--brick);
   background: var(--brick-soft);
 }
 
-.system-backup-actions .inline-command-error .button {
+.system-advanced-recovery .inline-command-error .button {
   width: auto;
   min-height: 44px;
   margin-top: 9px;
@@ -474,35 +479,25 @@
   background: var(--surface);
 }
 
-.system-recovery-boundary ul {
-  margin: 12px 0 0;
-  padding-left: 21px;
+.system-advanced-recovery {
+  max-width: 100%;
+  margin-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.system-advanced-recovery summary {
+  padding: 13px 2px;
   color: var(--muted);
-  line-height: 1.5;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.system-recovery-boundary li + li {
-  margin-top: 5px;
+.system-advanced-recovery__body {
+  padding: 0 2px 14px;
 }
 
-.system-version {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 3px 10px;
-}
-
-.system-version span,
-.system-version small {
+.system-advanced-recovery__body > p {
   color: var(--muted);
-}
-
-.system-version strong {
-  text-align: right;
-}
-
-.system-version small {
-  grid-column: 1 / -1;
 }
 
 @media (max-width: 560px) {
@@ -537,12 +532,9 @@
 
 :root[data-theme='dark'] .system-health-summary,
 :root[data-theme='dark'] .system-health-card,
-:root[data-theme='dark'] .system-backup-actions,
 :root[data-theme='dark'] .system-connection-health,
 :root[data-theme='dark'] .system-activity-entry,
-:root[data-theme='dark'] .system-recovery-boundary,
-:root[data-theme='dark'] .system-update,
-:root[data-theme='dark'] .system-version {
+:root[data-theme='dark'] .system-update {
   border-color: var(--hairline);
   background: var(--surface);
 }
@@ -564,10 +556,10 @@
   color: #f2d8aa;
 }
 
-:root[data-theme='dark'] .system-backup-actions .admin-success {
+:root[data-theme='dark'] .system-advanced-recovery .admin-success {
   color: #d6e8d9;
 }
 
-:root[data-theme='dark'] .system-backup-actions .inline-command-error {
+:root[data-theme='dark'] .system-advanced-recovery .inline-command-error {
   color: #ffc2b8;
 }

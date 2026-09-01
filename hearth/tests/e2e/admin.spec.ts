@@ -406,7 +406,9 @@ test('Home controls are not presented as an administration setting', async ({ pa
   await expect(page.getByLabel('Living room status')).toBeVisible();
 });
 
-test('adult sees calm system health and creates a checked recovery copy', async ({ page }) => {
+test('adult sees concise system health and can create an advanced recovery copy', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/more');
   await expect(page.getByRole('heading', { name: 'System' })).toBeVisible();
@@ -415,7 +417,6 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
   await expect(page.getByText('Migration 27 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
-  await expect(page.getByText('Exclude secrets and photos.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connections and photos' })).toBeVisible();
   const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });
   await expect(calendar).toContainText('Not set up');
@@ -425,7 +426,10 @@ test('adult sees calm system health and creates a checked recovery copy', async 
   await expect(homeAssistant).toContainText('Not set up');
   const photos = page.locator('.system-connection-row').filter({ hasText: 'Family photos' });
   await expect(photos).toContainText('Ready');
-  const create = page.getByRole('button', { name: 'Create now' });
+  const advanced = page.getByText('Advanced recovery', { exact: true });
+  await expect(page.getByRole('button', { name: 'Create extra copy' })).toBeHidden();
+  await advanced.click();
+  const create = page.getByRole('button', { name: 'Create extra copy' });
   await create.scrollIntoViewIfNeeded();
   await create.click();
   await expect(page.getByRole('status')).toContainText('Recovery copy created and checked');
@@ -515,7 +519,8 @@ test('system backup retry keeps the same command identity after a lost response'
   });
 
   await page.goto('/admin/system');
-  const create = page.getByRole('button', { name: 'Create now' });
+  await page.getByText('Advanced recovery', { exact: true }).click();
+  const create = page.getByRole('button', { name: 'Create extra copy' });
   await create.scrollIntoViewIfNeeded();
   await create.click();
   await expect(page.getByRole('alert')).toContainText('Hearth could not confirm the recovery copy');
@@ -562,14 +567,8 @@ test('system connections have deterministic D-pad movement and Back restoration'
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/system');
-  await expect(page.locator('[data-focus-id="system-create-backup"]')).toBeFocused();
-  await page.keyboard.press('ArrowUp');
-  await expect(page.locator('[data-focus-id="system-activity"]')).toBeFocused();
-  await page.keyboard.press('ArrowUp');
-  await expect(page.locator('[data-focus-id="system-photo-health"]')).toBeFocused();
-  await page.keyboard.press('ArrowUp');
-  await expect(page.locator('[data-focus-id="system-home-assistant-health"]')).toBeFocused();
-  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('[data-focus-id="system-manage-connections"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   const calendar = page.locator('[data-focus-id="system-calendar-health"]');
   await expect(calendar).toBeFocused();
   await page.keyboard.press('Enter');
@@ -785,7 +784,8 @@ for (const viewport of [
 test('@visual System health recovery action at phone portrait', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/system');
-  const create = page.getByRole('button', { name: 'Create now' });
+  await page.getByText('Advanced recovery', { exact: true }).click();
+  const create = page.getByRole('button', { name: 'Create extra copy' });
   await create.scrollIntoViewIfNeeded();
   await captureEvidence(page, {
     path: resolve(systemEvidence, 'system-health-actions-phone-portrait.png'),

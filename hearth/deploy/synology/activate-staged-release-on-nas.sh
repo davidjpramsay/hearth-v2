@@ -15,6 +15,7 @@ environment="$config_root/.env"
 firewall_source="$config_root/ensure-docker-firewall.sh"
 compose=/var/packages/ContainerManager/target/usr/bin/docker-compose
 boot_hook=/usr/local/etc/rc.d/S99hearth-docker-firewall.sh
+update_hook=/usr/local/etc/rc.d/S98hearth-v2-update-agent.sh
 
 validate_installation() {
   test -x "$compose"
@@ -23,6 +24,7 @@ validate_installation() {
   test -r "$environment"
   test -r "$firewall_source"
   test -x "$boot_hook"
+  test -x "$update_hook"
   test "$(grep -c '^HEARTH_VERSION=' "$environment")" -eq 1
   ! grep -q '^[[:space:]]*build:' "$project"
 }
@@ -88,6 +90,7 @@ restore_previous() {
     chmod 0600 "$data_directory/hearth.sqlite"
     "$compose" --env-file "$environment" --file "$project" up -d --remove-orphans
     "$boot_hook" start
+    "$update_hook" start || true
     if wait_ready "$environment"; then
       printf 'The previous Hearth release is ready again.\n' >&2
     else
@@ -155,6 +158,9 @@ if ! wait_ready "$activation_environment"; then
   echo 'Hearth did not become ready within 60 seconds.' >&2
   exit 1
 fi
+
+"$update_hook" start
+"$update_hook" status
 
 current_version=$(sed -n 's/^HEARTH_VERSION=//p' "$environment")
 if [ -n "$current_version" ] && [ "$current_version" != "$release_commit" ]; then

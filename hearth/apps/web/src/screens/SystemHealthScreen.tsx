@@ -129,16 +129,36 @@ export function SystemHealthScreen() {
         </HealthCard>
       </div>
 
+      {applianceUpdate.data?.supported ? (
+        <ApplianceUpdateCard
+          error={installUpdate.error}
+          installing={installUpdate.isPending || waitingForRestart}
+          onInstall={(targetVersion) => installUpdate.mutate(targetVersion)}
+          status={applianceUpdate.data}
+        />
+      ) : null}
+
       <section className="system-connection-health" aria-labelledby="connection-health-title">
         <div className="system-section-heading">
           <h2 id="connection-health-title">Connections and photos</h2>
           <Link
             className="system-section-link focusable"
             data-focus-down="system-calendar-health"
+            data-focus-entry={
+              applianceUpdate.data?.canInstall &&
+              applianceUpdate.data.operation.phase !== 'succeeded'
+                ? undefined
+                : 'true'
+            }
             data-focus-id="system-manage-connections"
             data-focus-left="system-manage-connections"
             data-focus-right="system-manage-connections"
-            data-focus-up="system-manage-connections"
+            data-focus-up={
+              applianceUpdate.data?.canInstall &&
+              applianceUpdate.data.operation.phase !== 'succeeded'
+                ? 'system-update-install'
+                : 'system-manage-connections'
+            }
             to="/admin/connections"
           >
             Manage connections
@@ -183,7 +203,7 @@ export function SystemHealthScreen() {
 
       <Link
         className="system-activity-entry focusable"
-        data-focus-down={canCreateBackup ? 'system-create-backup' : 'system-activity'}
+        data-focus-down="system-recovery-advanced"
         data-focus-id="system-activity"
         data-focus-left="system-activity"
         data-focus-right="system-activity"
@@ -199,83 +219,63 @@ export function SystemHealthScreen() {
         <Icon name="chevron-right" />
       </Link>
 
-      <section className="system-backup-actions" aria-labelledby="system-backup-actions-title">
-        <h2 id="system-backup-actions-title">Recovery copy</h2>
-        {canCreateBackup ? (
-          <button
-            className="button button--primary focusable"
-            data-focus-entry="true"
-            data-focus-down={
-              applianceUpdate.data?.updateAvailable
-                ? 'system-update-install'
-                : 'system-create-backup'
-            }
-            data-focus-id="system-create-backup"
-            data-focus-left="system-create-backup"
-            data-focus-right="system-create-backup"
-            data-focus-up="system-activity"
-            disabled={createBackup.isPending}
-            onClick={() => createBackup.mutate()}
-            type="button"
-          >
-            <Icon name="refresh" />
-            {createBackup.isPending ? 'Creating…' : 'Create now'}
-          </button>
-        ) : (
-          <div className="system-backup-unconfigured" role="status">
-            Add the private backup folder in Synology deployment settings first.
-          </div>
-        )}
-        {createBackup.isSuccess ? (
-          <p className="admin-success" role="status">
-            Recovery copy created and checked.
-          </p>
-        ) : null}
-        {createBackup.isError ? (
-          <div className="inline-command-error" role="alert">
-            <p>{backupErrorMessage(createBackup.error)}</p>
+      <details className="system-advanced-recovery">
+        <summary
+          className="focusable"
+          data-focus-down={canCreateBackup ? 'system-create-backup' : 'system-recovery-advanced'}
+          data-focus-id="system-recovery-advanced"
+          data-focus-left="system-recovery-advanced"
+          data-focus-right="system-recovery-advanced"
+          data-focus-up="system-activity"
+        >
+          Advanced recovery
+        </summary>
+        <div className="system-advanced-recovery__body">
+          <p>Updates and scheduled backups already create recovery copies.</p>
+          {canCreateBackup ? (
             <button
-              className="button focusable"
-              data-focus-down="system-backup-retry"
-              data-focus-id="system-backup-retry"
-              data-focus-left="system-backup-retry"
-              data-focus-right="system-backup-retry"
-              data-focus-up="system-create-backup"
+              className="button button--primary focusable"
+              data-focus-down="system-create-backup"
+              data-focus-id="system-create-backup"
+              data-focus-left="system-create-backup"
+              data-focus-right="system-create-backup"
+              data-focus-up="system-recovery-advanced"
+              disabled={createBackup.isPending}
               onClick={() => createBackup.mutate()}
               type="button"
             >
-              Try again
+              <Icon name="refresh" />
+              {createBackup.isPending ? 'Creating…' : 'Create extra copy'}
             </button>
-          </div>
-        ) : null}
-      </section>
-
-      {applianceUpdate.data?.supported ? (
-        <ApplianceUpdateCard
-          error={installUpdate.error}
-          installing={installUpdate.isPending || waitingForRestart}
-          onInstall={(targetVersion) => installUpdate.mutate(targetVersion)}
-          status={applianceUpdate.data}
-        />
-      ) : null}
-
-      <section
-        className="system-recovery-boundary"
-        aria-labelledby="system-recovery-boundary-title"
-      >
-        <h2 id="system-recovery-boundary-title">Recovery copies</h2>
-        <ul>
-          <li>Include household data and activity.</li>
-          <li>Exclude secrets and photos.</li>
-          <li>Home Assistant is separate.</li>
-        </ul>
-      </section>
-
-      <footer className="system-version">
-        <span>Version</span>
-        <strong>{status.version}</strong>
-        <small>{status.mode === 'private' ? 'Private' : 'Demo'}</small>
-      </footer>
+          ) : (
+            <div className="system-backup-unconfigured" role="status">
+              Recovery storage is not configured.
+            </div>
+          )}
+          {createBackup.isSuccess ? (
+            <p className="admin-success" role="status">
+              Recovery copy created and checked.
+            </p>
+          ) : null}
+          {createBackup.isError ? (
+            <div className="inline-command-error" role="alert">
+              <p>{backupErrorMessage(createBackup.error)}</p>
+              <button
+                className="button focusable"
+                data-focus-down="system-backup-retry"
+                data-focus-id="system-backup-retry"
+                data-focus-left="system-backup-retry"
+                data-focus-right="system-backup-retry"
+                data-focus-up="system-create-backup"
+                onClick={() => createBackup.mutate()}
+                type="button"
+              >
+                Try again
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </details>
     </AdminPage>
   );
 }
@@ -296,6 +296,8 @@ function ApplianceUpdateCard({
     status.operation.phase,
   );
   const terminal = status.operation.phase === 'succeeded' || status.operation.phase === 'failed';
+  const blocker = updateBlocker(status, active);
+  const canStart = status.canInstall && status.operation.phase !== 'succeeded';
   return (
     <section className="system-update" aria-labelledby="system-update-title">
       <div className="system-section-heading">
@@ -342,26 +344,35 @@ function ApplianceUpdateCard({
         </div>
       ) : null}
 
-      <div className="system-update__checks" aria-label="Update checks">
-        <UpdateCheck label="Internet" state={status.checks.internet.state} />
-        <UpdateCheck label="Storage" state={status.checks.storage.state} />
-        <UpdateCheck label="Power" state={status.checks.power.state} />
-      </div>
+      {blocker === null && status.updateAvailable ? (
+        <p className="system-update__safety">
+          <Icon name="shield" />
+          Backup and rollback are automatic.
+        </p>
+      ) : null}
 
-      {status.updateAvailable && release !== null ? (
+      {blocker === null ? null : (
+        <p className="system-update__blocker" role="status">
+          <Icon name="warning" />
+          {blocker}
+        </p>
+      )}
+
+      {status.updateAvailable && release !== null && canStart ? (
         <button
           className="button button--primary focusable"
-          data-focus-down="system-update-install"
+          data-focus-down="system-manage-connections"
+          data-focus-entry="true"
           data-focus-id="system-update-install"
           data-focus-left="system-update-install"
           data-focus-right="system-update-install"
-          data-focus-up="system-create-backup"
-          disabled={!status.canInstall || installing}
+          data-focus-up="system-update-install"
+          disabled={installing}
           onClick={() => onInstall(release.version)}
           type="button"
         >
           <Icon name="refresh" />
-          {installing ? 'Updating…' : 'Confirm with passkey'}
+          {installing ? 'Updating…' : 'Install update'}
         </button>
       ) : null}
 
@@ -374,19 +385,12 @@ function ApplianceUpdateCard({
   );
 }
 
-function UpdateCheck({
-  label,
-  state,
-}: {
-  label: string;
-  state: ApplianceUpdateStatus['checks']['internet']['state'];
-}) {
-  return (
-    <span className={`system-update__check system-update__check--${state}`}>
-      <Icon name={state === 'ready' ? 'check' : 'warning'} />
-      {label}
-    </span>
-  );
+function updateBlocker(status: ApplianceUpdateStatus, active: boolean): string | null {
+  if (active) return null;
+  if (status.checks.internet.state === 'attention') return status.checks.internet.message;
+  if (status.checks.storage.state === 'attention') return status.checks.storage.message;
+  if (status.updateAvailable && !status.canInstall) return status.operation.message;
+  return null;
 }
 
 type HealthTone = 'healthy' | 'attention' | 'neutral';

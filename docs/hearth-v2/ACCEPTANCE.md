@@ -493,6 +493,10 @@ not yet complete.
   tags if activation fails. Start and terminal result appear in Recent activity.
 - Development hides the update card. A platform without its separately commissioned fixed agent
   reports unsupported rather than pretending an update can run.
+- A configured Synology with a missing agent/status file shows the exact one-time setup action and
+  no inert install button. The root hook considers the agent ready only when both its process and
+  non-empty status file exist, and an externally activated release restarts a missing agent before
+  reporting success.
 - A normal verified release pulls immutable full-commit server and web images before recreating the
   project; it does not install dependencies or compile native code on the Synology.
 - A browser or television WebView already left open detects the replacement release when realtime
@@ -512,7 +516,9 @@ readiness route, 20-migration database startup, unseeded first-use runtime, non-
 security settings and clean `SIGTERM` shutdown pass. These checks validate the scaffold only. The
 online backup service now also creates mode-restricted, integrity-checked SQLite copies with
 bounded retention; an automated clean-location restore reads the household successfully, and a
-phone System Health surface reports database/version/backup state without exposing paths. The five
+phone System Health surface reports concise database/backup/update state without exposing paths or
+a full commit. Automatic recovery is explained beside updates; the uncommon extra-copy action is
+collapsed under Advanced recovery. The five
 operations bullets above still require the actual Synology, Pi, TV, router and live restore drill,
 so production acceptance remains incomplete.
 

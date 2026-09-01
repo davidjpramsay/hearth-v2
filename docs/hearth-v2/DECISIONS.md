@@ -1340,7 +1340,7 @@ Official platform references:
 ## D-079 — Appliance updates use an authenticated coordinator and fixed host agent
 
 - Date: 2026-08-28
-- Status: accepted and implemented for Synology; live installation not yet run
+- Status: accepted and implemented for Synology; missing-agent recovery hardened by D-082
 - Context: Exact-commit Synology releases are reliable but still require an operator. Letting the
   browser run Docker or shell commands would turn a web compromise into host control, while blindly
   following `main` could install a release whose verification or images are incomplete.
@@ -1387,3 +1387,20 @@ Official platform references:
 - Consequence: Archive now matches the parent's immediate intent without deleting history or completed
   work. Multi-assignee schedules can retain one completed copy while withdrawing another unfinished
   copy, retries remain safe and no migration is required.
+
+## D-082 — Appliance-update readiness must be truthful and self-healing
+
+- Date: 2026-09-01
+- Status: accepted and implemented; hardens D-079
+- Context: A live Synology had ample free storage but its fixed update agent had stopped without a
+  status file. System Health reduced that setup failure to a red Storage chip and left a disabled
+  passkey button that appeared broken. The same phone screen repeated recovery explanation and let a
+  full commit overflow.
+- Choice: Treat the agent as ready only when its process and non-empty status file both exist. Replace
+  stale state at startup, wait for readiness and make external activation restart a missing agent
+  before it reports success. Put updates immediately after the health summary, show the exact blocker
+  instead of an inert button, use short release identifiers, explain automatic backup/rollback once
+  and keep manual extra copies collapsed under Advanced recovery.
+- Consequence: A setup fault no longer masquerades as low storage or a dead button. Existing Synology
+  installations need one final helper reinstall to receive the hardened root-owned scripts; later
+  external activations repair the agent automatically.

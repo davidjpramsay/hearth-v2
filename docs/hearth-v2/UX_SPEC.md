@@ -315,7 +315,10 @@ the phone More hub.
   corners and title-only rows; detailed explanation belongs inside the destination screen. System
   Health combines database/backup state with path-free Calendar, Home Assistant
   and Photos setup status; it links to the dedicated setup screen instead of
-  exposing credentials or raw provider details.
+  exposing credentials or raw provider details. When an appliance update is available it appears
+  immediately after the health summary, shows the actual blocking action instead of an inert
+  button, and uses short release identifiers. Update and scheduled backups are automatic; the
+  uncommon manual copy action stays collapsed under **Advanced recovery**.
 - Today & notices lets an adult publish, edit and remove concise notices, choose
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
   and see which eligible notice currently wins. It also owns the six optional
