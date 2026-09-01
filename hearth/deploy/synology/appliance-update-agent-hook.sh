@@ -7,15 +7,28 @@ pid_file=/var/run/hearth-v2-update-agent.pid
 log_file=/var/log/hearth-v2-update-agent.log
 status_file=/volume1/docker/hearth-v2/update-agent/status.json
 
-running() {
+pid_alive() {
   test -r "$pid_file" || return 1
   pid=$(sed -n '1p' "$pid_file")
   case "$pid" in
     ''|*[!0-9]*) return 1 ;;
   esac
-  kill -0 "$pid" 2>/dev/null || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+running() {
+  pid_alive || return 1
   test -r "/proc/$pid/cmdline" || return 1
   tr '\000' '\n' < "/proc/$pid/cmdline" | grep -Fx "$agent" >/dev/null
+}
+
+stop_agents() {
+  for process_dir in /proc/[0-9]*; do
+    test -r "$process_dir/cmdline" || continue
+    if tr '\000' '\n' < "$process_dir/cmdline" | grep -Fx "$agent" >/dev/null; then
+      kill "${process_dir#/proc/}" 2>/dev/null || true
+    fi
+  done
 }
 
 ready() {
@@ -27,9 +40,7 @@ case "${1:-}" in
     if ready; then
       exit 0
     fi
-    if running; then
-      kill "$(sed -n '1p' "$pid_file")" 2>/dev/null || true
-    fi
+    stop_agents
     rm -f -- "$pid_file"
     rm -f -- "$status_file"
     : > "$log_file"
@@ -42,13 +53,13 @@ case "${1:-}" in
       if ready; then
         exit 0
       fi
-      if ! running; then
+      if ! pid_alive; then
         break
       fi
       attempt=$((attempt + 1))
       sleep 1
     done
-    if running; then
+    if pid_alive; then
       kill "$(sed -n '1p' "$pid_file")" 2>/dev/null || true
     fi
     rm -f -- "$pid_file" "$status_file"
@@ -59,9 +70,7 @@ case "${1:-}" in
     exit 1
     ;;
   stop)
-    if running; then
-      kill "$(sed -n '1p' "$pid_file")"
-    fi
+    stop_agents
     rm -f -- "$pid_file" "$status_file"
     ;;
   status)

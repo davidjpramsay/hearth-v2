@@ -23,6 +23,7 @@ sh -n "$script_dir/install-release-helper.sh"
 
 grep -q 'test -s "$status_file"' "$script_dir/appliance-update-agent-hook.sh"
 grep -q '/proc/$pid/cmdline' "$script_dir/appliance-update-agent-hook.sh"
+grep -q 'stop_agents' "$script_dir/appliance-update-agent-hook.sh"
 grep -q '"$update_hook" start' "$script_dir/activate-staged-release-on-nas.sh"
 
 docker compose \
