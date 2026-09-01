@@ -747,4 +747,78 @@ describe('SQLite household planning repository', () => {
         .some((occurrence) => occurrence.title === 'Bring bins in'),
     ).toBe(true);
   });
+
+  it('withdraws unfinished chores due today when their schedule is archived', async () => {
+    const { chores, database, planning } = await repositories();
+    const created = await planning.createChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_create_shared_archive_today',
+        title: 'Pack sports bags',
+        description: null,
+        assigneeIds: ['member_ezra', 'member_maya'],
+        routineLabel: 'Morning',
+        availableFromTime: null,
+        dueTime: null,
+        repeat: 'daily',
+        repeatDays: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'],
+        activeFrom: '2026-08-03',
+      },
+      adult,
+    );
+    const before = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-03');
+    const occurrences = before.groups
+      .flatMap((group) => group.occurrences)
+      .filter((occurrence) => occurrence.title === 'Pack sports bags');
+    expect(occurrences).toHaveLength(2);
+
+    await chores.complete(
+      DEMO_HOUSEHOLD_ID,
+      occurrences[0]!.id,
+      'request_complete_shared_archive_today',
+      adult,
+    );
+    await planning.archiveChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      created.template.id,
+      'request_archive_shared_today',
+      adult,
+    );
+
+    const archivedDay = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-03');
+    expect(
+      archivedDay.groups
+        .flatMap((group) => group.occurrences)
+        .filter((occurrence) => occurrence.title === 'Pack sports bags'),
+    ).toMatchObject([{ state: 'completed' }]);
+    expect(
+      (await chores.getToday(DEMO_HOUSEHOLD_ID, '2026-08-03')).chores.filter(
+        (occurrence) => occurrence.title === 'Pack sports bags',
+      ),
+    ).toMatchObject([{ state: 'completed' }]);
+    expect(
+      database
+        .prepare(
+          `SELECT state FROM chore_occurrences
+           WHERE household_id = ? AND template_id = ? AND scheduled_local_date = ?
+           ORDER BY state`,
+        )
+        .all(DEMO_HOUSEHOLD_ID, created.template.id, '2026-08-03'),
+    ).toEqual([{ state: 'cancelled' }, { state: 'completed' }]);
+
+    await planning.restoreChoreTemplate(
+      DEMO_HOUSEHOLD_ID,
+      created.template.id,
+      { requestId: 'request_restore_shared_today', resumeFrom: '2026-08-03' },
+      adult,
+    );
+    const restoredDay = await chores.getChores(DEMO_HOUSEHOLD_ID, '2026-08-03');
+    expect(
+      restoredDay.groups
+        .flatMap((group) => group.occurrences)
+        .filter((occurrence) => occurrence.title === 'Pack sports bags')
+        .map((occurrence) => occurrence.state)
+        .sort(),
+    ).toEqual(['completed', 'pending']);
+  });
 });

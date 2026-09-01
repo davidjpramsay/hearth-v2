@@ -86,7 +86,9 @@ export function RoutinesSettingsScreen() {
     onSuccess: async (result) => {
       await refresh();
       setArchiveConfirmation(null);
-      setConfirmation(`${result.template.title} was archived. Past chore history is unchanged.`);
+      setConfirmation(
+        `${result.template.title} was archived. Unfinished jobs due today were removed.`,
+      );
     },
   });
   const restore = useMutation({
@@ -349,7 +351,7 @@ function RoutineEditor({
               onClick={onArchive}
               type="button"
             >
-              {archiveConfirmation ? `Archive ${template.title}?` : 'Archive'}
+              {archiveConfirmation ? 'Archive and remove today?' : 'Archive'}
             </button>
             {archiveConfirmation ? (
               <button className="admin-secondary" onClick={onCancelArchive} type="button">

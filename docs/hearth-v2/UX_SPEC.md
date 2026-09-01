@@ -163,8 +163,8 @@ the phone More hub.
 - Completion feedback is satisfying but brief and respects reduced motion.
 - Phone administration keeps active schedules compact, opens creation only on request and clearly
   distinguishes **One day only**, daily, weekdays and selected weekly days. Archiving requires a
-  second explicit action; archived chores retain past completions and can resume from today without
-  filling the paused interval with newly generated occurrences.
+  second explicit action and withdraws unfinished jobs already due today. Completed jobs remain
+  visible; archived schedules can resume without filling the paused interval with new occurrences.
 - The phone schedule editor uses an explicit multi-person picker. Selecting several people creates
   one separately completable occurrence for each selected person; summaries name the full assignee
   set rather than implying that one shared completion satisfies everyone.

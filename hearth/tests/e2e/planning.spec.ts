@@ -291,8 +291,8 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   const oneOffEditor = page.locator('.routine-editor').filter({ hasText: 'Bring bins in' });
   await oneOffEditor.locator('summary').click();
   await oneOffEditor.getByRole('button', { name: 'Archive', exact: true }).click();
-  await oneOffEditor.getByRole('button', { name: 'Archive Bring bins in?' }).click();
-  await expect(page.getByRole('status')).toContainText('Past chore history is unchanged');
+  await oneOffEditor.getByRole('button', { name: 'Archive and remove today?' }).click();
+  await expect(page.getByRole('status')).toContainText('Unfinished jobs due today were removed');
   const archived = page.locator('.archived-routines');
   await archived.locator('summary').click();
   await expect(archived).toContainText('Bring bins in');

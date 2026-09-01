@@ -166,9 +166,11 @@ commands must name every active template exactly once. Generated occurrences sna
 and both optional window boundaries, so changing a future schedule never rearranges or retimes
 already materialized household history.
 One-off templates use an explicit once-only recurrence and equal start/end local dates. Archiving
-stops new generation without deleting the template or occurrences. Restoring begins a new active
-window on the supplied household-local date (and moves a restored one-off to that date), so dates
-inside the archived gap cannot be manufactured later merely by browsing history.
+stops new generation and changes any non-completed occurrence on the household's current local date
+to `cancelled`; household Today/Chores reads omit that retained row while completed occurrences stay
+visible. Restoring begins a new active window on the supplied household-local date, reopens a
+cancelled occurrence on that exact resume date as pending, and moves a restored one-off to that
+date. Dates inside the archived gap cannot be manufactured later merely by browsing history.
 
 ### Routine
 
@@ -560,8 +562,9 @@ Saved meals and whole-week dinner mutations use the same repository boundary. Ad
 update, archive, restore, batch save, clear and copy operations are transactional, audited and
 receipt-idempotent in both the SQLite runtime and injected in-memory contract tests.
 Chore-template creation/update accepts one-off or recurring schedules. Archive and restore reuse the
-existing forward-compatible active-range/archive columns, keep generated history intact and write
-their own idempotent receipts and audit events; no migration is required.
+existing forward-compatible active-range/archive columns, retain completed history, cancel only the
+archive date's unfinished occurrences and write their own idempotent receipts and audit events; no
+migration is required.
 Active template reordering is an adult-only, receipt-idempotent command requiring the exact active
 template set. Creation appends; edits preserve position. The SQLite transaction updates every
 position and its audit event together, while occurrence generation snapshots the active position

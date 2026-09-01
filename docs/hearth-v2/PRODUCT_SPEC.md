@@ -71,6 +71,8 @@ Can understand the current household state and use clearly exposed room controls
   short reason, permission checks, idempotency and immutable occurrence history.
 - Skipping leaves the chore due and incomplete; excusing removes it from the pocket-money
   denominator; reassignment moves an awaiting occurrence to the selected household member.
+- Archiving a schedule withdraws any unfinished occurrence already due on the household's current
+  local date. A completed occurrence remains visible as completed history.
 - Optional evidence/note support later; never required for ordinary chores.
 - Morning, after-school, evening, bedtime and anytime chore grouping.
 - Streaks and progress that encourage rather than shame.

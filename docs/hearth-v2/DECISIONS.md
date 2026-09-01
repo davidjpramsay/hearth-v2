@@ -525,7 +525,7 @@ same-origin derivatives. No original, source path or delete operation crosses th
 ## D-038 — One-off chores and archived schedules share the occurrence model
 
 - Date: 2026-08-09
-- Status: accepted
+- Status: accepted; today's unfinished-occurrence behaviour superseded by D-081
 - Context: Phone administration could edit simple recurring templates but could not schedule an
   extra job or retire a schedule. Hard deletion would lose household history, while restoring an
   archived recurring template with its old active range could manufacture jobs inside the paused
@@ -1371,3 +1371,19 @@ Official platform references:
 - Consequence: Future server/web patches appear without clearing application data or repairing the
   television. A temporary outage leaves the current screen intact and retries at the next lifecycle
   signal or visible interval.
+
+## D-081 — Archiving withdraws today's unfinished chore copies
+
+- Date: 2026-09-01
+- Status: accepted and implemented; narrows D-038
+- Context: Archiving stopped future generation but left an already-materialised pending job on the
+  current Chores screen. To a parent, the schedule appeared not to have been removed. Completed work
+  must still remain visible and must never be rewritten.
+- Choice: In the same idempotent archive transaction, change every non-completed occurrence for that
+  template on the household's current local date to `cancelled`. Omit cancelled rows from household
+  Today and Chores reads while retaining them in SQLite and excluding them from pocket money. Leave
+  completed copies unchanged. A restore on the cancelled row's exact date returns it to pending;
+  dates inside the archived interval remain ungenerated.
+- Consequence: Archive now matches the parent's immediate intent without deleting history or completed
+  work. Multi-assignee schedules can retain one completed copy while withdrawing another unfinished
+  copy, retries remain safe and no migration is required.

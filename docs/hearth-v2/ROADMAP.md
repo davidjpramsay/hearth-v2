@@ -242,7 +242,8 @@ seven dinner names together, expands saved-meal/note details only when needed, c
 week with confirmation, and creates, searches, favourites, updates, archives and restores reusable
 meals with optional preparation time and notes. Chore administration now creates explicit one-off
 or recurring schedules, keeps the everyday list compact, confirms archive, restores from today's
-local date and retains previously generated occurrence history through idempotent audited commands.
+local date, withdraws that day's unfinished jobs and retains completed occurrence history through
+idempotent audited commands.
 It also edits future recurring chores, optional available/due windows and their stable
 top-to-bottom display order. A separate phone-first daily management surface
 supports reasoned skip, excuse and adult reassignment, exposes snapshotted descriptions and

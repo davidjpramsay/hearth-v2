@@ -727,7 +727,7 @@ export class SqliteHearthRepository implements HearthRepository {
         `SELECT o.*, m.display_name, m.colour, m.avatar_key, m.role, m.capabilities_json
          FROM chore_occurrences o
          JOIN members m ON m.id = o.assignee_member_id
-         WHERE o.household_id = ? AND o.scheduled_local_date = ?
+         WHERE o.household_id = ? AND o.scheduled_local_date = ? AND o.state <> 'cancelled'
          ORDER BY o.sort_order_snapshot, o.id`,
       )
       .all(householdId, localDate) as OccurrenceRow[];

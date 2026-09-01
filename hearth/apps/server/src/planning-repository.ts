@@ -2049,16 +2049,27 @@ export class SqlitePlanningRepository implements PlanningRepository {
         const current = this.readChoreTemplate(householdId, templateId);
         if (current.archived)
           throw new RepositoryError('CONFLICT', 'That chore is already archived.');
-        const now = new Date().toISOString();
+        const now = this.now();
+        const localDate = this.currentLocalDate(householdId);
         this.database
           .prepare(
             `UPDATE chore_templates SET archived_at = ?, updated_at = ?
              WHERE id = ? AND household_id = ?`,
           )
           .run(now, now, templateId, householdId);
+        this.database
+          .prepare(
+            `UPDATE chore_occurrences
+             SET state = 'cancelled', completion_id = NULL, completed_at = NULL,
+                 completed_by_actor_id = NULL, skipped_at = NULL, skipped_by_actor_id = NULL,
+                 updated_at = ?
+             WHERE household_id = ? AND template_id = ? AND scheduled_local_date = ?
+               AND state <> 'completed'`,
+          )
+          .run(now, householdId, templateId, localDate);
         return {
           template: this.readChoreTemplate(householdId, templateId),
-          audit: audit('chore-template.archive', templateId, actor),
+          audit: audit('chore-template.archive', templateId, actor, 'succeeded', now),
           replayed: false,
         };
       },
@@ -2082,7 +2093,7 @@ export class SqlitePlanningRepository implements PlanningRepository {
         const current = this.readChoreTemplate(householdId, templateId);
         if (!current.archived)
           throw new RepositoryError('CONFLICT', 'That chore is already active.');
-        const now = new Date().toISOString();
+        const now = this.now();
         this.database
           .prepare(
             `UPDATE chore_templates
@@ -2092,9 +2103,19 @@ export class SqlitePlanningRepository implements PlanningRepository {
              WHERE id = ? AND household_id = ?`,
           )
           .run(input.resumeFrom, input.resumeFrom, now, templateId, householdId);
+        this.database
+          .prepare(
+            `UPDATE chore_occurrences
+             SET state = 'pending', completion_id = NULL, completed_at = NULL,
+                 completed_by_actor_id = NULL, skipped_at = NULL, skipped_by_actor_id = NULL,
+                 updated_at = ?
+             WHERE household_id = ? AND template_id = ? AND scheduled_local_date = ?
+               AND state = 'cancelled'`,
+          )
+          .run(now, householdId, templateId, input.resumeFrom);
         return {
           template: this.readChoreTemplate(householdId, templateId),
-          audit: audit('chore-template.restore', templateId, actor),
+          audit: audit('chore-template.restore', templateId, actor, 'succeeded', now),
           replayed: false,
         };
       },

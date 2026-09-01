@@ -164,8 +164,9 @@ Chromium fallback produced the retained evidence.
   one grouped template but generates one distinct occurrence per selected person; completing one
   occurrence leaves every other person's copy pending and preserves independent pocket-money totals.
 - An adult can create a one-off chore for a household-local date, archive any active chore only
-  after confirmation and restore it from today. Command retries replay safely, past occurrences
-  remain visible and the archived interval does not produce retroactive jobs.
+  after confirmation and restore it from today. Archiving withdraws unfinished occurrences already
+  due today while completed occurrences remain visible. Command retries replay safely, same-day
+  restore returns withdrawn copies to pending and the archived interval produces no retroactive jobs.
 - An adult can add an optional available-from time, due time or valid two-ended window to future
   schedules. Reversed windows are rejected with a stable validation error.
 - An adult can move active schedules earlier or later from the phone. The saved order includes every
