@@ -40,6 +40,7 @@ test -x /usr/bin/sudo
 test -x /usr/bin/sqlite3
 ! grep -q '^[[:space:]]*build:' "$compose_source"
 
+install -d -o root -g root -m 0755 /usr/local/sbin /usr/local/etc/rc.d
 install -d -o root -g root -m 0700 "$config_root"
 install -o root -g root -m 0755 "$helper_source" "$helper_target"
 install -o root -g root -m 0644 "$compose_source" "$config_root/docker-compose.yml"

@@ -310,6 +310,8 @@ does not open a host port or permit unsolicited inbound WAN traffic. The commiss
 `/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`. Its boot action applies the rules once after
 Docker/firewall startup; no polling monitor runs. The private release activator also refreshes the
 hook from root-owned configuration and reapplies the rules after recreating the Hearth containers.
+On a Synology where `FORWARD_FIREWALL` is not active, the helper makes no firewall change and
+reports that no compatibility rule is required.
 
 This compatibility rule is required because DSM mirrors its host-oriented catch-all drop into
 `FORWARD_FIREWALL` before Docker's generated forwarding rules. Without it, containers cannot use

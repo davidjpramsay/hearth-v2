@@ -10,6 +10,12 @@ network_name=${HEARTH_DOCKER_NETWORK:-hearth-v2_default}
 attempt=0
 
 if [ "$action" = status ]; then
+  if ! "$iptables_bin" -w 2 -S FORWARD_FIREWALL >/dev/null 2>&1; then
+    if "$iptables_bin" -w 2 -S FORWARD >/dev/null 2>&1; then
+      echo 'Synology forwarding firewall is not active; no Docker-origin rule is required.'
+      exit 0
+    fi
+  fi
   if "$iptables_bin" -w 2 -C FORWARD_FIREWALL -i 'docker+' -j RETURN 2>/dev/null; then
     echo 'Docker-origin forwarding rule is installed.'
     exit 0
@@ -66,6 +72,11 @@ while [ "$attempt" -lt 24 ]; do
         delete_rule_if_present -s "$subnet" -d "$dns_server" -p udp --dport 53 -j RETURN
       fi
     fi
+    exit 0
+  fi
+
+  if "$iptables_bin" -w 2 -S FORWARD >/dev/null 2>&1; then
+    echo 'Synology forwarding firewall is not active; no Docker-origin rule is required.'
     exit 0
   fi
 
