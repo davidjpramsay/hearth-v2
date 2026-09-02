@@ -25,22 +25,27 @@ export interface ChoreTemplateInput {
 }
 
 export const choresApi = {
-  getChores: () =>
-    request(
-      `${householdApiBase()}/chore-occurrences?date=${getHearthRuntime().localDate}`,
-      ChoreListSchema,
-    ),
-  completeChore: (occurrenceId: string, requestId: string) =>
+  getChores: (localDate = getHearthRuntime().localDate) =>
+    request(`${householdApiBase()}/chore-occurrences?date=${localDate}`, ChoreListSchema),
+  completeChore: (occurrenceId: string, requestId: string, asAdmin = false) =>
     request(
       `${householdApiBase()}/chore-occurrences/${occurrenceId}/completions`,
       ChoreCommandResultSchema,
-      { method: 'POST', body: JSON.stringify({ requestId }) },
+      {
+        method: 'POST',
+        ...(asAdmin ? { headers: demoAdminHeaders } : {}),
+        body: JSON.stringify({ requestId }),
+      },
     ),
-  undoChore: (occurrenceId: string, requestId: string, completionId: string) =>
+  undoChore: (occurrenceId: string, requestId: string, completionId: string, asAdmin = false) =>
     request(
       `${householdApiBase()}/chore-occurrences/${occurrenceId}/completion-reversals`,
       ChoreCommandResultSchema,
-      { method: 'POST', body: JSON.stringify({ requestId, completionId }) },
+      {
+        method: 'POST',
+        ...(asAdmin ? { headers: demoAdminHeaders } : {}),
+        body: JSON.stringify({ requestId, completionId }),
+      },
     ),
   getChoreOccurrenceDetail: (occurrenceId: string) =>
     request(

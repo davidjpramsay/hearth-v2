@@ -177,9 +177,12 @@ the phone More hub.
 - An optional **Available from** and **Due by** pair forms a household-local time window. Either end
   may be used independently; when both are present, the start must be earlier than the due time.
   Previously generated occurrences keep the window and order they were created with.
-- A separate phone-first **Today’s chores** surface opens one occurrence at a time. It shows the
-  snapshotted description and due time, requires an adult reason before Skip, Excuse or Reassign,
-  explains the pocket-money consequence in family language and keeps newest-first history visible.
+- A separate phone-first **Chores this week** surface opens today's occurrences one at a time. It
+  shows the snapshotted description and due time, requires an adult reason before Skip, Excuse or
+  Reassign, explains the pocket-money consequence in family language and keeps newest-first history
+  visible. Below it, earlier current-week occurrences are grouped by day so an adult can complete a
+  missed chore or undo an incorrect completion. The visible correction list starts fresh each
+  Monday; occurrence and audit history remain stored.
 - The television shows a compact time window such as **7:00–7:30 am**, **From 4:00 pm** or
   **Due 6:30 pm** as quiet secondary metadata. Rows follow the adult-defined schedule order and
   retain one-Select completion/undo; the television does not expose ordering, exception forms or an

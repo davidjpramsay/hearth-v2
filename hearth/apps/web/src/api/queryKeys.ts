@@ -16,9 +16,10 @@ export const queryKeys = {
   month: (month = getHearthRuntime().currentMonth) =>
     [householdId(getHearthRuntime()), 'month', month] as const,
   get chores() {
-    const runtime = getHearthRuntime();
-    return [householdId(runtime), 'chores', runtime.localDate] as const;
+    return queryKeys.choresForDate(getHearthRuntime().localDate);
   },
+  choresForDate: (localDate: string) =>
+    [householdId(getHearthRuntime()), 'chores', localDate] as const,
   get home() {
     return [householdId(getHearthRuntime()), 'home'] as const;
   },

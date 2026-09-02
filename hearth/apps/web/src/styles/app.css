@@ -4520,6 +4520,142 @@
   flex-direction: column;
   gap: 11px;
 }
+.chore-week-heading {
+  margin: 22px 0 0;
+  color: var(--ink);
+  font-size: 21px;
+}
+.chore-week-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hairline);
+}
+.chore-week-section > header,
+.past-chore-day > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.chore-week-section > header h2,
+.past-chore-day > header h3 {
+  margin: 0;
+  color: var(--ink);
+}
+.chore-week-section > header h2 {
+  font-size: 21px;
+}
+.chore-week-section > header span,
+.past-chore-day > header span {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 650;
+}
+.past-chore-day {
+  margin-top: 18px;
+}
+.past-chore-day > header {
+  padding: 0 3px 8px;
+}
+.past-chore-day > header h3 {
+  font-size: 16px;
+}
+.past-chore-list {
+  border: 1px solid #e2d9d0;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 78%);
+  overflow: hidden;
+}
+.past-chore-row-wrap + .past-chore-row-wrap {
+  border-top: 1px solid var(--hairline);
+}
+.past-chore-row-wrap--failed {
+  background: var(--brick-soft);
+}
+.past-chore-row {
+  min-height: 72px;
+  padding: 11px 14px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.past-chore-row .avatar {
+  width: 44px;
+  height: 44px;
+}
+.past-chore-row__copy strong,
+.past-chore-row__copy small {
+  display: block;
+}
+.past-chore-row__copy strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+.past-chore-row__copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.past-chore-row--completed .past-chore-row__copy strong {
+  color: var(--muted);
+}
+.past-chore-action {
+  min-width: 126px;
+  min-height: 46px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid #9eb7a2;
+  border-radius: 999px;
+  color: #376345;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  font: inherit;
+  font-weight: 720;
+  cursor: pointer;
+}
+.past-chore-action > span {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--eucalyptus);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.past-chore-action svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+}
+.past-chore-action:hover,
+.past-chore-action:focus-visible {
+  border-color: var(--eucalyptus);
+  background: var(--sage-soft);
+}
+.past-chore-action:focus-visible {
+  outline: 3px solid rgb(85 50 74 / 20%);
+  outline-offset: 2px;
+}
+.past-chore-action--done {
+  color: #315a40;
+  background: var(--eucalyptus-soft);
+}
+.past-chore-action--done > span {
+  color: white;
+  background: var(--eucalyptus);
+}
+.past-chore-action--done svg {
+  opacity: 1;
+}
+.past-chore-action:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.past-chore-row-wrap .inline-error {
+  margin: 0 14px 12px 70px;
+}
 .chore-management-error {
   display: flex;
   align-items: center;
@@ -5300,6 +5436,39 @@
   .chore-management-note {
     padding: 14px;
   }
+  .chore-week-section {
+    margin-top: 26px;
+    padding-top: 20px;
+  }
+  .past-chore-row {
+    min-height: 76px;
+    padding: 11px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+  .past-chore-row .avatar {
+    width: 40px;
+    height: 40px;
+  }
+  .past-chore-row__copy strong {
+    font-size: 17px;
+  }
+  .past-chore-action {
+    min-width: 46px;
+    width: 46px;
+    height: 46px;
+    padding: 6px;
+    justify-content: center;
+    overflow: hidden;
+    color: transparent;
+    gap: 0;
+  }
+  .past-chore-action > span {
+    flex: 0 0 30px;
+  }
+  .past-chore-row-wrap .inline-error {
+    margin: 0 11px 11px;
+  }
   .chore-management-row > summary {
     min-height: 76px;
     padding: 11px 12px;
@@ -5855,6 +6024,7 @@
 :root[data-theme='dark'] .planning-area-card,
 :root[data-theme='dark'] .routine-editor,
 :root[data-theme='dark'] .chore-management-row,
+:root[data-theme='dark'] .past-chore-list,
 :root[data-theme='dark'] .pocket-money-rules,
 :root[data-theme='dark'] .pocket-money-admin-card,
 :root[data-theme='dark'] .pocket-money-history,
@@ -5934,6 +6104,18 @@
 }
 :root[data-theme='dark'] .chore-management-state {
   color: var(--ink);
+}
+:root[data-theme='dark'] .past-chore-action {
+  border-color: #52735b;
+  color: var(--ink);
+  background: var(--surface-raised);
+}
+:root[data-theme='dark'] .past-chore-action:hover,
+:root[data-theme='dark'] .past-chore-action:focus-visible,
+:root[data-theme='dark'] .past-chore-action--done {
+  border-color: var(--eucalyptus);
+  color: #ecfff0;
+  background: var(--eucalyptus-soft);
 }
 :root[data-theme='dark'] .connection-row--action:hover,
 :root[data-theme='dark'] .connection-row--action:focus-visible {

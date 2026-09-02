@@ -16,7 +16,7 @@ const planningAreas: Array<{
     focusId: 'planning-routines',
   },
   {
-    title: 'Today’s chores',
+    title: 'Chores this week',
     path: '/admin/chore-day',
     icon: 'chores',
     focusId: 'planning-chore-day',

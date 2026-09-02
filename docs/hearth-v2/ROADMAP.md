@@ -247,7 +247,9 @@ idempotent audited commands.
 It also edits future recurring chores, optional available/due windows and their stable
 top-to-bottom display order. A separate phone-first daily management surface
 supports reasoned skip, excuse and adult reassignment, exposes snapshotted descriptions and
-newest-first immutable history, and preserves the documented pocket-money denominator rules.
+newest-first immutable history, and preserves the documented pocket-money denominator rules. The
+same admin surface groups earlier current-week occurrences by day for audited complete/undo
+corrections; the list resets visually each Monday without deleting historical records.
 The schedule editor now accepts one or more people through a phone-friendly visual picker. The
 existing template-assignee join table is returned as one grouped template and expands to one
 independently completable occurrence per selected person, with legacy singular receipts normalized

@@ -1,7 +1,12 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import type { ChoreOccurrence, ChoreOccurrenceChangeResult, Member } from '@hearth/shared';
+import type {
+  ChoreList,
+  ChoreOccurrence,
+  ChoreOccurrenceChangeResult,
+  Member,
+} from '@hearth/shared';
 
 import { choresApi as hearthApi } from '../api/chores';
 import { createRequestId, HearthApiError } from '../api/core';
@@ -9,9 +14,17 @@ import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
+import { InlineError } from '../components/Status';
 import { useAdminQuery } from '../hooks/useAdminQueries';
-import { useChoreOccurrenceDetailQuery, useChoresQuery } from '../hooks/useChoreQueries';
+import { useChoreMutation } from '../hooks/useChoreMutation';
+import {
+  useChoreOccurrenceDetailQuery,
+  useChoresForDatesQueries,
+  useChoresQuery,
+} from '../hooks/useChoreQueries';
+import { useHearthRuntime } from '../runtime/context';
 import { formatChoreTiming } from '../utils/choreTiming';
+import { earlierWeekDates } from '../utils/choreWeek';
 
 type ManagementAction = 'skip' | 'excuse' | 'reassign';
 
@@ -24,8 +37,12 @@ interface ManagementVariables {
 }
 
 export function ChoreDaySettingsScreen() {
+  const runtime = useHearthRuntime();
   const chores = useChoresQuery();
   const admin = useAdminQuery();
+  const pastDates = earlierWeekDates(runtime.weekStart, runtime.localDate);
+  const pastChores = useChoresForDatesQueries(pastDates);
+  const completion = useChoreMutation({ asAdmin: true });
   const queryClient = useQueryClient();
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const mutation = useMutation<ChoreOccurrenceChangeResult, Error, ManagementVariables>({
@@ -62,9 +79,9 @@ export function ChoreDaySettingsScreen() {
     <AdminPage
       backLabel="Back to Family planning"
       backTo="/admin/planning"
-      title="Today’s chores"
-      subtitle={chores.data.displayDate}
+      title="Chores this week"
     >
+      <h2 className="chore-week-heading">Today</h2>
       <div className="chore-management-note">
         <Icon name="shield" />
         <div>
@@ -110,7 +127,146 @@ export function ChoreDaySettingsScreen() {
           ))}
         </div>
       )}
+      <PastChoresSection completion={completion} dates={pastDates} queries={pastChores} />
     </AdminPage>
+  );
+}
+
+function PastChoresSection({
+  completion,
+  dates,
+  queries,
+}: {
+  completion: ReturnType<typeof useChoreMutation>;
+  dates: string[];
+  queries: ReturnType<typeof useChoresForDatesQueries>;
+}) {
+  const loading = queries.some((query) => query.isPending);
+  const failed = queries.some((query) => query.isError);
+  const days = queries.flatMap((query) =>
+    query.data !== undefined && query.data.totalCount > 0 ? [query.data] : [],
+  );
+
+  return (
+    <section className="chore-week-section" aria-labelledby="earlier-week-heading">
+      <header>
+        <h2 id="earlier-week-heading">Earlier this week</h2>
+        <span>This week only</span>
+      </header>
+      {loading ? (
+        <div className="admin-feedback" role="status">
+          Loading earlier chores…
+        </div>
+      ) : null}
+      {failed ? (
+        <div className="admin-feedback admin-feedback--error chore-management-error" role="alert">
+          <span>Earlier chores couldn’t be loaded.</span>
+          <button
+            className="admin-secondary"
+            onClick={() => {
+              for (const query of queries) {
+                if (query.isError) void query.refetch();
+              }
+            }}
+            type="button"
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+      {!loading && !failed && (dates.length === 0 || days.length === 0) ? (
+        <div className="admin-feedback">No earlier chores this week.</div>
+      ) : null}
+      {days.map((day) => (
+        <PastChoreDay completion={completion} day={day} key={day.localDate} />
+      ))}
+    </section>
+  );
+}
+
+function PastChoreDay({
+  completion,
+  day,
+}: {
+  completion: ReturnType<typeof useChoreMutation>;
+  day: ChoreList;
+}) {
+  const occurrences = day.groups.flatMap((group) => group.occurrences);
+  return (
+    <section className="past-chore-day" aria-label={day.displayDate}>
+      <header>
+        <h3>{day.displayDate}</h3>
+        <span>
+          {day.completedCount} of {day.totalCount} done
+        </span>
+      </header>
+      <div className="past-chore-list">
+        {occurrences.map((occurrence) => (
+          <PastChoreRow completion={completion} key={occurrence.id} occurrence={occurrence} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PastChoreRow({
+  completion,
+  occurrence,
+}: {
+  completion: ReturnType<typeof useChoreMutation>;
+  occurrence: ChoreOccurrence;
+}) {
+  const completed = occurrence.state === 'completed';
+  const changeable = occurrence.state === 'pending' || completed;
+  const pending = completion.pendingOccurrenceId === occurrence.id;
+  const failed = completion.failedOccurrenceId === occurrence.id;
+  const timing = formatChoreTiming(occurrence.availableFromTime, occurrence.dueTime);
+  const action = completed ? 'undo' : 'complete';
+  const activate = () => {
+    if (!changeable || pending) return;
+    completion.clearError();
+    completion.mutate({ action, occurrence });
+  };
+
+  return (
+    <div className={`past-chore-row-wrap${failed ? ' past-chore-row-wrap--failed' : ''}`}>
+      <div className={`past-chore-row past-chore-row--${occurrence.state}`}>
+        <Avatar member={occurrence.assignee} />
+        <span className="past-chore-row__copy">
+          <strong>{occurrence.title}</strong>
+          <small>
+            {occurrence.assignee.displayName} · {occurrence.routineLabel}
+            {timing === null ? '' : ` · ${timing}`}
+          </small>
+        </span>
+        {changeable ? (
+          <button
+            aria-label={
+              completed
+                ? `${occurrence.title}, done. Mark not done`
+                : `Mark ${occurrence.title} done`
+            }
+            aria-pressed={completed}
+            className={`past-chore-action${completed ? ' past-chore-action--done' : ''}`}
+            disabled={pending}
+            onClick={activate}
+            type="button"
+          >
+            <span aria-hidden="true">
+              <Icon name="check" />
+            </span>
+            {pending ? 'Saving…' : completed ? 'Done' : 'Mark done'}
+          </button>
+        ) : (
+          <span className={`chore-management-state chore-management-state--${occurrence.state}`}>
+            {stateLabel(occurrence.state)}
+          </span>
+        )}
+      </div>
+      {failed && completion.errorMessage !== null ? (
+        <InlineError message={completion.errorMessage} onRetry={activate} />
+      ) : null}
+    </div>
   );
 }
 

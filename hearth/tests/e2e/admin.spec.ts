@@ -91,7 +91,7 @@ test('desktop admin uses a full workspace while phone admin stays compact', asyn
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/admin/chore-day');
 
-  await expect(page.getByRole('heading', { name: 'Today’s chores' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Chores this week' })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Administration' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Planning', exact: true })).toHaveAttribute(
     'aria-current',

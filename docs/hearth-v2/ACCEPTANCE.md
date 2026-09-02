@@ -182,6 +182,11 @@ Chromium fallback produced the retained evidence.
   completion/undo as the only ordinary chore actions; ordering, exception and history controls
   remain phone-first.
 - An adult can reverse an accidental completion with an audit trail.
+- In phone administration, an adult can mark a pending occurrence from an earlier day in the
+  current Monday–Sunday week complete, or undo its completion. The correction updates pocket money
+  through the existing typed, idempotent and audited chore command.
+- The earlier-chore correction list shows only the current week and is empty each Monday. Older
+  occurrences and their audit history remain durable and are not deleted at the week boundary.
 - A child cannot modify another person's history or household rules without permission.
 - Every participating child has a required weekly amount and payday in phone administration. The setting persists across weeks and server restarts, repeats until an adult changes it and is visibly described as set-and-forget.
 - Chores shows each child's completed/total count for the complete Monday–Sunday schedule,

@@ -366,8 +366,10 @@ test('phone adults reason, skip, excuse and reassign today’s chores with visib
   expect(completion.ok()).toBe(true);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/planning');
-  await page.getByRole('link', { name: /Today’s chores/ }).click();
-  await expect(page.getByRole('heading', { name: 'Today’s chores' })).toBeVisible();
+  await page.getByRole('link', { name: /Chores this week/ }).click();
+  await expect(page.getByRole('heading', { name: 'Chores this week' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Earlier this week' })).toBeVisible();
+  await expect(page.getByText('No earlier chores this week.')).toBeVisible();
 
   let schoolBag = page.locator('.chore-management-row').filter({ hasText: 'Pack school bag' });
   await schoolBag.locator('summary').click();

@@ -32,7 +32,7 @@ const adminRoutes = [
   { path: '/admin/meals', title: 'Meal planning' },
   { path: '/admin/photos', title: 'Manage photos' },
   { path: '/admin/routines', title: 'Routines and chores' },
-  { path: '/admin/chore-day', title: 'Today’s chores' },
+  { path: '/admin/chore-day', title: 'Chores this week' },
   { path: '/admin/pocket-money', title: 'Pocket money' },
   { path: '/admin/system', title: 'System health' },
   { path: '/admin/activity', title: 'Recent activity' },
