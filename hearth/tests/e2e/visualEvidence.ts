@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
 
-import type { Page, PageScreenshotOptions } from '@playwright/test';
+import { test, type Page, type PageScreenshotOptions } from '@playwright/test';
 import sharp from 'sharp';
 
 const MAX_RASTER_NOISE_RATIO = 0.000_05;
@@ -11,6 +12,12 @@ export async function captureEvidence(page: Page, options: PageScreenshotOptions
   const { path, ...captureOptions } = options;
   const candidate = await page.screenshot(captureOptions);
   if (path === undefined) return candidate;
+
+  // Routine verification produces test artifacts, not changes to the reviewed evidence.
+  if (process.env.HEARTH_UPDATE_EVIDENCE !== '1') {
+    await writeFile(test.info().outputPath(basename(path)), candidate);
+    return candidate;
+  }
 
   const existing = await readExisting(path);
   if (existing === null || (await materiallyDifferent(existing, candidate))) {

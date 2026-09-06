@@ -23,19 +23,24 @@
 .week-glance span {
   color: var(--muted);
 }
+.week-empty-message {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
 .week-grid {
   --timeline-two-hours: 102px;
   --timeline-span: 612px;
+  --week-all-day-height: 0px;
   display: grid;
   grid-template-columns: 76px repeat(7, minmax(0, 1fr));
-  min-height: calc(96px + var(--timeline-span));
+  min-height: calc(96px + var(--week-all-day-height) + var(--timeline-span));
   border-bottom: 1px solid var(--hairline);
   overflow: visible;
   background: transparent;
 }
 .week-time-axis {
-  padding-top: 96px;
-  height: calc(96px + var(--timeline-span));
+  padding-top: calc(96px + var(--week-all-day-height));
+  height: calc(96px + var(--week-all-day-height) + var(--timeline-span));
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -157,6 +162,13 @@
     var(--hairline) var(--timeline-two-hours)
   );
 }
+.week-column__all-day-events {
+  height: var(--week-all-day-height);
+  position: relative;
+}
+.week-grid--with-all-day .week-column__all-day-events {
+  border-bottom: 1px solid var(--hairline);
+}
 .week-event {
   --event-color: var(--sky);
   --event-background: var(--sky-soft);
@@ -168,8 +180,8 @@
   position: absolute;
   z-index: 1;
   top: var(--event-top);
-  right: 6px;
-  left: 6px;
+  left: var(--event-left, 6px);
+  width: var(--event-width, calc(100% - 12px));
   border: 1px solid var(--event-border);
   border-radius: 12px;
   background: var(--event-background);
@@ -184,6 +196,9 @@
 .week-event.week-event--all-day {
   height: var(--event-height);
   padding: 5px 8px;
+  right: 6px;
+  left: 6px;
+  width: auto;
 }
 .week-event.week-event--all-day strong {
   min-width: 0;
@@ -225,6 +240,32 @@
   place-items: center;
   font-size: 13px;
   font-weight: 750;
+}
+.week-event--overlapping {
+  padding-right: 4px;
+  padding-left: 4px;
+}
+.week-event--overlapping .week-event__meta {
+  min-height: 20px;
+}
+.week-event--overlapping .week-event__meta .avatar--small,
+.week-event--overlapping .week-event__family {
+  display: none;
+}
+.week-event--overlapping .week-event__meta time {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.week-event--overlapping strong {
+  display: -webkit-box;
+  margin-top: 1px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .week-column__empty {
   display: block;
@@ -768,9 +809,25 @@
 }
 
 @media (max-width: 1199px) {
-  .week-glance,
-  .week-footer-controls {
+  .week-glance {
     display: none;
+  }
+  .week-footer-controls {
+    min-height: 48px;
+    margin: 0 0 16px;
+    padding: 0 4px;
+    border-radius: 12px;
+  }
+  .week-footer-controls button {
+    min-height: 44px;
+    min-width: 0;
+    padding: 0 6px;
+    gap: 2px;
+    font-size: 16px;
+  }
+  .week-footer-controls svg {
+    width: 18px;
+    height: 18px;
   }
   .calendar-view-switch {
     width: fit-content;

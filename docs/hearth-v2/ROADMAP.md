@@ -498,6 +498,10 @@ credential hashes. Reminders now belong to Hearth and require no companion app.
 
 ## Deferred opportunities
 
+- Calendar off-hours, overnight and dense-day overflow presentation with TV-readable summaries
+- Incremental extraction of server routes and planning persistence by domain, preserving transactions
+- A small deterministic visual-regression baseline suite (captures alone are not pixel assertions)
+
 - Google Calendar OAuth support, read-only first, while retaining one active calendar account per
   household; support simultaneous provider accounts only after real household demand justifies the
   additional setup, credential and migration complexity

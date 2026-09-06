@@ -41,6 +41,9 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Check production and build dependency advisories
+        run: pnpm audit:dependencies
+
       - name: Run complete web and server gate
         run: pnpm verify
         env:

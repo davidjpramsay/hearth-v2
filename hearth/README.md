@@ -32,16 +32,11 @@ Open <http://127.0.0.1:4320/today>. The API runs on <http://127.0.0.1:4310> and 
 ## Verify
 
 ```sh
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test:unit
-pnpm test:integration
-pnpm test:migrations
-pnpm build
-pnpm test:e2e
+pnpm verify
 pnpm verify:tv
 ```
+
+Screenshots go to ignored test results. Use `pnpm test:visual:update` only to refresh reviewed evidence.
 
 ## Structure
 

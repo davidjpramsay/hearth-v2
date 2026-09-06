@@ -1404,3 +1404,18 @@ Official platform references:
 - Consequence: A setup fault no longer masquerades as low storage or a dead button. Existing Synology
   installations need one final helper reinstall to receive the hardened root-owned scripts; later
   external activations repair the agent automatically.
+
+## D-083 — Reverse-proxy trust requires explicit addresses
+
+- Date: 2026-09-06
+- Status: implemented locally; live deployment not performed
+- Context: Fastify 5.12.1 removes numeric hop-count trust because it cannot authenticate the
+  connecting proxy. Upgrading must not recreate that behaviour with a hop-only callback.
+- Choice: `HEARTH_TRUST_PROXY_ADDRESSES` accepts explicit comma-separated IPv4/IPv6 addresses or
+  bounded CIDRs. No addresses means no forwarded-header trust. The former
+  `HEARTH_TRUST_PROXY_HOPS` setting is no longer used. No LAN range is trusted automatically.
+- Consequence: Existing installations remain usable without new configuration. Passkey origin,
+  cookies and permissions remain bound to the configured HTTPS origin, not forwarded headers.
+  Behind an unconfigured proxy, authentication throttling is conservatively shared by clients
+  behind that proxy. Configure only the verified proxy chain's addresses when distinct client
+  throttling is required; keep the API container unexposed.

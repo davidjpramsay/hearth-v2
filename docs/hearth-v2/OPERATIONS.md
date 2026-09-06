@@ -2,6 +2,17 @@
 
 ## Verified environment snapshot
 
+Local verification uses `pnpm verify` and `pnpm verify:tv` from `hearth/`. Run
+`pnpm audit:dependencies` with registry access; GitHub verification also gates production and build
+dependencies on that audit. Routine screenshots are ignored test artifacts. Refresh committed
+visual evidence deliberately with `pnpm test:visual:update`, then inspect the image diff.
+
+After the Fastify security update (D-083), numeric `HEARTH_TRUST_PROXY_HOPS` is ignored. Optional
+`HEARTH_TRUST_PROXY_ADDRESSES` lists only verified proxy IPs/CIDRs, never all LAN addresses. Leaving
+it blank is safe and keeps the app usable, but clients behind one proxy share authentication
+throttling. Passkey HTTPS origin and authorization do not rely on these forwarded headers. Confirm
+the actual proxy chain before enabling per-client address forwarding on a live installation.
+
 Checked read-only on 2026-08-03:
 
 ### Synology
@@ -335,7 +346,7 @@ approved photo mount into development.
 As of 2026-08-09, `hearth/deploy/synology` contains the local production scaffold: a multi-stage
 Dockerfile, two-service Compose definition, rootless nginx same-origin proxy, health checks, pinned
 Node 24.18.0 and nginx 1.30.4 bases, read-only roots, dropped capabilities, bounded logs and an
-explicit two-hop DSM Reverse Proxy → nginx → Fastify trust boundary for client-address throttling,
+DSM Reverse Proxy → nginx → Fastify routing with explicit address-based trust for client throttling,
 and an ignored runtime directory template. The server production build includes all 25 forward migrations
 and compiles `better-sqlite3` within the target Linux image.
 

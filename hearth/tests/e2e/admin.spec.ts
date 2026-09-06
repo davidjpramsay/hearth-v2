@@ -14,6 +14,46 @@ const systemEvidence = resolve('docs/evidence/system-health');
 const activityEvidence = resolve('docs/evidence/system-activity');
 const accessEvidence = resolve('docs/evidence/adult-access');
 
+test('phone admin keeps all five bottom destinations in one visible row', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [path, title] of [
+    ['/admin/system', 'System health'],
+    ['/admin/routines', 'Routines and chores'],
+    ['/more', 'More'],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    const tabs = page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link');
+    await expect(tabs).toHaveCount(5);
+    const boxes = await tabs.evaluateAll((elements) =>
+      elements.map((element) => {
+        const box = element.getBoundingClientRect();
+        return {
+          top: box.top,
+          bottom: box.bottom,
+          width: box.width,
+          left: box.left,
+          right: box.right,
+        };
+      }),
+    );
+    expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(1);
+    for (const box of boxes) {
+      expect(box.bottom).toBeLessThanOrEqual(844);
+      expect(box.left).toBeGreaterThanOrEqual(0);
+      expect(box.right).toBeLessThanOrEqual(390);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+    }
+    if (path === '/admin/system') {
+      await page.screenshot({ path: testInfo.outputPath('phone-admin-dock.png') });
+    }
+    await page.getByRole('link', { name: 'More', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'More' })).toBeVisible();
+  }
+});
+
 test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
   await mkdir(peopleEvidence, { recursive: true });

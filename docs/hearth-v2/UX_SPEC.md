@@ -37,8 +37,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
 
 - A persistent navigation rail or dock exposes Today, Calendar, Weather, Chores, Lists, Reminders,
   Meals, selected Home actions and Photos, in that order; Week and Month are views inside Calendar
-  rather than competing primary destinations. Reminders appears only after a source has produced
-  its first usable snapshot; setup remains phone-first.
+  rather than competing primary destinations. Reminders are native household records and remain
+  available even before the first reminder is created; administration remains phone-first.
 - Every household surface shows the live household-local time and date in shared application chrome: in the television rail and in a compact companion header on phone/admin layouts. Individual screens do not repeat their own clock. Pairing and pre-authentication setup remain uncluttered exceptions.
 - The focused destination and focused action are always visually obvious.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
@@ -47,6 +47,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
 - When normal Google TV app switching resumes Hearth, restore its prior screen and focus when possible.
 - Focus state must not rely on colour alone. Use scale, outline, elevation or shape change with reduced-motion support.
 - Long lists use page or controlled scroll behaviour and keep the focused row visible.
+- Calendar Week keeps earlier/current/later controls available on television and companion screens,
+  including empty weeks. Multi-day cards have distinct per-date focus targets.
 
 Touch, mouse and keyboard can work in companion/admin contexts but cannot be the only path.
 
@@ -115,6 +117,10 @@ or summary band.
 ### Calendar
 
 - **Week:** primary television planning surface; columns/days must remain legible.
+- Week places all-day events in one shared-height band above the aligned hourly timeline. Timed
+  cards whose readable rendered bounds would collide use deterministic side-by-side lanes; no card
+  may paint over another, and every event remains individually focusable with its source retained in
+  colour and accessible text.
 - Week day headings include a compact, read-only forecast icon, rain probability, low/high and a
   miniature temperature-range bar when forecast data is available. Every bar uses the same weekly
   scale. The phone agenda carries a compact daily cue without compressing its event list. The
@@ -322,6 +328,9 @@ the phone More hub.
   immediately after the health summary, shows the actual blocking action instead of an inert
   button, and uses short release identifiers. Update and scheduled backups are automatic; the
   uncommon manual copy action stays collapsed under **Advanced recovery**.
+  Progress appears only during an active update. Completion shows a concise installed state;
+  a newer release remains installable after that. Cancelling passkey confirmation or rejecting a
+  command leaves retry available; only a lost installation response starts reconnecting.
 - Today & notices lets an adult publish, edit and remove concise notices, choose
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
   and see which eligible notice currently wins. It also owns the six optional

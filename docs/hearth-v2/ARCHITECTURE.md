@@ -410,7 +410,9 @@ limits invalid attempts, requires user verification and a discoverable passkey, 
 revokes the database session. Registration and authentication challenges are single-use and expire
 after five minutes. WebAuthn credentials retain their public key, signature counter, transports,
 device type and backup state; successful authentication advances the counter.
-Authentication-option issuance is rate-limited per resolved client address, pending ceremonies are
+Authentication-option issuance is rate-limited per resolved client address. Forwarded addresses are
+used only through explicit `HEARTH_TRUST_PROXY_ADDRESSES` IP/CIDR configuration; otherwise the socket
+peer identifies the rate-limit bucket, shared by callers behind the same proxy. Pending ceremonies are
 globally capped, and expired ceremonies/address windows are physically removed before new options
 are created. This keeps the unauthenticated passkey entry point memory-bounded.
 

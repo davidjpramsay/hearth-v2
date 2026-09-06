@@ -312,7 +312,7 @@ export interface BuildServerOptions {
   weatherLocationRepository?: WeatherLocationRepository;
   runtime?: RuntimeConfiguration;
   releaseVersion?: string;
-  trustProxyHops?: number;
+  trustedProxyAddresses?: string[];
   readiness?: () => Promise<void> | void;
 }
 
@@ -416,7 +416,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   const server = Fastify({
     bodyLimit: 1_500_000,
-    trustProxy: options.trustProxyHops ?? false,
+    trustProxy: options.trustedProxyAddresses?.length ? options.trustedProxyAddresses : false,
     logger:
       options.logger === false
         ? false

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { addLocalDays } from '@hearth/core';
@@ -10,7 +10,7 @@ import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
+import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
@@ -18,6 +18,8 @@ import {
   eventColorVariables,
   eventsForDay,
   forecastIcon,
+  layoutTimedWeekEvents,
+  type TimedWeekEventLayout,
   weekTemperatureDomain,
 } from '../utils/calendar';
 import { formatEventTime } from '../utils/date';
@@ -42,15 +44,18 @@ export function WeekScreen({
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
   const week = query.data;
-  if (week.events.length === 0)
-    return (
-      <EmptyState
-        onBootstrap={runtime.mode === 'private' ? undefined : () => void query.refetch()}
-      />
-    );
   const primaryEventId = week.events[0]?.id;
   const currentForecast = week.days.find((day) => day.isToday)?.forecast ?? null;
   const forecastDomain = weekTemperatureDomain(week.days);
+  const eventsByDay = new Map(
+    week.days.map((day) => [day.localDate, eventsForDay(week.events, day.localDate)]),
+  );
+  const allDayRowCount = Math.max(
+    0,
+    ...Array.from(eventsByDay.values(), (events) =>
+      events.reduce((count, event) => count + Number(event.allDay), 0),
+    ),
+  );
   return (
     <div className="screen week-screen">
       <ScreenHeader
@@ -73,13 +78,22 @@ export function WeekScreen({
         }
       />
       <CalendarViewSwitch />
+      {week.events.length === 0 ? (
+        <p className="week-empty-message" role="status">
+          Nothing planned this week.
+        </p>
+      ) : null}
       {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
       {week.freshness === 'stale' && online ? (
         <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
           {week.statusMessage}
         </StatusBanner>
       ) : null}
-      <div className="week-grid" aria-label={`${week.displayRange} schedule`}>
+      <div
+        className={`week-grid${allDayRowCount > 0 ? ' week-grid--with-all-day' : ''}`}
+        aria-label={`${week.displayRange} schedule`}
+        style={{ '--week-all-day-height': `${allDayRowCount * 68}px` } as CSSProperties}
+      >
         <div className="week-time-axis" aria-hidden="true">
           {['8 am', '10 am', '12 pm', '2 pm', '4 pm', '6 pm', '8 pm'].map((label) => (
             <span key={label}>{label}</span>
@@ -89,7 +103,7 @@ export function WeekScreen({
           <WeekColumn
             day={day}
             dayIndex={dayIndex}
-            events={eventsForDay(week.events, day.localDate)}
+            events={eventsByDay.get(day.localDate) ?? []}
             key={day.localDate}
             onSelect={setSelectedEvent}
             primaryEventId={primaryEventId}
@@ -103,6 +117,7 @@ export function WeekScreen({
           aria-label="Earlier week"
           className="focusable"
           data-focus-id="week-earlier"
+          data-focus-entry={week.events.length === 0 ? 'true' : undefined}
           data-focus-left="nav-calendar"
           data-focus-right="week-today"
           onClick={() => changeWeek(-7)}
@@ -197,8 +212,17 @@ function WeekColumn({
   timezone: string;
   onSelect: (event: CalendarEvent) => void;
 }) {
-  const allDayPositions = new Map(
-    events.filter((event) => event.allDay).map((event, index) => [event.id, index] as const),
+  const allDayEvents = events.filter((event) => event.allDay);
+  const timedLayouts = layoutTimedWeekEvents(events);
+  const orderedEvents = [...allDayEvents, ...timedLayouts.map((layout) => layout.event)];
+  const neighbours = new Map(
+    orderedEvents.map((event, index) => [
+      event.id,
+      {
+        previous: orderedEvents[index - 1],
+        next: orderedEvents[index + 1],
+      },
+    ]),
   );
 
   return (
@@ -210,49 +234,97 @@ function WeekColumn({
         </span>
         <WeekForecast domain={forecastDomain} forecast={day.forecast} />
       </header>
+      <div className="week-column__all-day-events">
+        {allDayEvents.map((event, index) => (
+          <WeekEventCard
+            allDayPosition={index}
+            dayIndex={dayIndex}
+            localDate={day.localDate}
+            event={event}
+            key={event.id}
+            neighbours={neighbours.get(event.id)}
+            onSelect={onSelect}
+            primaryEventId={primaryEventId}
+            timezone={timezone}
+          />
+        ))}
+      </div>
       <div className="week-column__events">
-        {events.length === 0 ? (
-          <span className="week-column__empty">—</span>
-        ) : (
-          events.map((event, index) => {
-            const prior = events[index - 1];
-            const next = events[index + 1];
-            const timeLabel = formatEventTime(event, timezone);
-            return (
-              <button
-                aria-label={`${timeLabel}, ${event.title}, ${event.sourceLabel}`}
-                className={`week-event focusable${event.allDay ? ' week-event--all-day' : ''}`}
-                data-focus-entry={event.id === primaryEventId ? 'true' : undefined}
-                data-focus-id={`week-event-${event.id}`}
-                data-focus-left={dayIndex === 0 ? 'nav-calendar' : undefined}
-                data-focus-up={
-                  prior === undefined ? 'calendar-view-week' : `week-event-${prior.id}`
-                }
-                data-focus-down={
-                  next === undefined ? `week-event-${event.id}` : `week-event-${next.id}`
-                }
-                onClick={() => onSelect(event)}
-                style={timelineStyle(event, timezone, allDayPositions.get(event.id) ?? 0)}
-                type="button"
-                key={event.id}
-              >
-                <span className="week-event__meta">
-                  {event.owner === null ? (
-                    <span aria-hidden="true" className="week-event__family">
-                      H
-                    </span>
-                  ) : (
-                    <Avatar member={event.owner} size="small" />
-                  )}
-                  <time>{timeLabel}</time>
-                </span>
-                <strong>{event.title}</strong>
-              </button>
-            );
-          })
-        )}
+        {events.length === 0 ? <span className="week-column__empty">—</span> : null}
+        {timedLayouts.map((layout) => (
+          <WeekEventCard
+            dayIndex={dayIndex}
+            localDate={day.localDate}
+            event={layout.event}
+            key={layout.event.id}
+            layout={layout}
+            neighbours={neighbours.get(layout.event.id)}
+            onSelect={onSelect}
+            primaryEventId={primaryEventId}
+            timezone={timezone}
+          />
+        ))}
       </div>
     </section>
+  );
+}
+
+function WeekEventCard({
+  event,
+  dayIndex,
+  localDate,
+  primaryEventId,
+  timezone,
+  neighbours,
+  layout,
+  allDayPosition = 0,
+  onSelect,
+}: {
+  event: CalendarEvent;
+  dayIndex: number;
+  localDate: string;
+  primaryEventId: string | undefined;
+  timezone: string;
+  neighbours: { previous: CalendarEvent | undefined; next: CalendarEvent | undefined } | undefined;
+  layout?: TimedWeekEventLayout;
+  allDayPosition?: number;
+  onSelect: (event: CalendarEvent) => void;
+}) {
+  const timeLabel = formatEventTime(event, timezone);
+  const overlaps = (layout?.laneCount ?? 1) > 1;
+  const previous = neighbours?.previous;
+  const next = neighbours?.next;
+  return (
+    <button
+      aria-label={`${timeLabel}, ${event.title}, ${event.sourceLabel}${overlaps ? ', overlaps another event' : ''}`}
+      className={`week-event focusable${event.allDay ? ' week-event--all-day' : ''}${overlaps ? ' week-event--overlapping' : ''}`}
+      data-focus-entry={
+        event.id === primaryEventId && (dayIndex === 0 || localDate === event.startLocalDate)
+          ? 'true'
+          : undefined
+      }
+      data-focus-id={`week-event-${localDate}-${event.id}`}
+      data-focus-left={dayIndex === 0 ? 'nav-calendar' : undefined}
+      data-focus-up={
+        previous === undefined ? 'calendar-view-week' : `week-event-${localDate}-${previous.id}`
+      }
+      data-focus-down={next === undefined ? 'week-earlier' : `week-event-${localDate}-${next.id}`}
+      onClick={() => onSelect(event)}
+      style={timelineStyle(event, timezone, allDayPosition, layout)}
+      type="button"
+    >
+      <span className="week-event__meta">
+        {event.owner === null ? (
+          <span aria-hidden="true" className="week-event__family">
+            H
+          </span>
+        ) : (
+          <Avatar member={event.owner} size="small" />
+        )}
+        <time>{timeLabel}</time>
+      </span>
+      <strong>{event.title}</strong>
+    </button>
   );
 }
 
@@ -260,13 +332,14 @@ function timelineStyle(
   event: CalendarEvent,
   timezone: string,
   allDayPosition: number,
-): React.CSSProperties {
+  layout?: TimedWeekEventLayout,
+): CSSProperties {
   if (event.allDay) {
     return {
       ...eventColorVariables(event.color),
       '--event-top': `${allDayPosition * 68}px`,
       '--event-height': '60px',
-    } as React.CSSProperties;
+    } as CSSProperties;
   }
   const start = clockMinutes(event.start, timezone);
   const duration = Math.max(
@@ -277,7 +350,19 @@ function timelineStyle(
     ...eventColorVariables(event.color),
     '--event-top': `${(Math.max(0, start - 8 * 60) / (12 * 60)) * 100}%`,
     '--event-height': `${(duration / (12 * 60)) * 100}%`,
-  } as React.CSSProperties;
+    '--event-left': eventLaneLeft(layout),
+    '--event-width': eventLaneWidth(layout),
+  } as CSSProperties;
+}
+
+function eventLaneLeft(layout: TimedWeekEventLayout | undefined): string {
+  if (layout === undefined || layout.laneCount === 1) return '6px';
+  return `calc(${(layout.laneIndex / layout.laneCount) * 100}% + 3px)`;
+}
+
+function eventLaneWidth(layout: TimedWeekEventLayout | undefined): string {
+  if (layout === undefined || layout.laneCount === 1) return 'calc(100% - 12px)';
+  return `calc(${100 / layout.laneCount}% - 6px)`;
 }
 
 function clockMinutes(timestamp: string, timezone: string): number {

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApplianceUpdateStatus, RuntimeContext, SystemStatus } from '@hearth/shared';
 
 import { adminApi } from '../api/admin';
-import { configureHearthClient } from '../api/core';
+import { configureHearthClient, HearthApiError } from '../api/core';
 import { authenticateWithPasskey } from '../auth/passkeys';
 import { useApplianceUpdateQuery, useSystemStatusQuery } from '../hooks/useAdminQueries';
 import {
@@ -93,9 +93,170 @@ const runtime: RuntimeContext = {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('SystemHealthScreen appliance update', () => {
+  it('clears the reconnect warning once the appliance confirms the requested update', async () => {
+    const refetch = mockQueries(updateStatus);
+    refetch.mockResolvedValue({
+      isSuccess: true,
+      data: {
+        ...updateStatus,
+        operation: { ...updateStatus.operation, phase: 'queued', targetVersion },
+      },
+    });
+    vi.mocked(authenticateWithPasskey).mockResolvedValue({
+      authenticated: true,
+      householdId: 'household_hearth_demo',
+      memberId: 'member_maya',
+      displayName: 'Maya',
+      expiresAt: '2026-09-28T00:30:00.000Z',
+    });
+    vi.spyOn(adminApi, 'installApplianceUpdate').mockRejectedValue(
+      new TypeError('Failed to fetch'),
+    );
+    renderScreen();
+    fireEvent.click(screen.getByRole('button', { name: 'Install update' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Reconnecting…'));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument(), {
+      timeout: 4_000,
+    });
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it('reports the database fault when recovery storage is healthy', () => {
+    mockQueries(updateStatus);
+    vi.mocked(useSystemStatusQuery).mockReturnValue({
+      data: {
+        ...systemStatus,
+        database: {
+          ...systemStatus.database,
+          state: 'needs-attention',
+          message: 'Household data needs attention.',
+        },
+      },
+      isPending: false,
+      isError: false,
+    } as ReturnType<typeof useSystemStatusQuery>);
+    renderScreen();
+    expect(screen.getAllByText('Household data needs attention.')).toHaveLength(2);
+  });
+
+  it('recovers from a lost response and retries the same release with the same request ID', async () => {
+    const refetch = mockQueries(updateStatus);
+    refetch.mockResolvedValue({ isSuccess: true, data: updateStatus });
+    vi.mocked(authenticateWithPasskey).mockResolvedValue({
+      authenticated: true,
+      householdId: 'household_hearth_demo',
+      memberId: 'member_maya',
+      displayName: 'Maya',
+      expiresAt: '2026-09-28T00:30:00.000Z',
+    });
+    const install = vi
+      .spyOn(adminApi, 'installApplianceUpdate')
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    renderScreen();
+    fireEvent.click(screen.getByRole('button', { name: 'Install update' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Reconnecting…'));
+    expect(screen.getByRole('button', { name: 'Updating…' })).toBeDisabled();
+    await waitFor(
+      () => expect(screen.getByRole('button', { name: 'Install update' })).toBeEnabled(),
+      { timeout: 4_000 },
+    );
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not confirm the update. Try again.');
+    fireEvent.click(screen.getByRole('button', { name: 'Install update' }));
+    await waitFor(() => expect(install).toHaveBeenCalledTimes(2));
+    expect(install.mock.calls[1]).toEqual(install.mock.calls[0]);
+  });
+
+  it('keeps a newer release installable after the previous update succeeded', () => {
+    mockQueries({
+      ...updateStatus,
+      operation: {
+        ...updateStatus.operation,
+        phase: 'succeeded',
+        progress: 100,
+        targetVersion: installedVersion,
+        message: 'Update installed and checked.',
+      },
+    });
+    renderScreen();
+    expect(screen.getByText('Available')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Install update' })).toBeEnabled();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  it('replaces the completed progress bar with a concise installed state', () => {
+    mockQueries({
+      ...updateStatus,
+      installedVersion: targetVersion,
+      canInstall: false,
+      updateAvailable: false,
+      operation: {
+        ...updateStatus.operation,
+        phase: 'succeeded',
+        progress: 100,
+        targetVersion,
+        message: 'Update installed and checked.',
+      },
+    });
+    renderScreen();
+    expect(screen.getByText('Update installed and checked.')).toBeVisible();
+    expect(screen.getByText('Installed bbbbbbbb')).toBeVisible();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Install update' })).not.toBeInTheDocument();
+  });
+
+  it('allows retry after passkey cancellation without sending an update command', async () => {
+    mockQueries(updateStatus);
+    vi.mocked(authenticateWithPasskey).mockRejectedValue(
+      new DOMException('The operation was not allowed.', 'NotAllowedError'),
+    );
+    const install = vi.spyOn(adminApi, 'installApplianceUpdate');
+    renderScreen();
+    fireEvent.click(screen.getByRole('button', { name: 'Install update' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Passkey confirmation cancelled. Try again.',
+      ),
+    );
+    expect(install).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Install update' })).toBeEnabled();
+    expect(screen.queryByText(/Reconnecting/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Install update' }));
+    await waitFor(() => expect(authenticateWithPasskey).toHaveBeenCalledTimes(2));
+  });
+
+  it('keeps a rejected update retryable instead of waiting for a restart', async () => {
+    mockQueries(updateStatus);
+    vi.mocked(authenticateWithPasskey).mockResolvedValue({
+      authenticated: true,
+      householdId: 'household_hearth_demo',
+      memberId: 'member_maya',
+      displayName: 'Maya',
+      expiresAt: '2026-09-28T00:30:00.000Z',
+    });
+    vi.spyOn(adminApi, 'installApplianceUpdate').mockRejectedValue(
+      new HearthApiError({
+        error: {
+          code: 'CONFIRMATION_REQUIRED',
+          message: 'Confirm again.',
+          retryable: true,
+          requestId: null,
+        },
+      }),
+    );
+    renderScreen();
+    fireEvent.click(screen.getByRole('button', { name: 'Install update' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Confirm again with an adult passkey.'),
+    );
+    expect(screen.getByRole('button', { name: 'Install update' })).toBeEnabled();
+    expect(screen.queryByText(/Reconnecting/)).not.toBeInTheDocument();
+  });
+
   it('shows only the verified release and requires a passkey before requesting installation', async () => {
     mockQueries(updateStatus);
     vi.mocked(authenticateWithPasskey).mockResolvedValue({
@@ -179,7 +340,8 @@ describe('SystemHealthScreen appliance update', () => {
   });
 });
 
-function mockQueries(applianceUpdate: ApplianceUpdateStatus): void {
+function mockQueries(applianceUpdate: ApplianceUpdateStatus) {
+  const refetch = vi.fn();
   vi.mocked(useSystemStatusQuery).mockReturnValue({
     data: systemStatus,
     isPending: false,
@@ -189,7 +351,7 @@ function mockQueries(applianceUpdate: ApplianceUpdateStatus): void {
     data: applianceUpdate,
     isPending: false,
     isError: false,
-    refetch: vi.fn(),
+    refetch,
   } as unknown as ReturnType<typeof useApplianceUpdateQuery>);
   vi.mocked(useCalendarConnectionQuery).mockReturnValue({
     data: null,
@@ -209,6 +371,7 @@ function mockQueries(applianceUpdate: ApplianceUpdateStatus): void {
     isPending: false,
     isError: false,
   } as ReturnType<typeof usePhotoSourceQuery>);
+  return refetch;
 }
 
 function renderScreen() {

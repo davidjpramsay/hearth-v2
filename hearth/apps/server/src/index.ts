@@ -57,6 +57,7 @@ import { PocketMoneyService } from './pocket-money-repository.js';
 import { ReminderService } from './reminder-repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 import { TodayContentService } from './today-content-repository.js';
+import { parseTrustedProxyAddresses } from './trusted-proxies.js';
 import {
   FakeWeatherLocationVerifier,
   OpenMeteoWeatherLocationVerifier,
@@ -75,7 +76,7 @@ import {
 const host = process.env.HEARTH_HOST ?? '127.0.0.1';
 const port = Number.parseInt(process.env.HEARTH_PORT ?? '4310', 10);
 const runtimeMode = parseRuntimeMode(process.env.HEARTH_MODE ?? 'demo');
-const trustProxyHops = parseTrustProxyHops(process.env.HEARTH_TRUST_PROXY_HOPS);
+const trustedProxyAddresses = parseTrustedProxyAddresses(process.env.HEARTH_TRUST_PROXY_ADDRESSES);
 const demoMode = runtimeMode !== 'private';
 const databasePath =
   process.env.HEARTH_DATABASE_PATH ??
@@ -280,7 +281,7 @@ const server = buildServer({
   systemOperations,
   applianceUpdate,
   ...(companionAuth === undefined ? {} : { companionAuth }),
-  ...(trustProxyHops === undefined ? {} : { trustProxyHops }),
+  trustedProxyAddresses,
   readiness: () => {
     database.prepare('SELECT 1').get();
     const migration = database
@@ -319,15 +320,6 @@ try {
 function parseRuntimeMode(value: string): RuntimeMode {
   if (value === 'demo' || value === 'test' || value === 'private') return value;
   throw new Error('HEARTH_MODE must be demo, test or private.');
-}
-
-function parseTrustProxyHops(value: string | undefined): number | undefined {
-  if (value === undefined || value.trim() === '') return undefined;
-  const hops = Number(value);
-  if (!Number.isInteger(hops) || hops < 1 || hops > 5) {
-    throw new Error('HEARTH_TRUST_PROXY_HOPS must be an integer from 1 to 5.');
-  }
-  return hops;
 }
 
 function resolveCompanionAuthConfiguration(): CompanionAuthConfiguration | null {

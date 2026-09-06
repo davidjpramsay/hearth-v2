@@ -50,10 +50,15 @@ A change is complete only when:
 - Earlier, current-period and later controls issue the requested week/month
   query, and Calendar source setup is directly discoverable without searching
   the general settings list.
+- Empty weeks retain date navigation on television and phone. Multi-day cards have unique
+  per-date focus targets, and the last card can move down to week navigation.
 - Selecting an Agenda/Week event exposes its available time, source/person and
   location in a family-readable detail surface; Back closes it and restores the
   exact event focus.
 - All-day events appear on the correct Perth local dates.
+- Week keeps all-day cards in an aligned band above the hourly timeline. Simultaneous timed cards,
+  including collisions created by their minimum readable height, render in separate deterministic
+  lanes and remain individually selectable with D-pad/keyboard input.
 - Events created in a daylight-saving region display at the correct Perth time.
 - Recurrence exceptions and cancellations do not resurrect.
 - An unavailable provider leaves cached events visible and clearly marked stale.
@@ -486,6 +491,9 @@ not yet complete.
 
 ### Operations and recovery
 
+- Untrusted peers cannot change resolved client IP, host or protocol with forged forwarded headers.
+  Explicit proxy IP/CIDR configuration permits only the commissioned chain; blank is fail-closed.
+
 - Hearth server restarts automatically after Synology restart.
 - Only an authenticated household administrator can read appliance-update state. Starting an update
   requires a passkey-authenticated companion session created within the previous five minutes;
@@ -498,6 +506,9 @@ not yet complete.
   tags if activation fails. Start and terminal result appear in Recent activity.
 - Development hides the update card. A platform without its separately commissioned fixed agent
   reports unsupported rather than pretending an update can run.
+- Completed updates show no progress bar and do not block a subsequent release. Cancelled
+  passkeys and rejected commands remain retryable; lost command responses reconnect and retain
+  the request ID when retrying the same release.
 - A configured Synology with a missing agent/status file shows the exact one-time setup action and
   no inert install button. The root hook considers the agent ready only when both its process and
   non-empty status file exist, and an externally activated release restarts a missing agent before

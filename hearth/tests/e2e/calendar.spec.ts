@@ -89,6 +89,77 @@ test('legacy Week and Month links preserve their query while redirecting to Cale
   await expect(page.getByRole('heading', { name: 'September' })).toBeVisible();
 });
 
+for (const viewport of [
+  { width: 1920, height: 1080 },
+  { width: 390, height: 844 },
+]) {
+  test(`an empty week keeps date navigation at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.route(/\/api\/v1\/households\/[^/]+\/week\?start=/, async (route) => {
+      const response = await route.fetch();
+      const week = await response.json();
+      if (!route.request().url().includes('start=2026-08-03')) week.events = [];
+      await route.fulfill({ response, json: week });
+    });
+    await page.goto('/calendar/week?start=2026-08-10');
+    await expect(page.getByRole('status')).toContainText('Nothing planned this week.');
+    await expect(page.getByRole('navigation', { name: 'Calendar view' })).toBeVisible();
+    const earlier = page.getByRole('button', { name: 'Earlier week' });
+    await expect(earlier).toBeVisible();
+    await earlier.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('button', { name: 'Go to this week' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).not.toHaveURL(/start=/);
+    await expect(page.getByText('3–9 August')).toBeVisible();
+    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: /School drop-off, Ezra$/ }).first(),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  });
+}
+
+test('a multi-day event has a unique focus target on each day and a route out to week controls', async ({
+  page,
+}) => {
+  await page.route(/\/api\/v1\/households\/[^/]+\/week\?start=/, async (route) => {
+    const response = await route.fetch();
+    const week = await response.json();
+    const source = week.events[0];
+    week.events = [
+      {
+        ...source,
+        id: 'event_family_trip',
+        title: 'Family trip',
+        allDay: true,
+        start: '2026-08-02T00:00:00+08:00',
+        end: '2026-08-05T23:59:00+08:00',
+        startLocalDate: '2026-08-02',
+        endLocalDate: '2026-08-05',
+      },
+    ];
+    await route.fulfill({ response, json: week });
+  });
+  await page.goto('/calendar/week');
+  const events = page.locator('.week-event');
+  await expect(events).toHaveCount(3);
+  await expect(events.first()).toBeFocused();
+  const ids = await events.evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('data-focus-id')),
+  );
+  expect(new Set(ids).size).toBe(3);
+  await events.nth(1).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('Family trip');
+  await page.keyboard.press('Escape');
+  await expect(events.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('button', { name: 'Earlier week' })).toBeFocused();
+});
+
 test('Month renders on television browsers without Array.prototype.toSorted', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(Array.prototype, 'toSorted', {
@@ -194,6 +265,93 @@ test('multiple all-day Week events stack without overlapping and keep D-pad orde
   await uniform.focus();
   await page.keyboard.press('ArrowDown');
   await expect(homework).toBeFocused();
+});
+
+test('Week separates all-day plans and gives colliding timed events their own lanes', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.route(/\/api\/v1\/households\/[^/]+\/week\?start=/, async (route) => {
+    const response = await route.fetch();
+    const week = (await response.json()) as {
+      events: Array<Record<string, unknown>>;
+    };
+    const source = week.events[0];
+    if (source === undefined) throw new Error('Expected seeded calendar events');
+
+    week.events.push(
+      {
+        ...source,
+        id: 'event_overlap_all_day',
+        title: 'English homework due',
+        start: '2026-08-06T00:00:00+08:00',
+        end: '2026-08-06T23:59:00+08:00',
+        startLocalDate: '2026-08-06',
+        endLocalDate: '2026-08-06',
+        allDay: true,
+      },
+      {
+        ...source,
+        id: 'event_overlap_breakfast',
+        title: "Dad's breakfast",
+        start: '2026-08-06T08:00:00+08:00',
+        end: '2026-08-06T09:00:00+08:00',
+        startLocalDate: '2026-08-06',
+        endLocalDate: '2026-08-06',
+        allDay: false,
+      },
+      {
+        ...source,
+        id: 'event_overlap_cooking',
+        title: 'Cooking class',
+        start: '2026-08-06T08:30:00+08:00',
+        end: '2026-08-06T09:30:00+08:00',
+        startLocalDate: '2026-08-06',
+        endLocalDate: '2026-08-06',
+        allDay: false,
+      },
+    );
+    await route.fulfill({ response, json: week });
+  });
+
+  await page.goto('/calendar/week');
+  const allDay = page.getByRole('button', { name: /All day, English homework due/ });
+  const breakfast = page.getByRole('button', {
+    name: /8:00 am, Dad's breakfast, Ezra, overlaps another event/,
+  });
+  const cooking = page.getByRole('button', {
+    name: /8:30 am, Cooking class, Ezra, overlaps another event/,
+  });
+  const [allDayBox, breakfastBox, cookingBox] = await Promise.all([
+    allDay.boundingBox(),
+    breakfast.boundingBox(),
+    cooking.boundingBox(),
+  ]);
+  if (allDayBox === null || breakfastBox === null || cookingBox === null) {
+    throw new Error('Expected the all-day card and both timed cards to be visible');
+  }
+
+  expect(allDayBox.y + allDayBox.height).toBeLessThan(breakfastBox.y);
+  expect(breakfastBox.x + breakfastBox.width).toBeLessThan(cookingBox.x);
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'hearth.appearance.v1',
+      JSON.stringify({ theme: 'dark', eveningDimming: false }),
+    );
+  });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('heading', { name: 'This week' })).toBeVisible();
+  await expect(cooking).toBeVisible();
+  await allDay.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(breakfast).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(cooking).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('Cooking class');
+  await page.keyboard.press('Escape');
+  await expect(cooking).toBeFocused();
 });
 
 test('phone Calendar exposes sources and More exposes family tools before settings', async ({

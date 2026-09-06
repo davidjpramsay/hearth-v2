@@ -14,6 +14,7 @@ import {
 import { PhotoService } from './photo-repository.js';
 import { RepositoryError } from './repository.js';
 import { FixedClock } from './runtime-context.js';
+import { parseTrustedProxyAddresses } from './trusted-proxies.js';
 
 const servers: ReturnType<typeof buildServer>[] = [];
 
@@ -26,6 +27,76 @@ function server() {
   servers.push(instance);
   return instance;
 }
+
+describe('explicit reverse-proxy trust', () => {
+  it('accepts only explicit IPs or bounded CIDRs and defaults to no trust', () => {
+    expect(parseTrustedProxyAddresses(undefined)).toEqual([]);
+    expect(parseTrustedProxyAddresses('  ')).toEqual([]);
+    expect(parseTrustedProxyAddresses('192.0.2.10, 2001:db8::/64')).toEqual([
+      '192.0.2.10',
+      '2001:db8::/64',
+    ]);
+    for (const value of [
+      '2',
+      'true',
+      '*',
+      'uniquelocal',
+      '0.0.0.0/0',
+      '192.0.2.1/33',
+      '::/129',
+      '192.0.2.1/24/1',
+      '192.0.2.1,',
+    ]) {
+      expect(() => parseTrustedProxyAddresses(value)).toThrow('HEARTH_TRUST_PROXY_ADDRESSES');
+    }
+  });
+
+  it('ignores forged forwarded headers unless the connecting peer is explicitly trusted', async () => {
+    const app = buildServer({ logger: false, trustedProxyAddresses: ['192.0.2.10'] });
+    servers.push(app);
+    app.get('/test-proxy-origin', (request) => ({
+      ip: request.ip,
+      host: request.host,
+      protocol: request.protocol,
+    }));
+    const headers = {
+      host: 'hearth.local',
+      'x-forwarded-for': '198.51.100.9',
+      'x-forwarded-host': 'spoofed.example',
+      'x-forwarded-proto': 'https',
+    };
+    const direct = await app.inject({
+      method: 'GET',
+      url: '/test-proxy-origin',
+      remoteAddress: '192.0.2.11',
+      headers,
+    });
+    expect(direct.json()).toEqual({ ip: '192.0.2.11', host: 'hearth.local', protocol: 'http' });
+    const proxied = await app.inject({
+      method: 'GET',
+      url: '/test-proxy-origin',
+      remoteAddress: '192.0.2.10',
+      headers,
+    });
+    expect(proxied.json()).toEqual({
+      ip: '198.51.100.9',
+      host: 'spoofed.example',
+      protocol: 'https',
+    });
+  });
+
+  it('ignores forwarded headers without proxy configuration', async () => {
+    const app = server();
+    app.get('/test-client-ip', (request) => ({ ip: request.ip }));
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test-client-ip',
+      remoteAddress: '192.0.2.10',
+      headers: { 'x-forwarded-for': '198.51.100.9' },
+    });
+    expect(response.json()).toEqual({ ip: '192.0.2.10' });
+  });
+});
 
 function privateCompanionAuth(): CompanionAuthRepository {
   const session = (token: string) => {

@@ -130,6 +130,7 @@
 
 .system-update__state {
   flex: 0 0 auto;
+  align-self: flex-start;
   padding: 5px 9px;
   border-radius: 999px;
   color: var(--muted);
