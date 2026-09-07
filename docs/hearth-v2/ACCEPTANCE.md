@@ -58,7 +58,12 @@ A change is complete only when:
 - All-day events appear on the correct Perth local dates.
 - Week keeps all-day cards in an aligned band above the hourly timeline. Simultaneous timed cards,
   including collisions created by their minimum readable height, render in separate deterministic
-  lanes and remain individually selectable with D-pad/keyboard input.
+  lanes and remain individually selectable with D-pad/keyboard input, directly or through `+N more`.
+- Week expands its shared clock axis for off-hours plans without painting cards outside the grid.
+  It caps all-day rows and simultaneous timed lanes at two, and overflow opens the full day list.
+  The list retains all events offline, traps Tab focus, and restores the exact row/opener on Back.
+- Overnight plans use household-local daily segments and continuation labels. Midnight-exclusive
+  endings do not repeat on the following day, and details show both dates/times where needed.
 - Events created in a daylight-saving region display at the correct Perth time.
 - Recurrence exceptions and cancellations do not resurrect.
 - An unavailable provider leaves cached events visible and clearly marked stale.

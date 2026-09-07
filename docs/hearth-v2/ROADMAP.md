@@ -496,9 +496,14 @@ credential hashes. Reminders now belong to Hearth and require no companion app.
 - No Apple credential, EventKit identifier, source token or companion background task remains in
   the active build.
 
+## Calendar density follow-up (2026-09-07)
+
+- Implemented locally: adaptive off-hours Week axis, overnight segments, bounded all-day/timed
+  previews and a full-day overflow dialog with D-pad/Back focus restoration. Phone/tablet retain
+  the full agenda. Provider records, APIs and storage are unchanged; live TV/NAS acceptance remains.
+
 ## Deferred opportunities
 
-- Calendar off-hours, overnight and dense-day overflow presentation with TV-readable summaries
 - Incremental extraction of server routes and planning persistence by domain, preserving transactions
 - A small deterministic visual-regression baseline suite (captures alone are not pixel assertions)
 

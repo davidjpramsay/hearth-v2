@@ -4,7 +4,7 @@ import type { CalendarEvent, DailyForecast, WeekDay } from '@hearth/shared';
 
 import { Icon } from './Icon';
 import { eventsForDay, forecastIcon, weekTemperatureDomain } from '../utils/calendar';
-import { formatEventTime } from '../utils/date';
+import { formatEventDayTime } from '../utils/date';
 
 export function CalendarAgenda({
   days,
@@ -21,12 +21,12 @@ export function CalendarAgenda({
 }) {
   const forecastDomain = weekTemperatureDomain(days);
   const focusableEvents = days.flatMap((day) =>
-    eventsForDay(events, day.localDate).map((event) => ({ day: day.localDate, event })),
+    eventsForDay(events, day.localDate, timezone).map((event) => ({ day: day.localDate, event })),
   );
   return (
     <div className={`calendar-agenda ${className}`.trim()}>
       {days.map((day) => {
-        const dayEvents = eventsForDay(events, day.localDate);
+        const dayEvents = eventsForDay(events, day.localDate, timezone);
         return (
           <section className="agenda-day" key={day.localDate}>
             <header>
@@ -44,7 +44,7 @@ export function CalendarAgenda({
                 );
                 const prior = focusableEvents[eventIndex - 1];
                 const next = focusableEvents[eventIndex + 1];
-                const timeLabel = formatEventTime(event, timezone);
+                const timeLabel = formatEventDayTime(event, day.localDate, timezone);
                 const focusId = agendaFocusId(day.localDate, event.id);
                 return (
                   <button

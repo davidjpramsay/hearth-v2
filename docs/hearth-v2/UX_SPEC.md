@@ -119,8 +119,14 @@ or summary band.
 - **Week:** primary television planning surface; columns/days must remain legible.
 - Week places all-day events in one shared-height band above the aligned hourly timeline. Timed
   cards whose readable rendered bounds would collide use deterministic side-by-side lanes; no card
-  may paint over another, and every event remains individually focusable with its source retained in
-  colour and accessible text.
+  may paint over another. The shared clock axis starts with 8 am–8 pm and expands in two-hour steps
+  for early/late plans, up to midnight-to-midnight. Overnight plans are clipped to each household-local
+  day, with continuation labels and their full start/end range in details; a midnight end is exclusive.
+- Week shows at most two all-day rows and two timed lanes per day. Extra events, including short
+  late events that cannot fit a readable card before the axis ends, count towards `+N more` beneath
+  that day. It opens the full day list with every event and source, not just the hidden events.
+  The list scrolls within a focus-contained dialog; Select opens details, Back returns to the same
+  list row, and a second Back restores the Week opener. Left/Right crosses non-empty day columns.
 - Week day headings include a compact, read-only forecast icon, rain probability, low/high and a
   miniature temperature-range bar when forecast data is available. Every bar uses the same weekly
   scale. The phone agenda carries a compact daily cue without compressing its event list. The

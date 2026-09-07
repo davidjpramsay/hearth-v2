@@ -1419,3 +1419,19 @@ Official platform references:
   Behind an unconfigured proxy, authentication throttling is conservatively shared by clients
   behind that proxy. Configure only the verified proxy chain's addresses when distinct client
   throttling is required; keep the API container unexposed.
+
+## D-084 — Bounded Week previews with a full-day overflow list
+
+- Date: 2026-09-07
+- Status: implemented locally; no live deployment
+- Context: A fixed 8 am–8 pm grid loses early/late plans, repeats an overnight duration on each
+  date, and becomes unreadable when arbitrary numbers of overlapping cards divide a day column.
+- Choice: Extend the shared wall-clock axis as needed, bounded by midnight. Clip timed events to
+  each local day and treat timed ends as exclusive. Keep two all-day rows and at most two timed
+  lanes, accounting for readable card height. Anything that cannot fit contributes to `+N more`.
+  The control opens a native modal full-day list from the already-loaded schedule, with event
+  details inside that same modal and exact Back/focus restoration. The companion keeps its agenda.
+- Consequence: No provider, API, database or calendar write changes. Busy days and very late short
+  events may need one extra Select, but no event is silently lost or reduced to a third tiny lane.
+  A repeated daylight-saving hour keeps its true timestamps in details while its wall-clock card
+  gets a positive readable span. Hardware remote/browser acceptance remains separate from lab QA.

@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import type { CalendarEvent } from '@hearth/shared';
 
-import { Avatar } from './Avatar';
-import { formatEventTime } from '../utils/date';
+import { EventDetailsContent } from './EventDetailsContent';
 
 export function EventDetailsDialog({
   event,
@@ -36,34 +35,7 @@ export function EventDetailsDialog({
       role="dialog"
     >
       <div className="event-detail__panel">
-        <div className="event-detail__person">
-          {event.owner === null ? (
-            <span aria-hidden="true" className="family-avatar">
-              H
-            </span>
-          ) : (
-            <Avatar member={event.owner} />
-          )}
-          <span style={{ '--event-color': event.color } as React.CSSProperties} />
-        </div>
-        <p>{event.sourceLabel}</p>
-        <h2 id="event-detail-title">{event.title}</h2>
-        <dl>
-          <div>
-            <dt>When</dt>
-            <dd>{eventDateTime(event, timezone)}</dd>
-          </div>
-          {event.location === null ? null : (
-            <div>
-              <dt>Where</dt>
-              <dd>{event.location}</dd>
-            </div>
-          )}
-          <div>
-            <dt>Calendar</dt>
-            <dd>{event.owner?.displayName ?? 'Whole family'}</dd>
-          </div>
-        </dl>
+        <EventDetailsContent event={event} timezone={timezone} />
         <button
           className="button button--primary focusable"
           data-back-dismiss="true"
@@ -77,14 +49,4 @@ export function EventDetailsDialog({
       </div>
     </div>
   );
-}
-
-function eventDateTime(event: CalendarEvent, timezone: string): string {
-  const date = new Intl.DateTimeFormat('en-AU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  }).format(new Date(`${event.startLocalDate}T12:00:00.000Z`));
-  return event.allDay ? `${date} · All day` : `${date} · ${formatEventTime(event, timezone)}`;
 }

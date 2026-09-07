@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { addLocalDays } from '@hearth/core';
@@ -6,6 +6,7 @@ import type { CalendarEvent, DemoScenario, WeekDay } from '@hearth/shared';
 
 import { Avatar } from '../components/Avatar';
 import { CalendarAgenda, WeekForecast } from '../components/CalendarAgenda';
+import { CalendarDayDialog } from '../components/CalendarDayDialog';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
@@ -13,16 +14,18 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { COMPANION_QUERY } from '../layout/viewportQueries';
 import { useHearthRuntime } from '../runtime/context';
+import { eventColorVariables, forecastIcon, weekTemperatureDomain } from '../utils/calendar';
+import { formatEventDayTime } from '../utils/date';
 import {
-  eventColorVariables,
-  eventsForDay,
-  forecastIcon,
-  layoutTimedWeekEvents,
+  layoutWeekDay,
+  timelineHourLabel,
+  weekTimeline,
+  type WeekDayLayout,
+  type WeekTimeline,
   type TimedWeekEventLayout,
-  weekTemperatureDomain,
-} from '../utils/calendar';
-import { formatEventTime } from '../utils/date';
+} from '../utils/weekLayout';
 
 export function WeekScreen({
   scenario,
@@ -41,21 +44,34 @@ export function WeekScreen({
   const query = useWeekQuery(weekStart, !preparing);
   const online = useOnlineStatus(scenario === 'offline');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const companion = useSyncExternalStore(subscribeCompanion, companionSnapshot);
+  const presentation = useMemo(() => {
+    if (query.data === undefined) return null;
+    const timeline = weekTimeline(
+      query.data.events,
+      query.data.days.map((day) => day.localDate),
+      runtime.timezone,
+    );
+    const layouts = query.data.days.map((day) =>
+      layoutWeekDay(query.data.events, day.localDate, runtime.timezone, timeline),
+    );
+    return { timeline, layouts };
+  }, [query.data, runtime.timezone]);
   if (preparing || query.isPending) return <LoadingState />;
-  if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
+  if (query.data === undefined || presentation === null)
+    return <FailureState onRetry={() => void query.refetch()} />;
   const week = query.data;
-  const primaryEventId = week.events[0]?.id;
   const currentForecast = week.days.find((day) => day.isToday)?.forecast ?? null;
   const forecastDomain = weekTemperatureDomain(week.days);
-  const eventsByDay = new Map(
-    week.days.map((day) => [day.localDate, eventsForDay(week.events, day.localDate)]),
+  const { timeline, layouts } = presentation;
+  const focusColumns = layouts.map((layout, index) =>
+    columnFocusIds(layout, week.days[index]!.localDate),
   );
-  const allDayRowCount = Math.max(
-    0,
-    ...Array.from(eventsByDay.values(), (events) =>
-      events.reduce((count, event) => count + Number(event.allDay), 0),
-    ),
-  );
+  const primaryFocusId = focusColumns.flat()[0];
+  const lastFocusId = focusColumns.flat().at(-1);
+  const openDayIndex = week.days.findIndex((day) => day.localDate === selectedDay);
+  const allDayRowCount = Math.max(0, ...layouts.map((layout) => layout.allDay.length));
   return (
     <div className="screen week-screen">
       <ScreenHeader
@@ -89,29 +105,51 @@ export function WeekScreen({
           {week.statusMessage}
         </StatusBanner>
       ) : null}
-      <div
-        className={`week-grid${allDayRowCount > 0 ? ' week-grid--with-all-day' : ''}`}
-        aria-label={`${week.displayRange} schedule`}
-        style={{ '--week-all-day-height': `${allDayRowCount * 68}px` } as CSSProperties}
-      >
-        <div className="week-time-axis" aria-hidden="true">
-          {['8 am', '10 am', '12 pm', '2 pm', '4 pm', '6 pm', '8 pm'].map((label) => (
-            <span key={label}>{label}</span>
+      {!companion ? (
+        <div
+          className={`week-grid${allDayRowCount > 0 ? ' week-grid--with-all-day' : ''}`}
+          aria-label={`${week.displayRange} schedule`}
+          style={
+            {
+              '--week-all-day-height': `${allDayRowCount * 68}px`,
+              '--timeline-steps': (timeline.end - timeline.start) / 120,
+            } as CSSProperties
+          }
+        >
+          <div className="week-time-axis" aria-hidden="true">
+            <div className="week-time-axis__labels">
+              {Array.from(
+                { length: (timeline.end - timeline.start) / 120 + 1 },
+                (_, index) => timeline.start + index * 120,
+              ).map((minutes) => (
+                <span
+                  key={minutes}
+                  style={{
+                    top: `${((minutes - timeline.start) / (timeline.end - timeline.start)) * 100}%`,
+                  }}
+                >
+                  {timelineHourLabel(minutes)}
+                </span>
+              ))}
+            </div>
+          </div>
+          {week.days.map((day, dayIndex) => (
+            <WeekColumn
+              day={day}
+              dayIndex={dayIndex}
+              layout={layouts[dayIndex]!}
+              timeline={timeline}
+              focusColumns={focusColumns}
+              key={day.localDate}
+              onSelect={setSelectedEvent}
+              primaryFocusId={primaryFocusId}
+              onOpenDay={() => setSelectedDay(day.localDate)}
+              forecastDomain={forecastDomain}
+              timezone={runtime.timezone}
+            />
           ))}
         </div>
-        {week.days.map((day, dayIndex) => (
-          <WeekColumn
-            day={day}
-            dayIndex={dayIndex}
-            events={eventsByDay.get(day.localDate) ?? []}
-            key={day.localDate}
-            onSelect={setSelectedEvent}
-            primaryEventId={primaryEventId}
-            forecastDomain={forecastDomain}
-            timezone={runtime.timezone}
-          />
-        ))}
-      </div>
+      ) : null}
       <div className="week-footer-controls">
         <button
           aria-label="Earlier week"
@@ -120,6 +158,7 @@ export function WeekScreen({
           data-focus-entry={week.events.length === 0 ? 'true' : undefined}
           data-focus-left="nav-calendar"
           data-focus-right="week-today"
+          data-focus-up={companion ? undefined : lastFocusId}
           onClick={() => changeWeek(-7)}
           type="button"
         >
@@ -132,6 +171,7 @@ export function WeekScreen({
           data-focus-id="week-today"
           data-focus-left="week-earlier"
           data-focus-right="week-later"
+          data-focus-up={companion ? undefined : lastFocusId}
           onClick={goToCurrentWeek}
           type="button"
         >
@@ -143,6 +183,7 @@ export function WeekScreen({
           data-focus-id="week-later"
           data-focus-left="week-today"
           data-focus-right="week-later"
+          data-focus-up={companion ? undefined : lastFocusId}
           onClick={() => changeWeek(7)}
           type="button"
         >
@@ -150,13 +191,23 @@ export function WeekScreen({
           <Icon name="chevron-right" />
         </button>
       </div>
-      <CalendarAgenda
-        className="week-agenda"
-        days={week.days}
-        events={week.events}
-        onSelect={setSelectedEvent}
-        timezone={runtime.timezone}
-      />
+      {companion ? (
+        <CalendarAgenda
+          className="week-agenda"
+          days={week.days}
+          events={week.events}
+          onSelect={setSelectedEvent}
+          timezone={runtime.timezone}
+        />
+      ) : null}
+      {openDayIndex < 0 ? null : (
+        <CalendarDayDialog
+          day={week.days[openDayIndex]!}
+          events={layouts[openDayIndex]!.events}
+          timezone={runtime.timezone}
+          onClose={() => setSelectedDay(null)}
+        />
+      )}
       <EventDetailsDialog
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
@@ -197,33 +248,44 @@ function dayPeriodIcon(timestamp: string, timezone: string): IconName {
 
 function WeekColumn({
   day,
-  events,
+  layout,
+  timeline,
   dayIndex,
-  primaryEventId,
+  primaryFocusId,
+  focusColumns,
   forecastDomain,
   timezone,
   onSelect,
+  onOpenDay,
 }: {
   day: WeekDay;
-  events: CalendarEvent[];
+  layout: WeekDayLayout;
+  timeline: WeekTimeline;
   dayIndex: number;
-  primaryEventId: string | undefined;
+  primaryFocusId: string | undefined;
+  focusColumns: string[][];
   forecastDomain: readonly [number, number] | null;
   timezone: string;
   onSelect: (event: CalendarEvent) => void;
+  onOpenDay: () => void;
 }) {
-  const allDayEvents = events.filter((event) => event.allDay);
-  const timedLayouts = layoutTimedWeekEvents(events);
-  const orderedEvents = [...allDayEvents, ...timedLayouts.map((layout) => layout.event)];
-  const neighbours = new Map(
-    orderedEvents.map((event, index) => [
-      event.id,
-      {
-        previous: orderedEvents[index - 1],
-        next: orderedEvents[index + 1],
-      },
-    ]),
-  );
+  const focusIds = focusColumns[dayIndex]!;
+  const focusProps = (id: string) => {
+    const index = focusIds.indexOf(id);
+    const leftColumn = focusColumns
+      .slice(0, dayIndex)
+      .reverse()
+      .find((column) => column.length > 0);
+    const rightColumn = focusColumns.slice(dayIndex + 1).find((column) => column.length > 0);
+    return {
+      'data-focus-id': id,
+      'data-focus-entry': id === primaryFocusId ? 'true' : undefined,
+      'data-focus-up': focusIds[index - 1] ?? 'calendar-view-week',
+      'data-focus-down': focusIds[index + 1] ?? 'week-earlier',
+      'data-focus-left': leftColumn?.[Math.min(index, leftColumn.length - 1)] ?? 'nav-calendar',
+      'data-focus-right': rightColumn?.[Math.min(index, rightColumn.length - 1)] ?? 'week-later',
+    };
+  };
 
   return (
     <section className={`week-column${day.isToday ? ' week-column--today' : ''}`}>
@@ -235,82 +297,77 @@ function WeekColumn({
         <WeekForecast domain={forecastDomain} forecast={day.forecast} />
       </header>
       <div className="week-column__all-day-events">
-        {allDayEvents.map((event, index) => (
+        {layout.allDay.map((event, index) => (
           <WeekEventCard
             allDayPosition={index}
-            dayIndex={dayIndex}
             localDate={day.localDate}
             event={event}
             key={event.id}
-            neighbours={neighbours.get(event.id)}
+            focusProps={focusProps(`week-event-${day.localDate}-${event.id}`)}
             onSelect={onSelect}
-            primaryEventId={primaryEventId}
+            timeline={timeline}
             timezone={timezone}
           />
         ))}
       </div>
       <div className="week-column__events">
-        {events.length === 0 ? <span className="week-column__empty">—</span> : null}
-        {timedLayouts.map((layout) => (
+        {layout.events.length === 0 ? <span className="week-column__empty">—</span> : null}
+        {layout.timed.map((item) => (
           <WeekEventCard
-            dayIndex={dayIndex}
             localDate={day.localDate}
-            event={layout.event}
-            key={layout.event.id}
-            layout={layout}
-            neighbours={neighbours.get(layout.event.id)}
+            event={item.event}
+            key={item.event.id}
+            layout={item}
+            focusProps={focusProps(`week-event-${day.localDate}-${item.event.id}`)}
             onSelect={onSelect}
-            primaryEventId={primaryEventId}
+            timeline={timeline}
             timezone={timezone}
           />
         ))}
       </div>
+      {layout.hiddenCount > 0 ? (
+        <button
+          className="week-more focusable"
+          type="button"
+          aria-label={`${layout.hiddenCount} more events, ${day.dayLabel} ${day.dateLabel}. View full day`}
+          {...focusProps(`week-more-${day.localDate}`)}
+          onClick={onOpenDay}
+        >
+          +{layout.hiddenCount} more
+        </button>
+      ) : null}
     </section>
   );
 }
 
 function WeekEventCard({
   event,
-  dayIndex,
   localDate,
-  primaryEventId,
   timezone,
-  neighbours,
+  focusProps,
+  timeline,
   layout,
   allDayPosition = 0,
   onSelect,
 }: {
   event: CalendarEvent;
-  dayIndex: number;
   localDate: string;
-  primaryEventId: string | undefined;
   timezone: string;
-  neighbours: { previous: CalendarEvent | undefined; next: CalendarEvent | undefined } | undefined;
+  focusProps: Record<string, string | undefined>;
+  timeline: WeekTimeline;
   layout?: TimedWeekEventLayout;
   allDayPosition?: number;
   onSelect: (event: CalendarEvent) => void;
 }) {
-  const timeLabel = formatEventTime(event, timezone);
+  const timeLabel = formatEventDayTime(event, localDate, timezone);
   const overlaps = (layout?.laneCount ?? 1) > 1;
-  const previous = neighbours?.previous;
-  const next = neighbours?.next;
   return (
     <button
       aria-label={`${timeLabel}, ${event.title}, ${event.sourceLabel}${overlaps ? ', overlaps another event' : ''}`}
       className={`week-event focusable${event.allDay ? ' week-event--all-day' : ''}${overlaps ? ' week-event--overlapping' : ''}`}
-      data-focus-entry={
-        event.id === primaryEventId && (dayIndex === 0 || localDate === event.startLocalDate)
-          ? 'true'
-          : undefined
-      }
-      data-focus-id={`week-event-${localDate}-${event.id}`}
-      data-focus-left={dayIndex === 0 ? 'nav-calendar' : undefined}
-      data-focus-up={
-        previous === undefined ? 'calendar-view-week' : `week-event-${localDate}-${previous.id}`
-      }
-      data-focus-down={next === undefined ? 'week-earlier' : `week-event-${localDate}-${next.id}`}
+      {...focusProps}
       onClick={() => onSelect(event)}
-      style={timelineStyle(event, timezone, allDayPosition, layout)}
+      style={timelineStyle(event, timeline, allDayPosition, layout)}
       type="button"
     >
       <span className="week-event__meta">
@@ -330,7 +387,7 @@ function WeekEventCard({
 
 function timelineStyle(
   event: CalendarEvent,
-  timezone: string,
+  timeline: WeekTimeline,
   allDayPosition: number,
   layout?: TimedWeekEventLayout,
 ): CSSProperties {
@@ -341,15 +398,11 @@ function timelineStyle(
       '--event-height': '60px',
     } as CSSProperties;
   }
-  const start = clockMinutes(event.start, timezone);
-  const duration = Math.max(
-    45,
-    Math.round((new Date(event.end).getTime() - new Date(event.start).getTime()) / 60_000),
-  );
+  const span = timeline.end - timeline.start;
   return {
     ...eventColorVariables(event.color),
-    '--event-top': `${(Math.max(0, start - 8 * 60) / (12 * 60)) * 100}%`,
-    '--event-height': `${(duration / (12 * 60)) * 100}%`,
+    '--event-top': `${(((layout?.start ?? timeline.start) - timeline.start) / span) * 100}%`,
+    '--event-height': `calc(${(((layout?.displayEnd ?? timeline.end) - (layout?.start ?? timeline.start)) / span) * 100}% - 4px)`,
     '--event-left': eventLaneLeft(layout),
     '--event-width': eventLaneWidth(layout),
   } as CSSProperties;
@@ -365,13 +418,21 @@ function eventLaneWidth(layout: TimedWeekEventLayout | undefined): string {
   return `calc(${100 / layout.laneCount}% - 6px)`;
 }
 
-function clockMinutes(timestamp: string, timezone: string): number {
-  const parts = new Intl.DateTimeFormat('en-AU', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date(timestamp));
-  const values = new Map(parts.map((part) => [part.type, part.value]));
-  return Number(values.get('hour') ?? 0) * 60 + Number(values.get('minute') ?? 0);
+function columnFocusIds(layout: WeekDayLayout, date: string): string[] {
+  return [
+    ...[...layout.allDay, ...layout.timed.map((item) => item.event)].map(
+      (event) => `week-event-${date}-${event.id}`,
+    ),
+    ...(layout.hiddenCount > 0 ? [`week-more-${date}`] : []),
+  ];
+}
+
+function companionSnapshot(): boolean {
+  return window.matchMedia(COMPANION_QUERY).matches;
+}
+
+function subscribeCompanion(onChange: () => void): () => void {
+  const media = window.matchMedia(COMPANION_QUERY);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
 }
