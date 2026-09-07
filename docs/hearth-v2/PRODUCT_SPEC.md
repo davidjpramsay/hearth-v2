@@ -171,8 +171,9 @@ Hearth data backup boundary.
 - The graph exposes temperature with apparent temperature, rain probability with expected amount,
   and sustained wind with gusts and direction. Television use requires only D-pad directions and
   Select; the phone uses the same information in a stacked touch-friendly layout.
-- Seven-day and Calendar Week temperature bars share a scale within their displayed week, so their
-  positions communicate relative warmth rather than acting as decorative progress bars.
+- Weather's seven-day temperature bars share a weekly scale and each day includes maximum wind
+  speed and prevailing direction. Calendar Week keeps only the compact condition, rain and low/high
+  temperatures, without range bars.
 - Keep the last successful forecast readable during a provider outage and show its age quietly.
 - Brief announcements with expiry and priority.
 - Optional household-local daily Bible verse from the ESV API. It is off by default,

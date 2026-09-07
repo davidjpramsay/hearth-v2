@@ -1,5 +1,5 @@
 import { localDateInTimezone } from '@hearth/core';
-import type { CalendarEvent, DailyForecast, WeekDay } from '@hearth/shared';
+import type { CalendarEvent, DailyForecast } from '@hearth/shared';
 
 import type { IconName } from '../components/Icon';
 
@@ -9,11 +9,15 @@ export function eventColorVariables(color: string): Record<string, string> {
   const darkForeground = [red, green, blue].map((channel) =>
     Math.round(channel + (255 - channel) * 0.55),
   );
+  // Pre-composite the source tint onto each canvas so grid lines and neighbouring
+  // cards cannot show through. Keep the existing restrained light/dark palette.
+  const solidTint = (base: number[], amount: number) =>
+    `rgb(${channels.map((channel, index) => Math.round(channel * amount + base[index]! * (1 - amount))).join(', ')})`;
   return {
     '--event-color': color,
-    '--event-background': `rgba(${red}, ${green}, ${blue}, 0.36)`,
-    '--event-background-dark': `rgba(${red}, ${green}, ${blue}, 0.44)`,
-    '--event-border': `rgba(${red}, ${green}, ${blue}, 0.74)`,
+    '--event-background': solidTint([248, 246, 240], 0.36),
+    '--event-background-dark': solidTint([21, 26, 24], 0.44),
+    '--event-border': color,
     '--event-foreground-dark': `rgb(${darkForeground.join(', ')})`,
   };
 }
@@ -49,12 +53,4 @@ export function eventsForDay(
       localDateInTimezone(lastInstant, timezone) >= localDate
     );
   });
-}
-
-export function weekTemperatureDomain(days: readonly WeekDay[]): readonly [number, number] | null {
-  const forecasts = days.flatMap((day) => (day.forecast === null ? [] : [day.forecast]));
-  if (forecasts.length === 0) return null;
-  const minimum = Math.min(...forecasts.map((forecast) => forecast.lowTemperatureCelsius));
-  const maximum = Math.max(...forecasts.map((forecast) => forecast.highTemperatureCelsius));
-  return minimum === maximum ? [minimum - 1, maximum + 1] : [minimum, maximum];
 }

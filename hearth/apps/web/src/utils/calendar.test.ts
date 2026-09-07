@@ -7,11 +7,11 @@ import { layoutWeekDay, weekTimeline } from './weekLayout';
 import { formatEventDateRange, formatEventDayTime } from './date';
 
 describe('calendar event presentation', () => {
-  it('uses deep source-colour fills in light and dark themes', () => {
+  it('uses opaque source-colour fills in light and dark themes', () => {
     expect(eventColorVariables('#6b4fa3')).toMatchObject({
-      '--event-background': 'rgba(107, 79, 163, 0.36)',
-      '--event-background-dark': 'rgba(107, 79, 163, 0.44)',
-      '--event-border': 'rgba(107, 79, 163, 0.74)',
+      '--event-background': 'rgb(197, 186, 212)',
+      '--event-background-dark': 'rgb(59, 49, 85)',
+      '--event-border': '#6b4fa3',
     });
   });
 

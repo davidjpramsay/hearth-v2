@@ -93,6 +93,9 @@ forecast containing a normalized condition code, family-readable label and
 Celsius temperature plus a bounded `demo` or `open-meteo` source identity for
 correct display attribution. Phase 1 demo forecasts remain deterministic seeded
 data. Private forecasts are transient server-cache projections from Open-Meteo.
+Daily forecasts also carry optional nullable `maxWindSpeedKph` (0–500) and
+`dominantWindDirectionDegrees` (0–360). They mean the daily maximum sustained wind and prevailing
+direction, not current conditions. Older cached responses may omit them; missing never means calm.
 The selected household weather location is a small SQLite-owned setting; raw
 forecast/provider payloads are not persisted.
 

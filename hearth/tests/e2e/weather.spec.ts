@@ -2,18 +2,29 @@ import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { captureEvidence } from './visualEvidence';
 
 const evidence = resolve('docs/evidence/weather');
+const browserErrors = new WeakMap<Page, string[]>();
 
 test.beforeAll(async () => {
   await mkdir(evidence, { recursive: true });
 });
 
-test.beforeEach(async ({ request }) => {
+test.beforeEach(async ({ page, request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
+  const errors: string[] = [];
+  browserErrors.set(page, errors);
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  expect(browserErrors.get(page)).toEqual([]);
 });
 
 test('@visual @a11y Weather is readable and remote-operable on television', async ({ page }) => {
@@ -25,6 +36,8 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   await expect(page.locator('.weather-day')).toHaveCount(7);
   await expect(page.locator('.weather-day').first()).toContainText('11°');
   await expect(page.locator('.weather-day').first()).toContainText('21°');
+  await expect(page.locator('.weather-day__wind')).toHaveCount(7);
+  await expect(page.locator('.weather-day__wind').first()).toHaveText('Up to 24 km/h W');
   await expect(page.getByText('Weather data by')).toHaveCount(0);
   await expect(page.locator('.weather-week__rows')).toHaveCSS('border-top-width', '0px');
   await expect(page.locator('.weather-day--today')).toHaveCSS('border-top-width', '0px');
@@ -145,6 +158,13 @@ test('@visual Weather remains one-screen and legible on a compact dark televisio
   await page.goto('/weather');
 
   await expect(page.locator('.weather-day')).toHaveCount(7);
+  await expect(page.locator('.weather-day__wind').first()).toBeVisible();
+  expect(
+    await page
+      .locator('.weather-day__wind')
+      .first()
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
   expect(
     await page.evaluate(() => {
       const content = document.querySelector('.app-content');
@@ -176,6 +196,19 @@ test('@visual Weather stacks without page overflow on phone', async ({ page }) =
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   ).toBe(true);
   await expect(page.locator('.weather-chart')).toHaveCSS('scrollbar-width', 'none');
+  await expect(page.locator('.weather-day__wind').first()).toHaveText('Up to 24 km/h W');
+  expect(
+    await page
+      .locator('.weather-day__wind')
+      .first()
+      .evaluate((element) => {
+        const wind = element.getBoundingClientRect();
+        const range = element
+          .parentElement!.querySelector('.weather-day__range')!
+          .getBoundingClientRect();
+        return wind.top >= range.bottom;
+      }),
+  ).toBe(true);
 
   await captureEvidence(page, {
     path: resolve(evidence, 'weather-phone-portrait.png'),
@@ -184,17 +217,41 @@ test('@visual Weather stacks without page overflow on phone', async ({ page }) =
   });
 });
 
-test('Calendar Week uses comparable compact forecasts', async ({ page }) => {
+test('Calendar Week keeps weather text without temperature bars or empty-day dashes', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/calendar/week');
 
   const strips = page.locator('.week-grid .week-forecast-strip');
   await expect(strips).toHaveCount(7);
   await expect(strips.first()).toHaveAttribute('aria-label', /chance of rain, low 11°, high 21°/);
-  await expect(strips.first().locator('.week-forecast-strip__range i')).toBeVisible();
+  await expect(page.locator('.week-forecast-strip__range')).toHaveCount(0);
+  await expect(page.locator('.week-column__empty')).toHaveCount(0);
 
   await captureEvidence(page, {
     path: resolve(evidence, 'calendar-week-weather-tv-1080.png'),
     animations: 'disabled',
   });
+});
+
+test('daily wind distinguishes calm, missing direction and an older saved forecast', async ({
+  page,
+}) => {
+  await page.route(/\/api\/v1\/households\/[^/]+\/weather$/, async (route) => {
+    const response = await route.fetch();
+    const forecast = await response.json();
+    forecast.freshness = 'stale';
+    forecast.daily[0].maxWindSpeedKph = 0;
+    forecast.daily[1].dominantWindDirectionDegrees = null;
+    delete forecast.daily[2].maxWindSpeedKph;
+    delete forecast.daily[2].dominantWindDirectionDegrees;
+    await route.fulfill({ response, json: forecast });
+  });
+  await page.goto('/weather');
+  await expect(page.getByRole('status')).toContainText('Showing the last saved forecast');
+  await expect(page.locator('.weather-day__wind').nth(0)).toHaveText('Calm');
+  await expect(page.locator('.weather-day__wind').nth(1)).toHaveText('Up to 20 km/h');
+  await expect(page.locator('.weather-day__wind').nth(2)).toHaveText('Wind unavailable');
+  await expect(page.locator('.weather-day')).toHaveCount(7);
 });

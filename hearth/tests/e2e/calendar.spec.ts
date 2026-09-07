@@ -194,26 +194,42 @@ test('Month fills the television height and matches the Week navigation bar', as
   expect(monthFooterBox.height).toBe(weekFooterBox.height);
 });
 
-test('Week and Month events use their calendar colour as a card surface', async ({ page }) => {
-  await page.goto('/calendar/week');
-  const weekEvent = page.getByRole('button', { name: /School drop-off, Ezra$/ }).first();
-  await expect(weekEvent).toBeVisible();
-  expect(await weekEvent.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(
-    'rgba(0, 0, 0, 0)',
-  );
-  await expect(weekEvent).toHaveCSS('border-left-width', '1px');
+for (const theme of ['light', 'dark']) {
+  test(`Week, Month and Agenda event surfaces are opaque in ${theme}`, async ({ page }) => {
+    await page.addInitScript((theme) => {
+      localStorage.setItem(
+        'hearth.appearance.v1',
+        JSON.stringify({ theme, eveningDimming: false }),
+      );
+    }, theme);
+    await page.goto('/calendar/week');
+    const weekEvent = page.getByRole('button', { name: /School drop-off, Ezra$/ }).first();
+    await expect(weekEvent).toBeVisible();
+    await expect(weekEvent).toHaveCSS('background-color', /^rgb\(\d+, \d+, \d+\)$/);
+    await expect(weekEvent).toHaveCSS('opacity', '1');
+    await expect(weekEvent).toHaveCSS('border-left-width', '1px');
+    expect(
+      (await new AxeBuilder({ page }).include('.week-grid').analyze()).violations.filter(
+        (violation) => ['serious', 'critical'].includes(violation.impact ?? ''),
+      ),
+    ).toEqual([]);
 
-  await page.goto('/calendar/month');
-  const monthEvent = page
-    .locator('.month-event-label')
-    .filter({ hasText: 'School drop-off' })
-    .first();
-  await expect(monthEvent).toBeVisible();
-  expect(
-    await monthEvent.evaluate((element) => getComputedStyle(element).backgroundColor),
-  ).not.toBe('rgba(0, 0, 0, 0)');
-  await expect(monthEvent.locator('i')).toHaveCount(0);
-});
+    await page.goto('/calendar/month');
+    const monthEvent = page
+      .locator('.month-event-label')
+      .filter({ hasText: 'School drop-off' })
+      .first();
+    await expect(monthEvent).toBeVisible();
+    await expect(monthEvent).toHaveCSS('background-color', /^rgb\(\d+, \d+, \d+\)$/);
+    await expect(monthEvent).toHaveCSS('opacity', '1');
+    await expect(monthEvent.locator('i')).toHaveCount(0);
+    await page.goto('/calendar/agenda');
+    await expect(page.locator('.agenda-event').first()).toHaveCSS(
+      'background-color',
+      /^rgb\(\d+, \d+, \d+\)$/,
+    );
+  });
+}
 
 test('multiple all-day Week events stack without overlapping and keep D-pad order', async ({
   page,

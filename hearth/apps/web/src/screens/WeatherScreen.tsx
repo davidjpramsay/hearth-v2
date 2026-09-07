@@ -386,6 +386,10 @@ function SevenDayForecast({
               <span className="weather-day__rain">
                 <Icon name="droplet" /> {day.precipitationProbabilityPercent}%
               </span>
+              <span className="weather-day__wind" title="Daily maximum wind · prevailing direction">
+                <Icon name="wind" />
+                <span>{dailyWindLabel(day)}</span>
+              </span>
               <span className="weather-day__low">{day.lowTemperatureCelsius}°</span>
               <span className="weather-day__range" aria-hidden="true">
                 <i
@@ -407,6 +411,16 @@ function SevenDayForecast({
       </div>
     </section>
   );
+}
+
+function dailyWindLabel(day: WeatherForecastDay): string {
+  if (day.maxWindSpeedKph == null) return 'Wind unavailable';
+  if (day.maxWindSpeedKph === 0) return 'Calm';
+  const direction =
+    day.dominantWindDirectionDegrees == null
+      ? ''
+      : ` ${compassDirection(day.dominantWindDirectionDegrees)}`;
+  return `Up to ${day.maxWindSpeedKph} km/h${direction}`;
 }
 
 function chartGeometry(

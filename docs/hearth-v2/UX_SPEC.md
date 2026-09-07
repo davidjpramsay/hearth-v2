@@ -127,9 +127,9 @@ or summary band.
   that day. It opens the full day list with every event and source, not just the hidden events.
   The list scrolls within a focus-contained dialog; Select opens details, Back returns to the same
   list row, and a second Back restores the Week opener. Left/Right crosses non-empty day columns.
-- Week day headings include a compact, read-only forecast icon, rain probability, low/high and a
-  miniature temperature-range bar when forecast data is available. Every bar uses the same weekly
-  scale. The phone agenda carries a compact daily cue without compressing its event list. The
+- Week day headings include a compact, read-only forecast icon, rain probability and low/high,
+  without a temperature-range bar. Empty timeline days remain blank, without placeholder dashes.
+  The phone agenda carries a compact daily cue without compressing its event list. The
   grouped phone presentation replaces the timeline at narrow widths and must never render as a
   second block beneath the television Week timeline.
 - **Agenda:** a chronological, rolling four-day view containing today and the next three calendar
@@ -139,6 +139,8 @@ or summary band.
 - **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact event titles on substantial, readable calendar-colour tinted backgrounds and a deterministic `+N more` summary when the day is dense; faces and solid source colours appear once in a persistent Calendar key. Week event cards use the same deeper tinted-surface language rather than relying on a narrow edge stripe, while text and focus contrast remain accessible in both themes. The six Month rows grow to use the available television height, and the Earlier/current/Later month bar stays at the bottom with the same geometry as Week navigation. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
 
 Event cards must express start time, title, owner/source and conflicts. Location and notes appear in a focused detail surface.
+Calendar event fills are opaque in both themes, retaining source-colour tints without showing grid
+lines or other cards through them. Agenda rows likewise use solid surfaces.
 
 ### Weather
 
@@ -149,7 +151,9 @@ Event cards must express start time, title, owner/source and conflicts. Location
 - Temperature plots actual and apparent temperature. Rain plots probability and reports expected
   millimetres for the selected hour. Wind plots sustained speed and gusts with direction arrows.
 - The next seven days use one shared temperature domain. Each row carries day, condition, rain
-  probability, low, range bar and high; Today also carries a current-temperature marker.
+  probability, daily maximum wind speed with prevailing direction, low, range bar and high; Today
+  also carries a current-temperature marker. Wind wraps to a second line on phones. Missing wind
+  reads **Wind unavailable**, not zero; a reported zero reads **Calm**.
 - Phone presentation stacks naturally without page-level horizontal overflow. A wide chart may
   scroll within its own bounded region, with explicit previous/next-hour controls.
 - A stale or offline cached forecast remains visible with one quiet status cue. Provider

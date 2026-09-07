@@ -225,7 +225,9 @@ the adult-only settings contract exposes them only under an Advanced disclosure.
 
 The adapter requests current temperature, apparent temperature, condition and wind; 24 hourly
 temperature, apparent-temperature, precipitation, wind and direction points; and daily low/high,
-condition and maximum rain probability. It normalizes WMO codes into Hearth's compact presentation
+condition, maximum rain probability, `wind_speed_10m_max` and `wind_direction_10m_dominant`.
+Wind units are explicitly km/h; missing daily wind does not discard otherwise valid days.
+It normalizes WMO codes into Hearth's compact presentation
 contract and caches one successful response for five minutes. Concurrent reads share the same
 request. If a refresh fails, the last safe response remains available as stale; if no safe response
 exists, Today shows **Forecast unavailable**, Week omits the cue and Weather offers setup without

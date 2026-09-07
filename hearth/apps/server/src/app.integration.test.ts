@@ -645,12 +645,18 @@ describe('Hearth v2 API', () => {
     });
     expect(weather.json().hourly).toHaveLength(24);
     expect(weather.json().daily).toHaveLength(7);
+    expect(weather.json().daily[0]).toMatchObject({
+      maxWindSpeedKph: 24,
+      dominantWindDirectionDegrees: 270,
+    });
     expect(week.json().days).toHaveLength(7);
     expect(week.json().days[0].forecast).toEqual({
       temperatureCelsius: 21,
       lowTemperatureCelsius: 11,
       highTemperatureCelsius: 21,
       precipitationProbabilityPercent: 10,
+      maxWindSpeedKph: 24,
+      dominantWindDirectionDegrees: 270,
       condition: 'clear',
       label: 'Clear',
       source: 'demo',

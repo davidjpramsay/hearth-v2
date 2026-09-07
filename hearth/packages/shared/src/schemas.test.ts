@@ -590,6 +590,31 @@ describe('shared wire schemas', () => {
     ).toBe(false);
   });
 
+  it('accepts older forecasts but bounds the optional daily wind fields', () => {
+    const forecast = {
+      temperatureCelsius: 21,
+      lowTemperatureCelsius: 11,
+      highTemperatureCelsius: 21,
+      precipitationProbabilityPercent: 20,
+      condition: 'clear',
+      label: 'Clear',
+      source: 'open-meteo',
+    };
+    expect(DailyForecastSchema.parse(forecast).maxWindSpeedKph).toBeUndefined();
+    expect(
+      DailyForecastSchema.parse({ ...forecast, maxWindSpeedKph: null }).maxWindSpeedKph,
+    ).toBeNull();
+    expect(DailyForecastSchema.parse({ ...forecast, maxWindSpeedKph: 0 }).maxWindSpeedKph).toBe(0);
+    for (const maxWindSpeedKph of [-1, 501, 1.5]) {
+      expect(DailyForecastSchema.safeParse({ ...forecast, maxWindSpeedKph }).success).toBe(false);
+    }
+    for (const dominantWindDirectionDegrees of [-1, 361, 1.5]) {
+      expect(
+        DailyForecastSchema.safeParse({ ...forecast, dominantWindDirectionDegrees }).success,
+      ).toBe(false);
+    }
+  });
+
   it('validates editable calendar assignments and tested weather coordinates', () => {
     expect(
       UpdateCalendarMappingsRequestSchema.safeParse({

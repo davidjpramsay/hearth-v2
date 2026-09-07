@@ -1314,6 +1314,9 @@ Official platform references:
   graph. The browser never receives coordinates, Week remains glanceable, and outage behaviour stays
   consistent with the appliance model. The visual hierarchy is original Hearth work rather than a
   copy of any operating-system weather screen.
+- Refinement (2026-09-07): keep range bars on Weather only; Calendar Week retains icon, rain and
+  low/high text. Weather's daily rows add maximum wind and prevailing direction from the same
+  Open-Meteo request, with optional nullable fields for older cached forecasts.
 
 ## D-078 — Retire Apple Reminders and make reminders Hearth-owned
 

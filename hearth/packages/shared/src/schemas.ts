@@ -244,6 +244,8 @@ export const DailyForecastSchema = z.object({
   lowTemperatureCelsius: z.number().int().min(-30).max(60),
   highTemperatureCelsius: z.number().int().min(-30).max(60),
   precipitationProbabilityPercent: z.number().int().min(0).max(100),
+  maxWindSpeedKph: z.number().int().min(0).max(500).nullable().optional(),
+  dominantWindDirectionDegrees: z.number().int().min(0).max(360).nullable().optional(),
   condition: WeatherConditionSchema,
   label: z.string().min(1).max(80),
   source: z.enum(['demo', 'open-meteo']),

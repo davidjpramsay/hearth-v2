@@ -278,7 +278,12 @@ export function demoForecastForDay(index: number): DailyForecast {
       source: 'demo',
     },
   ];
-  return forecasts[index % forecasts.length] ?? forecasts[0]!;
+  return {
+    ...(forecasts[index % forecasts.length] ?? forecasts[0]!),
+    maxWindSpeedKph: [24, 20, 17, 22, 31, 28, 19][index % forecasts.length] ?? 24,
+    dominantWindDirectionDegrees:
+      [270, 225, 180, 135, 315, 270, 225][index % forecasts.length] ?? 270,
+  };
 }
 
 export function createDemoWeatherForecast(): WeatherForecast {

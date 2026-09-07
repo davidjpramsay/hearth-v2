@@ -32,6 +32,8 @@ const RESPONSE = {
     temperature_2m_min: [11.2, 10.4, 9.8, null],
     temperature_2m_max: [19, 17.1, 17.6, null],
     precipitation_probability_max: [80, 25, 55, null],
+    wind_speed_10m_max: [32.6, 0, null, null],
+    wind_direction_10m_dominant: [224.6, 0, null, null],
   },
 };
 
@@ -58,6 +60,10 @@ describe('Open-Meteo weather provider', () => {
     expect(requestUrl.searchParams.get('forecast_days')).toBe('16');
     expect(requestUrl.searchParams.get('forecast_hours')).toBe('24');
     expect(requestUrl.searchParams.get('past_days')).toBe('7');
+    expect(requestUrl.searchParams.get('wind_speed_unit')).toBe('kmh');
+    expect(requestUrl.searchParams.get('daily')?.split(',')).toEqual(
+      expect.arrayContaining(['wind_speed_10m_max', 'wind_direction_10m_dominant']),
+    );
     expect(forecast.current).toEqual({
       localDate: '2026-08-17',
       details: {
@@ -85,6 +91,8 @@ describe('Open-Meteo weather provider', () => {
       lowTemperatureCelsius: 11,
       highTemperatureCelsius: 19,
       precipitationProbabilityPercent: 80,
+      maxWindSpeedKph: 33,
+      dominantWindDirectionDegrees: 225,
       condition: 'rain',
       label: 'Thunderstorms',
       source: 'open-meteo',
@@ -94,11 +102,35 @@ describe('Open-Meteo weather provider', () => {
       lowTemperatureCelsius: 10,
       highTemperatureCelsius: 17,
       precipitationProbabilityPercent: 25,
+      maxWindSpeedKph: 0,
+      dominantWindDirectionDegrees: 0,
       condition: 'cloudy',
       label: 'Cloudy',
       source: 'open-meteo',
     });
     expect(forecast.daily.has('2026-08-20')).toBe(false);
+    expect(forecast.daily.get('2026-08-19')).toMatchObject({
+      maxWindSpeedKph: null,
+      dominantWindDirectionDegrees: null,
+    });
+  });
+
+  it('retains the forecast when daily wind is missing instead of inventing calm weather', async () => {
+    const response = structuredClone(RESPONSE);
+    Object.assign(response.daily, {
+      wind_speed_10m_max: undefined,
+      wind_direction_10m_dominant: [],
+    });
+    const provider = new OpenMeteoWeatherProvider(
+      { latitude: -31.9523, longitude: 115.8613 },
+      { fetchImpl: vi.fn(async () => Response.json(response)) as typeof fetch },
+    );
+    const forecast = await provider.read('Australia/Perth');
+    expect(forecast.daily.size).toBe(3);
+    expect(forecast.daily.get('2026-08-17')).toMatchObject({
+      maxWindSpeedKph: null,
+      dominantWindDirectionDegrees: null,
+    });
   });
 
   it('coalesces reads, caches briefly and retains the last safe forecast during outage', async () => {

@@ -42,6 +42,8 @@ const OpenMeteoResponseSchema = z.object({
     temperature_2m_min: z.array(z.number().finite().nullable()).min(1),
     temperature_2m_max: z.array(z.number().finite().nullable()).min(1),
     precipitation_probability_max: z.array(z.number().finite().min(0).max(100).nullable()).min(1),
+    wind_speed_10m_max: z.array(z.number().finite().min(0).max(500).nullable()).optional(),
+    wind_direction_10m_dominant: z.array(z.number().finite().min(0).max(360).nullable()).optional(),
   }),
 });
 
@@ -163,9 +165,10 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
     );
     url.searchParams.set(
       'daily',
-      'weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max',
+      'weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant',
     );
     url.searchParams.set('temperature_unit', 'celsius');
+    url.searchParams.set('wind_speed_unit', 'kmh');
     url.searchParams.set('timezone', timezone);
     url.searchParams.set('forecast_days', '16');
     url.searchParams.set('forecast_hours', '24');
@@ -237,6 +240,8 @@ function mapOpenMeteoResponse(
     const lowTemperature = response.daily.temperature_2m_min[index];
     const highTemperature = response.daily.temperature_2m_max[index];
     const precipitationProbability = response.daily.precipitation_probability_max[index];
+    const maxWindSpeed = response.daily.wind_speed_10m_max?.[index];
+    const dominantWindDirection = response.daily.wind_direction_10m_dominant?.[index];
     if (
       weatherCode == null ||
       lowTemperature == null ||
@@ -252,6 +257,9 @@ function mapOpenMeteoResponse(
         lowTemperatureCelsius: Math.round(lowTemperature),
         highTemperatureCelsius: Math.round(highTemperature),
         precipitationProbabilityPercent: Math.round(precipitationProbability),
+        maxWindSpeedKph: maxWindSpeed == null ? null : Math.round(maxWindSpeed),
+        dominantWindDirectionDegrees:
+          dominantWindDirection == null ? null : Math.round(dominantWindDirection),
         condition: condition.normalized,
         label: condition.label,
         source: 'open-meteo',

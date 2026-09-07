@@ -105,7 +105,10 @@ A change is complete only when:
 - Temperature distinguishes actual and apparent values, Rain combines probability with the selected
   hour's expected millimetres, and Wind distinguishes sustained speed and gusts with direction.
 - Seven daily rows use one common temperature scale and Today marks the current temperature.
-  Calendar Week shows seven compact icon/rain/low-high/range summaries using its own common scale.
+  Each row shows daily maximum wind speed in km/h and prevailing direction, with calm and missing
+  data distinguished. Wind remains readable on a phone without horizontal overflow.
+  Calendar Week shows compact icon/rain/low-high summaries without temperature bars or empty-day
+  dashes. Calendar event surfaces remain opaque in both themes.
 - A failed refresh retains the last successful forecast with a quiet stale cue. With no configured
   or cached forecast, Weather offers the household settings path without breaking Today or Calendar.
 - The Weather screen has no page-level horizontal overflow at 1920x1080 or 390x844, passes serious

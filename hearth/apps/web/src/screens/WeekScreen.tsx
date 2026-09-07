@@ -16,7 +16,7 @@ import { useWeekQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { COMPANION_QUERY } from '../layout/viewportQueries';
 import { useHearthRuntime } from '../runtime/context';
-import { eventColorVariables, forecastIcon, weekTemperatureDomain } from '../utils/calendar';
+import { eventColorVariables, forecastIcon } from '../utils/calendar';
 import { formatEventDayTime } from '../utils/date';
 import {
   layoutWeekDay,
@@ -63,7 +63,6 @@ export function WeekScreen({
     return <FailureState onRetry={() => void query.refetch()} />;
   const week = query.data;
   const currentForecast = week.days.find((day) => day.isToday)?.forecast ?? null;
-  const forecastDomain = weekTemperatureDomain(week.days);
   const { timeline, layouts } = presentation;
   const focusColumns = layouts.map((layout, index) =>
     columnFocusIds(layout, week.days[index]!.localDate),
@@ -144,7 +143,6 @@ export function WeekScreen({
               onSelect={setSelectedEvent}
               primaryFocusId={primaryFocusId}
               onOpenDay={() => setSelectedDay(day.localDate)}
-              forecastDomain={forecastDomain}
               timezone={runtime.timezone}
             />
           ))}
@@ -253,7 +251,6 @@ function WeekColumn({
   dayIndex,
   primaryFocusId,
   focusColumns,
-  forecastDomain,
   timezone,
   onSelect,
   onOpenDay,
@@ -264,7 +261,6 @@ function WeekColumn({
   dayIndex: number;
   primaryFocusId: string | undefined;
   focusColumns: string[][];
-  forecastDomain: readonly [number, number] | null;
   timezone: string;
   onSelect: (event: CalendarEvent) => void;
   onOpenDay: () => void;
@@ -294,7 +290,7 @@ function WeekColumn({
           <span>{day.dayLabel}</span>
           <strong className="week-day-date">{day.dateLabel.split(' ')[0]}</strong>
         </span>
-        <WeekForecast domain={forecastDomain} forecast={day.forecast} />
+        <WeekForecast forecast={day.forecast} />
       </header>
       <div className="week-column__all-day-events">
         {layout.allDay.map((event, index) => (
@@ -311,7 +307,6 @@ function WeekColumn({
         ))}
       </div>
       <div className="week-column__events">
-        {layout.events.length === 0 ? <span className="week-column__empty">—</span> : null}
         {layout.timed.map((item) => (
           <WeekEventCard
             localDate={day.localDate}
