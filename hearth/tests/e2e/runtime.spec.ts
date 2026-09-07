@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
@@ -8,8 +7,8 @@ import { captureEvidence } from './visualEvidence';
 
 const evidence = resolve('docs/evidence/runtime');
 
-test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true });
+test.beforeEach(async ({ request }) => {
+  await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
 });
 
 test('a 4K browser surface uses layout zoom rather than a transformed application bitmap', async ({

@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
@@ -7,10 +6,6 @@ import { expect, test, type Page } from '@playwright/test';
 import { captureEvidence } from './visualEvidence';
 
 const evidence = resolve('docs/evidence/today-polish');
-
-test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true });
-});
 
 test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
@@ -385,98 +380,91 @@ test('@visual Today gives a sparse summary shelf room for long-form content', as
   });
 });
 
-test('Today covers every optional-module subset across representative native photo ratios', async ({
-  page,
-}) => {
-  // This deliberately exercises 384 complete render/navigation cycles. GitHub's
-  // shared runners need more headroom than the local Chromium run, while each
-  // individual assertion retains the normal five-second expectation timeout.
-  test.setTimeout(720_000);
-  const sectionKeys = ['dinner', 'listSummary', 'notice', 'dailyVerse', 'reminders'] as const;
-  const photoShapes = [
-    { name: 'none', orientation: 'none', width: 0, height: 0 },
-    { name: 'landscape-3-2', orientation: 'landscape', width: 1500, height: 1000 },
-    { name: 'landscape-16-9', orientation: 'landscape', width: 1600, height: 900 },
-    { name: 'square', orientation: 'square', width: 1000, height: 1000 },
-    { name: 'portrait-2-3', orientation: 'portrait', width: 1000, height: 1500 },
-    { name: 'portrait-9-16', orientation: 'portrait', width: 900, height: 1600 },
-  ] as const;
-  let matrixState: { mask: number; photo: (typeof photoShapes)[number] } = {
-    mask: 0,
-    photo: photoShapes[0],
-  };
+const sectionKeys = ['dinner', 'listSummary', 'notice', 'dailyVerse', 'reminders'] as const;
+const photoShapes = [
+  { name: 'none', orientation: 'none', width: 0, height: 0 },
+  { name: 'landscape-3-2', orientation: 'landscape', width: 1500, height: 1000 },
+  { name: 'landscape-16-9', orientation: 'landscape', width: 1600, height: 900 },
+  { name: 'square', orientation: 'square', width: 1000, height: 1000 },
+  { name: 'portrait-2-3', orientation: 'portrait', width: 1000, height: 1500 },
+  { name: 'portrait-9-16', orientation: 'portrait', width: 900, height: 1600 },
+] as const;
 
-  await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-    const response = await route.fetch();
-    const payload = (await response.json()) as {
-      photo: null | {
-        alt: string;
-        height?: number;
-        orientation: 'landscape' | 'portrait' | 'square';
-        url: string;
-        width?: number;
-      };
-      reminderSummary: null | {
-        openCount: number;
-        items: Array<{
-          dueAt: string | null;
-          hasDueTime: boolean;
-          id: string;
-          title: string;
-        }>;
-      };
-      sections: {
-        dailyVerse: boolean;
-        dinner: boolean;
-        listSummary: boolean;
-        notice: boolean;
-        photo: boolean;
-        reminders: boolean;
-      };
-    };
-    const originalPhoto = payload.photo;
-    payload.sections = {
-      dailyVerse: Boolean(matrixState.mask & (1 << 3)),
-      dinner: Boolean(matrixState.mask & (1 << 0)),
-      listSummary: Boolean(matrixState.mask & (1 << 1)),
-      notice: Boolean(matrixState.mask & (1 << 2)),
-      photo: matrixState.photo.orientation !== 'none',
-      reminders: Boolean(matrixState.mask & (1 << 4)),
-    };
-    payload.reminderSummary = payload.sections.reminders
-      ? {
-          openCount: 2,
-          items: [
-            {
-              dueAt: null,
-              hasDueTime: false,
-              id: 'reminder_matrix_today',
-              title: 'Return library books',
-            },
-          ],
-        }
-      : null;
-    payload.photo =
-      matrixState.photo.orientation === 'none' || originalPhoto === null
-        ? null
-        : {
-            ...originalPhoto,
-            height: matrixState.photo.height,
-            orientation: matrixState.photo.orientation,
-            url: `${originalPhoto.url}?matrix=${matrixState.photo.name}-${matrixState.mask}`,
-            width: matrixState.photo.width,
+// Keep all 384 combinations, but let CI distribute them as independent cases.
+// Each case retains the normal assertion timeout and its own browser/reset state.
+for (const viewport of [
+  { width: 1920, height: 1080 },
+  { width: 1366, height: 768 },
+]) {
+  for (const photo of photoShapes) {
+    for (let mask = 0; mask < 1 << sectionKeys.length; mask += 1) {
+      test(`Today composition ${viewport.width}x${viewport.height} ${photo.name} mask ${mask}`, async ({
+        page,
+      }) => {
+        await page.route('**/api/v1/households/*/today?date=*', async (route) => {
+          const response = await route.fetch();
+          const payload = (await response.json()) as {
+            photo: null | {
+              alt: string;
+              height?: number;
+              orientation: 'landscape' | 'portrait' | 'square';
+              url: string;
+              width?: number;
+            };
+            reminderSummary: null | {
+              openCount: number;
+              items: Array<{
+                dueAt: string | null;
+                hasDueTime: boolean;
+                id: string;
+                title: string;
+              }>;
+            };
+            sections: {
+              dailyVerse: boolean;
+              dinner: boolean;
+              listSummary: boolean;
+              notice: boolean;
+              photo: boolean;
+              reminders: boolean;
+            };
           };
-    await route.fulfill({ response, json: payload });
-  });
+          const originalPhoto = payload.photo;
+          payload.sections = {
+            dailyVerse: Boolean(mask & (1 << 3)),
+            dinner: Boolean(mask & (1 << 0)),
+            listSummary: Boolean(mask & (1 << 1)),
+            notice: Boolean(mask & (1 << 2)),
+            photo: photo.orientation !== 'none',
+            reminders: Boolean(mask & (1 << 4)),
+          };
+          payload.reminderSummary = payload.sections.reminders
+            ? {
+                openCount: 2,
+                items: [
+                  {
+                    dueAt: null,
+                    hasDueTime: false,
+                    id: 'reminder_matrix_today',
+                    title: 'Return library books',
+                  },
+                ],
+              }
+            : null;
+          payload.photo =
+            photo.orientation === 'none' || originalPhoto === null
+              ? null
+              : {
+                  ...originalPhoto,
+                  height: photo.height,
+                  orientation: photo.orientation,
+                  url: `${originalPhoto.url}?matrix=${photo.name}-${mask}`,
+                  width: photo.width,
+                };
+          await route.fulfill({ response, json: payload });
+        });
 
-  for (const viewport of [
-    { width: 1920, height: 1080 },
-    { width: 1366, height: 768 },
-  ]) {
-    await page.setViewportSize(viewport);
-    for (const photo of photoShapes) {
-      for (let mask = 0; mask < 1 << sectionKeys.length; mask += 1) {
-        matrixState = { mask, photo };
+        await page.setViewportSize(viewport);
         await page.goto('/today');
         await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
 
@@ -499,7 +487,7 @@ test('Today covers every optional-module subset across representative native pho
 
         if (photo.orientation === 'none') {
           await expect(page.locator('.today-photo')).toHaveCount(0);
-          continue;
+          return;
         }
 
         const photoFigure = page.locator('.today-photo');
@@ -519,10 +507,10 @@ test('Today covers every optional-module subset across representative native pho
           expect(dashboardBox).not.toBeNull();
           expect(photoBox!.width).toBeGreaterThan(dashboardBox!.width * 0.32);
         }
-      }
+      });
     }
   }
-});
+}
 
 test('@visual Today collapses every optional track in a photo-only composition', async ({
   page,

@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
@@ -52,16 +51,6 @@ test('phone admin keeps all five bottom destinations in one visible row', async 
     await page.getByRole('link', { name: 'More', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'More' })).toBeVisible();
   }
-});
-
-test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true });
-  await mkdir(peopleEvidence, { recursive: true });
-  await mkdir(calendarEvidence, { recursive: true });
-  await mkdir(homeAssistantEvidence, { recursive: true });
-  await mkdir(systemEvidence, { recursive: true });
-  await mkdir(activityEvidence, { recursive: true });
-  await mkdir(accessEvidence, { recursive: true });
 });
 
 test.beforeEach(async ({ request }) => {

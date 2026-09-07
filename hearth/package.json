@@ -20,6 +20,7 @@
     "test:migrations": "pnpm --filter @hearth/server test:migrations",
     "build": "pnpm build:packages && pnpm --filter @hearth/web build && pnpm --filter @hearth/server build",
     "test:e2e": "playwright test",
+    "test:e2e:built": "playwright test --config playwright.ci.config.ts",
     "test:visual": "playwright test --grep @visual",
     "test:visual:update": "HEARTH_UPDATE_EVIDENCE=1 playwright test --grep @visual",
     "test:a11y": "playwright test --grep @a11y",
@@ -29,7 +30,9 @@
     "verify:tv": "pnpm tv:test && pnpm tv:lint && pnpm tv:build",
     "verify:deploy": "sh deploy/synology/verify-deployment.sh",
     "audit:dependencies": "pnpm audit",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm test:migrations && pnpm verify:deploy && pnpm build && pnpm test:e2e"
+    "verify:code": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm test:migrations && pnpm verify:deploy && pnpm build",
+    "verify:ci": "node --test scripts/ci-policy.test.mjs && node scripts/verify-browser-shards.mjs",
+    "verify": "pnpm verify:code && pnpm verify:ci && pnpm test:e2e:built"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

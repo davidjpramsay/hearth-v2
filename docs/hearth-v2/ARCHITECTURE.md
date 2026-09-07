@@ -531,8 +531,11 @@ web container. No router port-forward or public DNS exposure is part of this dep
 
 The server image compiles its SQLite native binding inside the pinned Linux build image for the
 target CPU architecture, rather than trusting a prebuilt binary from a different glibc runtime.
-GitHub Actions performs that `linux/amd64` compilation after the complete verification gate and
-publishes the server/web images to private GitHub Container Registry packages tagged with the full
+GitHub Actions verifies that `linux/amd64` compilation alongside the code and Android gates.
+Four isolated single-worker browser shards test the same run's compiled application; each uses a
+disposable demo database, never private data or a shared live development server. Only after every
+gate succeeds does the cache-backed publisher publish the server/web images to private GitHub
+Container Registry packages tagged with the full
 Git commit. Production Compose is pull-only; the DS920+ does not install pnpm dependencies or
 compile native code during an ordinary update. A separate Compose override retains source builds
 only as an explicit recovery fallback. Image publication is an outbound package operation and does

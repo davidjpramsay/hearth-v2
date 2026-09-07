@@ -16,9 +16,9 @@ permissions:
 
 jobs:
   web-and-server:
-    name: Web, server and browser
+    name: Web and server
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: hearth
@@ -26,28 +26,77 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24.18.0
-          package-manager-cache: false
-
-      - name: Activate pinned pnpm
-        run: corepack enable && corepack prepare pnpm@10.33.2 --activate
-
-      - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-hearth
 
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps --only-shell chromium
 
       - name: Check production and build dependency advisories
         run: pnpm audit:dependencies
 
-      - name: Run complete web and server gate
-        run: pnpm verify
+      - name: Run complete code and API gate
+        run: pnpm verify:code
         env:
           CI: "true"
+
+      - name: Verify browser shard coverage
+        run: pnpm verify:ci
+
+      - name: Share this run's production build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-build
+          path: |
+            hearth/apps/server/dist/
+            hearth/apps/web/dist/
+            hearth/packages/core/dist/
+            hearth/packages/shared/dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  browser:
+    name: Browser (${{ matrix.shard }}/4)
+    needs: web-and-server
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4]
+    defaults:
+      run:
+        working-directory: hearth
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: ./.github/actions/setup-hearth
+
+      - name: Restore this run's production build
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: browser-build
+          path: hearth
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+
+      - name: Test the built app with an isolated demo database
+        run: pnpm test:e2e:built --shard=${{ matrix.shard }}/4 --reporter=line,blob
+        env:
+          CI: "true"
+
+      - name: Retain browser evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-report-${{ matrix.shard }}
+          path: |
+            hearth/blob-report/
+            hearth/test-results/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
 
   android-tv:
     name: Android TV shell
@@ -142,7 +191,7 @@ jobs:
   publish-synology-images:
     name: Publish verified Synology images
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [web-and-server, android-tv, synology-images]
+    needs: [web-and-server, browser, android-tv, synology-images]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

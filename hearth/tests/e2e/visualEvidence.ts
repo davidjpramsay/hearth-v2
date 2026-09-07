@@ -1,5 +1,5 @@
-import { readFile, writeFile } from 'node:fs/promises';
-import { basename } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, dirname } from 'node:path';
 
 import { test, type Page, type PageScreenshotOptions } from '@playwright/test';
 import sharp from 'sharp';
@@ -21,6 +21,7 @@ export async function captureEvidence(page: Page, options: PageScreenshotOptions
 
   const existing = await readExisting(path);
   if (existing === null || (await materiallyDifferent(existing, candidate))) {
+    await mkdir(dirname(path), { recursive: true });
     await writeFile(path, candidate);
   }
   return candidate;

@@ -1,0 +1,34 @@
+name: Set up Hearth
+description: Pinned Node and pnpm with a lockfile-keyed dependency store
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      with:
+        node-version: 24.18.0
+        package-manager-cache: false
+
+    - name: Activate pinned pnpm
+      shell: bash
+      working-directory: hearth
+      run: corepack enable && corepack prepare pnpm@10.33.2 --activate
+
+    - name: Locate dependency store
+      id: store
+      shell: bash
+      working-directory: hearth
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache dependency store
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: pnpm-${{ runner.os }}-${{ runner.arch }}-node24-pnpm10-${{ hashFiles('hearth/pnpm-lock.yaml', 'hearth/pnpm-workspace.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-${{ runner.arch }}-node24-pnpm10-
+
+    - name: Install locked dependencies
+      shell: bash
+      working-directory: hearth
+      run: pnpm install --frozen-lockfile --prefer-offline

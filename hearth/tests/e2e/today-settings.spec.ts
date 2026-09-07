@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
@@ -7,10 +6,6 @@ import { expect, test } from '@playwright/test';
 import { captureEvidence } from './visualEvidence';
 
 const evidence = resolve('docs/evidence/today-notices');
-
-test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true });
-});
 
 test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');

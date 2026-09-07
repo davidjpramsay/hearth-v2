@@ -2,7 +2,10 @@
 
 ## Verified environment snapshot
 
-Local verification uses `pnpm verify` and `pnpm verify:tv` from `hearth/`. Run
+Local verification uses `pnpm verify` and `pnpm verify:tv` from `hearth/`. `pnpm verify` builds once
+for the browser gate and tests the built app with a disposable in-memory demo database. Stop local
+servers on ports 4310/4320 first; this gate refuses to reuse them. `pnpm test:e2e` retains the
+development-server workflow for focused UI work. Run
 `pnpm audit:dependencies` with registry access; GitHub verification also gates production and build
 dependencies on that audit. Routine screenshots are ignored test artifacts. Refresh committed
 visual evidence deliberately with `pnpm test:visual:update`, then inspect the image diff.
@@ -606,18 +609,36 @@ provider is deliberately unreachable.
 
 ## Continuous verification
 
-`.github/workflows/verify.yml` is the merge gate for `main` and pull requests. It uses pinned
-full-commit action references and no household secrets. Three independent verification jobs run the
-complete pnpm/Playwright gate on Node 24.18.0, the Android TV test/lint/debug-and-release build on
-Java 21 plus SDK 36, and both Synology production image builds after validating pull-only and
-fallback Compose configuration. On a non-pull-request run, a fourth job receives only
-`contents: read` and `packages: write`; it waits for all three verification jobs, reuses the Buildx
-cache and publishes the server/web `linux/amd64` images under the exact full commit tag. It never
-deploys, signs an APK, contacts a provider or gains access to the private household network.
+`.github/workflows/verify.yml` verifies `main` and pull requests with pinned full-commit actions
+and no household secrets. `pnpm verify:code` runs formatting, lint, types, all unit/API/migration
+tests, deployment checks and production builds on Node 24.18.0. Four browser jobs then download
+only that run's compiled web/server/shared/core artifacts and run `pnpm test:e2e:built --shard=N/4`.
+Each job has one worker, its own in-memory demo database and fresh browser contexts. Do not raise
+the worker count: demo resets are shared within a job. The 384 Today layout cases are individually
+listed, and `pnpm verify:ci` proves complete, non-overlapping shard coverage plus release-policy
+invariants. No tests are filtered out or replaced by a local success claim.
+
+The shared setup caches only pnpm's content-addressed store, keyed by platform, toolchain and
+lockfile, and still performs a frozen-lockfile install. Browser jobs reuse the compiled build, not
+`node_modules`, a database or a cross-run build cache. Headless Chromium alone is installed, and
+browser artifacts retain blob reports, rendered screenshots and failure traces for seven days.
+Download them, collect their `blob-report/*.zip` files into one directory and run
+`pnpm exec playwright merge-reports --reporter=html <report-directory>` to combine them.
+The code and browser jobs have a 45-minute safety ceiling; that is not an expected runtime.
+Each shard stops at its first failed test, retaining that failure's evidence. Obsolete runs and
+remaining shards after a failure are cancelled to avoid wasted work; failed runs cannot publish.
+
+Android test/lint/debug-and-release builds and both validated Synology image builds remain
+independent gates. The separately permissioned publisher waits for code, every browser shard,
+Android and container success, then reuses the existing Buildx cache and publishes both
+`linux/amd64` images under the exact full commit. It never deploys, signs an APK, contacts a
+provider or gains access to the private household network. A cancelled/failed run cannot become an
+in-app update; after success, Hearth's release lookup may retain its prior result for five minutes.
 
 Keep local verification authoritative while changing the workflow itself, then confirm the first
-GitHub run before requiring it in branch protection. Retain Playwright's single CI worker for
-deterministic demo/reset state.
+GitHub run before claiming release readiness. Parallel local shard processes need separate
+checkouts/ports; never run them against the same demo server. No self-hosted runner is installed on
+the developer Mac or household NAS.
 
 Android TV releases should be signed consistently, versioned and initially
 sideloaded. Preserve the signing key outside the repository with a secure

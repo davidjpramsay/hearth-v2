@@ -1438,3 +1438,23 @@ Official platform references:
   events may need one extra Select, but no event is silently lost or reduced to a third tiny lane.
   A repeated daylight-saving hour keeps its true timestamps in details while its wall-clock card
   gets a positive readable span. Hardware remote/browser acceptance remains separate from lab QA.
+
+## D-085 — Release verification shards isolated built-app tests without reducing coverage
+
+- Date: 2026-09-07
+- Status: accepted
+- Context: The serial browser gate exceeded its 25-minute workflow limit after 422 of 454 tests.
+  A single Today test also hid 384 layout combinations from the scheduler. Local success could not
+  publish a verified update, and simply adding workers would race shared demo resets.
+- Choice: Keep the entire code/API, Android and container gate. Build web/server/shared/core once
+  for four browser jobs in the same workflow. Run one browser worker per job with a disposable
+  in-memory demo database and no server reuse; shard individual tests, including all 384 separately
+  named Today cases. Check the partition for missing/duplicated tests before running it. Cache the
+  pnpm store with locked installation, retain Buildx caches, install only headless Chromium and keep
+  bounded failure evidence. Give code/browser jobs a 45-minute safety ceiling. Cancel obsolete runs
+  and sibling shards after failure, and stop a shard on its first failed test. Publish only when all
+  required gates succeed.
+- Consequence: Release latency can fall without bypassing checks or moving execution onto a personal
+  Mac or production NAS. The updater still accepts only successful hosted releases and may cache
+  discovery for five minutes. Hosted timing must be measured; sharding can add setup overhead even
+  when it reduces elapsed time. Publication is not deployment.

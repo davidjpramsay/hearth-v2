@@ -259,9 +259,10 @@ Chromium fallback produced the retained evidence.
   landscape/square photos use the wide composition, no-photo summaries reclaim the available width,
   and each source remains fully visible at its native pixel ratio without distortion, crop or a
   persistent photo frame.
-- Automated layout coverage exercises all sixteen Dinner/List/Notice/Daily verse subsets against
-  no photo, landscape, square and portrait media at both television viewports; representative sparse
-  and dense compositions are retained for visual inspection.
+- Automated layout coverage exercises all 32 Dinner/List/Notice/Daily verse/Reminders subsets
+  against six representative photo shapes (including no photo) at both television viewports.
+  All 384 combinations remain independently runnable; representative sparse and dense compositions
+  are retained for visual inspection.
 - Upcoming and due chores use equal-width columns with matching heading and first-row rails. Portrait
   photos share the core upper rail; landscape/square photos share the optional-summary lower rail,
   and hidden optional modules leave no reserved track or unexplained bottom anchoring.
@@ -553,6 +554,13 @@ live pull/recreate timing remain not run until the change is approved for commit
 private credential is commissioned.
 
 ## Release evidence
+
+- CI verifies that four browser shards cover the complete test inventory exactly once, including
+  all 384 Today compositions. Each shard runs one worker against its own disposable demo database
+  and the production build from the same workflow run; it cannot reuse a live development server.
+- Publication requires successful code/API, all browser shards, Android and container-build gates.
+  Failure, timeout or cancellation must leave the candidate unavailable to the appliance updater.
+  Local checks never substitute for the hosted successful-release requirement.
 
 Before calling the first household release complete, retain:
 

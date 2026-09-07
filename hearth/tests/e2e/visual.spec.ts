@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
@@ -9,13 +8,6 @@ const evidence = resolve('docs/evidence/phase-1/screenshots');
 const phaseThreeEvidence = resolve('docs/evidence/phase-3/screenshots');
 const monthEvidence = resolve('docs/evidence/month-calendar');
 const pocketMoneyEvidence = resolve('docs/evidence/pocket-money/screenshots');
-
-test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true });
-  await mkdir(phaseThreeEvidence, { recursive: true });
-  await mkdir(monthEvidence, { recursive: true });
-  await mkdir(pocketMoneyEvidence, { recursive: true });
-});
 
 test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');

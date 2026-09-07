@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
@@ -7,10 +6,6 @@ import { expect, test } from '@playwright/test';
 import { captureEvidence } from './visualEvidence';
 
 const evidence = resolve('docs/evidence/phase-7/screenshots');
-
-test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true });
-});
 
 test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
@@ -388,19 +383,13 @@ test('reduced motion keeps the Photos collage still', async ({ page }) => {
 test('automatic rotation pauses while Hearth is hidden and resumes when it returns', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    const nativeSetTimeout = window.setTimeout.bind(window);
-    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
-      nativeSetTimeout(
-        handler,
-        timeout === 45_000 ? 300 : timeout,
-        ...args,
-      )) as typeof window.setTimeout;
-  });
+  // Keep the real 45-second interval without racing page load or sleeping in CI.
+  await page.clock.install();
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
   const feature = page.locator('.photos-hero');
   await expect(feature).toHaveAttribute('data-photo-id', 'photo_family_breakfast');
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
 
   await page.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', {
@@ -409,7 +398,8 @@ test('automatic rotation pauses while Hearth is hidden and resumes when it retur
     });
     document.dispatchEvent(new Event('visibilitychange'));
   });
-  await page.waitForTimeout(500);
+  await page.clock.runFor(50);
+  await page.clock.fastForward(60_000);
   await expect(feature).toHaveAttribute('data-photo-id', 'photo_family_breakfast');
 
   await page.evaluate(() => {
@@ -419,9 +409,9 @@ test('automatic rotation pauses while Hearth is hidden and resumes when it retur
     });
     document.dispatchEvent(new Event('visibilitychange'));
   });
-  await expect(feature).not.toHaveAttribute('data-photo-id', 'photo_family_breakfast', {
-    timeout: 1_000,
-  });
+  await page.clock.runFor(50);
+  await page.clock.fastForward(45_000);
+  await expect(feature).not.toHaveAttribute('data-photo-id', 'photo_family_breakfast');
 });
 
 test('Photos has deliberate empty, cached-unavailable and failure/retry states', async ({
