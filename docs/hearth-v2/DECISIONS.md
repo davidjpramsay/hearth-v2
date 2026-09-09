@@ -1094,22 +1094,20 @@ Official platform references:
 - Date: 2026-08-25
 - Status: accepted with explicit owner approval
 - Context: DSM places its host-oriented `FORWARD_FIREWALL` catch-all drop before Docker's generated
-  `DEFAULT_FORWARD` chain. That blocked ordinary bridge, DNS and outbound container traffic and
-  required fragile Hearth-subnet exceptions. The live audit confirmed qBittorrent independently
-  shares Gluetun's network namespace, Docker keeps its own bridge-isolation chains and unsolicited
-  inbound traffic should remain subject to DSM's LAN, Tailscale and port rules.
-- Choice: Keep DSM's input and forwarding firewall. Add one idempotent `FORWARD_FIREWALL` return
-  rule matching only the input interface pattern `docker+`, positioned after established traffic.
-  Packets from a Docker bridge may then continue into Docker's own `DOCKER-USER`, isolation and
-  published-port policy. Do not match Docker output interfaces and do not reorder `DEFAULT_FORWARD`
-  ahead of DSM, because those alternatives could weaken unsolicited inbound filtering. Remove the
-  superseded Hearth-subnet and resolver exceptions. Apply the rule once at boot and after verified
-  container replacement; run no polling watchdog.
-- Consequence: Normal Docker-origin bridge, DNS and outbound traffic works across current and future
-  Docker networks without per-application subnet rules. LAN/Tailscale/WAN-origin traffic remains
-  gated by DSM before Docker, Docker continues to isolate bridges, and qBittorrent remains bounded
-  by Gluetun's own namespace and kill switch. An explicit DSM firewall reload still requires one
-  hook invocation and readiness verification.
+  `DEFAULT_FORWARD` chain. That blocked Hearth's bridge and DNS traffic and left the web shell
+  loading while its API proxy timed out. The live audit confirmed qBittorrent independently shares
+  Gluetun's network namespace, Docker keeps its own bridge-isolation chains and unsolicited inbound
+  traffic should remain subject to DSM's LAN, Tailscale and port rules.
+- Choice: Keep DSM's input and forwarding firewall. Add idempotent `FORWARD_FIREWALL` return rules
+  matching only the Hearth network's exact subnet-to-subnet traffic and DNS to the configured
+  resolver, positioned after established traffic. Remove any superseded blanket `docker+` bypass and
+  do not reorder `DEFAULT_FORWARD` ahead of DSM, because those alternatives could weaken unsolicited
+  inbound filtering. Apply the rules once at boot and after verified container replacement; run no
+  polling watchdog.
+- Consequence: Hearth's web/server bridge and DNS requests work while other Docker networks retain
+  DSM and Docker isolation. LAN/Tailscale/WAN-origin traffic remains gated by DSM before Docker, and
+  qBittorrent remains bounded by Gluetun's own namespace and kill switch. An explicit DSM firewall
+  reload still requires one hook invocation and readiness verification.
 
 ## D-068 — Modern iCloud Reminders use a native EventKit companion proof
 

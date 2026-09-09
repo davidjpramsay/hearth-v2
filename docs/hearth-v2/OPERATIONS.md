@@ -315,11 +315,11 @@ never return to the workspace.
 ### NAS firewall compatibility
 
 If Synology network hardening inserts a `FORWARD_FIREWALL` chain before Docker's own forwarding
-chains, permit only packets that originated on a Docker bridge to continue to Docker's own
-`DOCKER-USER`, isolation and published-port policy. Do not move Docker ahead of the firewall and do
-not add an output-interface exception, because either could bypass the inbound WAN boundary. The
-repository helper `hearth/deploy/synology/ensure-docker-firewall.sh` adds one idempotent
-input-interface `docker+` `RETURN` rule and removes the superseded Hearth-subnet/DNS exceptions. It
+chains, permit only Hearth's own bridge traffic to continue to Docker's normal isolation and
+published-port policy. Do not move Docker ahead of the firewall or add a blanket Docker-interface
+exception, because either could bypass the inbound WAN boundary. The repository helper
+`hearth/deploy/synology/ensure-docker-firewall.sh` adds idempotent `RETURN` rules for the exact
+Hearth subnet and its configured DNS resolver, and removes any superseded broad `docker+` bypass. It
 does not open a host port or permit unsolicited inbound WAN traffic. The commissioned NAS installs it as the root-owned
 `/usr/local/etc/rc.d/S99hearth-docker-firewall.sh`. Its boot action applies the rules once after
 Docker/firewall startup; no polling monitor runs. The private release activator also refreshes the
@@ -327,13 +327,13 @@ hook from root-owned configuration and reapplies the rules after recreating the 
 On a Synology where `FORWARD_FIREWALL` is not active, the helper makes no firewall change and
 reports that no compatibility rule is required.
 
-This compatibility rule is required because DSM mirrors its host-oriented catch-all drop into
-`FORWARD_FIREWALL` before Docker's generated forwarding rules. Without it, containers cannot use
-their normal bridge, DNS or outbound path; Hearth's static web shell can load while nginx's API
-proxy times out connecting to the server container. Packets arriving from LAN, Tailscale or WAN
-still meet the existing source/port rules before Docker. Docker's own bridge-isolation rules remain
-active, and qBittorrent continues to share Gluetun's network namespace and kill switch. After an
-explicit DSM firewall reload, run the hook's `start` action once, confirm its `status` action, then verify the
+These compatibility rules are required because DSM mirrors its host-oriented catch-all drop into
+`FORWARD_FIREWALL` before Docker's generated forwarding rules. Without them, containers cannot use
+their normal bridge or DNS path; Hearth's static web shell can load while nginx's API proxy times
+out connecting to the server container. Packets arriving from LAN, Tailscale or WAN still meet the
+existing source/port rules before Docker. Docker's own bridge-isolation rules remain active, and
+qBittorrent continues to share Gluetun's network namespace and kill switch. After an explicit DSM
+firewall reload, run the hook's `start` action once, confirm its `status` action, then verify the
 container-to-container readiness request and the public `/api/v1/readiness` route.
 
 For pre-commission television testing, `compose.demo.yaml` provides a separate LAN-bound pilot with

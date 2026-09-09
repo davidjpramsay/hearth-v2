@@ -13,11 +13,21 @@ if [ "$action" = status ]; then
     echo 'Synology forwarding firewall is not active; no Docker-origin rule is required.'
     exit 0
   fi
-  if "$iptables_bin" -w 2 -C FORWARD_FIREWALL -i 'docker+' -j RETURN 2>/dev/null; then
-    echo 'Docker-origin forwarding rule is installed.'
+  subnet=$(
+    "$docker_bin" network inspect "$network_name" \
+      --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || true
+  )
+  case "$subnet" in
+    ''|*[!0-9./]*)
+      echo 'Hearth Docker network could not be identified.' >&2
+      exit 1
+      ;;
+  esac
+  if "$iptables_bin" -w 2 -C FORWARD_FIREWALL -s "$subnet" -d "$subnet" -j RETURN 2>/dev/null; then
+    echo "Hearth Docker bridge forwarding rule is installed for $subnet."
     exit 0
   fi
-  echo 'Docker-origin forwarding rule is missing.' >&2
+  echo "Hearth Docker bridge forwarding rule is missing for $subnet." >&2
   exit 1
 fi
 
@@ -40,10 +50,6 @@ delete_rule_if_present() {
 }
 
 if "$iptables_bin" -w 2 -S FORWARD_FIREWALL >/dev/null 2>&1; then
-    if ! "$iptables_bin" -w 2 -C FORWARD_FIREWALL -i 'docker+' -j RETURN 2>/dev/null; then
-      "$iptables_bin" -w 2 -I FORWARD_FIREWALL 3 -i 'docker+' -j RETURN
-    fi
-
     subnet=$(
       "$docker_bin" network inspect "$network_name" \
         --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || true
@@ -62,10 +68,18 @@ if "$iptables_bin" -w 2 -S FORWARD_FIREWALL >/dev/null 2>&1; then
     esac
 
     if [ -n "$subnet" ]; then
+      # Never bypass the forwarding firewall for every Docker network. Hearth
+      # only needs its own bridge traffic and DNS lookups to leave the chain.
+      delete_rule_if_present -i 'docker+' -j RETURN
       delete_rule_if_present -s "$subnet" -d "$subnet" -j RETURN
       if [ -n "$dns_server" ]; then
         delete_rule_if_present -s "$subnet" -d "$dns_server" -p tcp --dport 53 -j RETURN
         delete_rule_if_present -s "$subnet" -d "$dns_server" -p udp --dport 53 -j RETURN
+      fi
+      "$iptables_bin" -w 2 -I FORWARD_FIREWALL 3 -s "$subnet" -d "$subnet" -j RETURN
+      if [ -n "$dns_server" ]; then
+        "$iptables_bin" -w 2 -I FORWARD_FIREWALL 3 -s "$subnet" -d "$dns_server" -p tcp --dport 53 -j RETURN
+        "$iptables_bin" -w 2 -I FORWARD_FIREWALL 3 -s "$subnet" -d "$dns_server" -p udp --dport 53 -j RETURN
       fi
     fi
   exit 0
