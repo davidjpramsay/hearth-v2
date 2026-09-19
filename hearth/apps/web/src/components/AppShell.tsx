@@ -135,10 +135,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="tv-rail" aria-label="Primary navigation">
-        <div className="brand-lockup">
-          <img alt="" src="/brand/hearth-mark.png" />
-          <span>Hearth</span>
-        </div>
+        <HouseholdDateTime placement="rail" />
         <nav className="tv-rail__nav">
           {navigation.map((item, index) => (
             <RailItem
@@ -151,7 +148,6 @@ function AppShellLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="tv-rail__footer">
-          <HouseholdDateTime placement="rail" />
           <NavLink
             aria-label="Appearance settings"
             className="rail-appearance focusable"

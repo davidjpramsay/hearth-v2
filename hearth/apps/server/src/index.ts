@@ -6,6 +6,7 @@ import type { RuntimeMode } from '@hearth/shared';
 import { SqliteAdminRepository } from './admin-repository.js';
 import { createApplianceUpdateRepository } from './appliance-update.js';
 import { buildServer } from './app.js';
+import { RealtimeHub } from './realtime.js';
 import {
   CalendarConnectionService,
   CalDavCalendarConnectionVerifier,
@@ -126,6 +127,7 @@ const storedWeatherConfiguration = demoMode
 const weatherProvider = new ManagedWeatherProvider();
 const initialWeatherConfiguration = storedWeatherConfiguration ?? weatherFallback;
 if (initialWeatherConfiguration !== null) weatherProvider.configure(initialWeatherConfiguration);
+const realtimeHub = new RealtimeHub();
 const repository = new SqliteHearthRepository(
   database,
   demoMode
@@ -135,6 +137,10 @@ const repository = new SqliteHearthRepository(
         ownerForCalendarExternalId: managedCalendarProvider.ownerForCalendarExternalId,
         weatherProvider,
         seedDemo: false,
+        backgroundCalendar: true,
+        onCalendarRefresh: (householdId) => {
+          realtimeHub.publish(householdId, 'calendar.changed', householdId);
+        },
         clock,
       },
 );
@@ -206,6 +212,7 @@ const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
         }
         await writeCalendarRuntimeConfig(calendarConfigPath, config);
         managedCalendarProvider.configure(createCalendarRuntime(config));
+        repository.invalidateCalendarRefresh();
       },
       updateMappings: async (calendars, householdTimezone) => {
         if (calendarConfigPath === undefined) {
@@ -215,11 +222,13 @@ const calendarCredentialStore: CalendarCredentialStore | undefined = demoMode
         const updated = { ...current, calendars, householdTimezone };
         await writeCalendarRuntimeConfig(calendarConfigPath, updated);
         managedCalendarProvider.configure(createCalendarRuntime(updated));
+        repository.invalidateCalendarRefresh();
       },
       remove: async () => {
         if (calendarConfigPath === undefined) return;
         await removeCalendarRuntimeConfig(calendarConfigPath);
         managedCalendarProvider.disconnect();
+        repository.invalidateCalendarRefresh();
       },
     };
 const calendarConnectionRepository = new CalendarConnectionService(
@@ -264,6 +273,7 @@ const companionAuth =
     : new CompanionAuthService(database, companionAuthConfiguration);
 
 const server = buildServer({
+  realtimeHub,
   demoMode,
   runtime: { mode: runtimeMode, householdId: runtimeHouseholdId, clock },
   adminRepository,

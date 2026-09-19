@@ -108,7 +108,9 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('.weather-selected-hour')).toContainText('8 am');
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('[data-focus-id="nav-weather"]')).toBeFocused();
+  // Leaving the chart goes to the aligned rail item, not a diagonal shortcut
+  // back to the current route's link.
+  await expect(page.locator('[data-focus-id="nav-chores"]')).toBeFocused();
 
   await page.getByRole('button', { name: 'Temperature', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Temperature', exact: true })).toHaveAttribute(

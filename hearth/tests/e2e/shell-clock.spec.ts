@@ -26,6 +26,11 @@ test('every television household page shows one consistent date and time in the 
     await page.goto(route);
     const clock = page.locator('.household-date-time--rail');
     await expect(clock).toBeVisible();
+    await expect(page.locator('.tv-rail > .household-date-time--rail')).toHaveCount(1);
+    await expect(page.locator('.tv-rail img[src="/brand/hearth-mark.png"]')).toHaveCount(0);
+    const clockBounds = await clock.boundingBox();
+    const navigationBounds = await page.locator('.tv-rail__nav').boundingBox();
+    expect(clockBounds!.y + clockBounds!.height).toBeLessThanOrEqual(navigationBounds!.y);
     await expect(clock.locator('.household-date-time__time')).toHaveText('7:42 am');
     await expect(clock.locator('.household-date-time__date')).toHaveText('Monday 3 August');
     await expect(page.locator('.household-date-time:visible')).toHaveCount(1);

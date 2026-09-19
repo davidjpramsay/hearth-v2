@@ -569,6 +569,12 @@ Development has no agent and does not render update controls.
 
 ## Performance strategy
 
+- Private calendar reads return the durable projection immediately and refresh the requested
+  bounded date window in the background. One serialized worker coalesces repeated reads, retains
+  at most eight pending windows, and publishes calendar invalidation after completion. Successful
+  windows refresh after five minutes; failures back off for one minute. Configuration changes
+  invalidate in-flight results so an obsolete connection cannot repopulate the cache.
+
 - Server-rendering is unnecessary for the LAN TV application; use a static React build and cached API queries.
 - Load the Today shell and cached household summary before secondary modules.
 - Avoid large client state frameworks until real complexity requires one.

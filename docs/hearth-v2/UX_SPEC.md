@@ -40,8 +40,15 @@ Primary commands are Up, Down, Left, Right, Select and Back.
   rather than competing primary destinations. Reminders are native household records and remain
   available even before the first reminder is created; administration remains phone-first.
 - Every household surface shows the live household-local time and date in shared application chrome: in the television rail and in a compact companion header on phone/admin layouts. Individual screens do not repeat their own clock. Pairing and pre-authentication setup remain uncluttered exceptions.
+- The television rail starts with the time and date in place of the Hearth logo/title; no duplicate clock appears in its footer.
 - The focused destination and focused action are always visually obvious.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
+- Arrow navigation follows rendered control positions, not fixed cross-screen links; responsive
+  reflow therefore changes direction naturally. Hidden, disabled and inert controls are skipped.
+  Up/Down stays within the desktop navigation rail; Left/Right moves between rail and content.
+  Text fields, selects and screen-specific widgets retain their native/custom arrow handling.
+  Calendar views initially focus their selected Week/Month/Agenda selector, not an event; Enter
+  opens details and Back restores the event that opened them. Arrows and Tab stay inside dialogs.
 - Opening a detail page should place focus on its primary meaningful control.
 - Back returns to the previous product surface; a second Back at the root may hand control to Google TV after a confirmation or normal Android behaviour.
 - When normal Google TV app switching resumes Hearth, restore its prior screen and focus when possible.
@@ -49,6 +56,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
 - Long lists use page or controlled scroll behaviour and keep the focused row visible.
 - Calendar Week keeps earlier/current/later controls available on television and companion screens,
   including empty weeks. Multi-day cards have distinct per-date focus targets.
+- Week, Month and Agenda place the heading and displayed date range/year on one baseline when
+  space permits, wrapping naturally on narrow screens rather than reserving a second header row.
 
 Touch, mouse and keyboard can work in companion/admin contexts but cannot be the only path.
 

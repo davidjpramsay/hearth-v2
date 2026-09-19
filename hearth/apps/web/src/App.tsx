@@ -118,7 +118,11 @@ export function App() {
   useHostedReleaseRefresh();
   useRealtimeInvalidation();
   const initialFocus =
-    location.pathname === '/appearance' ? `appearance-${preferences.theme}` : 'screen-entry';
+    location.pathname === '/appearance'
+      ? `appearance-${preferences.theme}`
+      : /^\/calendar\/(week|month|agenda)$/.test(location.pathname)
+        ? `calendar-view-${location.pathname.split('/').at(-1)}`
+        : 'screen-entry';
   useRemoteNavigation(initialFocus);
   return (
     <AppShell>

@@ -110,7 +110,7 @@ test('@visual Month empty and stale states', async ({ page }) => {
     animations: 'disabled',
   });
   await page.goto('/month?scenario=stale');
-  await expect(page.getByRole('status')).toContainText('Calendar last updated');
+  await expect(page.getByRole('status')).toContainText('Updating calendar');
   await captureEvidence(page, {
     path: resolve(monthEvidence, 'month-stale-tv-1080.png'),
     animations: 'disabled',
@@ -318,7 +318,7 @@ test('@visual pocket-money progress and administration at required viewports', a
 const states = [
   { name: 'loading', path: '/today?scenario=loading', marker: 'Loading…' },
   { name: 'empty', path: '/today?scenario=empty', marker: '0 plans' },
-  { name: 'stale', path: '/today?scenario=stale', marker: 'Calendar last updated at 6:45' },
+  { name: 'stale', path: '/today?scenario=stale', marker: 'Updating calendar' },
   {
     name: 'unavailable',
     path: '/today?scenario=unavailable',

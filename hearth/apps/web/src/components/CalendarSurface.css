@@ -1175,3 +1175,30 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Keep calendar identity and period together without reserving a second row. */
+:is(.week-screen, .month-screen, .agenda-screen) > .screen-header {
+  min-height: 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+}
+
+:is(.week-screen, .month-screen, .agenda-screen) > .screen-header > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 20px;
+  min-width: 0;
+}
+
+:is(.week-screen, .month-screen, .agenda-screen) .screen-header__meta {
+  margin-top: 0;
+}
+
+@media (max-width: 599px) {
+  :is(.week-screen, .month-screen, .agenda-screen) > .screen-header > div:first-child {
+    column-gap: 12px;
+  }
+}

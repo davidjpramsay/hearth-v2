@@ -2,6 +2,39 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-087 — Keyboard directions follow the rendered layout
+
+- Date: 2026-09-20
+- Status: implemented locally; physical remote verification pending
+- Context: Fixed directional IDs followed list order even when Agenda rendered day columns, and
+  missing IDs stranded otherwise interactive controls. Calendar entry also jumped to an event.
+- Choice: The shared key handler measures visible, enabled, tabbable controls when an arrow is
+  pressed, prefers candidates in the same row/column, then ranks forward candidates with a
+  cross-axis penalty. Small focus-scale offsets do not change direction. Modal candidates
+  stay inside the modal. Native editing and already-handled widget keys are left alone. Calendar
+  entry defaults to the current view selector; Back retains focus memory. Focus scrolling is
+  immediate so repeated remote input does not race smooth scrolling.
+- Consequence: Responsive layouts determine directions without maintaining a parallel link graph.
+  Existing directional attributes remain for now but do not override spatial movement. Tab remains
+  native except for wrapping inside a modal, and selecting/opening an event still requires
+  activation rather than focus alone.
+
+## D-086 — Private calendar screens serve saved projections before provider refresh
+
+- Date: 2026-09-19
+- Status: implemented locally; live deployment and provider-connection diagnosis pending
+- Context: Today, Week and Month awaited CalDAV requests before returning even when SQLite held
+  usable events. Provider timeouts therefore delayed unrelated household content.
+- Choice: Private production reads return the saved calendar projection immediately. A serialized,
+  bounded background queue refreshes requested windows, coalesces repeated reads and publishes the
+  existing calendar invalidation event after completion. Successful windows have a five-minute
+  refresh interval; failures have a one-minute retry backoff. Configuration changes invalidate
+  obsolete in-flight writes. Demo fixtures retain their deterministic synchronous path.
+- Consequence: Calendar outages no longer block those responses on calendar I/O. Cached events
+  retain honest freshness; a first-ever uncached range may initially contain no events until sync
+  completes. Weather and other integration waits are separate work. No schema, credential or
+  calendar-write permission changes are introduced.
+
 ## D-001 — Coexist with a root bargain finder
 
 - Date: 2026-08-03

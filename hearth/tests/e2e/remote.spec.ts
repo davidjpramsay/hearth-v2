@@ -12,23 +12,24 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
 
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowLeft');
+  // Enter the rail spatially, then move to its first item rather than assuming
+  // every leftward path teleports to the current route's navigation item.
+  for (let i = 0; i < 8; i += 1) await page.keyboard.press('ArrowLeft');
+  for (let i = 0; i < 12; i += 1) await page.keyboard.press('ArrowUp');
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
 
-  await page.keyboard.press('ArrowUp');
   await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'August' })).toBeVisible();
-  await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
-  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="month-day-2026-07-27"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="month-day-2026-08-04"]')).toBeFocused();
@@ -38,8 +39,9 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
   await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowLeft');
+  for (let i = 0; i < 8; i += 1) await page.keyboard.press('ArrowLeft');
+  for (let i = 0; i < 12; i += 1) await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-weather"]')).toBeFocused();
@@ -52,7 +54,7 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await expect(schoolBag).toBeFocused();
 
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('[data-focus-id="chore-occurrence_laundry"]')).toBeFocused();
+  await expect(page.locator('.chore-group').nth(1).getByRole('button').nth(1)).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await expect(schoolBag).toBeFocused();
 
@@ -85,8 +87,9 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   await expect(page.locator('.month-legend__family')).toHaveText('H');
   await expect(page.getByLabel(/Monday 3 August, 4 plans/)).toBeVisible();
 
-  await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
-  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  for (let step = 0; step < 6; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="month-earlier"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="month-today"]')).toBeFocused();
@@ -226,7 +229,9 @@ test('three active assignees become three television columns with horizontal D-p
 
   await expect(page.locator('[data-focus-id="chore-primary"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
-  await expect(board.locator('.chore-group').nth(1).getByRole('button').first()).toBeFocused();
+  // The weekly allowance panel offsets the first column: Water herbs is now
+  // the visually aligned neighbour, rather than the first item in the next list.
+  await expect(board.locator('.chore-group').nth(1).getByRole('button').nth(1)).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(board.locator('.chore-group').nth(2).getByRole('button').first()).toBeFocused();
 });

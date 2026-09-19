@@ -237,20 +237,6 @@
   flex-direction: column;
 }
 
-.brand-lockup {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 14px 32px;
-  font-size: 34px;
-  font-weight: 680;
-  letter-spacing: -0.03em;
-}
-.brand-lockup img {
-  width: 45px;
-  height: 45px;
-  object-fit: contain;
-}
 .tv-rail__nav {
   display: flex;
   flex-direction: column;
@@ -311,15 +297,14 @@
 }
 .household-date-time--rail {
   min-height: 64px;
-  padding: 4px 16px 8px;
+  padding: 0 14px 28px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border-bottom: 1px solid var(--hairline);
 }
 .household-date-time--rail .household-date-time__time {
   color: var(--ink);
-  font-size: 31px;
+  font-size: 38px;
   font-weight: 700;
   line-height: 1;
 }
@@ -3155,17 +3140,13 @@
   .tv-rail {
     padding: 28px 18px 26px 22px;
   }
-  .brand-lockup {
-    font-size: 29px;
-    padding-bottom: 20px;
-  }
   .rail-item {
     min-height: 54px;
     font-size: 22px;
   }
   .household-date-time--rail {
     min-height: 54px;
-    padding: 3px 13px 7px;
+    padding: 0 0 20px;
   }
   .household-date-time--rail .household-date-time__time {
     font-size: 27px;

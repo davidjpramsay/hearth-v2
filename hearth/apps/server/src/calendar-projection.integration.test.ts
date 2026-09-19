@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CalendarProjectionService } from './calendar-projection.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
@@ -24,6 +24,88 @@ afterEach(async () => {
 });
 
 describe('provider-neutral calendar projection', () => {
+  it('returns saved plans immediately, coalesces reads and announces the background result', async () => {
+    const { database, service, provider } = await projectionFixture();
+    const initial = await service.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09');
+    const refreshed = vi.fn();
+    const background = new CalendarProjectionService(database, provider, () => null, refreshed);
+    const original = provider.listCalendars.bind(provider);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const list = vi.spyOn(provider, 'listCalendars').mockImplementation(async () => {
+      await gate;
+      return original();
+    });
+    const cached = await background.projectRange(
+      DEMO_HOUSEHOLD_ID,
+      '2026-08-03',
+      '2026-08-09',
+      'background',
+    );
+    expect(cached.events).toEqual(initial.events);
+    expect(cached.freshness).toBe('stale');
+    await background.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09', 'background');
+    expect(list).toHaveBeenCalledTimes(1);
+    release();
+    await vi.waitFor(() => expect(refreshed).toHaveBeenCalledTimes(1));
+    const current = await background.projectRange(
+      DEMO_HOUSEHOLD_ID,
+      '2026-08-03',
+      '2026-08-09',
+      'background',
+    );
+    expect(current.freshness).toBe('current');
+    expect(list).toHaveBeenCalledTimes(1);
+    database.close();
+  });
+
+  it('retains cached plans and backs off after a failed background refresh', async () => {
+    const { database, service, provider } = await projectionFixture();
+    const initial = await service.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09');
+    provider.setAvailable(false);
+    const refreshed = vi.fn();
+    const background = new CalendarProjectionService(database, provider, () => null, refreshed);
+    const list = vi.spyOn(provider, 'listCalendars');
+    await background.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09', 'background');
+    await vi.waitFor(() => expect(refreshed).toHaveBeenCalledTimes(1));
+    const cached = await background.projectRange(
+      DEMO_HOUSEHOLD_ID,
+      '2026-08-03',
+      '2026-08-09',
+      'background',
+    );
+    expect(cached.events).toEqual(initial.events);
+    expect(cached.integration.status).toBe('unavailable');
+    expect(list).toHaveBeenCalledTimes(1);
+    database.close();
+  });
+
+  it('does not restore removed calendars from an obsolete in-flight refresh', async () => {
+    const { database, service, provider } = await projectionFixture();
+    await service.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09');
+    const original = provider.syncEvents.bind(provider);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const sync = vi.spyOn(provider, 'syncEvents').mockImplementation(async (input) => {
+      const result = await original(input);
+      await gate;
+      return result;
+    });
+    await service.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09', 'background');
+    await vi.waitFor(() => expect(sync).toHaveBeenCalledTimes(1));
+    service.clear();
+    release();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(database.prepare('SELECT COUNT(*) AS count FROM calendar_events').get()).toEqual({
+      count: 0,
+    });
+    database.close();
+  });
+
   it('retains source owners, all-day dates, recurrence exceptions and tombstones', async () => {
     const { database, service, provider } = await projectionFixture();
 

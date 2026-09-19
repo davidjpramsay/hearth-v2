@@ -33,7 +33,7 @@ test('Calendar is one television destination with Week, Month and Agenda views',
   await expect(agendaDays.nth(0)).toContainText('Mon3 AugToday');
   await expect(agendaDays.nth(3)).toContainText('Thu6 Aug');
   await expect(page.getByRole('button', { name: /Earlier|Later/ })).toHaveCount(0);
-  await expect(page.locator('.agenda-event').first()).toBeFocused();
+  await expect(page.locator('[data-focus-id="calendar-view-agenda"]')).toBeFocused();
 });
 
 test('Agenda always starts today and ignores old period links', async ({ page }) => {
@@ -49,6 +49,8 @@ test('Agenda always starts today and ignores old period links', async ({ page })
 test('Agenda event details open and Back restores the exact event focus', async ({ page }) => {
   await page.goto('/calendar/agenda');
   const event = page.locator('.agenda-event').first();
+  await expect(page.locator('[data-focus-id="calendar-view-agenda"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(event).toBeFocused();
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
@@ -141,7 +143,7 @@ test('a multi-day event has a unique focus target on each day and a route out to
   await page.goto('/calendar/week');
   const events = page.locator('.week-event');
   await expect(events).toHaveCount(3);
-  await expect(events.first()).toBeFocused();
+  await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
   const ids = await events.evaluateAll((elements) =>
     elements.map((element) => element.getAttribute('data-focus-id')),
   );
@@ -357,7 +359,7 @@ test('Week separates all-day plans and gives colliding timed events their own la
   await allDay.focus();
   await page.keyboard.press('ArrowDown');
   await expect(breakfast).toBeFocused();
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
   await expect(cooking).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toContainText('Cooking class');

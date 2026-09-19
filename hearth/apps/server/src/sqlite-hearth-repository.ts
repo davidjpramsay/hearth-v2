@@ -86,6 +86,7 @@ export class SqliteHearthRepository implements HearthRepository {
   private readonly demoSeedEnabled: boolean;
   private readonly clock: HearthClock;
   private readonly weatherProvider: WeatherProvider;
+  private readonly backgroundCalendar: boolean;
 
   constructor(
     private readonly database: InstanceType<typeof Database>,
@@ -95,9 +96,12 @@ export class SqliteHearthRepository implements HearthRepository {
       weatherProvider?: WeatherProvider;
       seedDemo?: boolean;
       clock?: HearthClock;
+      backgroundCalendar?: boolean;
+      onCalendarRefresh?: (householdId: string) => void;
     } = {},
   ) {
     this.demoSeedEnabled = options.seedDemo ?? true;
+    this.backgroundCalendar = options.backgroundCalendar ?? false;
     this.clock = options.clock ?? new FixedClock(DEMO_NOW);
     this.weatherProvider = options.weatherProvider ?? new UnconfiguredWeatherProvider();
     if (this.demoSeedEnabled) this.seedDemo();
@@ -111,6 +115,7 @@ export class SqliteHearthRepository implements HearthRepository {
       this.database,
       provider,
       ownerForCalendarExternalId,
+      options.onCalendarRefresh,
     );
     this.seedCalendarSnapshot =
       options.calendarProvider === undefined && this.demoSeedEnabled
@@ -970,7 +975,11 @@ export class SqliteHearthRepository implements HearthRepository {
   private calendarMode(): CalendarProjectionMode {
     if (this.scenario === 'stale') return 'stale';
     if (this.scenario === 'unavailable') return 'unavailable';
-    return 'sync';
+    return this.backgroundCalendar ? 'background' : 'sync';
+  }
+
+  invalidateCalendarRefresh(): void {
+    this.calendar.invalidateRefresh();
   }
 
   private assertHousehold(householdId: string): void {

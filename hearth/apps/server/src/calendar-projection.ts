@@ -21,7 +21,7 @@ import {
   type ProviderCalendarEvent,
 } from './integrations/calendar-provider.js';
 
-export type CalendarProjectionMode = 'sync' | 'stale' | 'unavailable';
+export type CalendarProjectionMode = 'sync' | 'background' | 'stale' | 'unavailable';
 
 export interface CalendarProjection {
   calendars: CalendarSource[];
@@ -81,11 +81,18 @@ interface EventRow extends CalendarRow {
 
 export class CalendarProjectionService {
   private readonly connectionId: string;
+  private generation = 0;
+  private refreshing = false;
+  private pending: { householdId: string; startDate: string; endDate: string }[] = [];
+  private readonly refreshedRanges = new Map<string, number>();
+  private readonly currentRanges = new Set<string>();
+  private readonly scheduledRanges = new Set<string>();
 
   constructor(
     private readonly database: InstanceType<typeof Database>,
     private readonly provider: CalendarProvider,
     private readonly ownerForCalendarExternalId: (externalId: string) => string | null,
+    private readonly onRefresh: (householdId: string) => void = () => {},
   ) {
     this.connectionId = opaqueId('calendar_connection', provider.providerType);
   }
@@ -136,11 +143,50 @@ export class CalendarProjectionService {
     if (mode === 'unavailable') {
       return this.readProjection(householdId, startDate, endDate, 'unavailable');
     }
+    if (mode === 'background') {
+      const key = `${startDate}/${endDate}`;
+      const fresh = (this.refreshedRanges.get(key) ?? 0) > Date.now();
+      const connection = this.readConnection();
+      const state =
+        connection.status === 'healthy'
+          ? fresh && this.currentRanges.has(key)
+            ? 'current'
+            : 'stale'
+          : connection.status === 'authentication-required' ||
+              connection.status === 'not-configured' ||
+              connection.status === 'unavailable'
+            ? connection.status
+            : 'stale';
+      const cached = this.readProjection(householdId, startDate, endDate, state);
+      if (!fresh && !this.scheduledRanges.has(key)) {
+        this.currentRanges.delete(key);
+        // Bound repeated reads, including outage retries, without delaying cached content.
+        this.refreshedRanges.set(key, Date.now() + 60_000);
+        if (this.refreshedRanges.size > 64) {
+          const oldest = this.refreshedRanges.keys().next().value!;
+          this.refreshedRanges.delete(oldest);
+          this.currentRanges.delete(oldest);
+        }
+        // Keep each requested window bounded rather than merging distant months into years.
+        if (this.pending.length === 8) {
+          const dropped = this.pending.shift()!;
+          this.scheduledRanges.delete(`${dropped.startDate}/${dropped.endDate}`);
+        }
+        this.scheduledRanges.add(key);
+        this.pending.push({ householdId, startDate, endDate });
+        void this.refreshPending();
+      }
+      return cached;
+    }
 
+    const generation = this.generation;
     try {
-      await this.sync(startDate, endDate);
+      await this.sync(startDate, endDate, generation);
+      if (!this.database.open || generation !== this.generation)
+        throw new Error('Refresh superseded');
       return this.readProjection(householdId, startDate, endDate, 'current');
     } catch (error) {
+      if (!this.database.open || generation !== this.generation) throw error;
       const code = error instanceof CalendarProviderError ? error.code : ('UNAVAILABLE' as const);
       const attemptedAt = new Date().toISOString();
       this.database
@@ -172,7 +218,49 @@ export class CalendarProjectionService {
     }
   }
 
+  private async refreshPending(): Promise<void> {
+    if (this.refreshing) return;
+    this.refreshing = true;
+    try {
+      while (this.pending.length > 0 && this.database.open) {
+        const range = this.pending.shift()!;
+        const generation = this.generation;
+        try {
+          const result = await this.projectRange(range.householdId, range.startDate, range.endDate);
+          if (generation !== this.generation || !this.database.open) continue;
+          const expires = Date.now() + (result.freshness === 'current' ? 300_000 : 60_000);
+          for (const key of this.refreshedRanges.keys()) {
+            const [start, end] = key.split('/');
+            if (start! >= range.startDate && end! <= range.endDate) {
+              this.refreshedRanges.set(key, expires);
+              if (result.freshness === 'current') this.currentRanges.add(key);
+              else this.currentRanges.delete(key);
+            }
+          }
+          this.onRefresh(range.householdId);
+        } catch {
+          // Shutdown or replacement must never write an obsolete projection or reject unhandled.
+        } finally {
+          if (generation === this.generation) {
+            this.scheduledRanges.delete(`${range.startDate}/${range.endDate}`);
+          }
+        }
+      }
+    } finally {
+      this.refreshing = false;
+    }
+  }
+
+  invalidateRefresh(): void {
+    this.generation += 1;
+    this.refreshedRanges.clear();
+    this.currentRanges.clear();
+    this.scheduledRanges.clear();
+    this.pending = [];
+  }
+
   clear(): void {
+    this.invalidateRefresh();
     const transaction = this.database.transaction(() => {
       this.database
         .prepare(
@@ -186,8 +274,10 @@ export class CalendarProjectionService {
     transaction();
   }
 
-  private async sync(startDate: string, endDate: string): Promise<void> {
+  private async sync(startDate: string, endDate: string, generation: number): Promise<void> {
     const calendars = await this.provider.listCalendars();
+    if (!this.database.open || generation !== this.generation)
+      throw new Error('Refresh superseded');
     const connection = this.readConnection();
     const withinWindow =
       connection.sync_window_start !== null &&
@@ -196,6 +286,8 @@ export class CalendarProjectionService {
       endDate <= connection.sync_window_end;
     const cursor = withinWindow ? connection.sync_cursor : null;
     const result = await this.provider.syncEvents({ startDate, endDate, cursor });
+    if (!this.database.open || generation !== this.generation)
+      throw new Error('Refresh superseded');
     const transaction = this.database.transaction(() => {
       if (result.full) {
         this.database
@@ -404,7 +496,7 @@ export class CalendarProjectionService {
     const freshness = state === 'current' ? 'current' : 'stale';
     const statusMessage =
       state === 'stale'
-        ? 'Calendar last updated at 6:45 · Trying again quietly.'
+        ? 'Updating calendar · Showing saved plans.'
         : state === 'authentication-required'
           ? 'Calendar needs attention · Showing saved plans.'
           : state === 'not-configured'

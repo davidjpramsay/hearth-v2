@@ -5,7 +5,9 @@ import {
   FocusMemory,
   focusById,
   focusIsWithin,
-  nextFocusId,
+  nextSpatialTarget,
+  focusControl,
+  modalTabTarget,
   type FocusDirection,
 } from './focusGraph';
 import { COMPANION_MAX_WIDTH } from '../layout/viewportQueries';
@@ -111,12 +113,22 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       }
     };
     const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       const active = document.activeElement;
+      if (event.key === 'Tab' && active instanceof HTMLElement) {
+        const target = modalTabTarget(active, event.shiftKey);
+        if (target !== null && focusControl(target)) event.preventDefault();
+        return;
+      }
       const direction = arrowDirection[event.key];
       if (direction !== undefined) {
         if (!(active instanceof HTMLElement)) return;
-        const nextId = nextFocusId(active, direction);
-        if (focusById(nextId)) {
+        if (active.matches('input, textarea, select') || active.isContentEditable) return;
+        // At a spatial edge, keep focus stable instead of scrolling the page
+        // independently of the remote selection.
+        if (active.matches('a[href], button, summary, [tabindex]')) event.preventDefault();
+        const target = nextSpatialTarget(active, direction);
+        if (target !== null && focusControl(target)) {
           remoteMoved.current = true;
           event.preventDefault();
         }
