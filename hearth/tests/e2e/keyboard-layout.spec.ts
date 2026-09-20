@@ -103,6 +103,77 @@ test('phone reflow retains vertical Agenda movement', async ({ page }) => {
   await page.screenshot({ path: '/tmp/hearth-keyboard-agenda-phone.png' });
 });
 
+for (const width of [1920, 390]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Reminders filters stay reachable and focused at ${width}px in ${theme}`, async ({
+      page,
+    }) => {
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.emulateMedia({ colorScheme: theme });
+      await page.setViewportSize({ width, height: width === 1920 ? 1080 : 844 });
+      await page.goto('/reminders');
+      await expect(page).toHaveTitle(/Hearth/);
+      const open = page.getByRole('button', { name: 'Open', exact: true });
+      const all = page.getByRole('button', { name: 'All', exact: true });
+      await expect(open).toBeFocused();
+      const first = page.getByRole('button', { name: /^Complete / }).first();
+      const completedTitle = (await first.getAttribute('aria-label'))!.slice('Complete '.length);
+      await first.click();
+      await expect(
+        page.getByRole('button', { name: `Complete ${completedTitle}`, exact: true }),
+      ).toHaveCount(0);
+      const remaining = page.getByRole('button', { name: /^Complete / }).first();
+      await remaining.focus();
+      await page.keyboard.press('ArrowUp');
+      await expect(open).toBeFocused();
+      // A filter switch must not fetch again, unmount controls or lose focus offline.
+      await page.route('**/api/v1/households/*/reminders?*', (route) => route.abort());
+      await page.keyboard.press('ArrowRight');
+      await expect(all).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(all).toBeFocused();
+      await expect(all).toHaveAttribute('aria-pressed', 'true');
+      await expect(
+        page.getByRole('button', { name: `Reopen ${completedTitle}`, exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press('ArrowLeft');
+      await page.keyboard.press('Enter');
+      await expect(open).toBeFocused();
+      await expect(open).toHaveAttribute('aria-pressed', 'true');
+      await expect(
+        page.getByRole('button', { name: `Reopen ${completedTitle}`, exact: true }),
+      ).toHaveCount(0);
+      await page.keyboard.press('ArrowDown');
+      await expect(remaining).toBeFocused();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      expect(errors).toEqual([]);
+      await page.screenshot({ path: `/tmp/hearth-reminders-navigation-${width}-${theme}.png` });
+    });
+  }
+}
+
+test('empty Reminders keeps both filters available without a text field detour', async ({
+  page,
+}) => {
+  await page.goto('/reminders');
+  const complete = page.getByRole('button', { name: /^Complete / });
+  await expect(complete).toHaveCount(3);
+  for (let count = 3; count > 0; count -= 1) {
+    await complete.first().click();
+    await expect(complete).toHaveCount(count - 1);
+  }
+  await expect(page.getByText('No open reminders', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Open', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'All', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: /^Reopen / })).toHaveCount(3);
+});
+
 test('admin text fields retain cursor keys and ordinary Tab navigation', async ({ page }) => {
   await page.goto('/admin/household');
   const name = page.getByLabel('Household name');

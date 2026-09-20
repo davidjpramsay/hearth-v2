@@ -29,7 +29,8 @@ export function RemindersScreen({
   const [filter, setFilter] = useState<ReminderFilter>('open');
   const [title, setTitle] = useState('');
   const [dueLocalDate, setDueLocalDate] = useState('');
-  const query = useRemindersQuery(filter === 'all', !preparing);
+  // Both views use one projection so switching filters never removes the focused controls.
+  const query = useRemindersQuery(true, !preparing);
   const createReminder = useCreateReminder();
   const updateReminder = useUpdateReminder();
   const completion = useSetReminderCompletion();
@@ -41,10 +42,13 @@ export function RemindersScreen({
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
 
   const overview = query.data;
-  const visibleLists = overview.lists.filter((list) =>
-    overview.reminders.some((reminder) => reminder.listId === list.id),
+  const visibleReminders = overview.reminders.filter(
+    (reminder) => filter === 'all' || !reminder.isCompleted,
   );
-  const visibleReminderIds = overview.reminders.map((reminder) => reminder.id);
+  const visibleLists = overview.lists.filter((list) =>
+    visibleReminders.some((reminder) => reminder.listId === list.id),
+  );
+  const visibleReminderIds = visibleReminders.map((reminder) => reminder.id);
   const firstReminderFocusId =
     visibleReminderIds[0] === undefined
       ? 'reminder-create-title'
@@ -70,38 +74,7 @@ export function RemindersScreen({
 
   return (
     <div className="screen reminders-screen">
-      <ScreenHeader
-        title="Reminders"
-        meta={`${openCount} open`}
-        actions={
-          <div aria-label="Reminder filter" className="reminders-filter" role="group">
-            <button
-              aria-pressed={filter === 'open'}
-              className="focusable"
-              data-focus-id="reminders-filter-open"
-              data-focus-left="nav-reminders"
-              data-focus-right="reminders-filter-all"
-              data-focus-down="reminder-create-title"
-              onClick={() => setFilter('open')}
-              type="button"
-            >
-              Open
-            </button>
-            <button
-              aria-pressed={filter === 'all'}
-              className="focusable"
-              data-focus-id="reminders-filter-all"
-              data-focus-left="reminders-filter-open"
-              data-focus-right="reminders-filter-all"
-              data-focus-down="reminder-create-submit"
-              onClick={() => setFilter('all')}
-              type="button"
-            >
-              All
-            </button>
-          </div>
-        }
-      />
+      <ScreenHeader title="Reminders" meta={`${openCount} open`} />
 
       {!online ? (
         <StatusBanner kind="offline">Offline · Showing saved reminders.</StatusBanner>
@@ -113,7 +86,6 @@ export function RemindersScreen({
           <input
             autoComplete="off"
             className="focusable"
-            data-focus-entry="true"
             data-focus-id="reminder-create-title"
             data-focus-left="nav-reminders"
             data-focus-right="reminder-create-date"
@@ -153,6 +125,28 @@ export function RemindersScreen({
         </button>
       </form>
 
+      <div aria-label="Reminder filter" className="reminders-filter" role="group">
+        <button
+          aria-pressed={filter === 'open'}
+          className="focusable"
+          data-focus-entry="true"
+          data-focus-id="reminders-filter-open"
+          onClick={() => setFilter('open')}
+          type="button"
+        >
+          Open
+        </button>
+        <button
+          aria-pressed={filter === 'all'}
+          className="focusable"
+          data-focus-id="reminders-filter-all"
+          onClick={() => setFilter('all')}
+          type="button"
+        >
+          All
+        </button>
+      </div>
+
       {commandError === null ? null : (
         <StatusBanner kind="unavailable">{commandError.message}</StatusBanner>
       )}
@@ -165,7 +159,7 @@ export function RemindersScreen({
       ) : (
         <div className="reminders-list-grid">
           {visibleLists.map((list) => {
-            const reminders = overview.reminders.filter((reminder) => reminder.listId === list.id);
+            const reminders = visibleReminders.filter((reminder) => reminder.listId === list.id);
             return (
               <section className="reminder-list-card" key={list.id}>
                 <header>

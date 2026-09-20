@@ -202,11 +202,20 @@ test('household can create, complete and review Hearth reminders', async ({ page
     page.getByRole('heading', { level: 1, name: 'Reminders', exact: true }),
   ).toBeVisible();
   await expect(page.locator('[data-focus-id="nav-reminders"]')).toBeVisible();
-  await expect(page.locator('[data-focus-id="reminder-create-title"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="reminders-filter-open"]')).toBeFocused();
   await page.getByPlaceholder('Add a reminder').fill('Test Reminder');
-  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Tab');
   await expect(page.locator('[data-focus-id="reminder-create-date"]')).toBeFocused();
-  await page.keyboard.press('ArrowRight');
+  // Native date fields can have several keyboard-editable segments.
+  for (let step = 0; step < 5; step += 1) {
+    if (
+      await page
+        .locator('[data-focus-id="reminder-create-submit"]')
+        .evaluate((el) => el === document.activeElement)
+    )
+      break;
+    await page.keyboard.press('Tab');
+  }
   await expect(page.locator('[data-focus-id="reminder-create-submit"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByText('Test Reminder', { exact: true })).toBeVisible();

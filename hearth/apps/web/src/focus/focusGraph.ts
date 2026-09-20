@@ -34,6 +34,7 @@ export function nextSpatialTarget(
   const scope = element.closest('[aria-modal="true"], dialog[open]') ?? rail ?? document;
   const origin = element.getBoundingClientRect();
   const horizontal = direction === 'left' || direction === 'right';
+  const content = element.closest('main');
   const sign = direction === 'left' || direction === 'up' ? -1 : 1;
   const originMain = horizontal
     ? (origin.left + origin.right) / 2
@@ -44,6 +45,7 @@ export function nextSpatialTarget(
   let best: HTMLElement | null = null;
   let bestScore = Infinity;
   let bestInBeam = false;
+  let bestInContent = false;
   for (const candidate of scope.querySelectorAll<HTMLElement>(controls)) {
     if (candidate === element || !canFocus(candidate) || candidate.tabIndex < 0) continue;
     const rect = candidate.getBoundingClientRect();
@@ -60,12 +62,34 @@ export function nextSpatialTarget(
     const crossGap = horizontal
       ? Math.max(0, origin.top - rect.bottom, rect.top - origin.bottom)
       : Math.max(0, origin.left - rect.right, rect.left - origin.right);
-    const score = forward + crossGap * 4 + Math.abs(cross - originCross) * 0.25;
-    const inBeam = crossGap === 0;
-    if ((inBeam && !bestInBeam) || (inBeam === bestInBeam && score < bestScore)) {
+    const mainGap = horizontal
+      ? sign > 0
+        ? rect.left - origin.right
+        : origin.left - rect.right
+      : sign > 0
+        ? rect.top - origin.bottom
+        : origin.top - rect.bottom;
+    const score = Math.max(0, mainGap) + crossGap * 4 + Math.abs(cross - originCross) * 0.25;
+    const crossOverlap = horizontal
+      ? Math.min(origin.bottom, rect.bottom) - Math.max(origin.top, rect.top)
+      : Math.min(origin.right, rect.right) - Math.max(origin.left, rect.left);
+    const crossSize = horizontal
+      ? Math.min(origin.height, rect.height)
+      : Math.min(origin.width, rect.width);
+    const inBeam = crossOverlap >= crossSize / 2;
+    // Navigation must not intercept movement between adjacent content columns
+    // or to content below the fold. Fall back at the edge of the content.
+    const inContent =
+      (content?.contains(candidate) ?? false) && (!horizontal || mainGap >= -axisSize / 2);
+    if (
+      (inContent && !bestInContent) ||
+      (inContent === bestInContent &&
+        ((inBeam && !bestInBeam) || (inBeam === bestInBeam && score < bestScore)))
+    ) {
       best = candidate;
       bestScore = score;
       bestInBeam = inBeam;
+      bestInContent = inContent;
     }
   }
   return best;

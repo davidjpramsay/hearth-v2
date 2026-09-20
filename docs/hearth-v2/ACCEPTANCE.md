@@ -147,6 +147,9 @@ Chromium fallback produced the retained evidence.
   neither reminder state nor receipts.
 - **Open** is the default view and **All** may reveal completed reminders. Date-only reminders do
   not display a fabricated time.
+- Open/All is reachable from the reminder list and navigation using arrows without Tab or touch,
+  including an empty list. Switching filters retains visible focus and works from loaded data
+  offline; text and date fields keep their native editing keys.
 - Today reports the total open count, previews overdue items before due-today, undated and future
   items, links to Reminders and shows **No open reminders** only when the count is zero.
 - The dedicated page and Today module pass typed integration, television/mobile rendering,

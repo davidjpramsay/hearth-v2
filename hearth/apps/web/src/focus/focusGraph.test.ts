@@ -23,6 +23,55 @@ function rectangle(element: HTMLElement, x: number, y: number) {
 }
 
 describe('focus graph', () => {
+  it('leaves a wide chart horizontally instead of jumping to controls above it', () => {
+    document.body.innerHTML =
+      '<aside><button>Nav</button></aside><main><button>Mode</button><button>Chart</button></main>';
+    const [nav, mode, chart] = [...document.querySelectorAll('button')];
+    rectangle(nav!, 0, 400);
+    rectangle(mode!, 400, 150);
+    rectangle(chart!, 200, 300);
+    vi.mocked(chart!.getBoundingClientRect).mockReturnValue({
+      x: 200,
+      y: 300,
+      left: 200,
+      right: 1200,
+      top: 300,
+      bottom: 550,
+      width: 1000,
+      height: 250,
+      toJSON: () => ({}),
+    });
+    expect(nextSpatialTarget(chart!, 'left')).toBe(nav);
+  });
+  it('crosses nearby calendar columns before jumping into the navigation rail', () => {
+    document.body.innerHTML =
+      '<aside><button>Nav</button></aside><main><button>Early</button><button>Overnight</button></main>';
+    const [nav, early, overnight] = [...document.querySelectorAll('button')];
+    rectangle(nav!, 0, 100);
+    rectangle(early!, 200, 150);
+    rectangle(overnight!, 320, 100);
+    expect(nextSpatialTarget(overnight!, 'left')).toBe(early);
+    expect(nextSpatialTarget(early!, 'left')).toBe(nav);
+  });
+  it('does not treat a barely overlapping header action as a same-row neighbour', () => {
+    document.body.innerHTML = '<button>A</button><button>B</button><button>C</button>';
+    const [a, b, c] = [...document.querySelectorAll('button')];
+    rectangle(a!, 500, 100);
+    rectangle(b!, 350, 62);
+    rectangle(c!, 200, 100);
+    expect(nextSpatialTarget(a!, 'left')).toBe(c);
+  });
+  it('continues through content below a fixed phone bar before leaving the main region', () => {
+    document.body.innerHTML =
+      '<main><button>A</button><button>B</button></main><nav><button>C</button></nav>';
+    const [a, b, c] = [...document.querySelectorAll('button')];
+    rectangle(a!, 0, 200);
+    rectangle(b!, 0, 900);
+    rectangle(c!, 0, 750);
+    expect(nextSpatialTarget(a!, 'down')).toBe(b);
+    rectangle(c!, 0, 1100);
+    expect(nextSpatialTarget(b!, 'down')).toBe(c);
+  });
   it('keeps vertical sidebar movement inside the sidebar', () => {
     document.body.innerHTML =
       '<aside><button>A</button><button>B</button></aside><main><button>C</button></main>';

@@ -46,6 +46,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
 - Arrow navigation follows rendered control positions, not fixed cross-screen links; responsive
   reflow therefore changes direction naturally. Hidden, disabled and inert controls are skipped.
   Up/Down stays within the desktop navigation rail; Left/Right moves between rail and content.
+  Movement continues through adjacent page content before entering the navigation rail or a fixed phone navigation bar.
+  Clearly aligned neighbours take priority over header actions that only graze a row's edge.
   Text fields, selects and screen-specific widgets retain their native/custom arrow handling.
   Calendar views initially focus their selected Week/Month/Agenda selector, not an event; Enter
   opens details and Back restores the event that opened them. Arrows and Tab stay inside dialogs.
@@ -228,6 +230,9 @@ the phone More hub.
 
 - The television and phone show the same Hearth-owned reminder list. Open items are the default;
   **All** may reveal completed items.
+- Open/All sits directly above the list, below the creation form, so the form cannot block
+  the remote's path back to the filters. Entry focuses Open rather than starting text editing.
+  Both filters use the same loaded projection; switching never removes the focused button.
 - A household member can add a reminder quickly, optionally choose a due date, edit it later and use
   one clear control to complete or reopen it. Removal requires explicit confirmation.
 - Date-only reminders never acquire a misleading midnight time. Open reminders sort overdue, due

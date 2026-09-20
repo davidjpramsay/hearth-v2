@@ -19,6 +19,8 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
   await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
   for (let step = 0; step < 8; step += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-photos"]')).toBeFocused();
   await page.keyboard.press('Enter');
@@ -521,6 +523,8 @@ test('@visual phone administration uploads and curates the private photo collect
   await page.reload();
   await expect(page.getByRole('button', { name: 'Choose photos' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('button', { name: 'Select photos', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(firstFavourite).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(
@@ -552,7 +556,7 @@ test('@visual phone administration uploads and curates the private photo collect
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect(firstRestore).toBeFocused();
-  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('link', { name: 'View family photos' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
@@ -618,7 +622,7 @@ test('@visual phone administration bulk-selects and permanently removes managed 
   const dialog = page.getByRole('dialog', { name: 'Delete 2 Hearth photos?' });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keep photos' })).toBeFocused();
-  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowUp');
   await expect(page.getByRole('button', { name: 'Delete permanently' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(dialog).toHaveCount(0);

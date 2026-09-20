@@ -82,7 +82,12 @@ for (const viewport of [
     await expect(install).toBeEnabled();
     await install.focus();
     await page.keyboard.press('ArrowDown');
-    await expect(page.getByRole('link', { name: 'Manage connections' })).toBeFocused();
+    // Wide layouts follow the aligned connection row, not the right-aligned header link.
+    await expect(
+      viewport.width >= 1200
+        ? page.locator('[data-focus-id="system-calendar-health"]')
+        : page.getByRole('link', { name: 'Manage connections' }),
+    ).toBeFocused();
     await page.keyboard.press('ArrowUp');
     await expect(install).toBeFocused();
     await expect(card.getByText('Available', { exact: true })).toBeVisible();

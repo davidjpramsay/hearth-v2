@@ -25,9 +25,12 @@ test('remote-only Lists check, undo, Meals navigation and Back restoration', asy
   await expect(milk).toBeFocused();
 
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('[data-focus-id="list-choice-list_groceries"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="list-choice-list_weekend_away"]')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('[data-focus-id="nav-lists"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="nav-weather"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Meals' })).toBeVisible();

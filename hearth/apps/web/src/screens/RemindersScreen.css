@@ -3,6 +3,8 @@
 }
 
 .reminders-filter {
+  width: fit-content;
+  margin-bottom: var(--reminder-gap);
   padding: 3px;
   border: 1px solid var(--hairline);
   border-radius: 12px;
@@ -26,6 +28,13 @@
 .reminders-filter button[aria-pressed='true'] {
   color: var(--eucalyptus);
   background: var(--surface);
+}
+
+@media (min-width: 1200px) {
+  .reminders-filter button {
+    min-height: 64px;
+    min-width: 110px;
+  }
 }
 
 .reminder-create {

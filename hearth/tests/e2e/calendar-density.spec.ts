@@ -202,7 +202,8 @@ for (const viewport of [
     await crowdedWeek(page);
     await page.goto('/calendar/week');
     await expect(page.locator('.week-grid')).toHaveCount(0);
-    await expect(page.locator('.agenda-event').first()).toBeFocused();
+    await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Late pickup/ })).toHaveCount(1);
     const continuation = page.getByRole('button', { name: /Until 6:00 am, Overnight trip/ });
     await continuation.click();
@@ -229,6 +230,8 @@ test('overflow works from saved plans offline and remote arrows cross days', asy
   await crowdedWeek(page);
   await page.goto('/calendar/week');
   const early = page.getByRole('button', { name: /5:30 am, Early swim/ });
+  await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
+  await early.focus();
   await expect(early).toBeFocused();
   await page.keyboard.press('ArrowRight');
   const continuation = page.getByRole('button', { name: /Until 6:00 am, Overnight trip/ });

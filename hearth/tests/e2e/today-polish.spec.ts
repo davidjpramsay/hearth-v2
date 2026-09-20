@@ -87,10 +87,8 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await page.keyboard.press('Escape');
   await expect(firstEvent).toBeFocused();
 
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  // Overflow is a header action above the event list.
+  await page.keyboard.press('ArrowUp');
   const eventOverflow = page.locator('[data-focus-id="today-event-overflow"]');
   await expect(eventOverflow).toBeFocused();
   await captureEvidence(page, {
@@ -103,7 +101,7 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await page.keyboard.press('Escape');
   await expect(eventOverflow).toBeFocused();
 
-  await page.keyboard.press('ArrowDown');
+  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   const dinner = page.locator('[data-focus-id="today-summary-dinner"]');
   await expect(dinner).toBeFocused();
   await page.keyboard.press('Enter');
@@ -112,7 +110,7 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await page.keyboard.press('Escape');
   await expect(dinner).toBeFocused();
 
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
   const list = page.locator('[data-focus-id="today-summary-list"]');
   await expect(list).toBeFocused();
   await page.keyboard.press('Enter');
@@ -122,6 +120,8 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await expect(list).toBeFocused();
 
   await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="today-summary-reminders"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
   const notice = page.locator('[data-focus-id="today-summary-notice"]');
   await expect(notice).toBeFocused();
   await page.keyboard.press('Enter');
@@ -131,6 +131,8 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await expect(notice).toBeFocused();
 
   await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-focus-id="today-summary-reminders"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   const photo = page.locator('[data-focus-id="today-photo"]');
   await expect(photo).toBeFocused();
   await page.keyboard.press('Enter');
@@ -138,7 +140,7 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(photo).toBeFocused();
-  await page.keyboard.press('ArrowUp');
+  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowUp');
   const choreOverflow = page.locator('[data-focus-id="today-chore-overflow"]');
   await expect(choreOverflow).toBeFocused();
   await page.keyboard.press('Enter');
@@ -263,12 +265,8 @@ for (const viewport of [
     expect(photoBox!.height).toBeGreaterThan(summariesBox!.height * 1.5);
 
     const lastChore = page.locator('.chore-row').last();
-    await expect(lastChore).toHaveAttribute('data-focus-down', 'today-chore-overflow');
     await lastChore.focus();
     await expect(lastChore).toBeFocused();
-    await page.keyboard.press('ArrowDown');
-    const choreOverflow = page.locator('[data-focus-id="today-chore-overflow"]');
-    await expect(choreOverflow).toBeFocused();
     await page.keyboard.press('ArrowDown');
     await expect(page.locator('[data-focus-id="today-summary-notice"]')).toBeFocused();
     await page.keyboard.press('ArrowLeft');
@@ -280,6 +278,9 @@ for (const viewport of [
     await page.keyboard.press('ArrowUp');
     await expect(page.locator('[data-focus-id="today-photo"]')).toBeFocused();
     await page.keyboard.press('ArrowLeft');
+    const alignedChoreIndex = viewport.width === 1920 ? 2 : 1;
+    await expect(page.locator('.chore-row').nth(alignedChoreIndex)).toBeFocused();
+    for (let step = alignedChoreIndex; step < 4; step += 1) await page.keyboard.press('ArrowDown');
     await expect(lastChore).toBeFocused();
 
     await captureEvidence(page, {
