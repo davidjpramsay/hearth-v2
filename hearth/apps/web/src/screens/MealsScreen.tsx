@@ -19,17 +19,19 @@ export function MealsScreen({
   scenario: DemoScenario | 'offline';
   preparing: boolean;
 }) {
-  const { weekStart } = useHearthRuntime();
-  const [startDate, setStartDate] = useState(() => weekStart);
-  const [selectedDate, setSelectedDate] = useState(() => weekStart);
+  const { weekStart, localDate } = useHearthRuntime();
+  const [browsedWeek, setBrowsedWeek] = useState<string | null>(null);
+  const startDate = browsedWeek ?? weekStart;
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const plan = useMealPlanQuery(startDate, !preparing);
   const online = useOnlineStatus(scenario === 'offline');
 
   if (preparing || plan.isPending) return <LoadingState />;
   if (plan.data === undefined) return <FailureState onRetry={() => void plan.refetch()} />;
   const selectedDay =
-    plan.data.days.find((day) => day.localDate === selectedDate) ?? plan.data.days[0];
-  const today = plan.data.days.find((day) => day.isToday) ?? plan.data.days[0];
+    plan.data.days.find((day) => day.localDate === (selectedDate ?? localDate)) ??
+    plan.data.days[0];
+  const today = plan.data.days.find((day) => day.isToday) ?? selectedDay;
   const tonight = today?.entries.find((entry) => entry.slot === 'dinner') ?? null;
   const favouriteCount = plan.data.savedMeals.filter((meal) => meal.favourite).length;
 
@@ -48,7 +50,7 @@ export function MealsScreen({
       <section className="tonight-band" aria-labelledby="tonight-heading">
         <Icon name="meal" />
         <div>
-          <p>Tonight</p>
+          <p>{startDate === weekStart ? 'Tonight' : `${selectedDay?.dayLabel ?? ''} dinner`}</p>
           <h2 id="tonight-heading">{tonight?.mealName ?? 'Nothing planned yet'}</h2>
           {tonight?.note === undefined || tonight.note === null ? null : (
             <span>{tonight.note}</span>
@@ -115,19 +117,32 @@ export function MealsScreen({
           data-focus-id="meal-earlier"
           onClick={() => {
             const earlier = addDays(startDate, -7);
-            setStartDate(earlier);
+            setBrowsedWeek(earlier);
             setSelectedDate(earlier);
           }}
           type="button"
         >
           <Icon name="chevron-left" /> Earlier week
         </button>
+        {browsedWeek === null ? null : (
+          <button
+            className="focusable"
+            data-focus-id="meal-current"
+            type="button"
+            onClick={() => {
+              setBrowsedWeek(null);
+              setSelectedDate(null);
+            }}
+          >
+            This week
+          </button>
+        )}
         <button
           className="focusable"
           data-focus-id="meal-later"
           onClick={() => {
             const later = addDays(startDate, 7);
-            setStartDate(later);
+            setBrowsedWeek(later);
             setSelectedDate(later);
           }}
           type="button"

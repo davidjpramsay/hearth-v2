@@ -2,6 +2,18 @@ import type { ChoreRepeat, HouseholdList, ListItem } from '@hearth/shared';
 
 const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR'] as const;
 
+// Checked items count too; clearing or archiving them releases capacity.
+export const MAX_ACTIVE_LIST_ITEMS = 100;
+
+export function assertListAdditionCapacity(count: number): void {
+  if (count >= MAX_ACTIVE_LIST_ITEMS) {
+    throw new PlanningDomainError(
+      'CONFLICT',
+      'Clear checked items or remove an item before adding more.',
+    );
+  }
+}
+
 export class PlanningDomainError extends Error {
   constructor(
     readonly code: 'CONFLICT' | 'DUPLICATE_ITEM' | 'AMBIGUOUS_TARGET' | 'NOT_FOUND',

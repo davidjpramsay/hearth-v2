@@ -3,6 +3,7 @@ import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path';
 
 import { z } from 'zod';
+import { boundResponse } from './bounded-response.js';
 
 import { HomeAssistantConnectionTestRequestSchema } from '@hearth/shared';
 
@@ -209,6 +210,7 @@ export async function resolveHomeAssistantProvider(input: {
   demoMode: boolean;
   configPath: string | undefined;
   fetcher?: HomeAssistantFetch;
+  onConfigurationUnavailable?: () => void;
 }): Promise<HomeAssistantProvider | null> {
   if (input.demoMode) {
     if (input.configPath !== undefined) {
@@ -220,7 +222,12 @@ export async function resolveHomeAssistantProvider(input: {
   try {
     return await loadHomeAssistantProvider(input.configPath, input.fetcher);
   } catch (error) {
-    if (error instanceof HomeAssistantRuntimeReadError && error.missing) {
+    if (
+      error instanceof HomeAssistantRuntimeReadError ||
+      error instanceof HomeAssistantRuntimeConfigurationError
+    ) {
+      if (!(error instanceof HomeAssistantRuntimeReadError && error.missing))
+        input.onConfigurationUnavailable?.();
       return new UnconfiguredHomeAssistantProvider();
     }
     throw error;
@@ -251,12 +258,14 @@ export function createHomeAssistantProvider(
     const paths = [...new Set(parsed.error.issues.map((issue) => issue.path.join('.')))].filter(
       Boolean,
     );
-    throw new Error(
+    throw new HomeAssistantRuntimeConfigurationError(
       `Home Assistant secret configuration is invalid${paths.length === 0 ? '' : ` at ${paths.join(', ')}`}.`,
     );
   }
   return new HomeAssistantRestProvider(parsed.data, fetcher);
 }
+
+class HomeAssistantRuntimeConfigurationError extends Error {}
 
 export async function writeHomeAssistantRuntimeConfig(
   configPath: string,
@@ -287,6 +296,8 @@ async function homeAssistantRequest(
   init: RequestInit = {},
 ): Promise<Response> {
   let response: Response;
+  const deadline = AbortSignal.timeout(8_000);
+  const signal = init.signal == null ? deadline : AbortSignal.any([init.signal, deadline]);
   try {
     response = await fetcher(new URL(path, config.serverUrl), {
       ...init,
@@ -295,8 +306,10 @@ async function homeAssistantRequest(
         'Content-Type': 'application/json',
         ...init.headers,
       },
-      signal: init.signal ?? AbortSignal.timeout(8_000),
+      signal,
+      redirect: 'error',
     });
+    response = await boundResponse(response, 4 * 1024 * 1024, signal);
   } catch {
     throw new HomeAssistantUnavailableError(
       'Home Assistant could not be reached on the local network.',

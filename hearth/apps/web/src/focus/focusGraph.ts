@@ -96,12 +96,25 @@ export function nextSpatialTarget(
 }
 
 function canFocus(target: HTMLElement): boolean {
-  return (
-    !target.matches(':disabled, [aria-disabled="true"]') &&
-    target.closest('[hidden], [inert], [aria-hidden="true"]') === null &&
-    getComputedStyle(target).display !== 'none' &&
-    getComputedStyle(target).visibility !== 'hidden'
-  );
+  // Guarded busy rows stay focusable while a save is pending; disabling the
+  // native button would blur it and interrupt remote check/undo navigation.
+  if (
+    target.matches(':disabled') ||
+    (target.matches('[aria-disabled="true"]') && !target.matches('[aria-busy="true"]')) ||
+    target.closest('[hidden], [inert], [aria-hidden="true"]') !== null
+  )
+    return false;
+  // Suspense can retain the outgoing screen under a display:none ancestor.
+  // Its old focus is not usable, even if the control itself is still styled normally.
+  for (
+    let ancestor: HTMLElement | null = target;
+    ancestor !== null;
+    ancestor = ancestor.parentElement
+  ) {
+    const style = getComputedStyle(ancestor);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+  }
+  return true;
 }
 
 export function focusControl(target: HTMLElement, options: { scroll?: boolean } = {}): boolean {
@@ -120,12 +133,19 @@ export function focusById(id: string | null, options: { scroll?: boolean } = {})
       ? (document.querySelector<HTMLElement>('#main-content [data-focus-entry="true"]') ??
         document.querySelector<HTMLElement>('#main-content [data-focus-id]'))
       : document.querySelector<HTMLElement>(`[data-focus-id="${CSS.escape(id)}"]`);
-  return target !== null && focusControl(target, options);
+  // Keep transient loading chrome keyboard-accessible, but wait for the real
+  // screen entry before choosing focus automatically. Explicit D-pad/Tab focus
+  // still uses focusControl and remains available while the content arrives.
+  return (
+    target !== null &&
+    target.closest('[data-focus-loading="true"]') === null &&
+    focusControl(target, options)
+  );
 }
 
 export function focusIsWithin(container: Element | null): boolean {
   return container !== null && document.activeElement instanceof HTMLElement
-    ? container.contains(document.activeElement)
+    ? container.contains(document.activeElement) && canFocus(document.activeElement)
     : false;
 }
 

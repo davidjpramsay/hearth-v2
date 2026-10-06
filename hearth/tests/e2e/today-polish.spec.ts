@@ -2,8 +2,12 @@ import { resolve } from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-
 import { captureEvidence } from './visualEvidence';
+
+// Finish intercepted refreshes before Playwright disposes their response context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'wait' });
+});
 
 const evidence = resolve('docs/evidence/today-polish');
 

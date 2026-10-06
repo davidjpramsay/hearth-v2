@@ -11,7 +11,7 @@ import type {
 import { choresApi as hearthApi } from '../api/chores';
 import { createRequestId, HearthApiError } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { InlineError } from '../components/Status';
@@ -70,9 +70,34 @@ export function ChoreDaySettingsScreen() {
     },
   });
 
-  if (chores.isPending || admin.isPending) return <AdminLoading />;
-  if (chores.isError) return <AdminError message={chores.error.message} />;
-  if (admin.isError) return <AdminError message={admin.error.message} />;
+  if (chores.isPending || admin.isPending)
+    return (
+      <AdminQueryState
+        title="Chores this week"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+      />
+    );
+  if (chores.data === undefined)
+    return (
+      <AdminQueryState
+        title="Chores this week"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={chores.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void chores.refetch()}
+      />
+    );
+  if (admin.data === undefined)
+    return (
+      <AdminQueryState
+        title="Chores this week"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={admin.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void admin.refetch()}
+      />
+    );
 
   const occurrences = chores.data.groups.flatMap((group) => group.occurrences);
   return (
@@ -218,7 +243,9 @@ function PastChoreRow({
 }) {
   const completed = occurrence.state === 'completed';
   const changeable = occurrence.state === 'pending' || completed;
-  const pending = completion.pendingOccurrenceId === occurrence.id;
+  const pending =
+    completion.pendingOccurrenceIds?.has(occurrence.id) ??
+    completion.pendingOccurrenceId === occurrence.id;
   const failed = completion.failedOccurrenceId === occurrence.id;
   const timing = formatChoreTiming(occurrence.availableFromTime, occurrence.dueTime);
   const action = completed ? 'undo' : 'complete';

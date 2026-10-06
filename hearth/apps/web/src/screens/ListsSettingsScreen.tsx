@@ -7,7 +7,7 @@ import type { HouseholdList, HouseholdListType, ListItem } from '@hearth/shared'
 import { createRequestId } from '../api/core';
 import { listsApi as hearthApi } from '../api/lists';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useListSettingsQuery } from '../hooks/useListQueries';
 
@@ -73,8 +73,24 @@ export function ListsSettingsScreen() {
     },
   });
 
-  if (settings.isPending) return <AdminLoading />;
-  if (settings.isError) return <AdminError message={settings.error.message} />;
+  if (settings.isPending)
+    return (
+      <AdminQueryState
+        title="Household lists"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+      />
+    );
+  if (settings.data === undefined)
+    return (
+      <AdminQueryState
+        title="Household lists"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={settings.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void settings.refetch()}
+      />
+    );
 
   const selected =
     settings.data.activeLists.find((list) => list.id === selectedListId) ??

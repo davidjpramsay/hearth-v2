@@ -233,7 +233,8 @@ describe('SQLite admin repository', () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-pairing-codes-'));
     temporaryDirectories.push(directory);
     const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
-    const repository = new SqliteAdminRepository(database);
+    let now = Date.parse('2026-08-03T00:00:00Z');
+    const repository = new SqliteAdminRepository(database, { now: () => new Date(now) });
 
     const codes: string[] = [];
     for (let index = 1; index <= 105; index += 1) {
@@ -242,11 +243,52 @@ describe('SQLite admin repository', () => {
         `request_pairing_capacity_${index}`,
       );
       codes.push(pairing.code);
+      now += 600_001;
     }
 
     expect(codes).toHaveLength(105);
     expect(new Set(codes).size).toBe(105);
     expect(codes.every((code) => /^[A-Z0-9]{6}$/.test(code))).toBe(true);
+    repository.close();
+  });
+
+  it('bounds pending pairing state, preserves replay, and expires abandoned requests', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-pairing-limits-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    let now = Date.parse('2026-08-03T00:00:00Z');
+    const repository = new SqliteAdminRepository(database, { now: () => new Date(now) });
+    for (let index = 0; index < 32; index += 1) {
+      await repository.createPairing(
+        'TV',
+        `request_pairing_limit_${index}`,
+        undefined,
+        undefined,
+        `peer_${index}`,
+      );
+    }
+    await expect(
+      repository.createPairing('TV', 'request_pairing_excess', undefined, undefined, 'new_peer'),
+    ).rejects.toThrow(/Too many/);
+    const replay = await repository.createPairing(
+      'TV',
+      'request_pairing_limit_0',
+      undefined,
+      undefined,
+      'peer_0',
+    );
+    expect(replay.status).toBe('pending');
+    now += 600_001;
+    const overview = await repository.getOverview(DEMO_HOUSEHOLD_ID, DEMO_ADMIN_ACTOR_ID);
+    expect(overview.pendingPairings).toHaveLength(0);
+    await expect(
+      repository.createPairing('TV', 'request_pairing_after_expiry'),
+    ).resolves.toMatchObject({ status: 'pending' });
+    now += 8 * 86_400_000;
+    await repository.createPairing('TV', 'request_pairing_after_retention');
+    expect(database.prepare('SELECT COUNT(*) AS count FROM pairing_requests').get()).toEqual({
+      count: 1,
+    });
     repository.close();
   });
 

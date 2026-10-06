@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -15,6 +15,7 @@ import {
   removeCalendarRuntimeConfig,
   resolveCalendarRuntime,
   writeCalendarRuntimeConfig,
+  loadCalendarRuntime,
 } from './calendar-runtime.js';
 
 const FAMILY_URL = 'https://calendar.example.test/calendars/family/';
@@ -22,6 +23,44 @@ const EZRA_URL = 'https://calendar.example.test/calendars/ezra/';
 const FAMILY_OBJECT_URL = `${FAMILY_URL}family-events.ics`;
 
 describe('read-only CalDAV calendar provider', () => {
+  it('disables invalid optional startup configuration while preserving the original file', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-invalid-calendar-config-'));
+    const path = join(directory, 'calendar.json');
+    let warnings = 0;
+    try {
+      for (const contents of [
+        '{invalid',
+        JSON.stringify({ appPassword: 'must-stay-private' }),
+        JSON.stringify({
+          version: 1,
+          provider: 'caldav',
+          serverUrl: 'not-a-url',
+          username: 'person@example.test',
+          appPassword: 'must-stay-private',
+          householdTimezone: 'Australia/Perth',
+          calendars: [{ displayName: 'Family', ownerMemberId: null }],
+        }),
+      ]) {
+        await writeFile(path, contents, { mode: 0o600 });
+        const runtime = await resolveCalendarRuntime({
+          demoMode: false,
+          configPath: path,
+          onConfigurationUnavailable: () => {
+            warnings++;
+          },
+        });
+        expect(runtime?.provider.providerType).toBe('unconfigured');
+        await expect(runtime?.provider.listCalendars()).rejects.toMatchObject({
+          code: 'CONFIGURATION_REQUIRED',
+        });
+        expect(await readFile(path, 'utf8')).toBe(contents);
+        await expect(loadCalendarRuntime(path)).rejects.toThrow();
+      }
+      expect(warnings).toBe(3);
+    } finally {
+      await rm(directory, { recursive: true });
+    }
+  });
   it('discovers only approved calendars and normalizes expanded all-day and recurrence data', async () => {
     const fetchInputs: unknown[] = [];
     const client = clientFixture({

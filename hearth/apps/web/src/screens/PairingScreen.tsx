@@ -5,22 +5,45 @@ import { Link } from 'react-router-dom';
 import { createRequestId } from '../api/core';
 import { pairingApi as hearthApi } from '../api/pairing';
 import { Icon } from '../components/Icon';
+import { ScreenConnectionSteps } from '../components/ScreenConnectionSteps';
+import { useHearthRuntime } from '../runtime/context';
 
 export function PairingScreen() {
+  const runtime = useHearthRuntime();
   const [requestId, setRequestId] = useState(() => createRequestId('tv_pair'));
   const request = useQuery({
     queryKey: ['pairing-create', requestId],
     queryFn: () => hearthApi.createPairing('Living room TV', requestId),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
+    enabled: runtime.mode === 'demo',
   });
   const status = useQuery({
     queryKey: ['pairing-status', request.data?.id],
     queryFn: () => hearthApi.getPairing(request.data?.id ?? 'pairing_missing'),
-    enabled: request.data !== undefined,
+    enabled: runtime.mode === 'demo' && request.data !== undefined,
     refetchInterval: (query) => (query.state.data?.status === 'pending' ? 1_000 : false),
   });
   const pairing = status.data ?? request.data;
+
+  if (runtime.mode !== 'demo') {
+    return (
+      <section className="pairing-screen">
+        <div className="pairing-card">
+          <h1>Connect a shared screen</h1>
+          <p>Open Hearth on that screen while signed out, then choose Connect shared screen.</p>
+          <Link
+            className="pairing-primary focusable"
+            data-focus-entry="true"
+            data-focus-id="pair-continue"
+            to="/admin/televisions"
+          >
+            Phones &amp; screens
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   if (request.isPending) {
     return (
@@ -46,11 +69,7 @@ export function PairingScreen() {
       <div className={`pairing-card${approved ? ' pairing-card--approved' : ''}`}>
         {approved ? <Icon name="check" /> : null}
         <h1>{approved ? 'Television connected' : 'Connect this television'}</h1>
-        <p>
-          {approved
-            ? 'This screen is approved.'
-            : 'On your phone, open Hearth → More → Pair a television'}
-        </p>
+        {approved ? <p>This demo screen is approved.</p> : <ScreenConnectionSteps />}
         {approved ? null : (
           <div aria-label={`Pairing code ${pairing.code}`} className="pairing-code">
             {pairing.code.split('').map((character, index) => (

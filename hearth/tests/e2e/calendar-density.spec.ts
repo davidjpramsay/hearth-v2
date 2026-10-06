@@ -6,6 +6,11 @@ test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
 });
 
+// Finish intercepted refreshes before Playwright disposes their response context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'wait' });
+});
+
 async function crowdedWeek(page: Page) {
   await page.route(/\/api\/v1\/households\/[^/]+\/week\?start=/, async (route) => {
     const response = await route.fetch();

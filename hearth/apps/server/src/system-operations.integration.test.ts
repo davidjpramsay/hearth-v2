@@ -101,6 +101,8 @@ describe('SQLite system operations', () => {
     await expect(restoreHearthBackup(latestPath, restorePath)).resolves.toMatchObject({
       migrationVersion: LATEST_MIGRATION_VERSION,
     });
+    expect((await stat(restorePath)).mode & 0o777).toBe(0o600);
+    expect((await readdir(join(directory, 'restore-test'))).sort()).toEqual(['hearth.sqlite']);
     const restored = new Database(restorePath, { readonly: true, fileMustExist: true });
     expect(
       restored.prepare('SELECT name FROM households WHERE id = ?').get(DEMO_HOUSEHOLD_ID),

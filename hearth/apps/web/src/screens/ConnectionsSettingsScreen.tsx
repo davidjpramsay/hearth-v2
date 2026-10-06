@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import {
@@ -12,10 +12,32 @@ export function ConnectionsSettingsScreen() {
   const admin = useAdminQuery();
   const calendar = useCalendarConnectionQuery();
   const homeAssistant = useHomeAssistantConnectionQuery();
-  if (admin.isPending || calendar.isPending || homeAssistant.isPending) return <AdminLoading />;
-  if (admin.isError) return <AdminError message={admin.error.message} />;
-  if (calendar.isError) return <AdminError message={calendar.error.message} />;
-  if (homeAssistant.isError) return <AdminError message={homeAssistant.error.message} />;
+  if (admin.isPending || calendar.isPending || homeAssistant.isPending)
+    return <AdminQueryState title="Connections" />;
+  if (admin.data === undefined)
+    return (
+      <AdminQueryState
+        title="Connections"
+        error={admin.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void admin.refetch()}
+      />
+    );
+  if (calendar.data === undefined)
+    return (
+      <AdminQueryState
+        title="Connections"
+        error={calendar.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void calendar.refetch()}
+      />
+    );
+  if (homeAssistant.data === undefined)
+    return (
+      <AdminQueryState
+        title="Connections"
+        error={homeAssistant.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void homeAssistant.refetch()}
+      />
+    );
 
   return (
     <AdminPage title="Connections">

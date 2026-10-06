@@ -1489,3 +1489,95 @@ Official platform references:
   Mac or production NAS. The updater still accepts only successful hosted releases and may cache
   discovery for five minutes. Hosted timing must be measured; sharding can add setup overhead even
   when it reduces elapsed time. Publication is not deployment.
+
+## D-088 — Bounded startup, immutable retries and draft-safe catch-up
+
+- Date: 2026-10-05
+- Status: accepted; implementation verification is local, not live deployment approval
+- Context: Lost replies could duplicate writes, whole-cache rollback could undo another command,
+  stream gaps left stale data, and optional verse requests delayed Today. Meal refetches discarded
+  drafts and an always-open Meals screen did not follow Monday rollover.
+- Choice: Bound browser requests; keep immutable retry intents with the original ID/date context;
+  roll back individual records; catch up household queries on stream/lifecycle recovery. Read verse
+  caches before a deduplicated background refresh with short failure backoff. Protect registered
+  drafts through the data router, defer release reloads, and resolve meal conflicts per date.
+  Preserve existing responsive layouts and incrementally extract the Today composer, demo planning
+  repository, record helpers and meal-administration styles. Keep the existing isolated CI shards.
+- Consequence: Recovery is explicit and duplicate-safe while a screen retains its intent. Drafts
+  are in memory, not an offline write queue or new authoritative database. No provider calendar
+  writes, authentication relaxation, NAS/network changes or deployment are implied. Security-scan,
+  container and physical-device verification remain independent gates.
+
+## D-089 — Commit-time authority and protected appliance recovery
+
+- Date: 2026-10-06
+- Status: accepted; local gates passed; live helper migration and deployment require approval
+- Context: Retained security reviews repeated several boundaries: asynchronous authentication
+  outlived revocation, accepted writes exceeded readable state, provider parsing began before bounds,
+  and privileged rollback resolved service-controlled filenames.
+- Choice: Revalidate credential, member and initiating session authority when access is issued;
+  atomically consume recovery codes and claim first-use setup. Bound pairing state and reminder
+  creation while keeping legacy records recoverable. Cancel and clear private reads on sign-out,
+  close realtime streams, prevent private image cache reuse, and index only the visible Month grid.
+  Validate real local dates. Fetch verse content only for the household's current date. Read provider
+  bodies within decoded-byte/deadline budgets before parsing; allow only the configured CalDAV origin
+  and explicit HTTPS iCloud service/shard origins, with bounded discovery and concurrency.
+  Decode one pinned photo snapshot rather than reopening source paths.
+- Privileged boundary: Move update control and authoritative metadata/rollback storage under the
+  protected external roots: configuration/control under `/usr/local/etc/hearth-v2`, and bounded
+  rollback storage on the data volume at `/volume1/.hearth-v2-state`. The host helper checks the newest
+  successful main/push `verify.yml` release. Snapshot through no-follow descriptors into protected
+  storage; restore using pinned directory identity, checked digest, descriptor ownership/mode
+  operations and atomic replacement. Reject root application identities. Readiness must report the
+  requested version before activation is accepted.
+- Consequence: Synology requires Python 3.8+ with SQLite and a one-time approved helper/Compose
+  migration followed by activation of a verified release. Local source work does not alter the
+  running appliance. Home Assistant's deliberately supported local HTTP mode remains a commissioning
+  risk unless separately encrypted; changing a live connection or mandating HTTPS is a separate
+  compatibility decision, not an implicit network change.
+
+## D-090 — Bounded materialization, exact list replay and strict-CSP startup
+
+- Date: 2026-10-06
+- Status: accepted; local gates passed; not deployment approval
+- Context: A single Standard audit found two authenticated storage-amplification paths. Separately,
+  production CSP blocked the early inline theme/TV scripts and malformed optional integration files
+  could stop core startup. Browser fixtures could finish with intercepted refreshes still running.
+- Choice: Bound chore materialization centrally to seven prior whole weeks, the current week and
+  the next whole week, using the household timezone and runtime clock. Older existing history and
+  payment snapshots remain readable; missing old records are not invented. Private generation never
+  inherits demo completion states and uses the actual materialization timestamp.
+  Limit new additions to 100 unarchived items per list, including checked items, inside the command
+  transaction after replay lookup; mirror the demo policy. Clear/archive releases capacity. Preserve
+  old oversized reads, cleanup, completion and exact typed-result receipts; do not truncate data,
+  change response-array contracts or replace original snapshots with current-list hydration.
+  Serve early appearance/TV initialization as a same-origin, parser-blocking classic script while
+  retaining strict CSP. Disable only invalid/unreadable optional calendar/HA configuration, retain
+  its file for repair and emit a secret-free warning; authentication/security config still fails
+  closed. Drain intercepted browser refreshes before disposing test contexts.
+- Limits: A creation cap closes new unbounded growing-list amplification, not a universal byte cap
+  for legacy oversized snapshots or a new receipt retention/compaction policy. Those would need an
+  explicit compatibility decision and measured workload. No household records, external credentials,
+  NAS services, networking or VPN settings are changed by this local implementation.
+
+## D-091 — One clear phone and shared-screen connection workflow
+
+- Date: 2026-10-06
+- Status: accepted; local connection and adjacent regression gates passed; not publication or deployment approval
+- Context: Phone passkey sign-in, recovery and browser display pairing were mixed together;
+  More, settings and Android named the approval destination differently. The demo pairing preview
+  could be mistaken for a production connection path.
+  Wide desktop windows also incorrectly hid the first-use form as though they were televisions.
+- Choice: Present explicit personal-device and shared-screen choices, and one **Phones & screens**
+  hub under the existing `/admin/televisions` route. Keep adult passkey management at `/admin/access`
+  with a return link to that hub. Share short code-approval instructions; use a native modal with
+  D-pad/Back/Tab handling, cancel late request results and show expired/retry/connected states.
+  Keep recovery secondary and its destructive replacement meaning explicit. Put the screen
+  approval form at the top of the phone hub, with code-preparation help collapsed. Keep
+  first-use setup on capable desktop browsers, using TV identity rather than width for TV guidance.
+  Require a confirmed screen disconnection and retain immutable command IDs across lost
+  approval/disconnection replies.
+- Consequence: No new invitation credential, account, server authority, pairing protocol, database
+  migration or network access. Adults still authenticate with passkeys; shared screens still prove
+  their local secret after adult approval and receive display scopes only. Demo previews remain
+  fictional. Real phone/TV commissioning is distinct from simulated browser evidence.

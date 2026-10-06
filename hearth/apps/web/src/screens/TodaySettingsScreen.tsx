@@ -6,7 +6,7 @@ import type { HouseholdNotice, TodayConfiguration, TodaySectionVisibility } from
 import { createRequestId, getHearthRuntime } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { todayApi as hearthApi } from '../api/today';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon, type IconName } from '../components/Icon';
 import { useTodayConfigurationQuery } from '../hooks/useTodayQueries';
 
@@ -128,9 +128,15 @@ export function TodaySettingsScreen() {
     });
   }
 
-  if (query.isPending) return <AdminLoading />;
-  if (query.isError || configuration === undefined)
-    return <AdminError message={query.error?.message ?? 'Today settings could not be loaded.'} />;
+  if (query.isPending) return <AdminQueryState title="Today & notices" />;
+  if (configuration === undefined)
+    return (
+      <AdminQueryState
+        title="Today & notices"
+        error={query.error ?? new Error('Today settings could not be loaded.')}
+        onRetry={() => void query.refetch()}
+      />
+    );
 
   const error = saveSections.error ?? saveNotice.error ?? archiveNotice.error;
   return (

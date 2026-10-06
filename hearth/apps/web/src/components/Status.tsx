@@ -19,7 +19,12 @@ export function StatusBanner({
 
 export function LoadingState() {
   return (
-    <section className="state-panel state-panel--loading" aria-label="Loading Hearth">
+    <section
+      aria-busy="true"
+      className="state-panel state-panel--loading"
+      aria-label="Loading Hearth"
+      data-focus-loading="true"
+    >
       <div className="state-panel__spinner" />
       <h1>Loading…</h1>
       <div className="loading-lines" aria-hidden="true">

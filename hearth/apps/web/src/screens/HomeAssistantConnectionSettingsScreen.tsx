@@ -10,7 +10,7 @@ import type {
 import { connectionsApi as hearthApi } from '../api/connections';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useHomeAssistantConnectionQuery } from '../hooks/useConnectionQueries';
 import { useHearthRuntime } from '../runtime/context';
@@ -75,8 +75,24 @@ export function HomeAssistantConnectionSettingsScreen() {
     },
   });
 
-  if (connection.isPending) return <AdminLoading />;
-  if (connection.isError) return <AdminError message={connection.error.message} />;
+  if (connection.isPending)
+    return (
+      <AdminQueryState
+        title="Home Assistant"
+        backTo="/admin/connections"
+        backLabel="Back to Connections"
+      />
+    );
+  if (connection.isError)
+    return (
+      <AdminQueryState
+        title="Home Assistant"
+        backTo="/admin/connections"
+        backLabel="Back to Connections"
+        error={connection.error}
+        onRetry={() => void connection.refetch()}
+      />
+    );
 
   const currentConnection = connection.data;
   const showForm = currentConnection === null || editing;

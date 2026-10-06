@@ -40,60 +40,66 @@ export function FirstUseSetup({
     });
   };
   const unavailable = !auth.secureOrigin || !passkeysAvailable();
+  const television = /HearthTV\/|SMART-TV|Tizen/i.test(navigator.userAgent);
+  const useCompanion = unavailable || television;
 
   return (
     <SetupFrame title="Set up this Hearth">
       <p>Create the household and first adult.</p>
-      <div className="first-use-tv-guidance">
-        <strong>Finish setup on your iPhone</strong>
-        <span>Open this private Hearth address on your phone.</span>
-      </div>
-      <form className="first-use-form" onSubmit={submit}>
-        <label>
-          Household name
-          <input name="householdName" defaultValue="Our home" maxLength={100} required />
-        </label>
-        <label>
-          Your name
-          <input name="adultName" autoComplete="name" maxLength={80} required />
-        </label>
-        <label>
-          Timezone
-          <input name="timezone" defaultValue={runtime.timezone} maxLength={80} required />
-        </label>
-        <label>
-          Passkey name
-          <input name="passkeyLabel" defaultValue="My iPhone" maxLength={80} required />
-        </label>
-        <label>
-          Local first-use code
-          <input
-            name="setupCode"
-            type="password"
-            autoComplete="off"
-            minLength={12}
-            maxLength={160}
-            required
-          />
-        </label>
-        {unavailable ? (
-          <p className="form-message form-message--error" role="alert">
-            Open Hearth from its configured private HTTPS address on a passkey-capable device.
-          </p>
-        ) : null}
-        {setup.error?.message ? (
-          <p className="form-message form-message--error" role="alert">
-            {setup.error.message}
-          </p>
-        ) : null}
-        <button
-          className="button button--primary"
-          type="submit"
-          disabled={unavailable || setup.isPending}
-        >
-          {setup.isPending ? 'Creating passkey…' : 'Create household and passkey'}
-        </button>
-      </form>
+      {useCompanion ? (
+        <div className="first-use-tv-guidance">
+          <strong>Finish setup on your phone or computer</strong>
+          <span>{window.location.origin}</span>
+        </div>
+      ) : null}
+      {!television && unavailable ? (
+        <p className="form-message form-message--error" role="alert">
+          Open Hearth from its configured private HTTPS address on a passkey-capable device.
+        </p>
+      ) : null}
+      {useCompanion ? null : (
+        <form className="first-use-form" onSubmit={submit}>
+          <label>
+            Household name
+            <input name="householdName" defaultValue="Our home" maxLength={100} required />
+          </label>
+          <label>
+            Your name
+            <input name="adultName" autoComplete="name" maxLength={80} required />
+          </label>
+          <label>
+            Timezone
+            <input name="timezone" defaultValue={runtime.timezone} maxLength={80} required />
+          </label>
+          <label>
+            Passkey name
+            <input name="passkeyLabel" defaultValue="My device" maxLength={80} required />
+          </label>
+          <label>
+            Local first-use code
+            <input
+              name="setupCode"
+              type="password"
+              autoComplete="off"
+              minLength={12}
+              maxLength={160}
+              required
+            />
+          </label>
+          {setup.error?.message ? (
+            <p className="form-message form-message--error" role="alert">
+              {setup.error.message}
+            </p>
+          ) : null}
+          <button
+            className="button button--primary"
+            type="submit"
+            disabled={unavailable || setup.isPending}
+          >
+            {setup.isPending ? 'Creating passkey…' : 'Create household and passkey'}
+          </button>
+        </form>
+      )}
     </SetupFrame>
   );
 }

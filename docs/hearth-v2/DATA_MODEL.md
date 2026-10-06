@@ -13,6 +13,9 @@ This document defines conceptual entities and invariants. Concrete table/column 
 - created/updated timestamps
 
 The first deployment serves one household, but household IDs remain explicit so test data and future separation are safe.
+First-use setup rechecks this singleton inside its write transaction after asynchronous passkey
+verification. Local-date wire values must represent real Gregorian dates, including leap-year rules.
+Timezone settings must be supported by the platform formatter before they can be persisted.
 
 ### Member
 
@@ -159,6 +162,12 @@ The external credential/config file is never stored in SQLite.
   identity
 
 Template edits do not rewrite historical occurrences. Generate occurrences within a controlled horizon and enforce a uniqueness rule for template/date/instance.
+Read-driven materialization is limited to the household-clock window from Monday seven weeks before
+the current week through Sunday of the next week. This covers the eight-week pocket-money review
+selector and one full upcoming week. Reads outside it return existing stored occurrences only; they
+do not fabricate missing historical records or allocate distant future snapshots. Existing history,
+payment snapshots and ID-based correction commands are unchanged. New private occurrences use the
+injected runtime timestamp and never inherit fictional demo completion state.
 Each member in a template's default assignee set expands to a distinct occurrence for the same
 template/date/instance. Completion, exception history and pocket-money eligibility therefore remain
 per person; one child's completion never completes another child's copy. The existing
@@ -265,6 +274,11 @@ Create, edit, complete, reopen and remove commands use opaque request IDs. The r
 command receipt and audit event commit atomically. Retrying the same request replays the original
 typed result rather than duplicating work. Migration `0027_native_reminders.sql` removes the retired
 Apple source/device/projection/receipt tables and creates the Hearth-owned reminder tables.
+Creation enforces 1,000 non-deleted reminders transactionally, including completed records; updates,
+completion, deletion and replay remain available at capacity. Legacy over-limit overviews return a
+bounded first 1,000 with `hasMore: true` and truthful total counts so records can be removed without
+losing data. Invalid legacy due dates are retained in storage but exposed as null with
+`dueDateUnavailable: true`; editing provides an explicit correction rather than crashing rendering.
 
 ## Meals
 
@@ -561,6 +575,10 @@ result when the same request ID is retried. Pocket-money settings, immutable par
 payment snapshots and reasoned one-to-one voids use the same idempotent, audited command path. The
 former reward tables remain dormant migration history and are not read or
 written by the runtime.
+New additions are limited to 100 unarchived items per list, checked or unchecked, after receipt
+lookup inside the transaction. Clear/archive releases capacity. Existing oversized lists, their
+original typed receipts, completion and cleanup remain available without truncation. This bounds
+new growing-list amplification; it is not universal byte-bounded receipt storage for legacy lists.
 Saved meals and whole-week dinner mutations use the same repository boundary. Adult-only create,
 update, archive, restore, batch save, clear and copy operations are transactional, audited and
 receipt-idempotent in both the SQLite runtime and injected in-memory contract tests.

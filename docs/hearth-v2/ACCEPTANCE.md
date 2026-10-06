@@ -42,6 +42,7 @@ A change is complete only when:
 - Events from multiple enabled calendars retain correct owner/source cues.
 - Month fits one television viewport, shows readable colour-coded event titles plus deterministic overflow inside date cells, and identifies each colour through a separate avatar/label key. On phone, focusing or selecting a date exposes every title in a companion agenda beneath the compact grid.
 - Month is reachable below Week with D-pad navigation; Back restores Week and the prior rail focus, while the phone exposes a Week/Month switch.
+- Calendar opens Agenda by default, with Agenda, Week and Month tabs in that order on TV and phone.
 - Week, Month and Agenda are views beneath one Calendar primary destination on
   television and phone. Every view is reachable with D-pad/keyboard-only input;
   legacy Week/Month links redirect without losing scenario/date query state.
@@ -243,6 +244,28 @@ Chromium fallback produced the retained evidence.
   errors and leave the plan consistent.
 - Long-form editing is comfortable from the phone companion; the primary seven dinner fields stay
   visible together while saved-meal and note controls expand only when needed.
+- A remote meal update preserves dirty dates, refreshes untouched dates and blocks Save for actual
+  dirty-date conflicts until the adult explicitly keeps their edits or takes the latest dinners.
+- Meals follows Sunday-to-Monday rollover automatically unless intentionally browsing another week;
+  This week resumes following and a browsed date is never misleadingly labelled Tonight.
+- Losing a reply after an accepted reminder, payment or list addition retries the original intent
+  without duplicate records; failed additions retain entered values and success preserves newer typing.
+- Retrying an unanswered household, pocket-money settings or meal-week save preserves newer edits;
+  a confirmed earlier dinner save rebases retained drafts without inventing a remote-edit conflict.
+- Concurrent chore/list commands track each pending record. One failure restores only that record
+  and cannot undo another optimistic or successful command.
+- A stream reconnect while the browser remains online catches up changes missed during the gap.
+- A hanging initial runtime request becomes a recoverable error within ten seconds; Retry respects
+  the runtime/authentication boundary and does not leak family queries before it succeeds.
+- Registered drafts survive cancelled menu, remote Back and browser-history navigation; accepted
+  discard permits navigation. Admin initial errors preserve heading/Back and a keyboard-operable Retry.
+- Admin loading keeps Back available without pre-empting the loaded screen's default D-pad entry.
+- Keyboard Retry restores meaningful focus; explicit loading-screen Back focus survives replacement.
+  Delayed Calendar routes preserve a short directional burst without automatically opening an event.
+- Pending chore/list rows retain remote focus and ignore repeated activation; completion never steals
+  focus back after the user deliberately moves to another control.
+- Today returns saved verse content while an optional provider is pending; same-day provider recovery
+  is not blocked by a previously memoised failure. Weather distinguishes saved-location outage from setup.
 
 ### Notices and Today composition
 
@@ -471,6 +494,18 @@ theme reporting remain untested until the physical-TV pilot.
 - Television pairing still creates unique schema-valid six-character codes after more than 99
   retained requests. Passkey authentication options enforce per-client and global pending limits,
   and expired attempts are pruned so unauthenticated requests cannot grow memory without bound.
+- Signed-out personal-device sign-in and shared-screen connection are separate, explicit choices.
+  More, desktop settings and Android pairing use the same **Phones & screens** menu name. No code
+  is created before a user selects the shared-screen action, and no private household data is
+  requested before access is accepted. Expired codes are hidden; Cancel/Back stops polling and
+  rejects late creation/approval results, restores focus, and allows another explicit attempt.
+  The signed-out flow supports D-pad arrows; the pairing modal traps Tab without touching the
+  background. Phone approval tolerates grouped pasted codes but never approves automatically.
+  Disconnecting requires confirmation and a lost command reply retains its original request ID.
+  Production settings never offer the demo-only pairing preview. Adult settings remain protected
+  by the existing server-authenticated passkey session, not by a display code.
+  First-use setup remains available on a wide passkey-capable desktop computer; only actual TV
+  browsers or unavailable passkey contexts direct the user to a companion device.
 - Mutation audit records include actor, channel, target, time and result.
 - A household administrator can review the latest family, planning, connection and system changes
   in a family-readable Recent activity screen. A child receives `FORBIDDEN`; the screen does not
@@ -488,6 +523,21 @@ session/credential revocation. The responsive Admin and signed-out recovery surf
 390×844 and 844×390 renders, serious/critical accessibility checks and the complete 206-test
 Playwright suite. Stable-hostname enrolment and recovery on the actual adult phones remain a live
 commissioning acceptance gate.
+
+Connection-flow evidence as of 2026-10-06: `pnpm verify:code` passes format, lint, types, 249 unit,
+135 integration/API and 24 migration tests, deployment validation and production builds;
+`pnpm verify:tv` passes native unit tests, Debug/Release lint and both APK builds. `pnpm verify:ci`
+checks the complete non-overlapping 914-test inventory. The focused production-build command
+`pnpm test:e2e:built tests/e2e/device-connection.spec.ts tests/e2e/runtime.spec.ts tests/e2e/admin.spec.ts tests/e2e/keyboard-layout.spec.ts --max-failures=0`
+passes 96 tests, followed by 18 passes from
+`pnpm test:e2e:built tests/e2e/appliance-readiness.spec.ts --grep '/admin/televisions|/admin/access|/more' --max-failures=0`.
+Evidence covers 320×700, 390×844, 844×390, 820×1180, 1920×1080 and 3840×2160 in light/dark,
+private choice/first-use gates, code visibility without scrolling, actual demo approval, immutable
+lost-reply replay, confirmed disconnection, expiry/cancel/focus/Tab behavior, empty/clipboard
+fallbacks, serious/critical accessibility checks and console/overlay health. Screenshots are local
+temporary evidence, not household data. The full 914-test browser suite and real-device passkey/TV
+commissioning were not rerun for this targeted workflow change; no live device was paired, and no
+commit, push, deployment or network change occurred. `git diff --check` passes.
 
 Phase 6 source/build evidence as of 2026-08-04: the release manifest requires
 Leanback, marks touch optional, declares only network access plus the protected
@@ -530,6 +580,8 @@ not yet complete.
 - A browser or television WebView already left open detects the replacement release when realtime
   reconnects, within one visible minute, when it returns to the foreground or when the network
   returns, then reloads once without clearing its route, passkey session or television pairing.
+- Unsaved registered drafts defer release reloads until a safe subsequent check; the new release
+  remains detectable rather than being marked consumed while editing.
 - Private image pulls use a separately revocable read-only registry credential that is absent from
   source, Compose, workflow logs and application containers.
 - Home Assistant recovers after Pi restart.
@@ -557,6 +609,44 @@ live pull/recreate timing remain not run until the change is approved for commit
 private credential is commissioned.
 
 ## Release evidence
+
+Local follow-up evidence as of 2026-10-06: `pnpm verify:code` passes formatting, lint, types,
+244 unit tests, 135 API/integration tests, 24 migration tests, deployment validation and production
+builds. `pnpm verify:ci` validates all five CI-policy checks and the complete four-shard partition;
+`pnpm test:e2e:built --max-failures=0` passes all 897 browser tests, including keyboard/D-pad,
+responsive, accessibility and strict-production-CSP startup cases. An additional rendered pass
+checks 93 route/viewport combinations with no failures. `pnpm verify:tv` passes Android unit tests,
+Debug/Release lint and builds. Both final `linux/amd64` production images build; isolated container
+checks pass nginx CSP/cache/bootstrap/API routing, read-only/non-privileged configuration and clean
+shutdown. The root updater safety toolbox passes eight fixtures. Registry dependency audit is clear
+after the source-map-js override; `git diff --check` passes. These are local checks, not publication
+or deployment, and no real physical device was available.
+
+Approved live recovery evidence on 2026-10-06 applies to the unchanged installed Ramsay NAS release
+`f2dea867ef5ffb3cf875354122ff0cae13b1939c`, not D-089/D-090 deployment. A 1,794,048-byte online snapshot
+passes integrity and schema version 27 verification, restores into a network-isolated disposable
+container, and matches the logical 800-row fingerprint. Only the two existing Hearth containers
+restart; readiness and the original version recover. The original HTTPS hostname subsequently
+returns readiness 200 with successful certificate validation. A temporary 502 during the deliberate
+restart is recorded, not mistaken for a persistent failure. Disposable copies/containers are removed;
+no household commands, deployment, DNS/firewall/VPN changes or other app restarts are performed.
+
+The initial live snapshot attempt correctly stopped before restart when DSM's inherited ACL made
+its disposable file report mode 777 despite a 0600 creation request. That exact test copy was removed;
+the successful retry used private container tmpfs plus a protected temporary volume directory.
+Unix mode alone does not establish effective DSM ACL access. Existing household-folder ACLs are
+not changed by this drill. Read-only ACL inspection permits the administrators group and the
+`hearth-svc` account, not a general everyone/users grant. The new strict POSIX helper still needs
+an approved ACL-compatible commissioning review before installing its protected control-mount
+boundary. Physical TV/phone/iPad, standby/network-loss,
+live provider-outage and Home Assistant restore checks remain unverified.
+
+D-089 additionally requires regression evidence for revoked/consumed in-flight authority, singleton
+first use, bounded pairing/reminder state, legacy date recovery, extreme calendar spans, stream and
+sign-out revocation, provider transport budgets, pinned photo bytes and protected update recovery.
+Linux root-fixture success is not proof that a live NAS helper was migrated. Verify the installed
+Python/SQLite capability, protected paths, control mount and exact activated release only during an
+approved deployment. Real-device passkey, standby and television-network checks remain distinct.
 
 - CI verifies that four browser shards cover the complete test inventory exactly once, including
   all 384 Today compositions. Each shard runs one worker against its own disposable demo database

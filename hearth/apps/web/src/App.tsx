@@ -8,6 +8,7 @@ import { useRemoteNavigation } from './focus/useRemoteNavigation';
 import { useScenario } from './hooks/useScenario';
 import { useHostedReleaseRefresh } from './hooks/useHostedReleaseRefresh';
 import { useRealtimeInvalidation } from './hooks/useRealtimeInvalidation';
+import { useDraftNavigationGuard } from './hooks/useDraftNavigationGuard';
 import { TodayScreen } from './screens/TodayScreen';
 
 const AdminAuthBoundary = lazy(async () => ({
@@ -116,6 +117,7 @@ export function App() {
   const { preferences } = useAppearance();
   const { scenario, preparing, error } = useScenario();
   useHostedReleaseRefresh();
+  useDraftNavigationGuard();
   useRealtimeInvalidation();
   const initialFocus =
     location.pathname === '/appearance'
@@ -137,7 +139,7 @@ export function App() {
             path="/today"
             element={<TodayScreen preparing={preparing} scenario={scenario} />}
           />
-          <Route path="/calendar" element={<Navigate replace to="/calendar/week" />} />
+          <Route path="/calendar" element={<Navigate replace to="/calendar/agenda" />} />
           <Route
             path="/calendar/week"
             element={<WeekScreen preparing={preparing} scenario={scenario} />}

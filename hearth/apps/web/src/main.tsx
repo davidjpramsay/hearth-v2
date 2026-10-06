@@ -5,7 +5,7 @@ import './styles/app.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 import { initializeAppearance } from './appearance/appearance';
 import { App } from './App';
@@ -31,14 +31,13 @@ const queryClient = new QueryClient({
 
 const root = document.querySelector('#root');
 if (root === null) throw new Error('Hearth root element was not found.');
+const router = createBrowserRouter([{ path: '*', element: <App /> }]);
 
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <HearthRuntimeBootstrap>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <RouterProvider router={router} />
       </HearthRuntimeBootstrap>
     </QueryClientProvider>
   </StrictMode>,

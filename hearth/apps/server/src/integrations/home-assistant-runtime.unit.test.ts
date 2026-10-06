@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -25,6 +25,58 @@ afterEach(async () => {
 });
 
 describe('Home Assistant REST runtime', () => {
+  it('disables invalid optional startup configuration without exposing or replacing it', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-home-assistant-invalid-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'config.json');
+    const warn = vi.fn();
+    const fetcher = vi.fn<typeof fetch>();
+    for (const contents of ['{broken', JSON.stringify({ accessToken: 'must-stay-private' })]) {
+      await writeFile(path, contents, { mode: 0o600 });
+      const provider = await resolveHomeAssistantProvider({
+        demoMode: false,
+        configPath: path,
+        fetcher,
+        onConfigurationUnavailable: warn,
+      });
+      expect(provider?.configured).toBe(false);
+      expect(await readFile(path, 'utf8')).toBe(contents);
+      await expect(loadHomeAssistantProvider(path, fetcher)).rejects.toThrow();
+    }
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('blocks redirects and rejects oversized decoded bodies before JSON parsing', async () => {
+    const connection = { serverUrl: 'http://homeassistant.local:8123', accessToken: ACCESS_TOKEN };
+    const redirect = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      expect(init?.redirect).toBe('error');
+      return new Response(null, {
+        status: 302,
+        headers: { location: 'https://untrusted.example' },
+      });
+    });
+    await expect(discoverHomeAssistant(connection, redirect)).rejects.toThrow(/did not accept/);
+    expect(redirect).toHaveBeenCalledTimes(2);
+    expect(
+      redirect.mock.calls.every(([input]) => String(input).startsWith(connection.serverUrl)),
+    ).toBe(true);
+    const oversized = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array(4 * 1024 * 1024 + 1));
+              controller.close();
+            },
+          }),
+          { headers: { 'content-length': '1' } },
+        ),
+    );
+    await expect(discoverHomeAssistant(connection, oversized)).rejects.toThrow(
+      /could not be reached/,
+    );
+    expect(oversized).toHaveBeenCalledTimes(2);
+  });
   it('discovers friendly allowlist candidates without exposing provider responses', async () => {
     const requests: Array<{ url: string; authorization: string | null }> = [];
     const fetcher = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {

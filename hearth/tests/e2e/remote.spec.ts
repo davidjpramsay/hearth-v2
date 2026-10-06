@@ -19,6 +19,10 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Agenda' })).toBeVisible();
+  await expect(page.locator('[data-focus-id="calendar-view-agenda"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
 
   await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
@@ -28,6 +32,8 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await expect(page.getByRole('heading', { name: 'August' })).toBeVisible();
   await expect(page.locator('[data-focus-id="calendar-view-month"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="month-day-2026-07-28"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="month-day-2026-07-27"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="month-day-2026-08-03"]')).toBeFocused();
@@ -69,6 +75,8 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Week' })).toBeVisible();
   await expect(page.locator('[data-focus-id="nav-chores"]')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', { name: 'Agenda' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
@@ -337,11 +345,15 @@ test('reduced motion removes meaningful focus transforms', async ({ page }) => {
   await expect(chore).toHaveCSS('transform', 'none');
 });
 
-test('phone presents Week navigation and the same chore command', async ({ page }) => {
+test('phone opens Agenda and offers Week navigation and the same chore command', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/today');
   await expect(page.locator('.phone-tabs')).toBeVisible();
   await page.getByRole('link', { name: 'Calendar' }).click();
+  await expect(page.getByRole('heading', { name: 'Agenda' })).toBeVisible();
+  await page.getByRole('link', { name: 'Week', exact: true }).click();
   await expect(page.locator('.week-agenda')).toBeVisible();
   await page.getByRole('link', { name: 'Chores' }).click();
   const schoolBag = page.getByRole('button', { name: 'Complete Pack school bag' });

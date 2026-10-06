@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual, randomInt, randomUUID } from 'node:crypto';
 
 import type Database from 'better-sqlite3';
 
@@ -89,6 +89,7 @@ export interface AdminRepository {
     requestId: string,
     credentialHash?: string,
     applicationVersion?: string,
+    remoteAddress?: string,
   ): Promise<PairingRequest>;
   getPairing(pairingId: string): Promise<PairingRequest>;
   exchangeTvPairing(
@@ -496,6 +497,7 @@ export class InMemoryAdminRepository implements AdminRepository {
 }
 
 export class SqliteAdminRepository implements AdminRepository {
+  private readonly pairingAttempts = new Map<string, { count: number; startedAt: number }>();
   private readonly now: () => Date;
 
   constructor(
@@ -783,42 +785,89 @@ export class SqliteAdminRepository implements AdminRepository {
     requestId: string,
     credentialHashValue?: string,
     applicationVersion?: string,
+    remoteAddress = 'local-operator',
   ): Promise<PairingRequest> {
-    const existing = this.database
-      .prepare('SELECT * FROM pairing_requests WHERE request_id = ?')
-      .get(requestId) as PairingRow | undefined;
-    if (existing !== undefined) return pairingFromRow(existing);
-    const sequence = this.nextSequence('pairing_requests');
-    const now = this.now();
-    const pairing = PairingRequestSchema.parse({
-      id: `pairing_setup_${sequence}`,
-      requestId,
-      code: pairingCodeForSequence(sequence),
-      deviceName,
-      status: 'pending',
-      expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(),
-      approvedDeviceId: null,
-    });
-    this.database
-      .prepare(
-        `INSERT INTO pairing_requests
+    return this.database.transaction(() => {
+      const existing = this.database
+        .prepare('SELECT * FROM pairing_requests WHERE request_id = ?')
+        .get(requestId) as PairingRow | undefined;
+      if (existing !== undefined) return pairingFromRow(existing);
+      const now = this.now();
+      const timestamp = now.toISOString();
+      // Admission and retention are independent of a client ever polling its code.
+      this.database
+        .prepare(
+          "UPDATE pairing_requests SET status = 'expired', updated_at = ? WHERE status = 'pending' AND expires_at <= ?",
+        )
+        .run(timestamp, timestamp);
+      this.database
+        .prepare('DELETE FROM pairing_requests WHERE expires_at < ?')
+        .run(new Date(now.getTime() - 7 * 86_400_000).toISOString());
+      const pending = this.database
+        .prepare("SELECT COUNT(*) AS count FROM pairing_requests WHERE status = 'pending'")
+        .get() as { count: number };
+      for (const [address, attempt] of this.pairingAttempts) {
+        if (now.getTime() - attempt.startedAt >= 600_000) this.pairingAttempts.delete(address);
+      }
+      const attempt = this.pairingAttempts.get(remoteAddress) ?? {
+        count: 0,
+        startedAt: now.getTime(),
+      };
+      if (
+        pending.count >= 32 ||
+        attempt.count >= 20 ||
+        (!this.pairingAttempts.has(remoteAddress) && this.pairingAttempts.size >= 512)
+      ) {
+        throw new RepositoryError(
+          'FORBIDDEN',
+          'Too many pairing attempts. Wait a few minutes and try again.',
+        );
+      }
+      attempt.count += 1;
+      this.pairingAttempts.set(remoteAddress, attempt);
+      let code = pairingCodeForSequence(randomInt(2, 36 ** 5));
+      let codeAttempts = 0;
+      while (
+        this.database.prepare('SELECT 1 FROM pairing_requests WHERE code = ?').get(code) !==
+        undefined
+      ) {
+        if (++codeAttempts >= 10)
+          throw new RepositoryError(
+            'INTEGRATION_UNAVAILABLE',
+            'A new pairing code is not available. Try again.',
+          );
+        code = pairingCodeForSequence(randomInt(2, 36 ** 5));
+      }
+      const pairing = PairingRequestSchema.parse({
+        id: `pairing_${randomUUID()}`,
+        requestId,
+        code,
+        deviceName,
+        status: 'pending',
+        expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(),
+        approvedDeviceId: null,
+      });
+      this.database
+        .prepare(
+          `INSERT INTO pairing_requests
           (id, request_id, code, device_name, status, expires_at, approved_device_id, created_at,
            updated_at, credential_hash, application_version, credential_exchanged_at)
          VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL)`,
-      )
-      .run(
-        pairing.id,
-        pairing.requestId,
-        pairing.code,
-        pairing.deviceName,
-        pairing.status,
-        pairing.expiresAt,
-        now.toISOString(),
-        now.toISOString(),
-        credentialHashValue ?? null,
-        applicationVersion ?? null,
-      );
-    return pairing;
+        )
+        .run(
+          pairing.id,
+          pairing.requestId,
+          pairing.code,
+          pairing.deviceName,
+          pairing.status,
+          pairing.expiresAt,
+          now.toISOString(),
+          now.toISOString(),
+          credentialHashValue ?? null,
+          applicationVersion ?? null,
+        );
+      return pairing;
+    })();
   }
 
   async getPairing(pairingId: string): Promise<PairingRequest> {
@@ -1132,11 +1181,17 @@ export class SqliteAdminRepository implements AdminRepository {
   }
 
   private readPendingPairings(): PairingRequest[] {
+    const now = this.now().toISOString();
+    this.database
+      .prepare(
+        "UPDATE pairing_requests SET status = 'expired', updated_at = ? WHERE status = 'pending' AND expires_at <= ?",
+      )
+      .run(now, now);
     const rows = this.database
       .prepare(
-        "SELECT * FROM pairing_requests WHERE status = 'pending' ORDER BY datetime(created_at) DESC, rowid DESC",
+        "SELECT * FROM pairing_requests WHERE status = 'pending' AND expires_at > ? ORDER BY datetime(created_at) DESC, rowid DESC LIMIT 32",
       )
-      .all() as PairingRow[];
+      .all(now) as PairingRow[];
     return rows.map(pairingFromRow);
   }
 

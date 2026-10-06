@@ -1,14 +1,15 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { addLocalDays, localDateOffset } from '@hearth/core';
 import type { Payday, PocketMoneyChildSummary, PocketMoneyPayment } from '@hearth/shared';
 
-import { createRequestId } from '../api/core';
+import { useCommandMutation } from '../hooks/useCommandMutation';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { pocketMoneyApi as hearthApi } from '../api/pocketMoney';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { usePocketMoneyQuery } from '../hooks/usePocketMoneyQuery';
@@ -40,22 +41,29 @@ export function PocketMoneySettingsScreen() {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [voidingPaymentId, setVoidingPaymentId] = useState<string | null>(null);
   const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot });
-  const update = useMutation({
-    mutationFn: ({
-      memberId,
-      weeklyAmountCents,
-      payday,
-    }: {
-      memberId: string;
-      weeklyAmountCents: number;
-      payday: Payday;
-    }) =>
-      hearthApi.updatePocketMoneySettings(memberId, {
-        requestId: createRequestId('pocket_money_settings'),
+  const update = useCommandMutation('pocket_money_settings', {
+    mutationFn: (
+      {
+        memberId,
         weeklyAmountCents,
         payday,
-        weekStart: runtime.weekStart,
-        asOfDate: runtime.localDate,
+        settingsWeekStart,
+        settingsAsOfDate,
+      }: {
+        memberId: string;
+        weeklyAmountCents: number;
+        payday: Payday;
+        settingsWeekStart: string;
+        settingsAsOfDate: string;
+      },
+      requestId: string,
+    ) =>
+      hearthApi.updatePocketMoneySettings(memberId, {
+        requestId,
+        weeklyAmountCents,
+        payday,
+        weekStart: settingsWeekStart,
+        asOfDate: settingsAsOfDate,
       }),
     onSuccess: async (result) => {
       setConfirmation(
@@ -64,21 +72,28 @@ export function PocketMoneySettingsScreen() {
       await refresh();
     },
   });
-  const pay = useMutation({
-    mutationFn: ({
-      memberId,
-      amountCents,
-      note,
-    }: {
-      memberId: string;
-      amountCents: number;
-      note: string | null;
-    }) =>
-      hearthApi.recordPocketMoneyPayment({
-        requestId: createRequestId('pocket_money_payment'),
+  const pay = useCommandMutation('pocket_money_payment', {
+    mutationFn: (
+      {
         memberId,
-        weekStart,
-        asOfDate,
+        amountCents,
+        note,
+        paymentWeekStart,
+        paymentAsOfDate,
+      }: {
+        memberId: string;
+        amountCents: number;
+        note: string | null;
+        paymentWeekStart: string;
+        paymentAsOfDate: string;
+      },
+      requestId: string,
+    ) =>
+      hearthApi.recordPocketMoneyPayment({
+        requestId,
+        memberId,
+        weekStart: paymentWeekStart,
+        asOfDate: paymentAsOfDate,
         amountCents,
         note,
       }),
@@ -89,19 +104,22 @@ export function PocketMoneySettingsScreen() {
       await refresh();
     },
   });
-  const voidPayment = useMutation({
-    mutationFn: ({
-      paymentId,
-      paymentWeekStart,
-      reason,
-    }: {
-      paymentId: string;
-      paymentWeekStart: string;
-      reason: string;
-    }) =>
+  const voidPayment = useCommandMutation('pocket_money_payment_void', {
+    mutationFn: (
+      {
+        paymentId,
+        paymentAsOfDate,
+        reason,
+      }: {
+        paymentId: string;
+        paymentAsOfDate: string;
+        reason: string;
+      },
+      requestId: string,
+    ) =>
       hearthApi.voidPocketMoneyPayment(paymentId, {
-        requestId: createRequestId('pocket_money_payment_void'),
-        asOfDate: asOfForWeek(paymentWeekStart, runtime.localDate),
+        requestId,
+        asOfDate: paymentAsOfDate,
         reason,
       }),
     onSuccess: async (result) => {
@@ -113,8 +131,24 @@ export function PocketMoneySettingsScreen() {
     },
   });
 
-  if (pocketMoney.isPending) return <AdminLoading />;
-  if (pocketMoney.isError) return <AdminError message={pocketMoney.error.message} />;
+  if (pocketMoney.isPending)
+    return (
+      <AdminQueryState
+        title="Pocket money"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+      />
+    );
+  if (pocketMoney.data === undefined)
+    return (
+      <AdminQueryState
+        title="Pocket money"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={pocketMoney.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void pocketMoney.refetch()}
+      />
+    );
 
   const missingSettings = pocketMoney.data.children.filter(
     (child) => child.weeklyAmountCents === null || child.payday === null,
@@ -152,8 +186,17 @@ export function PocketMoneySettingsScreen() {
               <PocketMoneyRuleForm
                 child={child}
                 childIndex={childIndex}
-                key={`${child.member.id}:${child.weeklyAmountCents}:${child.payday ?? 'unset'}`}
-                onUpdate={update.mutate}
+                key={child.member.id}
+                onUpdate={(input, onSaved) =>
+                  update.mutate(
+                    {
+                      ...input,
+                      settingsWeekStart: runtime.weekStart,
+                      settingsAsOfDate: runtime.localDate,
+                    },
+                    { onSuccess: onSaved },
+                  )
+                }
                 pending={update.isPending}
               />
             ))}
@@ -167,6 +210,10 @@ export function PocketMoneySettingsScreen() {
       )}
       {update.isError || pay.isError || voidPayment.isError ? (
         <AdminError
+          onRetry={() => {
+            const failed = [update, pay, voidPayment].find((command) => command.isError);
+            failed?.retryCommand();
+          }}
           message={
             (update.error ?? pay.error ?? voidPayment.error)?.message ??
             'That pocket-money change was not saved.'
@@ -222,7 +269,9 @@ export function PocketMoneySettingsScreen() {
           <PocketMoneyChildCard
             child={child}
             key={`${child.member.id}:${weekStart}`}
-            onPay={pay.mutate}
+            onPay={(input) =>
+              pay.mutate({ ...input, paymentWeekStart: weekStart, paymentAsOfDate: asOfDate })
+            }
             paymentPending={pay.isPending}
           />
         ))}
@@ -232,7 +281,15 @@ export function PocketMoneySettingsScreen() {
         onCancelVoid={() => setVoidingPaymentId(null)}
         onOpenWeek={openWeek}
         onStartVoid={setVoidingPaymentId}
-        onVoid={(event, payment) => submitVoid(event, payment, voidPayment.mutate)}
+        onVoid={(event, payment) =>
+          submitVoid(event, payment, (input) =>
+            voidPayment.mutate({
+              paymentId: input.paymentId,
+              paymentAsOfDate: asOfForWeek(input.paymentWeekStart, runtime.localDate),
+              reason: input.reason,
+            }),
+          )
+        }
         payments={pocketMoney.data.recentPayments}
         pending={voidPayment.isPending}
         voidingPaymentId={voidingPaymentId}
@@ -265,9 +322,18 @@ function PocketMoneyRuleForm({
 }: {
   child: PocketMoneyChildSummary;
   childIndex: number;
-  onUpdate: (input: { memberId: string; weeklyAmountCents: number; payday: Payday }) => void;
+  onUpdate: (
+    input: { memberId: string; weeklyAmountCents: number; payday: Payday },
+    onSaved: () => void,
+  ) => void;
   pending: boolean;
 }) {
+  const [draft, setDraft] = useState<{ amount: string; payday: string } | null>(null);
+  useUnsavedChanges(draft !== null);
+  const amount =
+    draft?.amount ??
+    (child.weeklyAmountCents === null ? '' : (child.weeklyAmountCents / 100).toFixed(2));
+  const payday = draft?.payday ?? child.payday ?? 'friday';
   return (
     <article className="pocket-money-rule">
       <header>
@@ -279,7 +345,15 @@ function PocketMoneyRuleForm({
       <form
         aria-label={`${child.member.displayName} pocket-money settings`}
         className="pocket-money-settings-form"
-        onSubmit={(event) => submitSettings(event, child.member.id, onUpdate)}
+        onSubmit={(event) =>
+          submitSettings(event, child.member.id, (input) =>
+            onUpdate(input, () =>
+              setDraft((current) =>
+                current?.amount === amount && current.payday === payday ? null : current,
+              ),
+            ),
+          )
+        }
       >
         <label>
           Weekly amount
@@ -287,11 +361,11 @@ function PocketMoneyRuleForm({
             <span>$</span>
             <input
               aria-label={`${child.member.displayName} weekly amount`}
+              disabled={pending}
               data-focus-entry={childIndex === 0 ? 'true' : undefined}
               data-focus-id={`pocket-amount-${child.member.id}`}
-              defaultValue={
-                child.weeklyAmountCents === null ? '' : (child.weeklyAmountCents / 100).toFixed(2)
-              }
+              value={amount}
+              onChange={(event) => setDraft({ amount: event.target.value, payday })}
               inputMode="decimal"
               min="1"
               name="weeklyAmount"
@@ -306,7 +380,9 @@ function PocketMoneyRuleForm({
           Payday
           <select
             aria-label={`${child.member.displayName} payday`}
-            defaultValue={child.payday ?? 'friday'}
+            disabled={pending}
+            value={payday}
+            onChange={(event) => setDraft({ amount, payday: event.target.value })}
             name="payday"
             required
           >
@@ -403,7 +479,6 @@ function PocketMoneyChildCard({
         {!canRecord ? null : (
           <form
             className="pocket-payment-form"
-            key={`${child.member.id}:${child.remainingAmountCents}`}
             onSubmit={(event) => submitPayment(event, child.member.id, onPay)}
           >
             <label>

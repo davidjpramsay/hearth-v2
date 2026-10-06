@@ -2,11 +2,29 @@ import { describe, expect, it } from 'vitest';
 
 import type { CalendarEvent } from '@hearth/shared';
 
-import { eventColorVariables, eventsForDay } from './calendar';
+import { eventColorVariables, eventsForDay, indexMonthEvents } from './calendar';
 import { layoutWeekDay, weekTimeline } from './weekLayout';
 import { formatEventDateRange, formatEventDayTime } from './date';
 
 describe('calendar event presentation', () => {
+  it('indexes centuries-long provider spans only on the displayed month grid', () => {
+    const dates = ['2026-08-03', '2026-08-04'];
+    const huge = {
+      ...event('huge', '0100-01-01T00:00:00Z', '9999-12-31T00:00:00Z'),
+      startLocalDate: '0100-01-01',
+      endLocalDate: '9999-12-31',
+    };
+    const outside = { ...huge, id: 'outside', startLocalDate: '9998-01-01' };
+    const indexed = indexMonthEvents([huge, outside], dates);
+    expect([...indexed.keys()]).toEqual(dates);
+    expect(indexed.get(dates[0]!)?.map((item) => item.id)).toEqual(['huge']);
+    expect(
+      indexMonthEvents(
+        [huge],
+        Array.from({ length: 100 }, (_, index) => `2026-08-${index}`),
+      ).size,
+    ).toBeLessThanOrEqual(42);
+  });
   it('uses opaque source-colour fills in light and dark themes', () => {
     expect(eventColorVariables('#6b4fa3')).toMatchObject({
       '--event-background': 'rgb(197, 186, 212)',

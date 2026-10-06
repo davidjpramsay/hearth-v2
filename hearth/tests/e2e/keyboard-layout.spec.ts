@@ -12,8 +12,7 @@ test.beforeEach(async ({ page, request }) => {
 test('Agenda enters on its view selector and follows visible day columns', async ({ page }) => {
   await page.goto('/calendar/week');
   await expect(page.locator('[data-focus-id="calendar-view-week"]')).toBeFocused();
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Agenda', exact: true })).toBeVisible();
   await expect(page.locator('[data-focus-id="calendar-view-agenda"]')).toBeFocused();

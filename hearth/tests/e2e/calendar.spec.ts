@@ -7,6 +7,41 @@ import { captureEvidence } from './visualEvidence';
 
 const evidence = resolve('docs/evidence/calendar-navigation');
 
+for (const viewport of [
+  { width: 1920, height: 1080 },
+  { width: 390, height: 844 },
+]) {
+  test(`Calendar defaults to Agenda with ordered tabs at ${viewport.width}px`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.setViewportSize(viewport);
+    await page.goto('/calendar');
+    await expect(page).toHaveURL(/\/calendar\/agenda$/);
+    await expect(page).toHaveTitle(/Hearth/);
+    await expect(page.getByRole('heading', { name: 'Agenda', exact: true })).toBeVisible();
+    const tabs = page.getByRole('navigation', { name: 'Calendar view' });
+    await expect(tabs.getByRole('link')).toHaveText(['Agenda', 'Week', 'Month']);
+    await expect(tabs.getByRole('link', { name: 'Agenda', exact: true })).toBeFocused();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.screenshot({ path: `/tmp/hearth-agenda-first-${viewport.width}.png` });
+    for (const view of ['Week', 'Month']) {
+      await page.keyboard.press('ArrowRight');
+      await expect(tabs.getByRole('link', { name: view, exact: true })).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(new RegExp(`/calendar/${view.toLowerCase()}$`));
+    }
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/calendar\/week$/);
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/calendar\/agenda$/);
+    await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    expect(errors).toEqual([]);
+  });
+}
+
 test.beforeEach(async ({ page, request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -21,7 +56,7 @@ test('Calendar is one television destination with Week, Month and Agenda views',
   await expect(rail.getByRole('link', { name: 'Week', exact: true })).toHaveCount(0);
   await expect(rail.getByRole('link', { name: 'Month', exact: true })).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Calendar view' })).toContainText(
-    'WeekMonthAgenda',
+    'AgendaWeekMonth',
   );
 
   await page.locator('[data-focus-id="calendar-view-agenda"]').focus();

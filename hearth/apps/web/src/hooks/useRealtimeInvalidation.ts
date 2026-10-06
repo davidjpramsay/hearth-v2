@@ -1,20 +1,71 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-
 import { RealtimeEventSchema } from '@hearth/shared';
 
-import { invalidateCalendarDisplays } from '../api/calendarCache';
-import { queryKeys } from '../api/queryKeys';
+import { getHearthRuntime, householdId } from '../api/core';
 import { getRealtimeUrl } from '../api/realtime';
 import { hostedReleaseMonitor } from '../runtime/hostedRelease';
 
+export const REALTIME_QUERY_DOMAINS: Record<string, readonly string[]> = {
+  'chore.changed': ['today', 'chores', 'chore-occurrence', 'pocket-money', 'activity'],
+  'list.changed': ['today', 'lists', 'list-settings', 'activity'],
+  'meal.changed': ['today', 'meals', 'saved-meal-library', 'activity'],
+  'pocket-money.changed': ['pocket-money', 'activity'],
+  'chore-template.changed': ['today', 'chores', 'chore-templates', 'pocket-money', 'activity'],
+  'home.changed': ['home', 'home-assistant-connection', 'activity'],
+  'today.changed': ['today', 'today-configuration', 'activity'],
+  'weather.changed': ['weather-location', 'weather', 'today', 'week', 'activity'],
+  'calendar.changed': [
+    'today',
+    'week',
+    'month',
+    'calendar-connection',
+    'system-status',
+    'activity',
+  ],
+  'photos.changed': ['photos', 'photo-source', 'today', 'activity'],
+  'reminders.changed': ['reminders', 'today', 'activity'],
+};
+
 export function useRealtimeInvalidation(): void {
   const queryClient = useQueryClient();
-
   useEffect(() => {
-    if (typeof EventSource === 'undefined') return undefined;
-    const source = new EventSource(getRealtimeUrl());
+    const id = householdId(getHearthRuntime());
+    const domains = new Set<string>();
+    let fullCatchUp = false;
+    let scheduled: ReturnType<typeof setTimeout> | undefined;
+    let disconnected = true;
+    let stopped = false;
+    const flush = () => {
+      scheduled = undefined;
+      if (document.visibilityState === 'hidden') return;
+      // Do not replace an in-flight optimistic command with an older server projection.
+      if (queryClient.isMutating() > 0) {
+        scheduled = setTimeout(flush, 1_000);
+        return;
+      }
+      const all = fullCatchUp;
+      const changed = new Set(domains);
+      fullCatchUp = false;
+      domains.clear();
+      void queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === id && (all || changed.has(String(query.queryKey[1]))),
+      });
+      if (all) void queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] });
+    };
+    const schedule = (all = true) => {
+      if (stopped) return;
+      fullCatchUp ||= all;
+      if (scheduled === undefined) scheduled = setTimeout(flush, 250);
+    };
+    const foreground = () => {
+      if (document.visibilityState !== 'hidden') schedule();
+    };
+    const source = typeof EventSource === 'undefined' ? null : new EventSource(getRealtimeUrl());
     const connected = () => {
+      disconnected = false;
+      schedule();
       void hostedReleaseMonitor.check();
     };
     const receive = (message: MessageEvent<string>) => {
@@ -24,105 +75,43 @@ export function useRealtimeInvalidation(): void {
       } catch {
         return;
       }
-      const parsed = RealtimeEventSchema.safeParse(payload);
-      if (!parsed.success) return;
-      if (parsed.data.kind === 'chore.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot }),
-        ]);
-        return;
+      const event = RealtimeEventSchema.safeParse(payload);
+      if (!event.success) return;
+      const affected = REALTIME_QUERY_DOMAINS[event.data.kind];
+      if (affected === undefined) schedule();
+      else {
+        affected.forEach((domain) => domains.add(domain));
+        schedule(false);
       }
-      if (parsed.data.kind === 'list.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.lists }),
-        ]);
-        return;
-      }
-      if (parsed.data.kind === 'meal.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-          queryClient.invalidateQueries({ queryKey: [queryKeys.today[0], 'meals'] }),
-        ]);
-        return;
-      }
-      if (parsed.data.kind === 'pocket-money.changed') {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.pocketMoneyRoot });
-        return;
-      }
-      if (parsed.data.kind === 'chore-template.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.choreTemplates }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
-        ]);
-        return;
-      }
-      if (parsed.data.kind === 'home.changed') {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.home });
-        return;
-      }
-      if (parsed.data.kind === 'today.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.todayConfiguration }),
-        ]);
-        return;
-      }
-      if (parsed.data.kind === 'weather.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.weatherLocation }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.weather }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
-        ]);
-        return;
-      }
-      if (parsed.data.kind === 'calendar.changed') {
-        void invalidateCalendarDisplays(queryClient);
-        return;
-      }
-      if (parsed.data.kind === 'photos.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.photoSource }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        ]);
-        return;
-      }
-      if (parsed.data.kind === 'reminders.changed') {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.reminders }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        ]);
-        return;
-      }
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.weekRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.monthRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.chores }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.admin }),
-      ]);
     };
-    source.addEventListener('open', connected);
-    source.addEventListener('chore.changed', receive as EventListener);
-    source.addEventListener('household.changed', receive as EventListener);
-    source.addEventListener('list.changed', receive as EventListener);
-    source.addEventListener('meal.changed', receive as EventListener);
-    source.addEventListener('pocket-money.changed', receive as EventListener);
-    source.addEventListener('chore-template.changed', receive as EventListener);
-    source.addEventListener('home.changed', receive as EventListener);
-    source.addEventListener('today.changed', receive as EventListener);
-    source.addEventListener('calendar.changed', receive as EventListener);
-    source.addEventListener('weather.changed', receive as EventListener);
-    source.addEventListener('photos.changed', receive as EventListener);
-    source.addEventListener('reminders.changed', receive as EventListener);
+    source?.addEventListener('open', connected);
+    source?.addEventListener('error', () => {
+      disconnected = true;
+    });
+    const signedOut = () => {
+      stopped = true;
+      if (scheduled !== undefined) clearTimeout(scheduled);
+      clearInterval(fallback);
+      source?.close();
+    };
+    [...Object.keys(REALTIME_QUERY_DOMAINS), 'household.changed'].forEach((kind) =>
+      source?.addEventListener(kind, receive as EventListener),
+    );
+    window.addEventListener('online', foreground);
+    window.addEventListener('pageshow', foreground);
+    document.addEventListener('visibilitychange', foreground);
+    const fallback = setInterval(() => {
+      if (disconnected) foreground();
+    }, 60_000);
+    window.addEventListener('hearth:sign-out', signedOut);
     return () => {
-      source.removeEventListener('open', connected);
-      source.close();
+      if (scheduled !== undefined) clearTimeout(scheduled);
+      clearInterval(fallback);
+      source?.close();
+      window.removeEventListener('hearth:sign-out', signedOut);
+      window.removeEventListener('online', foreground);
+      window.removeEventListener('pageshow', foreground);
+      document.removeEventListener('visibilitychange', foreground);
     };
   }, [queryClient]);
 }

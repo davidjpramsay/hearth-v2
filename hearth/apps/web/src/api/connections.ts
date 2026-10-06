@@ -20,16 +20,22 @@ export const connectionsApi = {
       { headers: demoAdminHeaders },
     ),
   testCalendarConnection: (input: { serverUrl: string; username: string; appPassword: string }) =>
-    request(`${householdApiBase()}/calendar-connection-tests`, CalendarConnectionTestResultSchema, {
-      method: 'POST',
-      headers: demoAdminHeaders,
-      body: JSON.stringify(input),
-    }),
+    request(
+      `${householdApiBase()}/calendar-connection-tests`,
+      CalendarConnectionTestResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify(input),
+      },
+      30_000,
+    ),
   refreshCalendarSelection: () =>
     request(
       `${householdApiBase()}/calendar-connection-selection-tests`,
       CalendarConnectionTestResultSchema,
       { method: 'POST', headers: demoAdminHeaders },
+      30_000,
     ),
   saveCalendarConnection: (input: {
     requestId: string;
@@ -75,6 +81,7 @@ export const connectionsApi = {
       `${householdApiBase()}/home-assistant-connection-tests`,
       HomeAssistantConnectionTestResultSchema,
       { method: 'POST', headers: demoAdminHeaders, body: JSON.stringify(input) },
+      30_000,
     ),
   saveHomeAssistantConnection: (input: {
     requestId: string;

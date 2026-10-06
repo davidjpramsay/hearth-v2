@@ -9,6 +9,8 @@ import {
   ReminderCommandResultSchema,
   ReminderDeletionResultSchema,
   ReminderOverviewSchema,
+  LocalDateSchema,
+  MAX_HEARTH_REMINDERS,
   type AuditSummary,
   type CreateReminderRequest,
   type HearthReminder,
@@ -121,15 +123,32 @@ export class ReminderService implements ReminderRepository {
     this.assertHousehold(householdId);
     this.ensureDefaultList(householdId);
     const lists = this.readLists(householdId);
-    const allReminders = this.readReminders(householdId);
+    const allReminders = this.readReminders(householdId, includeCompleted);
     const visibleReminders = includeCompleted
       ? allReminders
       : allReminders.filter((reminder) => !reminder.isCompleted);
     return ReminderOverviewSchema.parse({
       householdId,
       generatedAt: this.clock.now().toISOString(),
-      lists: lists.map((list) => listSummary(list, allReminders)),
-      reminders: visibleReminders.map(publicReminder).toSorted(compareReminders),
+      lists: lists.map((list) =>
+        this.database === undefined
+          ? listSummary(
+              list,
+              this.reminders.filter(
+                (item) => item.householdId === householdId && item.deletedAt === null,
+              ),
+            )
+          : {
+              id: list.id,
+              title: list.title,
+              ...this.reminderCounts(householdId, list.id),
+            },
+      ),
+      reminders: visibleReminders
+        .slice(0, MAX_HEARTH_REMINDERS)
+        .map(publicReminder)
+        .toSorted(compareReminders),
+      ...(visibleReminders.length > MAX_HEARTH_REMINDERS ? { hasMore: true } : {}),
     });
   }
 
@@ -145,6 +164,9 @@ export class ReminderService implements ReminderRepository {
       'reminder-create',
       ReminderCommandResultSchema,
       () => {
+        if (this.reminderCounts(householdId).reminderCount >= MAX_HEARTH_REMINDERS) {
+          throw new RepositoryError('CONFLICT', 'Remove an old reminder before adding another.');
+        }
         const now = this.clock.now().toISOString();
         const reminder: StoredReminder = {
           id: opaqueId('reminder'),
@@ -344,7 +366,13 @@ export class ReminderService implements ReminderRepository {
          WHERE household_id = ? AND request_id = ? AND command_type = ?`,
       )
       .get(householdId, requestId, commandType) as { response_json: string } | undefined;
-    return row === undefined ? undefined : schema.parse(JSON.parse(row.response_json));
+    if (row === undefined) return undefined;
+    const result = JSON.parse(row.response_json) as { reminder?: unknown };
+    // Old receipts may contain dates accepted before calendar validation was introduced.
+    // Preserve replay semantics while exposing the same explicit repair state as reads.
+    if (result.reminder !== undefined)
+      result.reminder = publicReminder(result.reminder as StoredReminder);
+    return schema.parse(result);
   }
 
   private writeReceipt(
@@ -406,7 +434,35 @@ export class ReminderService implements ReminderRepository {
     return rows.map(listFromRow);
   }
 
-  private readReminders(householdId: string): StoredReminder[] {
+  private reminderCounts(
+    householdId: string,
+    listId?: string,
+  ): { reminderCount: number; incompleteCount: number } {
+    if (this.database === undefined) {
+      const records = this.reminders.filter(
+        (item) =>
+          item.householdId === householdId &&
+          item.deletedAt === null &&
+          (listId === undefined || item.listId === listId),
+      );
+      return {
+        reminderCount: records.length,
+        incompleteCount: records.filter((item) => !item.isCompleted).length,
+      };
+    }
+    return this.database
+      .prepare(
+        `SELECT COUNT(*) AS reminderCount, COALESCE(SUM(CASE WHEN is_completed = 0 THEN 1 ELSE 0 END), 0) AS incompleteCount
+       FROM hearth_reminders WHERE household_id = ? AND deleted_at IS NULL
+         ${listId === undefined ? '' : 'AND list_id = ?'}`,
+      )
+      .get(...(listId === undefined ? [householdId] : [householdId, listId])) as {
+      reminderCount: number;
+      incompleteCount: number;
+    };
+  }
+
+  private readReminders(householdId: string, includeCompleted = true): StoredReminder[] {
     if (this.database === undefined)
       return this.reminders
         .filter((reminder) => reminder.householdId === householdId && reminder.deletedAt === null)
@@ -416,16 +472,31 @@ export class ReminderService implements ReminderRepository {
         `SELECT id, household_id, list_id, title, due_local_date, due_at, has_due_time,
                 is_completed, completed_at, created_at, updated_at, deleted_at
          FROM hearth_reminders
-         WHERE household_id = ? AND deleted_at IS NULL`,
+         WHERE household_id = ? AND deleted_at IS NULL AND (? OR is_completed = 0)
+         ORDER BY is_completed, COALESCE(due_at, due_local_date, '9999-12-31'), title, id
+         LIMIT ?`,
       )
-      .all(householdId) as ReminderRow[];
+      .all(householdId, includeCompleted ? 1 : 0, MAX_HEARTH_REMINDERS + 1) as ReminderRow[];
     return rows.map(reminderFromRow);
   }
 
   private findReminder(householdId: string, reminderId: string): StoredReminder {
-    const reminder = this.readReminders(householdId).find(
-      (candidate) => candidate.id === reminderId,
-    );
+    const row = this.database
+      ?.prepare(
+        'SELECT * FROM hearth_reminders WHERE household_id = ? AND id = ? AND deleted_at IS NULL',
+      )
+      .get(householdId, reminderId) as ReminderRow | undefined;
+    const reminder =
+      this.database === undefined
+        ? this.reminders.find(
+            (candidate) =>
+              candidate.householdId === householdId &&
+              candidate.id === reminderId &&
+              candidate.deletedAt === null,
+          )
+        : row === undefined
+          ? undefined
+          : reminderFromRow(row);
     if (reminder === undefined)
       throw new RepositoryError('NOT_FOUND', 'That reminder could not be found.');
     return reminder;
@@ -532,13 +603,16 @@ export class ReminderService implements ReminderRepository {
 }
 
 function publicReminder(reminder: StoredReminder): HearthReminder {
+  const invalidDate =
+    reminder.dueLocalDate !== null && !LocalDateSchema.safeParse(reminder.dueLocalDate).success;
   return HearthReminderSchema.parse({
     id: reminder.id,
     listId: reminder.listId,
     title: reminder.title,
-    dueLocalDate: reminder.dueLocalDate,
-    dueAt: reminder.dueAt,
-    hasDueTime: reminder.hasDueTime,
+    dueLocalDate: invalidDate ? null : reminder.dueLocalDate,
+    dueAt: invalidDate ? null : reminder.dueAt,
+    hasDueTime: invalidDate ? false : reminder.hasDueTime,
+    ...(invalidDate ? { dueDateUnavailable: true } : {}),
     isCompleted: reminder.isCompleted,
     completedAt: reminder.completedAt,
     createdAt: reminder.createdAt,

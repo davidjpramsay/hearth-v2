@@ -5,6 +5,7 @@ import {
   type RuntimeContext,
 } from '@hearth/shared';
 import type { z } from 'zod';
+import { withRequestDeadline } from './deadline';
 
 export const API_BASE = import.meta.env.VITE_HEARTH_API_BASE ?? '/api/v1';
 
@@ -21,6 +22,10 @@ export const demoAdminHeaders = { 'X-Hearth-Demo-Actor': 'member_maya' } as cons
 
 export function configureHearthClient(runtime: RuntimeContext): void {
   runtimeContext = RuntimeContextSchema.parse(runtime);
+}
+
+export function clearHearthClient(): void {
+  runtimeContext = null;
 }
 
 export function getHearthRuntime(): RuntimeContext {
@@ -55,12 +60,23 @@ export async function request<T>(
   url: string,
   schema: z.ZodType<T>,
   init?: RequestInit,
+  timeoutMs?: number,
 ): Promise<T> {
-  const response = await requestRaw(url, init);
-  return schema.parse(await response.json());
+  return withRequestDeadline(
+    init,
+    async (boundedInit) => {
+      const response = await fetchResponse(url, boundedInit);
+      return schema.parse(await response.json());
+    },
+    timeoutMs,
+  );
 }
 
 export async function requestRaw(url: string, init?: RequestInit): Promise<Response> {
+  return withRequestDeadline(init, (boundedInit) => fetchResponse(url, boundedInit));
+}
+
+async function fetchResponse(url: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(url, {
     ...init,
     headers: {

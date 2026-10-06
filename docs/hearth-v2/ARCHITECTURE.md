@@ -227,7 +227,8 @@ server-only Open-Meteo adapter when a saved or fallback location is configured, 
 requests, caches successful responses for five minutes and retains the last safe response during a
 temporary provider outage. `GET /api/v1/households/:householdId/weather` returns current conditions,
 24 hourly points and seven daily points through one typed projection. The safe location label may
-appear; coordinates never enter this forecast contract.
+appear; coordinates never enter this forecast contract. An optional `configured` boolean keeps a
+saved-location outage distinct from missing setup, including when no forecast has ever been cached.
 
 `MonthSchedule` returns a fixed Monday-first 42-day projection window, calendar
 source descriptors and the normalized events overlapping that window. The
@@ -256,7 +257,11 @@ Demo mode returns original fictional copy. Private mode either uses the ESV pass
 token read from `HEARTH_ESV_API_KEY_PATH`, or an explicit unconfigured adapter. Successful text is
 cached by household and passage in SQLite; a failed refresh may return that passage as stale, while
 provider failure never fails the wider Today response. The token and raw response do not enter
-browser contracts, logs, receipts or audits.
+browser contracts, logs, receipts or audits. The extracted Today composer reads available memory or
+SQLite verse content synchronously and starts a deduplicated background refresh; it never awaits
+the optional provider. Changed verse content publishes `today.changed`. Failed/null/stale results
+back off for one minute rather than suppressing recovery for the rest of the day. Successful daily
+results are memoised for that date; prior-date in-memory entries are discarded.
 
 The server selects its calendar implementation at composition time. Demo mode
 injects `FakeCalendarProvider`; private mode injects a stable managed provider
@@ -347,6 +352,36 @@ redacts the household identifier and name (`household: null`, `requiresSetup: fa
 then offers passkey sign-in. A valid companion session or paired-TV credential reveals the runtime
 household and allows normal route construction.
 
+Browser JSON requests bound both response headers and body parsing to ten seconds and preserve
+caller cancellation. Bootstrap does not automatically retry an initial failed request; it offers
+an explicit recovery action without using cached family data to bypass authentication. Explicit
+calendar/Home Assistant discovery receives thirty seconds; photo upload/import refresh, checked
+backup and update-start requests receive two minutes. A timeout is an ambiguous write outcome, not
+proof that the server rejected a command.
+
+Reminder, payment/settings/void, household, list-add and meal-management intents retain a cloned
+payload and request ID for manual retry while the owning screen is mounted. Date/week context is
+captured at submission. A changed intent cannot replace an unanswered one until it is resolved.
+Only definitive rejection or confirmed success releases the intent. Optimistic chore/list rollback
+restores the affected record only, and per-record pending state prevents overlapping actions on it.
+
+The client maintains one household SSE connection. Opens/reconnects, online, foreground and
+pageshow events catch up all household queries plus runtime; domain events invalidate a typed
+domain map. Invalidations are coalesced and deferred while commands are pending. A visible-minute
+fallback runs only while the stream is disconnected. Inactive queries are marked stale rather than
+eagerly loaded. This is catch-up by fresh reads, not event replay.
+
+The data router protects registered drafts across menu links, remote Back and browser history.
+Remote entry waits for usable controls rather than hidden Suspense content. A route-lifetime
+observer restores focus when loading/error replacement removes the focused node, while retaining
+explicit visible field/navigation focus. A bounded eight-direction queue bridges lazy transitions;
+activation is never queued, and Back, Tab or pointer interaction discards pending directions.
+Shared Calendar-tab movement remains explicit through a pending lazy view; history Back instead
+restores the destination route's remembered control.
+Meal-week drafts track original per-date revisions; untouched dates absorb incoming data and changed
+dirty dates require an explicit resolution before Save. The demo planning repository and pure
+record/fixture helpers are separate from SQLite persistence; meal administration CSS is route-local.
+
 Repository construction follows the same mode boundary. Demo/test may seed the
 fictional household. Private construction runs migrations but does not insert
 fictional households, members, chores, lists, meals, pocket-money settings or
@@ -393,8 +428,10 @@ Use one-time pairing:
 4. Android Keystore-backed AES-GCM storage retains the secret. Native code sets
    the scoped `HttpOnly` WebView cookie; browser JavaScript never receives it.
 
-Pairing codes remain exactly six uppercase alphanumeric characters across the bounded sequence;
-retained expired rows cannot make later pairing creation produce an invalid over-length code.
+Private pairing codes are random six-character uppercase alphanumeric values with UUID record IDs.
+Admission permits at most 32 pending requests and 20 new attempts per resolved peer per ten minutes;
+replay occurs before charging admission. Expiry does not depend on polling, pending lists are bounded,
+and records retain a seven-day replay window before pruning on new issuance.
 
 Debug emulator HTTP is an intentionally non-secure browser context. Browser
 commands therefore generate idempotency IDs with `crypto.randomUUID()` when
@@ -410,6 +447,12 @@ limits invalid attempts, requires user verification and a discoverable passkey, 
 revokes the database session. Registration and authentication challenges are single-use and expire
 after five minutes. WebAuthn credentials retain their public key, signature counter, transports,
 device type and backup state; successful authentication advances the counter.
+Verification rechecks linked credential/member state after asynchronous proof. Additional enrollment
+and recovery-code issuance bind and recheck the initiating server-authenticated session at commit;
+recovery claims exactly one still-active code before replacing access. First-use transactions
+reassert the singleton household invariant. Realtime delivery and heartbeats revalidate admission.
+Sign-out cancels private reads, closes streams, clears runtime/query authority and reloads an
+unmounted private view. Private photos and avatars use `private, no-store` caching.
 Authentication-option issuance is rate-limited per resolved client address. Forwarded addresses are
 used only through explicit `HEARTH_TRUST_PROXY_ADDRESSES` IP/CIDR configuration; otherwise the socket
 peer identifies the rate-limit bucket, shared by callers behind the same proxy. Pending ceremonies are
@@ -420,7 +463,8 @@ The process health response includes the active immutable release identifier and
 non-cacheable. Open browser and television WebView clients compare it when their existing realtime
 connection opens or reconnects, once per visible minute, and when the page returns to the foreground
 or network. A changed release causes one full page reload; credentials and paired-device storage are
-untouched. Hidden pages do not run the interval check.
+untouched. Registered unsaved drafts defer that reload until a later safe check without consuming
+the new release identifier. Hidden pages do not run the interval check.
 
 Adult access supports several named adult accounts and several independently revocable passkeys per
 adult. Adding a passkey or issuing a replacement recovery code requires a current administrator
@@ -437,6 +481,12 @@ only the exact release exposed by its fixed verified-workflow provider, creates 
 copy and sends a two-field request through a mode-restricted local FIFO. It has no Docker socket,
 root credential or general command endpoint. A separately installed platform agent performs the
 fixed host operation and publishes only bounded progress/result state. See D-079.
+The host independently enforces the fixed latest-successful-release policy; it does not trust a
+commit chosen by the application. Control is mounted from `/usr/local/etc/hearth-v2/control`;
+authoritative markers and rollback copies remain outside that mount under root-only
+`/volume1/.hearth-v2-state`, so snapshots cannot fill the DSM system partition.
+The host Python helper opens data files without following links, verifies a private SQLite snapshot,
+and binds atomic recovery to the originally pinned data-directory identity. See D-089.
 
 During the isolated demo, a server-resolved Maya administrator session exercises the same role/capability checks without pretending to be production authentication. This demo actor header is disabled outside demo mode. See D-014.
 
@@ -510,6 +560,10 @@ is deliberately excluded as brittle.
 - Queue only safe, explicitly designed local commands. Do not blindly replay ambiguous calendar edits.
 - Mark stale data with a quiet, comprehensible indicator.
 - Integration failure must not prevent app startup.
+- Missing, malformed or unreadable optional calendar/Home Assistant files disable only those
+  adapters. Retain the original file for repair and warn without secrets for an invalid/unreadable
+  existing file. Explicit load/test APIs remain strict; invalid authentication/security configuration
+  never becomes an unauthenticated fallback.
 - The TV shell shows a branded recovery surface if the Hearth server itself is unavailable.
 
 ## Deployment

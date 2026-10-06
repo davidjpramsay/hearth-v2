@@ -81,6 +81,7 @@ interface AdditionalRegistrationCeremony {
   householdId: string;
   memberId: string;
   actorId: string;
+  actorSessionHash: string;
   passkeyLabel: string;
   userId: Uint8Array;
 }
@@ -90,6 +91,7 @@ interface RecoveryConfirmationCeremony {
   expiresAt: number;
   householdId: string;
   actorId: string;
+  actorSessionHash: string;
 }
 
 interface RecoveryRegistrationCeremony {
@@ -299,6 +301,7 @@ export interface CompanionAuthRepository {
 }
 
 export class CompanionAuthService implements CompanionAuthRepository {
+  private readonly actorSessions = new WeakMap<CommandActor, string>();
   private readonly registrationCeremonies = new Map<string, RegistrationCeremony>();
   private readonly authenticationCeremonies = new Map<string, AuthenticationCeremony>();
   private readonly additionalRegistrationCeremonies = new Map<
@@ -401,6 +404,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     const credentialRowId = opaqueId('passkey');
     const webauthnUserId = Buffer.from(ceremony.userId).toString('base64url');
     const createHousehold = this.database.transaction(() => {
+      this.assertSetupAvailable();
       this.database
         .prepare(
           `INSERT INTO households
@@ -510,6 +514,10 @@ export class CompanionAuthService implements CompanionAuthRepository {
 
   adultAccess(householdId: string, actor: CommandActor): AdultAccessSummary {
     this.assertAdultAdministrator(householdId, actor);
+    return this.readAdultAccess(householdId, actor.id);
+  }
+
+  private readAdultAccess(householdId: string, actorMemberId: string): AdultAccessSummary {
     const members = this.database
       .prepare(
         `SELECT id, display_name, avatar_key
@@ -521,7 +529,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     const now = this.now().toISOString();
     return AdultAccessSummarySchema.parse({
       householdId,
-      actorMemberId: actor.id,
+      actorMemberId,
       adults: members.map((member) => {
         const passkeys = this.database
           .prepare(
@@ -587,6 +595,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
       householdId,
       memberId: member.id,
       actorId: actor.id,
+      actorSessionHash: this.actorSessionHash(actor),
       passkeyLabel: input.passkeyLabel,
       userId,
     });
@@ -601,13 +610,19 @@ export class CompanionAuthService implements CompanionAuthRepository {
   ): Promise<PasskeyRegistrationResult> {
     this.assertAdultAdministrator(householdId, actor);
     const ceremony = this.takeAdditionalRegistrationCeremony(ceremonyId);
-    if (ceremony.householdId !== householdId || ceremony.actorId !== actor.id) {
+    if (
+      ceremony.householdId !== householdId ||
+      ceremony.actorId !== actor.id ||
+      ceremony.actorSessionHash !== this.actorSessionHash(actor)
+    ) {
       throw new RepositoryError('FORBIDDEN', 'That passkey setup belongs to another adult.');
     }
     const credential = await this.verifyNewCredential(ceremony.challenge, response);
     const now = this.now().toISOString();
     const credentialRowId = opaqueId('passkey');
     const audit = this.database.transaction(() => {
+      this.assertAdultAdministrator(householdId, actor);
+      this.readAdultMember(householdId, ceremony.memberId);
       this.assertCredentialIsNew(credential.id);
       this.insertCredential({
         id: credentialRowId,
@@ -648,6 +663,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
       expiresAt,
       householdId,
       actorId: actor.id,
+      actorSessionHash: this.actorSessionHash(actor),
     });
     return ceremonyOptions(ceremonyId, options, expiresAt);
   }
@@ -660,7 +676,11 @@ export class CompanionAuthService implements CompanionAuthRepository {
   ): Promise<RecoveryCodeReveal> {
     this.assertAdultAdministrator(householdId, actor);
     const ceremony = this.takeRecoveryConfirmationCeremony(ceremonyId);
-    if (ceremony.householdId !== householdId || ceremony.actorId !== actor.id) {
+    if (
+      ceremony.householdId !== householdId ||
+      ceremony.actorId !== actor.id ||
+      ceremony.actorSessionHash !== this.actorSessionHash(actor)
+    ) {
       throw new RepositoryError(
         'FORBIDDEN',
         'That recovery confirmation belongs to another adult.',
@@ -675,6 +695,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     const expiresAt = new Date(createdAt.getTime() + RECOVERY_CODE_LIFETIME_MS);
     const codeId = opaqueId('recovery');
     this.database.transaction(() => {
+      this.assertAdultAdministrator(householdId, actor);
       this.database
         .prepare(
           `UPDATE companion_recovery_codes SET revoked_at = ?
@@ -776,6 +797,24 @@ export class CompanionAuthService implements CompanionAuthRepository {
     const now = this.now().toISOString();
     const credentialRowId = opaqueId('passkey');
     this.database.transaction(() => {
+      this.readAdultMember(ceremony.householdId, ceremony.memberId);
+      const claimed = this.database
+        .prepare(
+          `UPDATE companion_recovery_codes SET consumed_at = ?
+         WHERE id = ? AND household_id = ? AND member_id = ? AND code_hash = ?
+           AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ?`,
+        )
+        .run(
+          now,
+          ceremony.codeId,
+          ceremony.householdId,
+          ceremony.memberId,
+          ceremony.codeDigest,
+          now,
+        );
+      if (claimed.changes !== 1) {
+        throw new RepositoryError('UNAUTHENTICATED', 'That recovery attempt expired. Start again.');
+      }
       this.assertCredentialIsNew(credential.id);
       this.database
         .prepare(
@@ -789,12 +828,6 @@ export class CompanionAuthService implements CompanionAuthRepository {
            WHERE household_id = ? AND member_id = ? AND revoked_at IS NULL`,
         )
         .run(now, ceremony.householdId, ceremony.memberId);
-      this.database
-        .prepare(
-          `UPDATE companion_recovery_codes SET consumed_at = ?
-           WHERE id = ? AND consumed_at IS NULL AND revoked_at IS NULL`,
-        )
-        .run(now, ceremony.codeId);
       this.insertCredential({
         id: credentialRowId,
         credential,
@@ -870,7 +903,9 @@ export class CompanionAuthService implements CompanionAuthRepository {
         safeSummary: { memberId: row.member_id },
       });
       const result = PasskeyRevocationResultSchema.parse({
-        access: this.adultAccess(householdId, actor),
+        // This synchronous transaction was authorized before revocation. Self-removal
+        // intentionally ends that session; it must not roll back its own authorized write.
+        access: this.readAdultAccess(householdId, actor.id),
         audit,
         replayed: false,
       });
@@ -899,10 +934,13 @@ export class CompanionAuthService implements CompanionAuthRepository {
 
   authenticate(token: string): CommandActor {
     const session = this.session(token);
-    return { id: session.memberId, type: 'member', source: 'companion' };
+    const actor: CommandActor = { id: session.memberId, type: 'member', source: 'companion' };
+    this.actorSessions.set(actor, tokenDigest(token));
+    return actor;
   }
 
   assertRecentAuthentication(token: string, maximumAgeMs: number): void {
+    this.session(token);
     const row = this.database
       .prepare(
         `SELECT created_at FROM companion_sessions
@@ -973,12 +1011,20 @@ export class CompanionAuthService implements CompanionAuthRepository {
     if (newCounter === null) {
       throw new RepositoryError('UNAUTHENTICATED', 'That passkey could not be verified.');
     }
-    this.database
+    const updated = this.database
       .prepare(
         `UPDATE passkey_credentials SET counter = ?, last_used_at = ?
-         WHERE credential_id = ? AND revoked_at IS NULL`,
+       WHERE credential_id = ? AND revoked_at IS NULL AND counter = ?
+         AND EXISTS (SELECT 1 FROM members m WHERE m.id = passkey_credentials.member_id
+           AND m.household_id = passkey_credentials.household_id AND m.archived_at IS NULL)`,
       )
-      .run(newCounter, this.now().toISOString(), credential.credential_id);
+      .run(newCounter, this.now().toISOString(), credential.credential_id, credential.counter);
+    if (updated.changes !== 1) {
+      throw new RepositoryError(
+        'UNAUTHENTICATED',
+        'That passkey is no longer available. Sign in again.',
+      );
+    }
     return credential;
   }
 
@@ -1001,6 +1047,10 @@ export class CompanionAuthService implements CompanionAuthRepository {
   private assertAdultAdministrator(householdId: string, actor: CommandActor): void {
     if (actor.type !== 'member' || actor.source !== 'companion') {
       throw new RepositoryError('FORBIDDEN', 'Only an adult administrator can manage access.');
+    }
+    const session = this.readSessionHash(this.actorSessionHash(actor), false);
+    if (session === null || session.householdId !== householdId || session.memberId !== actor.id) {
+      throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
     }
     const row = this.database
       .prepare(
@@ -1250,6 +1300,20 @@ export class CompanionAuthService implements CompanionAuthRepository {
     memberId: string,
     credentialId: string,
   ): { session: PasskeySession; token: string } {
+    const liveCredential = this.database
+      .prepare(
+        `SELECT 1 FROM passkey_credentials p JOIN members m
+       ON m.id = p.member_id AND m.household_id = p.household_id
+       WHERE p.credential_id = ? AND p.household_id = ? AND p.member_id = ?
+         AND p.revoked_at IS NULL AND m.archived_at IS NULL`,
+      )
+      .get(credentialId, householdId, memberId);
+    if (liveCredential === undefined) {
+      throw new RepositoryError(
+        'UNAUTHENTICATED',
+        'That passkey is no longer available. Sign in again.',
+      );
+    }
     const token = randomBytes(32).toString('base64url');
     const createdAt = this.now();
     const expiresAt = new Date(createdAt.getTime() + SESSION_LIFETIME_MS).toISOString();
@@ -1283,21 +1347,33 @@ export class CompanionAuthService implements CompanionAuthRepository {
   }
 
   private readSession(token: string, touch: boolean): SessionMember | null {
+    return this.readSessionHash(tokenDigest(token), touch);
+  }
+
+  private actorSessionHash(actor: CommandActor): string {
+    const hash = this.actorSessions.get(actor);
+    if (hash === undefined) throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+    return hash;
+  }
+
+  private readSessionHash(hash: string, touch: boolean): SessionMember | null {
     const now = this.now().toISOString();
     const row = this.database
       .prepare(
         `SELECT s.household_id, s.member_id, s.expires_at, m.display_name, m.role
          FROM companion_sessions s
          JOIN members m ON m.id = s.member_id AND m.household_id = s.household_id
+         JOIN passkey_credentials p ON p.credential_id = s.credential_id
+           AND p.household_id = s.household_id AND p.member_id = s.member_id
          WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?
-           AND m.archived_at IS NULL`,
+           AND m.archived_at IS NULL AND p.revoked_at IS NULL`,
       )
-      .get(tokenDigest(token), now) as SessionMemberRow | undefined;
+      .get(hash, now) as SessionMemberRow | undefined;
     if (row === undefined) return null;
     if (touch) {
       this.database
         .prepare('UPDATE companion_sessions SET last_seen_at = ? WHERE token_hash = ?')
-        .run(now, tokenDigest(token));
+        .run(now, hash);
     }
     return {
       householdId: row.household_id,

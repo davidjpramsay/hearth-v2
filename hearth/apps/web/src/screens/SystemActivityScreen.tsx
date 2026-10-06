@@ -4,7 +4,7 @@ import './SystemActivityScreen.css';
 
 import type { AuditSummary } from '@hearth/shared';
 
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useActivityQuery, useAdminQuery } from '../hooks/useAdminQueries';
 import { useHearthRuntime } from '../runtime/context';
@@ -44,9 +44,34 @@ export function SystemActivityScreen() {
     [activity.data, filter, runtime.localDate, runtime.locale, runtime.timezone],
   );
 
-  if (activity.isPending || admin.isPending) return <AdminLoading />;
-  if (activity.isError) return <AdminError message={activity.error.message} />;
-  if (admin.isError) return <AdminError message={admin.error.message} />;
+  if (activity.isPending || admin.isPending)
+    return (
+      <AdminQueryState
+        title="Recent activity"
+        backTo="/admin/system"
+        backLabel="Back to System health"
+      />
+    );
+  if (activity.data === undefined)
+    return (
+      <AdminQueryState
+        title="Recent activity"
+        backTo="/admin/system"
+        backLabel="Back to System health"
+        error={activity.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void activity.refetch()}
+      />
+    );
+  if (admin.data === undefined)
+    return (
+      <AdminQueryState
+        title="Recent activity"
+        backTo="/admin/system"
+        backLabel="Back to System health"
+        error={admin.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void admin.refetch()}
+      />
+    );
 
   const visibleCount = groups.reduce((total, group) => total + group.entries.length, 0);
 

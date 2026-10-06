@@ -23,7 +23,7 @@ interface AdminNavigationItem {
 
 const baseNavigation: NavigationItem[] = [
   { label: 'Today', path: '/today', icon: 'today', enabled: true },
-  { label: 'Calendar', path: '/calendar/week', icon: 'calendar', enabled: true },
+  { label: 'Calendar', path: '/calendar/agenda', icon: 'calendar', enabled: true },
   { label: 'Weather', path: '/weather', icon: 'cloud-sun', enabled: true },
   { label: 'Reminders', path: '/reminders', icon: 'bell', enabled: true },
   { label: 'Chores', path: '/chores', icon: 'chores', enabled: true },
@@ -63,7 +63,6 @@ const adminNavigationGroups: Array<{ label: string; items: AdminNavigationItem[]
     items: [
       { label: 'Details', path: '/admin/household', icon: 'home' },
       { label: 'People', path: '/admin/people', icon: 'users' },
-      { label: 'Adult access', path: '/admin/access', icon: 'shield' },
     ],
   },
   {
@@ -75,7 +74,12 @@ const adminNavigationGroups: Array<{ label: string; items: AdminNavigationItem[]
         icon: 'link',
         matches: ['/admin/connections/'],
       },
-      { label: 'Televisions', path: '/admin/televisions', icon: 'television' },
+      {
+        label: 'Phones & screens',
+        path: '/admin/televisions',
+        icon: 'television',
+        matches: ['/admin/access'],
+      },
     ],
   },
   {

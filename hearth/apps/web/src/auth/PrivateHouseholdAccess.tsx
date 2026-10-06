@@ -1,13 +1,15 @@
-import { useMutation } from '@tanstack/react-query';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import './PrivateHouseholdAccess.css';
 
 import type { PasskeyAuthStatus } from '@hearth/shared';
 
-import { runtimeApi as hearthApi } from '../api/runtime';
+import { signOutAndClear } from './signOut';
 import { BrowserTelevisionPairing } from './BrowserTelevisionPairing';
 import { authenticateWithPasskey, passkeysAvailable, recoverWithCode } from './passkeys';
+import { connectionNavigation } from './connectionNavigation';
+import { Icon } from '../components/Icon';
 
 export function PrivateHouseholdAccess({
   auth,
@@ -16,8 +18,9 @@ export function PrivateHouseholdAccess({
   auth: PasskeyAuthStatus;
   onComplete: () => Promise<void>;
 }) {
+  const queryClient = useQueryClient();
   const signIn = useMutation({ mutationFn: authenticateWithPasskey, onSuccess: onComplete });
-  const signOut = useMutation({ mutationFn: hearthApi.signOut, onSuccess: onComplete });
+  const signOut = useMutation({ mutationFn: () => signOutAndClear(queryClient) });
   const [showRecovery, setShowRecovery] = useState(false);
 
   if (!auth.configured) {
@@ -62,35 +65,49 @@ export function PrivateHouseholdAccess({
     );
   }
   return (
-    <AccessFrame title="Sign in to open Hearth">
-      <p>Use an adult passkey.</p>
-      {!available ? (
-        <p className="form-message form-message--error" role="alert">
-          Open Hearth from its private HTTPS address on a passkey-capable device.
+    <AccessFrame title="Connect to Hearth">
+      <p>How will you use this device?</p>
+      <div className="connection-choices">
+        <section className="connection-choice" aria-labelledby="personal-device-title">
+          <Icon name="shield" />
+          <h2 id="personal-device-title">Phone or computer</h2>
+          <p>Your personal device. Sign in with an adult passkey.</p>
+          {!available ? (
+            <p className="form-message form-message--error" role="alert">
+              Open Hearth from its private HTTPS address on a passkey-capable device.
+            </p>
+          ) : null}
+          {signIn.isError ? (
+            <p className="form-message form-message--error" role="alert">
+              {signIn.error.message}
+            </p>
+          ) : null}
+          <button
+            className="button button--primary"
+            type="button"
+            disabled={!available || signIn.isPending}
+            onClick={() => signIn.mutate()}
+          >
+            {signIn.isPending ? 'Waiting for passkey…' : 'Sign in with a passkey'}
+          </button>
+        </section>
+        <BrowserTelevisionPairing onComplete={onComplete} />
+      </div>
+      <details className="connection-sign-in-help">
+        <summary>Trouble signing in?</summary>
+        <p>
+          On a new device, choose your saved Hearth passkey. If you need a new passkey, an adult can
+          help from Phones &amp; screens.
         </p>
-      ) : null}
-      {signIn.isError ? (
-        <p className="form-message form-message--error" role="alert">
-          {signIn.error.message}
-        </p>
-      ) : null}
-      <button
-        className="button button--primary"
-        type="button"
-        disabled={!available || signIn.isPending}
-        onClick={() => signIn.mutate()}
-      >
-        {signIn.isPending ? 'Waiting for passkey…' : 'Sign in with a passkey'}
-      </button>
-      <button
-        className="button button--quiet"
-        disabled={!available}
-        onClick={() => setShowRecovery(true)}
-        type="button"
-      >
-        Use a recovery code
-      </button>
-      <BrowserTelevisionPairing onComplete={onComplete} />
+        <button
+          className="button button--quiet"
+          disabled={!available}
+          onClick={() => setShowRecovery(true)}
+          type="button"
+        >
+          Use a recovery code
+        </button>
+      </details>
     </AccessFrame>
   );
 }
@@ -137,7 +154,7 @@ function RecoveryAccess({
         <label>
           New passkey name
           <input
-            defaultValue="Replacement iPhone"
+            defaultValue="Replacement device"
             disabled={!available || recover.isPending}
             maxLength={80}
             name="passkeyLabel"
@@ -172,8 +189,21 @@ function RecoveryAccess({
 }
 
 function AccessFrame({ title, children }: { title: string; children: ReactNode }) {
+  const frame = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    frame.current
+      ?.querySelector<HTMLElement>('button:not(:disabled), input:not(:disabled)')
+      ?.focus();
+    const handleKey = (event: globalThis.KeyboardEvent) => {
+      if (event.target instanceof Node && frame.current?.contains(event.target)) {
+        connectionNavigation(event);
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
   return (
-    <main className="runtime-gate runtime-gate--setup">
+    <main ref={frame} className="runtime-gate runtime-gate--setup connection-entry">
       <img alt="" src="/brand/hearth-mark.png" />
       <h1>{title}</h1>
       {children}

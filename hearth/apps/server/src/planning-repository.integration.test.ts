@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { SqliteAdminRepository } from './admin-repository.js';
 import { openHearthDatabase } from './database.js';
 import { DEMO_HOUSEHOLD_ID } from './demo/seed.js';
-import { SqlitePlanningRepository } from './planning-repository.js';
+import { SqlitePlanningRepository, InMemoryPlanningRepository } from './planning-repository.js';
 import { DEMO_TV_ACTOR, type CommandActor, type RepositoryError } from './repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
 
@@ -39,6 +39,124 @@ async function repositories() {
 }
 
 describe('SQLite household planning repository', () => {
+  it('bounds checked and unchecked list growth without breaking receipts or legacy cleanup', async () => {
+    const { database, planning } = await repositories();
+    const created = await planning.createList(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_capacity_list',
+        name: 'Capacity fixture',
+        type: 'custom',
+        color: '#426848',
+      },
+      adult,
+    );
+    const listId = created.audit.targetId;
+    const input = { requestId: 'request_capacity_first', text: 'First', quantity: null };
+    const first = await planning.addListItem(DEMO_HOUSEHOLD_ID, listId, input, adult);
+    const insert = database.prepare(`INSERT INTO list_items
+      SELECT ?, list_id, ?, ?, quantity, position, ?, checked_by_actor_id, archived_at, created_at, updated_at
+      FROM list_items WHERE id = ?`);
+    database.transaction(() => {
+      for (let index = 1; index < 100; index++)
+        insert.run(
+          `item_capacity_${index}`,
+          `Item ${index}`,
+          `item ${index}`,
+          '2026-08-03T00:00:00.000Z',
+          first.item.id,
+        );
+    })();
+    const receiptCount = database.prepare('SELECT COUNT(*) AS count FROM command_receipts').get();
+    await expect(
+      planning.addListItem(
+        DEMO_HOUSEHOLD_ID,
+        listId,
+        { requestId: 'request_capacity_reject', text: 'Overflow', quantity: null },
+        adult,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(database.prepare('SELECT COUNT(*) AS count FROM command_receipts').get()).toEqual(
+      receiptCount,
+    );
+    expect(await planning.addListItem(DEMO_HOUSEHOLD_ID, listId, input, adult)).toMatchObject({
+      ...first,
+      replayed: true,
+    });
+    await planning.archiveListItem(
+      DEMO_HOUSEHOLD_ID,
+      first.item.id,
+      'request_capacity_archive',
+      adult,
+    );
+    const next = await planning.addListItem(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      { requestId: 'request_capacity_next', text: 'Next', quantity: null },
+      adult,
+    );
+    expect(next.list.items).toHaveLength(100);
+    insert.run('item_legacy_capacity', 'Legacy excess', 'legacy excess', null, next.item.id);
+    expect(
+      (await planning.getLists(DEMO_HOUSEHOLD_ID)).lists.find((item) => item.id === listId)?.items,
+    ).toHaveLength(101);
+    await expect(
+      planning.completeListItem(
+        DEMO_HOUSEHOLD_ID,
+        'item_legacy_capacity',
+        'request_capacity_check_legacy',
+        DEMO_TV_ACTOR,
+      ),
+    ).resolves.toMatchObject({ item: { checked: true } });
+    await planning.clearCheckedListItems(
+      DEMO_HOUSEHOLD_ID,
+      listId,
+      'request_capacity_clear',
+      adult,
+    );
+    await expect(
+      planning.addListItem(
+        DEMO_HOUSEHOLD_ID,
+        listId,
+        { requestId: 'request_capacity_after_clear', text: 'After clear', quantity: null },
+        adult,
+      ),
+    ).resolves.toMatchObject({ item: { text: 'After clear' } });
+  });
+
+  it('uses the same capacity and replay policy in the demo backend', async () => {
+    const planning = new InMemoryPlanningRepository();
+    const created = await planning.createList(
+      DEMO_HOUSEHOLD_ID,
+      {
+        requestId: 'request_demo_capacity_list',
+        name: 'Capacity fixture',
+        type: 'custom',
+        color: '#426848',
+      },
+      adult,
+    );
+    const listId = created.audit.targetId;
+    const first = { requestId: 'request_demo_capacity_0', text: 'Item 0', quantity: null };
+    for (let index = 0; index < 100; index++)
+      await planning.addListItem(
+        DEMO_HOUSEHOLD_ID,
+        listId,
+        { ...first, requestId: `request_demo_capacity_${index}`, text: `Item ${index}` },
+        adult,
+      );
+    await expect(
+      planning.addListItem(
+        DEMO_HOUSEHOLD_ID,
+        listId,
+        { requestId: 'request_demo_capacity_excess', text: 'Excess', quantity: null },
+        adult,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect((await planning.addListItem(DEMO_HOUSEHOLD_ID, listId, first, adult)).replayed).toBe(
+      true,
+    );
+  });
   it('adds, checks and undoes a list item idempotently while rejecting a duplicate', async () => {
     const { database, planning } = await repositories();
     const added = await planning.addListItem(

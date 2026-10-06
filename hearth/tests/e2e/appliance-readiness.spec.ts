@@ -23,7 +23,7 @@ const adminRoutes = [
   { path: '/admin/people', title: 'People' },
   { path: '/admin/access', title: 'Adult access' },
   { path: '/admin/today', title: 'Today & notices' },
-  { path: '/admin/televisions', title: 'Paired televisions' },
+  { path: '/admin/televisions', title: 'Phones & screens' },
   { path: '/admin/connections', title: 'Connections' },
   { path: '/admin/connections/calendar', title: 'Calendar' },
   { path: '/admin/connections/home-assistant', title: 'Home Assistant' },

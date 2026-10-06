@@ -7,7 +7,7 @@ import {
   type ReminderOverview,
 } from '@hearth/shared';
 
-import { createRequestId, demoAdminHeaders, householdApiBase, request } from './core';
+import { demoAdminHeaders, householdApiBase, request } from './core';
 
 export interface ReminderDetails {
   title: string;
@@ -30,19 +30,27 @@ export const remindersApi = {
       `${householdApiBase()}/reminders?includeCompleted=${includeCompleted ? 'true' : 'false'}`,
       ReminderOverviewSchema,
     ),
-  create: (details: ReminderDetails): Promise<ReminderCommandResult> =>
+  create: (details: ReminderDetails, requestId: string): Promise<ReminderCommandResult> =>
     request(`${householdApiBase()}/reminders`, ReminderCommandResultSchema, {
       method: 'POST',
       headers: demoAdminHeaders,
-      body: JSON.stringify(detailsBody(details, createRequestId('reminder_create'))),
+      body: JSON.stringify(detailsBody(details, requestId)),
     }),
-  update: (reminderId: string, details: ReminderDetails): Promise<ReminderCommandResult> =>
+  update: (
+    reminderId: string,
+    details: ReminderDetails,
+    requestId: string,
+  ): Promise<ReminderCommandResult> =>
     request(`${householdApiBase()}/reminders/${reminderId}`, ReminderCommandResultSchema, {
       method: 'PUT',
       headers: demoAdminHeaders,
-      body: JSON.stringify(detailsBody(details, createRequestId('reminder_update'))),
+      body: JSON.stringify(detailsBody(details, requestId)),
     }),
-  setCompletion: (reminderId: string, isCompleted: boolean): Promise<ReminderCommandResult> =>
+  setCompletion: (
+    reminderId: string,
+    isCompleted: boolean,
+    requestId: string,
+  ): Promise<ReminderCommandResult> =>
     request(
       `${householdApiBase()}/reminders/${reminderId}/completion`,
       ReminderCommandResultSchema,
@@ -50,19 +58,19 @@ export const remindersApi = {
         method: 'PUT',
         headers: demoAdminHeaders,
         body: JSON.stringify({
-          requestId: createRequestId(isCompleted ? 'reminder_complete' : 'reminder_reopen'),
+          requestId,
           isCompleted,
         }),
       },
     ),
-  delete: (reminderId: string): Promise<ReminderDeletionResult> =>
+  delete: (reminderId: string, requestId: string): Promise<ReminderDeletionResult> =>
     request(
       `${householdApiBase()}/reminders/${reminderId}/deletions`,
       ReminderDeletionResultSchema,
       {
         method: 'POST',
         headers: demoAdminHeaders,
-        body: JSON.stringify({ requestId: createRequestId('reminder_delete') }),
+        body: JSON.stringify({ requestId }),
       },
     ),
 };

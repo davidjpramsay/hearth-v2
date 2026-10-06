@@ -13,6 +13,7 @@ import {
   reassignChore,
   skipChore,
   sortByStart,
+  startOfLocalWeek,
   undoChore,
 } from '@hearth/core';
 import {
@@ -226,6 +227,7 @@ export class SqliteHearthRepository implements HearthRepository {
     return {
       householdId,
       locationLabel: this.demoSeedEnabled ? 'Baldivis, WA' : null,
+      configured: this.weatherProvider.configured,
       timezone: household.timezone,
       generatedAt: this.clock.now().toISOString(),
       updatedAt: snapshot.updatedAt,
@@ -234,7 +236,9 @@ export class SqliteHearthRepository implements HearthRepository {
         snapshot.freshness === 'stale'
           ? 'Updated earlier · Trying again quietly.'
           : snapshot.freshness === 'offline'
-            ? 'Weather is not set up.'
+            ? this.weatherProvider.configured
+              ? 'Weather is temporarily unavailable.'
+              : 'Weather is not set up.'
             : null,
       current: snapshot.current?.details ?? null,
       hourly: [...snapshot.hourly],
@@ -667,6 +671,12 @@ export class SqliteHearthRepository implements HearthRepository {
   }
 
   private generateOccurrences(householdId: string, localDate: string): void {
+    // Read dates are not permission to allocate arbitrary permanent snapshots.
+    // Cover the eight-week review selector and one complete upcoming week.
+    const currentWeek = startOfLocalWeek(this.currentLocalDate(householdId));
+    if (localDate < addLocalDays(currentWeek, -49) || localDate > addLocalDays(currentWeek, 13)) {
+      return;
+    }
     const rows = this.database
       .prepare(
         `SELECT t.id, t.title, t.description, t.recurrence_rule, t.routine_label,
@@ -687,8 +697,12 @@ export class SqliteHearthRepository implements HearthRepository {
        VALUES (?, ?, ?, ?, 'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
     );
     const demoByTitleAndMember = new Map(
-      createDemoSeed().chores.map((chore) => [`${chore.title}:${chore.assignee.id}`, chore]),
+      (this.demoSeedEnabled ? createDemoSeed().chores : []).map((chore) => [
+        `${chore.title}:${chore.assignee.id}`,
+        chore,
+      ]),
     );
+    const materializedAt = this.clock.now().toISOString();
     const transaction = this.database.transaction(() => {
       for (const row of rows) {
         if (!isChoreDueOnDate(row.recurrence_rule, localDate, row.active_from, row.active_until)) {
@@ -700,7 +714,9 @@ export class SqliteHearthRepository implements HearthRepository {
             ? demoOccurrence.id
             : occurrenceId(row.id, row.member_id, localDate);
         const isSeedCompletion =
-          localDate === DEMO_LOCAL_DATE && demoOccurrence?.state === 'completed';
+          this.demoSeedEnabled &&
+          localDate === DEMO_LOCAL_DATE &&
+          demoOccurrence?.state === 'completed';
         insert.run(
           id,
           householdId,
@@ -717,8 +733,8 @@ export class SqliteHearthRepository implements HearthRepository {
           isSeedCompletion ? demoOccurrence.completionId : null,
           isSeedCompletion ? demoOccurrence.completedAt : null,
           isSeedCompletion ? 'system_seed' : null,
-          DEMO_NOW,
-          DEMO_NOW,
+          materializedAt,
+          materializedAt,
         );
       }
     });

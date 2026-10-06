@@ -12,7 +12,7 @@ import {
 import { choresApi as hearthApi, type ChoreTemplateInput } from '../api/chores';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { RoutineDayPicker } from '../components/RoutineDayPicker';
@@ -100,9 +100,34 @@ export function RoutinesSettingsScreen() {
     },
   });
 
-  if (admin.isPending || templates.isPending) return <AdminLoading />;
-  if (admin.isError) return <AdminError message={admin.error.message} />;
-  if (templates.isError) return <AdminError message={templates.error.message} />;
+  if (admin.isPending || templates.isPending)
+    return (
+      <AdminQueryState
+        title="Routines and chores"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+      />
+    );
+  if (admin.data === undefined)
+    return (
+      <AdminQueryState
+        title="Routines and chores"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={admin.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void admin.refetch()}
+      />
+    );
+  if (templates.data === undefined)
+    return (
+      <AdminQueryState
+        title="Routines and chores"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={templates.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void templates.refetch()}
+      />
+    );
 
   function addRoutine(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

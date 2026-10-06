@@ -10,7 +10,7 @@ import { adminApi as hearthApi } from '../api/admin';
 import { HearthApiError } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { authenticateWithPasskey } from '../auth/passkeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { ApplianceUpdateCard } from '../components/ApplianceUpdateCard';
 import { Icon, type IconName } from '../components/Icon';
 import { focusById } from '../focus/focusGraph';
@@ -102,8 +102,15 @@ export function SystemHealthScreen() {
     if (createBackup.isError) focusById('system-backup-retry');
   }, [createBackup.isError]);
 
-  if (query.isPending) return <AdminLoading />;
-  if (query.isError) return <AdminError message={query.error.message} />;
+  if (query.isPending) return <AdminQueryState title="System health" />;
+  if (query.data === undefined)
+    return (
+      <AdminQueryState
+        title="System health"
+        error={query.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void query.refetch()}
+      />
+    );
 
   const status = query.data;
   const healthy = status.database.state === 'ready' && status.backup.state === 'ready';

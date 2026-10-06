@@ -54,3 +54,19 @@ export function eventsForDay(
     );
   });
 }
+
+export function indexMonthEvents(
+  events: CalendarEvent[],
+  dates: readonly string[],
+): Map<string, CalendarEvent[]> {
+  const indexed = new Map<string, CalendarEvent[]>();
+  for (const event of events) {
+    for (const date of dates.slice(0, 42)) {
+      if (date < event.startLocalDate || date > event.endLocalDate) continue;
+      const existing = indexed.get(date);
+      if (existing === undefined) indexed.set(date, [event]);
+      else existing.push(event);
+    }
+  }
+  return indexed;
+}

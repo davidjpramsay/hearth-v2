@@ -84,7 +84,27 @@ export function AdultAccessScreen() {
   }
 
   return (
-    <AdminPage title="Adult access">
+    <AdminPage
+      title="Adult access"
+      backTo="/admin/televisions"
+      backLabel="Back to Phones & screens"
+    >
+      <div className="adult-access-intro">
+        <span>
+          <Icon name="shield" />
+        </span>
+        <div>
+          <h2>Connect a phone or computer</h2>
+          <p>
+            Use the device you want to connect. An adult signs in here, then saves a passkey for the
+            right person below.
+          </p>
+          <p>
+            If this is another adult’s device, sign out afterwards so they can sign in with their
+            own passkey.
+          </p>
+        </div>
+      </div>
       {runtime.mode === 'private' ? null : (
         <div className="admin-demo-note">
           Demo preview: real passkeys and recovery codes are available only on the private HTTPS
@@ -147,8 +167,8 @@ export function AdultAccessScreen() {
 
       <form className="adult-access-add" onSubmit={submitPasskey}>
         <div>
-          <h2>Add a passkey</h2>
-          <p>Use the adult’s device.</p>
+          <h2>Save a passkey on this device</h2>
+          <p>Choose who will use it.</p>
         </div>
         <label>
           Adult
@@ -163,7 +183,7 @@ export function AdultAccessScreen() {
         <label>
           Passkey name
           <input
-            defaultValue="My iPhone"
+            defaultValue="My device"
             disabled={!available}
             maxLength={80}
             name="passkeyLabel"

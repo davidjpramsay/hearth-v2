@@ -1,16 +1,25 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Archive, ChevronDown, Clock3, Copy, RotateCcw, Search, Star } from 'lucide-react';
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import type { MealPlan, MealPlanEntryInput, SavedMeal } from '@hearth/shared';
 
-import { createRequestId } from '../api/core';
+import { useCommandMutation } from '../hooks/useCommandMutation';
+import './MealsSettingsScreen.css';
 import { mealsApi as hearthApi } from '../api/meals';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useMealPlanQuery, useSavedMealLibraryQuery } from '../hooks/useMealQueries';
 import { useHearthRuntime } from '../runtime/context';
+import { confirmDiscardChanges, useUnsavedChanges } from '../hooks/useUnsavedChanges';
+
+interface DinnerDraft {
+  mealName: string;
+  savedMealId: string;
+  note: string;
+  base: string;
+}
 
 interface SavedMealFields {
   name: string;
@@ -19,15 +28,14 @@ interface SavedMealFields {
   favourite: boolean;
 }
 
-type MealManagementAction = { requestId: string } & (
+type MealManagementIntent =
   | { kind: 'save-week'; startDate: string; entries: MealPlanEntryInput[] }
   | { kind: 'clear-week'; startDate: string }
   | { kind: 'copy-week'; sourceStartDate: string; targetStartDate: string }
   | { kind: 'create-meal'; fields: SavedMealFields }
   | { kind: 'update-meal'; mealId: string; fields: SavedMealFields }
   | { kind: 'archive-meal'; mealId: string; name: string }
-  | { kind: 'restore-meal'; mealId: string; name: string }
-);
+  | { kind: 'restore-meal'; mealId: string; name: string };
 
 export function MealsSettingsScreen() {
   const { weekStart } = useHearthRuntime();
@@ -38,15 +46,34 @@ export function MealsSettingsScreen() {
   const [clearConfirmation, setClearConfirmation] = useState(false);
   const [archiveConfirmation, setArchiveConfirmation] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, DinnerDraft>>({});
+  const dirty = Object.keys(drafts).length > 0;
+  useUnsavedChanges(dirty);
   const plan = useMealPlanQuery(startDate);
   const library = useSavedMealLibraryQuery();
   const queryClient = useQueryClient();
 
-  const management = useMutation({
-    mutationFn: runMealManagementAction,
+  const management = useCommandMutation('meal_management', {
+    mutationFn: (input: MealManagementIntent, requestId: string) =>
+      runMealManagementAction({ ...input, requestId }),
     onSuccess: async ({ plan: updatedPlan, message }, action) => {
       if (updatedPlan !== undefined) {
         queryClient.setQueryData(queryKeys.meals(updatedPlan.startDate), updatedPlan);
+        setDrafts((current) => {
+          if (action.kind !== 'save-week') return {};
+          return Object.fromEntries(
+            Object.entries(current).flatMap(([date, draft]) => {
+              const day = updatedPlan.days.find((row) => row.localDate === date);
+              if (day === undefined) return [[date, draft]];
+              const submitted = action.entries.find((row) => row.localDate === date);
+              const unchanged =
+                draft.mealName.trim() === (submitted?.mealName ?? '') &&
+                draft.savedMealId === (submitted?.savedMealId ?? '') &&
+                draft.note.trim() === (submitted?.note ?? '');
+              return unchanged ? [] : [[date, { ...draft, base: dinnerRevision(day) }]];
+            }),
+          );
+        });
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.savedMealLibrary }),
@@ -61,9 +88,34 @@ export function MealsSettingsScreen() {
     },
   });
 
-  if (plan.isPending || library.isPending) return <AdminLoading />;
-  if (plan.isError) return <AdminError message={plan.error.message} />;
-  if (library.isError) return <AdminError message={library.error.message} />;
+  if (plan.isPending || library.isPending)
+    return (
+      <AdminQueryState
+        title="Meal planning"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+      />
+    );
+  if (plan.data === undefined)
+    return (
+      <AdminQueryState
+        title="Meal planning"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={plan.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void plan.refetch()}
+      />
+    );
+  if (library.data === undefined)
+    return (
+      <AdminQueryState
+        title="Meal planning"
+        backTo="/admin/planning"
+        backLabel="Back to Family planning"
+        error={library.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void library.refetch()}
+      />
+    );
 
   const currentPlan = plan.data;
   const savedMealLibrary = library.data;
@@ -74,10 +126,38 @@ export function MealsSettingsScreen() {
       meal.name.toLocaleLowerCase('en-AU').includes(normalisedSearch) ||
       (meal.description?.toLocaleLowerCase('en-AU').includes(normalisedSearch) ?? false),
   );
-  const planRevision = mealPlanRevision(currentPlan);
+  const conflictingDates = currentPlan.days
+    .filter((day) => {
+      const draft = drafts[day.localDate];
+      return draft !== undefined && draft.base !== dinnerRevision(day);
+    })
+    .map((day) => day.localDate);
+
+  function editDinner(day: MealPlan['days'][number], fields: Partial<DinnerDraft>) {
+    const dinner = day.entries.find((entry) => entry.slot === 'dinner');
+    setDrafts((current) => ({
+      ...current,
+      [day.localDate]: {
+        mealName: dinner?.mealName ?? '',
+        savedMealId: dinner?.savedMealId ?? '',
+        note: dinner?.note ?? '',
+        base: dinnerRevision(day),
+        ...current[day.localDate],
+        ...fields,
+      },
+    }));
+    setConfirmation(null);
+  }
+
+  function navigateWeek(next: string) {
+    if (!confirmDiscardChanges(dirty) || management.isPending) return;
+    setDrafts({});
+    setStartDate(next);
+  }
 
   function saveWeek(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (conflictingDates.length > 0) return;
     const data = new FormData(event.currentTarget);
     const entries = currentPlan.days.flatMap<MealPlanEntryInput>((day) => {
       const mealName = String(data.get(`mealName:${day.localDate}`) ?? '').trim();
@@ -100,7 +180,7 @@ export function MealsSettingsScreen() {
     }
     management.mutate({
       kind: 'save-week',
-      requestId: createRequestId('meal_week_save'),
+
       startDate,
       entries,
     });
@@ -110,7 +190,7 @@ export function MealsSettingsScreen() {
     event.preventDefault();
     management.mutate({
       kind: 'create-meal',
-      requestId: createRequestId('saved_meal_create'),
+
       fields: savedMealFields(new FormData(event.currentTarget)),
     });
   }
@@ -126,11 +206,7 @@ export function MealsSettingsScreen() {
         <div className="meal-settings-error">
           <AdminError message={management.error.message} />
           {management.variables === undefined ? null : (
-            <button
-              className="admin-secondary"
-              onClick={() => management.mutate(management.variables)}
-              type="button"
-            >
+            <button className="admin-secondary" onClick={management.retryCommand} type="button">
               Try again
             </button>
           )}
@@ -146,7 +222,7 @@ export function MealsSettingsScreen() {
             <button
               aria-label="Earlier week"
               className="admin-secondary"
-              onClick={() => setStartDate((current) => addDays(current, -7))}
+              onClick={() => navigateWeek(addDays(startDate, -7))}
               type="button"
             >
               <Icon name="chevron-left" />
@@ -154,7 +230,7 @@ export function MealsSettingsScreen() {
             {startDate === weekStart ? null : (
               <button
                 className="admin-secondary"
-                onClick={() => setStartDate(weekStart)}
+                onClick={() => navigateWeek(weekStart)}
                 type="button"
               >
                 This week
@@ -163,7 +239,7 @@ export function MealsSettingsScreen() {
             <button
               aria-label="Later week"
               className="admin-secondary"
-              onClick={() => setStartDate((current) => addDays(current, 7))}
+              onClick={() => navigateWeek(addDays(startDate, 7))}
               type="button"
             >
               <Icon name="chevron-right" />
@@ -171,10 +247,50 @@ export function MealsSettingsScreen() {
           </div>
         </header>
 
-        <form className="meal-week-settings__form" key={planRevision} onSubmit={saveWeek}>
+        {conflictingDates.length === 0 ? null : (
+          <div className="admin-feedback" role="alert">
+            These dinners changed elsewhere. Your edits are kept.
+            <button
+              className="admin-secondary"
+              type="button"
+              onClick={() =>
+                setDrafts((current) =>
+                  Object.fromEntries(
+                    Object.entries(current).filter(([date]) => !conflictingDates.includes(date)),
+                  ),
+                )
+              }
+            >
+              Use latest dinners
+            </button>
+            <button
+              className="admin-secondary"
+              type="button"
+              onClick={() =>
+                setDrafts((current) =>
+                  Object.fromEntries(
+                    Object.entries(current).map(([date, draft]) => {
+                      const day = currentPlan.days.find(
+                        (candidate) => candidate.localDate === date,
+                      );
+                      return [
+                        date,
+                        { ...draft, base: day === undefined ? draft.base : dinnerRevision(day) },
+                      ];
+                    }),
+                  ),
+                )
+              }
+            >
+              Keep my edits
+            </button>
+          </div>
+        )}
+        <form className="meal-week-settings__form" onSubmit={saveWeek}>
           <div className="meal-week-settings__days">
             {currentPlan.days.map((day) => {
               const dinner = day.entries.find((entry) => entry.slot === 'dinner') ?? null;
+              const draft = drafts[day.localDate];
               const hasNote = dinner?.note !== null && dinner?.note !== undefined;
               return (
                 <article className="meal-night-editor" key={day.localDate}>
@@ -186,7 +302,9 @@ export function MealsSettingsScreen() {
                     <span>Dinner</span>
                     <input
                       aria-label={`${day.dayLabel} dinner`}
-                      defaultValue={dinner?.mealName ?? ''}
+                      disabled={management.isPending}
+                      value={draft?.mealName ?? dinner?.mealName ?? ''}
+                      onChange={(event) => editDinner(day, { mealName: event.target.value })}
                       maxLength={160}
                       name={`mealName:${day.localDate}`}
                       placeholder="Nothing planned"
@@ -202,15 +320,19 @@ export function MealsSettingsScreen() {
                         <span>Saved meal</span>
                         <select
                           aria-label={`${day.dayLabel} saved meal`}
-                          defaultValue={dinner?.savedMealId ?? ''}
+                          disabled={management.isPending}
+                          value={draft?.savedMealId ?? dinner?.savedMealId ?? ''}
                           name={`savedMealId:${day.localDate}`}
-                          onChange={(event) =>
-                            applySavedMealToDinner(
-                              event,
-                              day.localDate,
-                              savedMealLibrary.activeMeals,
-                            )
-                          }
+                          onChange={(event) => {
+                            const savedMealId = event.target.value;
+                            const meal = savedMealLibrary.activeMeals.find(
+                              (candidate) => candidate.id === savedMealId,
+                            );
+                            editDinner(day, {
+                              savedMealId,
+                              ...(meal === undefined ? {} : { mealName: meal.name }),
+                            });
+                          }}
                         >
                           <option value="">Custom dinner</option>
                           {savedMealLibrary.activeMeals.map((meal) => (
@@ -225,7 +347,9 @@ export function MealsSettingsScreen() {
                         <span>Note</span>
                         <input
                           aria-label={`${day.dayLabel} dinner note`}
-                          defaultValue={dinner?.note ?? ''}
+                          disabled={management.isPending}
+                          value={draft?.note ?? dinner?.note ?? ''}
+                          onChange={(event) => editDinner(day, { note: event.target.value })}
                           maxLength={240}
                           name={`note:${day.localDate}`}
                           placeholder="Optional"
@@ -237,7 +361,11 @@ export function MealsSettingsScreen() {
               );
             })}
           </div>
-          <button className="admin-submit" disabled={management.isPending} type="submit">
+          <button
+            className="admin-submit"
+            disabled={management.isPending || conflictingDates.length > 0}
+            type="submit"
+          >
             {management.isPending && management.variables?.kind === 'save-week'
               ? 'Saving week…'
               : 'Save week'}
@@ -266,7 +394,7 @@ export function MealsSettingsScreen() {
                   onClick={() =>
                     management.mutate({
                       kind: 'copy-week',
-                      requestId: createRequestId('meal_week_copy'),
+
                       sourceStartDate: addDays(startDate, -7),
                       targetStartDate: startDate,
                     })
@@ -306,7 +434,7 @@ export function MealsSettingsScreen() {
                   onClick={() =>
                     management.mutate({
                       kind: 'clear-week',
-                      requestId: createRequestId('meal_week_clear'),
+
                       startDate,
                     })
                   }
@@ -383,7 +511,7 @@ export function MealsSettingsScreen() {
                   }
                   management.mutate({
                     kind: 'archive-meal',
-                    requestId: createRequestId('saved_meal_archive'),
+
                     mealId: meal.id,
                     name: meal.name,
                   });
@@ -392,7 +520,7 @@ export function MealsSettingsScreen() {
                 onSave={(fields) =>
                   management.mutate({
                     kind: 'update-meal',
-                    requestId: createRequestId('saved_meal_update'),
+
                     mealId: meal.id,
                     fields,
                   })
@@ -417,7 +545,7 @@ export function MealsSettingsScreen() {
                   onClick={() =>
                     management.mutate({
                       kind: 'restore-meal',
-                      requestId: createRequestId('saved_meal_restore'),
+
                       mealId: meal.id,
                       name: meal.name,
                     })
@@ -547,25 +675,14 @@ function savedMealFields(data: FormData): SavedMealFields {
   };
 }
 
-function applySavedMealToDinner(
-  event: ChangeEvent<HTMLSelectElement>,
-  localDate: string,
-  meals: readonly SavedMeal[],
-) {
-  const selected = meals.find((meal) => meal.id === event.currentTarget.value);
-  if (selected === undefined) return;
-  const input = event.currentTarget.form?.elements.namedItem(`mealName:${localDate}`);
-  if (input instanceof HTMLInputElement) input.value = selected.name;
+function dinnerRevision(day: MealPlan['days'][number]): string {
+  const dinner = day.entries.find((entry) => entry.slot === 'dinner');
+  return JSON.stringify([dinner?.mealName ?? '', dinner?.savedMealId ?? '', dinner?.note ?? '']);
 }
 
-function mealPlanRevision(plan: MealPlan): string {
-  return `${plan.startDate}:${plan.days
-    .flatMap((day) => day.entries)
-    .map((entry) => `${entry.id}:${entry.mealName}:${entry.note ?? ''}`)
-    .join('|')}`;
-}
-
-async function runMealManagementAction(action: MealManagementAction): Promise<{
+async function runMealManagementAction(
+  action: MealManagementIntent & { requestId: string },
+): Promise<{
   plan?: MealPlan;
   message: string;
 }> {

@@ -5,7 +5,7 @@ set -eu
 agent=/usr/local/sbin/hearth-v2-update-agent
 pid_file=/var/run/hearth-v2-update-agent.pid
 log_file=/var/log/hearth-v2-update-agent.log
-status_file=/volume1/docker/hearth-v2/update-agent/status.json
+status_file=/usr/local/etc/hearth-v2/control/status.json
 
 pid_alive() {
   test -r "$pid_file" || return 1

@@ -46,11 +46,6 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
         path: '/admin/people',
       },
       {
-        title: 'Adult access',
-        icon: 'shield',
-        path: '/admin/access',
-      },
-      {
         title: 'Today screen & notices',
         icon: 'today',
         path: '/admin/today',
@@ -66,7 +61,7 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
         path: '/admin/connections',
       },
       {
-        title: 'Televisions',
+        title: 'Phones & screens',
         icon: 'television',
         path: '/admin/televisions',
       },

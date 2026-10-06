@@ -1,0 +1,18 @@
+import type { QueryClient } from '@tanstack/react-query';
+import { runtimeApi } from '../api/runtime';
+import { clearHearthClient } from '../api/core';
+
+export async function signOutAndClear(queryClient: QueryClient): Promise<void> {
+  await runtimeApi.signOut();
+  window.dispatchEvent(new Event('hearth:sign-out'));
+  await queryClient.cancelQueries();
+  queryClient.clear();
+  clearHearthClient();
+  // Do not let a back/forward-cache restoration briefly reveal the old document.
+  document.documentElement.style.visibility = 'hidden';
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) window.location.reload();
+  });
+  // A new document also unmounts private views and closes retained realtime streams.
+  window.location.replace('/');
+}

@@ -10,7 +10,7 @@ import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useMonthQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
-import { eventColorVariables } from '../utils/calendar';
+import { eventColorVariables, indexMonthEvents } from '../utils/calendar';
 import { formatEventTime } from '../utils/date';
 
 const WEEKDAYS = [
@@ -43,8 +43,12 @@ export function MonthScreen({
   const online = useOnlineStatus(scenario === 'offline');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const eventsByDate = useMemo(
-    () => indexEventsByDate(query.data?.events ?? []),
-    [query.data?.events],
+    () =>
+      indexMonthEvents(
+        query.data?.events ?? [],
+        (query.data?.days ?? []).map((day) => day.localDate),
+      ),
+    [query.data?.events, query.data?.days],
   );
 
   if (preparing || query.isPending) return <LoadingState />;
@@ -318,26 +322,6 @@ function MonthLegend({ calendars }: { calendars: CalendarSource[] }) {
       </div>
     </section>
   );
-}
-
-function indexEventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
-  const indexed = new Map<string, CalendarEvent[]>();
-  for (const event of events) {
-    let date = event.startLocalDate;
-    while (date <= event.endLocalDate) {
-      const existing = indexed.get(date);
-      if (existing === undefined) indexed.set(date, [event]);
-      else existing.push(event);
-      date = nextLocalDate(date);
-    }
-  }
-  return indexed;
-}
-
-function nextLocalDate(localDate: string): string {
-  const date = new Date(`${localDate}T12:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
 }
 
 function dayLabel(localDate: string, events: CalendarEvent[]): string {

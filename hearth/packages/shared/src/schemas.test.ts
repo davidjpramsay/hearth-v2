@@ -20,6 +20,7 @@ import {
   ChoreCommandResultSchema,
   CommandRequestSchema,
   LocalDateSchema,
+  TimezoneSchema,
   HouseholdListsSchema,
   HomeStatusSchema,
   IntegrationStateSchema,
@@ -63,6 +64,11 @@ import {
 } from './schemas.js';
 
 describe('shared wire schemas', () => {
+  it('rejects unsupported timezone settings before they can break the household clock', () => {
+    expect(TimezoneSchema.parse('Australia/Perth')).toBe('Australia/Perth');
+    expect(TimezoneSchema.parse('UTC')).toBe('UTC');
+    expect(TimezoneSchema.safeParse('Not/A/Timezone').success).toBe(false);
+  });
   it('keeps appliance updates pinned to an exact release without command or credential fields', () => {
     const version = 'a'.repeat(40);
     const status = ApplianceUpdateStatusSchema.parse({
@@ -389,6 +395,10 @@ describe('shared wire schemas', () => {
   it('requires explicit local dates', () => {
     expect(LocalDateSchema.parse('2026-08-03')).toBe('2026-08-03');
     expect(() => LocalDateSchema.parse('03/08/2026')).toThrow();
+    for (const date of ['2026-02-29', '2026-02-30', '2026-13-01', '9999-99-99']) {
+      expect(LocalDateSchema.safeParse(date).success).toBe(false);
+    }
+    expect(LocalDateSchema.parse('2024-02-29')).toBe('2024-02-29');
   });
 
   it('accepts only HTTPS calendar setup and unique tested calendar selections', () => {

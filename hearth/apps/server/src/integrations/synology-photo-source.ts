@@ -1,5 +1,18 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import {
+  lstat,
+  mkdir,
+  open,
+  readFile,
+  realpath,
+  readdir,
+  rename,
+  rm,
+  stat,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 import type Database from 'better-sqlite3';
@@ -526,10 +539,23 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
       };
     }
     try {
+      if (this.configuration.sourceDirectory === null)
+        throw new Error('Photo source is unavailable.');
+      const sourceBytes = await readApprovedPhoto(
+        this.configuration.sourceDirectory,
+        file.absolutePath,
+      );
+      const metadata = await sharp(sourceBytes, {
+        failOn: 'error',
+        limitInputPixels: MAX_INPUT_PIXELS,
+      }).metadata();
+      if (metadata.format === undefined || !ACCEPTED_UPLOAD_IMAGE_FORMATS.has(metadata.format)) {
+        throw new Error('Photo is not a supported raster image.');
+      }
       const displayTemporary = this.derivativePath(`${derivativeKey}.tmp-${randomUUID()}`);
       const thumbnailTemporary = this.derivativePath(`${thumbnailKey}.tmp-${randomUUID()}`);
       try {
-        const displayInfo = await sharp(file.absolutePath, {
+        const displayInfo = await sharp(sourceBytes, {
           failOn: 'error',
           limitInputPixels: MAX_INPUT_PIXELS,
         })
@@ -542,7 +568,7 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
           })
           .webp({ quality: 84, effort: 4, smartSubsample: true })
           .toFile(displayTemporary);
-        await sharp(file.absolutePath, {
+        await sharp(sourceBytes, {
           failOn: 'error',
           limitInputPixels: MAX_INPUT_PIXELS,
         })
@@ -990,6 +1016,59 @@ async function discoverSourceFiles(root: string): Promise<SourceFile[]> {
   };
   await visit(sourceRoot, 0);
   return files;
+}
+
+/** Pin a regular file and decode these same bounded bytes, never reopen a mutable pathname. */
+export async function readApprovedPhoto(root: string, path: string): Promise<Buffer> {
+  const canonicalRoot = await realpath(root);
+  const expectedPath = join(canonicalRoot, relative(resolve(root), resolve(path)));
+  const canonicalPath = await realpath(path);
+  if (canonicalPath !== expectedPath || !canonicalPath.startsWith(`${canonicalRoot}${sep}`)) {
+    throw new Error('Photo moved outside the approved folder.');
+  }
+  const file = await open(
+    canonicalPath,
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
+  try {
+    const details = await file.stat();
+    const currentPath = await realpath(path);
+    const current = await lstat(currentPath);
+    if (
+      !details.isFile() ||
+      details.size <= 0 ||
+      details.size > MAX_SOURCE_BYTES ||
+      currentPath !== expectedPath ||
+      current.dev !== details.dev ||
+      current.ino !== details.ino
+    ) {
+      throw new Error('Photo changed before it could be opened safely.');
+    }
+    if (
+      process.platform === 'linux' &&
+      (await realpath(`/proc/self/fd/${file.fd}`)) !== expectedPath
+    ) {
+      throw new Error('Photo file is outside the approved folder.');
+    }
+    const bytes = Buffer.allocUnsafe(details.size + 1);
+    let count = 0;
+    while (count < bytes.length) {
+      const read = await file.read(bytes, count, bytes.length - count, count);
+      if (read.bytesRead === 0) break;
+      count += read.bytesRead;
+    }
+    const after = await file.stat();
+    if (
+      count !== details.size ||
+      after.size !== details.size ||
+      after.mtimeMs !== details.mtimeMs
+    ) {
+      throw new Error('Photo changed while it was being read.');
+    }
+    return bytes.subarray(0, count);
+  } finally {
+    await file.close();
+  }
 }
 
 function sourceSummary(source: PhotoSourceRow | null, visibleCount: number): PhotoSourceSummary {

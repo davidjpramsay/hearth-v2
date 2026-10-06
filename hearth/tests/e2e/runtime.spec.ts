@@ -68,11 +68,10 @@ test('private first use is honest and does not request demo household data', asy
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
   await expect(page.getByRole('heading', { name: 'Set up this Hearth' })).toBeVisible();
-  await expect(page.getByText('Finish setup on your iPhone')).toBeVisible();
-  await expect(page.locator('form')).toBeHidden();
+  await expect(page.locator('form')).toBeVisible();
   expect(householdRequests).toBe(0);
   await captureEvidence(page, {
-    path: resolve(evidence, 'private-first-use-tv-1080.png'),
+    path: resolve(evidence, 'private-first-use-desktop-1080.png'),
     animations: 'disabled',
   });
 
@@ -124,11 +123,9 @@ test('configured private Hearth requires a passkey before revealing household da
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
-  await expect(page.getByRole('heading', { name: 'Sign in to open Hearth' })).toBeVisible();
-  await expect(page.getByText('Use an adult passkey.')).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Pair this screen as a television' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connect to Hearth' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Phone or computer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect shared screen' })).toBeVisible();
   expect(householdRequests).toBe(0);
   await captureEvidence(page, {
     path: resolve(evidence, 'private-sign-in-tv-1080.png'),
@@ -141,6 +138,7 @@ test('configured private Hearth requires a passkey before revealing household da
     path: resolve(evidence, 'private-sign-in-phone-portrait.png'),
     animations: 'disabled',
   });
+  await page.getByText('Trouble signing in?', { exact: true }).click();
   await page.getByRole('button', { name: 'Use a recovery code' }).click();
   await expect(page.getByRole('heading', { name: 'Recover adult access' })).toBeVisible();
   await expect(page.getByLabel('Recovery code')).toHaveAttribute('autocomplete', 'off');
@@ -150,7 +148,7 @@ test('configured private Hearth requires a passkey before revealing household da
     animations: 'disabled',
   });
   await page.getByRole('button', { name: 'Back to sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Sign in to open Hearth' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connect to Hearth' })).toBeVisible();
 });
 
 test('configured private Hearth offers browser television pairing without exposing its secret', async ({
@@ -206,11 +204,14 @@ test('configured private Hearth offers browser television pairing without exposi
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
-  await page.getByRole('button', { name: 'Pair this screen as a television' }).click();
+  await page.getByRole('button', { name: 'Connect shared screen' }).click();
   await expect(page.getByRole('heading', { name: 'Connect this screen' })).toBeVisible();
   await expect(page.getByLabel('Pairing code M7PAIR')).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Waiting for approval…');
-  await expect(page.getByRole('button', { name: 'Back to sign in' })).toBeFocused();
+  await expect(page.getByRole('status')).toHaveText('Waiting for your phone…');
+  await expect(page.getByRole('button', { name: 'Cancel connection' })).toBeFocused();
+  await expect(page.getByText(/More → Phones & screens/)).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Cancel connection' })).toBeFocused();
   expect(submittedSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
   await expect(page.locator('body')).not.toContainText(submittedSecret);
   expect(page.url()).not.toContain(submittedSecret);
@@ -225,8 +226,9 @@ test('configured private Hearth offers browser television pairing without exposi
     animations: 'disabled',
   });
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('heading', { name: 'Sign in to open Hearth' })).toBeVisible();
-  const pairButton = page.getByRole('button', { name: 'Pair this screen as a television' });
+  await expect(page.getByRole('heading', { name: 'Connect to Hearth' })).toBeVisible();
+  const pairButton = page.getByRole('button', { name: 'Connect shared screen' });
+  await expect(pairButton).toBeFocused();
   await pairButton.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Connect this screen' })).toBeVisible();

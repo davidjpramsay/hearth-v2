@@ -49,3 +49,13 @@ test('every external workflow action is pinned to an immutable commit', () => {
     assert.match(match[1], /^[\w-]+\/[\w/-]+@[a-f0-9]{40}$/);
   }
 });
+
+test('verified releases include privileged recovery fixture checks without a live NAS', () => {
+  const containers = workflow
+    .split('\n  synology-images:')[1]
+    ?.split('\n  publish-synology-images:')[0];
+  assert.ok(containers);
+  assert.match(containers, /HEARTH_SAFETY_TEST_ROOT=\/var\/lib\/hearth-release-tests/);
+  assert.match(containers, /python3 -B hearth\/deploy\/synology\/test_release_safety\.py -v/);
+  assert.doesNotMatch(containers, /ssh .*synology|100\.92\.64\.89/);
+});

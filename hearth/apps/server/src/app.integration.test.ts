@@ -13,7 +13,9 @@ import {
 } from './integrations/photo-source.js';
 import { PhotoService } from './photo-repository.js';
 import { RepositoryError } from './repository.js';
+import { RealtimeHub } from './realtime.js';
 import { FixedClock } from './runtime-context.js';
+import { FakeDailyVerseProvider } from './integrations/daily-verse-provider.js';
 import { parseTrustedProxyAddresses } from './trusted-proxies.js';
 
 const servers: ReturnType<typeof buildServer>[] = [];
@@ -27,6 +29,44 @@ function server() {
   servers.push(instance);
   return instance;
 }
+
+describe('private realtime authorization lifecycle', () => {
+  it.each(['revoked', 'expired'])('closes an existing stream when its session is %s', async () => {
+    const auth = privateCompanionAuth();
+    const originalSession = auth.session;
+    let authorized = true;
+    auth.session = (token) => {
+      if (!authorized) throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
+      return originalSession(token);
+    };
+    const hub = new RealtimeHub();
+    const app = buildServer({
+      logger: false,
+      companionAuth: auth,
+      realtimeHub: hub,
+      runtime: {
+        mode: 'private',
+        householdId: 'household_hearth_demo',
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(app);
+    const address = await app.listen({ host: '127.0.0.1', port: 0 });
+    const response = await fetch(`${address}/api/v1/households/household_hearth_demo/events`, {
+      headers: { cookie: 'hearth_session=private-session' },
+      signal: AbortSignal.timeout(5_000),
+    });
+    expect(response.status).toBe(200);
+    const reader = response.body!.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain(': connected');
+    hub.publish('household_hearth_demo', 'today.changed', 'allowed_event');
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain('allowed_event');
+    authorized = false;
+    hub.publish('household_hearth_demo', 'today.changed', 'must_not_be_delivered');
+    expect(await reader.read()).toEqual({ done: true, value: undefined });
+    reader.releaseLock();
+  });
+});
 
 describe('explicit reverse-proxy trust', () => {
   it('accepts only explicit IPs or bounded CIDRs and defaults to no trust', () => {
@@ -199,6 +239,44 @@ class DerivativePhotoSourceProvider extends FakePhotoSourceProvider {
 }
 
 describe('Hearth v2 API', () => {
+  it('serves Today from saved content while a verse refresh is still pending', async () => {
+    const verse = new FakeDailyVerseProvider().getCachedDailyVerse();
+    let finish: ((value: typeof verse) => void) | undefined;
+    const pending = new Promise<typeof verse>((resolve) => {
+      finish = resolve;
+    });
+    const app = buildServer({
+      logger: false,
+      dailyVerseProvider: {
+        getCachedDailyVerse: () => ({ ...verse, freshness: 'stale' }),
+        getDailyVerse: () => pending,
+      },
+    });
+    servers.push(app);
+    const base = '/api/v1/households/household_hearth_demo';
+    await app.inject({
+      method: 'PUT',
+      url: `${base}/today-sections`,
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: {
+        requestId: 'request_background_verse',
+        dinner: true,
+        listSummary: true,
+        notice: true,
+        photo: true,
+        dailyVerse: true,
+        reminders: true,
+      },
+    });
+    const response = await app.inject({ method: 'GET', url: `${base}/today?date=2026-08-03` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().dailyVerse).toMatchObject({ text: verse.text, freshness: 'stale' });
+    finish?.(verse);
+    await Promise.resolve();
+    const refreshed = await app.inject({ method: 'GET', url: `${base}/today?date=2026-08-03` });
+    expect(refreshed.json().dailyVerse.freshness).toBe('current');
+  });
+
   it('distinguishes process health from database readiness', async () => {
     const ready = buildServer({ logger: false, releaseVersion: 'release-test-123' });
     servers.push(ready);
@@ -1068,7 +1146,7 @@ describe('Hearth v2 API', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toBe('image/webp');
-    expect(response.headers['cache-control']).toBe('private, max-age=31536000, immutable');
+    expect(response.headers['cache-control']).toBe('private, no-store');
     expect(response.headers['x-content-type-options']).toBe('nosniff');
     expect(response.rawPayload).toEqual(Buffer.from([82, 73, 70, 70]));
   });

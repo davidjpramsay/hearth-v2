@@ -18,6 +18,8 @@ esac
 installer_root=/volume1/docker/hearth-v2/release-helper-installer
 source_runtime=/volume1/docker/hearth-v2/source/hearth/deploy/synology/runtime/private-project
 helper_source="$installer_root/activate-staged-release-on-nas.sh"
+safety_source="$installer_root/release-safety.py"
+safety_target=/usr/local/sbin/hearth-v2-release-safety.py
 update_agent_source="$installer_root/appliance-update-agent-on-nas.sh"
 update_hook_source="$installer_root/appliance-update-agent-hook.sh"
 compose_source="$installer_root/compose.yaml"
@@ -26,11 +28,14 @@ config_root=/usr/local/etc/hearth-v2
 helper_target=/usr/local/sbin/hearth-v2-activate-staged
 update_agent_target=/usr/local/sbin/hearth-v2-update-agent
 update_hook=/usr/local/etc/rc.d/S98hearth-v2-update-agent.sh
-update_root=/volume1/docker/hearth-v2/update-agent
+update_root="$config_root/control"
 update_fifo="$update_root/commands"
 sudoers_target=/etc/sudoers.d/hearth-v2-release
 
 test -r "$helper_source"
+test -r "$safety_source"
+test -x /usr/bin/python3
+/usr/bin/python3 -I -c 'import sqlite3, os; assert hasattr(os, "O_NOFOLLOW")'
 test -r "$update_agent_source"
 test -r "$update_hook_source"
 test -r "$compose_source"
@@ -43,6 +48,7 @@ test -x /usr/bin/sqlite3
 install -d -o root -g root -m 0755 /usr/local/sbin /usr/local/etc/rc.d
 install -d -o root -g root -m 0700 "$config_root"
 install -o root -g root -m 0755 "$helper_source" "$helper_target"
+install -o root -g root -m 0755 "$safety_source" "$safety_target"
 install -o root -g root -m 0644 "$compose_source" "$config_root/docker-compose.yml"
 install -o root -g root -m 0755 "$firewall_source" "$config_root/ensure-docker-firewall.sh"
 install -o root -g root -m 0755 "$firewall_source" \
@@ -51,6 +57,7 @@ install -o root -g root -m 0755 "$firewall_source" \
 if [ ! -e "$config_root/.env" ]; then
   install -o root -g root -m 0600 "$source_runtime/.env" "$config_root/.env"
 fi
+/usr/bin/python3 -I "$safety_target" check
 
 service_uid=$(sed -n 's/^HEARTH_UID=//p' "$config_root/.env")
 service_gid=$(sed -n 's/^HEARTH_GID=//p' "$config_root/.env")

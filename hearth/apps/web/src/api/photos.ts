@@ -22,27 +22,37 @@ export const photosApi = {
       headers: demoAdminHeaders,
     }),
   refreshPhotoSource: (requestId: string): Promise<PhotoSourceRefreshResult> =>
-    request(`${householdApiBase()}/photo-source/refreshes`, PhotoSourceRefreshResultSchema, {
-      method: 'POST',
-      headers: demoAdminHeaders,
-      body: JSON.stringify({ requestId }),
-    }),
+    request(
+      `${householdApiBase()}/photo-source/refreshes`,
+      PhotoSourceRefreshResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+      120_000,
+    ),
   uploadPhoto: (file: File, requestId: string): Promise<PhotoUploadResult> => {
     const mimeType = photoMimeType(file);
     const capturedAt =
       Number.isFinite(file.lastModified) && file.lastModified > 0
         ? new Date(file.lastModified).toISOString()
         : null;
-    return request(`${householdApiBase()}/photo-uploads`, PhotoUploadResultSchema, {
-      method: 'POST',
-      headers: {
-        ...demoAdminHeaders,
-        'Content-Type': mimeType,
-        'X-Hearth-Request-Id': requestId,
-        ...(capturedAt === null ? {} : { 'X-Hearth-Photo-Captured-At': capturedAt }),
+    return request(
+      `${householdApiBase()}/photo-uploads`,
+      PhotoUploadResultSchema,
+      {
+        method: 'POST',
+        headers: {
+          ...demoAdminHeaders,
+          'Content-Type': mimeType,
+          'X-Hearth-Request-Id': requestId,
+          ...(capturedAt === null ? {} : { 'X-Hearth-Photo-Captured-At': capturedAt }),
+        },
+        body: file,
       },
-      body: file,
-    });
+      120_000,
+    );
   },
   updatePhotoCuration: (
     assetId: string,

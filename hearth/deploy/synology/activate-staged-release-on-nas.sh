@@ -6,10 +6,10 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
 release_root=/volume1/docker/hearth-v2
-staged_version="$release_root/staged-source-version"
-active_version="$release_root/active-source-version"
-previous_version="$release_root/previous-source-version"
 config_root=/usr/local/etc/hearth-v2
+state_root=/volume1/.hearth-v2-state
+staged_version="$state_root/staged-source-version"
+safety_helper=/usr/local/sbin/hearth-v2-release-safety.py
 project="$config_root/docker-compose.yml"
 environment="$config_root/.env"
 firewall_source="$config_root/ensure-docker-firewall.sh"
@@ -20,6 +20,9 @@ update_hook=/usr/local/etc/rc.d/S98hearth-v2-update-agent.sh
 validate_installation() {
   test -x "$compose"
   test -x /usr/bin/sqlite3
+  test -x /usr/bin/python3
+  test -r "$safety_helper"
+  /usr/bin/python3 -I "$safety_helper" check
   test -r "$project"
   test -r "$environment"
   test -r "$firewall_source"
@@ -41,31 +44,36 @@ if [ "$#" -ne 0 ]; then
 fi
 
 validate_installation
-test -r "$staged_version"
-
-release_commit=$(sed -n '1p' "$staged_version")
+release_commit=$(/usr/bin/python3 -I "$safety_helper" candidate)
 if [ "${#release_commit}" -ne 40 ] || [ -n "$(printf '%s' "$release_commit" | tr -d '0123456789abcdef')" ]; then
   echo 'The staged release must be a full lowercase Git commit hash.' >&2
   exit 64
 fi
+/usr/bin/python3 -I "$safety_helper" verify "$release_commit"
+if ! mkdir "$state_root/activation-lock"; then
+  echo 'Another Hearth activation requires completion or operator recovery.' >&2
+  exit 1
+fi
 
 activation_environment="$config_root/.env.activation.$$"
-rollback_directory="$release_root/update-rollbacks/$release_commit"
-rollback_database="$rollback_directory/hearth.sqlite"
+rollback_directory=''
 rollback_needed=0
 server_stopped=0
 
 wait_ready() {
   ready_environment=$1
+  expected_version=$(sed -n 's/^HEARTH_VERSION=//p' "$ready_environment")
   port=$(sed -n 's/^HEARTH_HTTP_PORT=//p' "$ready_environment")
   case "$port" in
     ''|*[!0-9]*) return 1 ;;
   esac
   attempt=0
   while [ "$attempt" -lt 30 ]; do
-    if response=$(curl --fail --silent --show-error \
+    if response=$(curl --max-time 3 --fail --silent --show-error \
       "http://127.0.0.1:$port/api/v1/readiness" 2>/dev/null); then
-      if printf '%s' "$response" | grep -q '"status":"ready"'; then
+      if printf '%s' "$response" | grep -q '"status":"ready"' && \
+        curl --max-time 3 --fail --silent "http://127.0.0.1:$port/api/v1/health" | \
+          grep -Fq "\"version\":\"$expected_version\""; then
         printf '%s\n' "$response"
         return 0
       fi
@@ -84,10 +92,12 @@ restore_previous() {
     data_directory=$(sed -n 's/^HEARTH_DATA_DIR=//p' "$environment")
     service_uid=$(sed -n 's/^HEARTH_UID=//p' "$environment")
     service_gid=$(sed -n 's/^HEARTH_GID=//p' "$environment")
-    rm -f -- "$data_directory/hearth.sqlite-wal" "$data_directory/hearth.sqlite-shm"
-    cp "$rollback_database" "$data_directory/hearth.sqlite"
-    chown "$service_uid:$service_gid" "$data_directory/hearth.sqlite"
-    chmod 0600 "$data_directory/hearth.sqlite"
+    if ! /usr/bin/python3 -I "$safety_helper" restore "$rollback_directory"; then
+      echo 'Recovery stopped safely. Protected rollback was retained for the operator.' >&2
+      rm -f -- "$activation_environment" "$staged_version"
+      rmdir "$state_root/activation-lock"
+      exit 1
+    fi
     "$compose" --env-file "$environment" --file "$project" up -d --remove-orphans
     "$boot_hook" start
     "$update_hook" start || true
@@ -95,12 +105,18 @@ restore_previous() {
       printf 'The previous Hearth release is ready again.\n' >&2
     else
       printf 'Automatic recovery also needs attention. Use the operator recovery runbook.\n' >&2
+      echo "Protected rollback retained at $rollback_directory." >&2
+      rm -f -- "$activation_environment" "$staged_version"
+      rmdir "$state_root/activation-lock"
+      exit 1
     fi
   elif [ "$server_stopped" -eq 1 ]; then
     "$compose" --env-file "$environment" --file "$project" up -d --remove-orphans || true
   fi
-  rm -rf -- "$rollback_directory"
+  if [ -n "$rollback_directory" ]; then /usr/bin/python3 -I "$safety_helper" cleanup "$rollback_directory"; fi
   rm -f -- "$activation_environment"
+  rm -f -- "$staged_version"
+  rmdir "$state_root/activation-lock"
 }
 
 cleanup() {
@@ -112,9 +128,8 @@ sed "s/^HEARTH_VERSION=.*/HEARTH_VERSION=$release_commit/" \
   "$environment" > "$activation_environment"
 chmod 0600 "$activation_environment"
 
-HOME=/root
 DOCKER_CONFIG=/root/.docker
-export HOME DOCKER_CONFIG
+export DOCKER_CONFIG
 
 printf 'Pulling verified Hearth %s images.\n' "$release_commit"
 "$compose" --env-file "$activation_environment" --file "$project" pull
@@ -132,20 +147,9 @@ esac
 case "$service_uid:$service_gid" in
   *[!0-9:]*|:|*:|:*:*) echo 'HEARTH_UID and HEARTH_GID must be numeric.' >&2; exit 1 ;;
 esac
-test -f "$data_directory/hearth.sqlite"
-rm -rf -- "$rollback_directory"
-mkdir -p "$rollback_directory"
-chmod 0700 "$rollback_directory"
 "$compose" --env-file "$environment" --file "$project" stop server
 server_stopped=1
-checkpoint=$(/usr/bin/sqlite3 "$data_directory/hearth.sqlite" \
-  'PRAGMA wal_checkpoint(TRUNCATE); PRAGMA quick_check;')
-if [ "$(printf '%s\n' "$checkpoint" | tail -n 1)" != ok ]; then
-  echo 'The pre-update database check failed.' >&2
-  exit 1
-fi
-cp "$data_directory/hearth.sqlite" "$rollback_database"
-chmod 0600 "$rollback_database"
+rollback_directory=$(/usr/bin/python3 -I "$safety_helper" snapshot)
 rollback_needed=1
 
 "$compose" --env-file "$activation_environment" --file "$project" up -d --remove-orphans
@@ -164,19 +168,16 @@ fi
 
 current_version=$(sed -n 's/^HEARTH_VERSION=//p' "$environment")
 if [ -n "$current_version" ] && [ "$current_version" != "$release_commit" ]; then
-  printf '%s\n' "$current_version" > "$previous_version.tmp.$$"
-  chmod 0644 "$previous_version.tmp.$$"
-  mv -f "$previous_version.tmp.$$" "$previous_version"
+  /usr/bin/python3 -I "$safety_helper" marker previous-source-version "$current_version"
 fi
 
 mv -f "$activation_environment" "$environment"
 rollback_needed=0
 server_stopped=0
 trap - EXIT HUP INT TERM
-printf '%s\n' "$release_commit" > "$active_version.tmp.$$"
-chmod 0644 "$active_version.tmp.$$"
-mv -f "$active_version.tmp.$$" "$active_version"
+/usr/bin/python3 -I "$safety_helper" marker active-source-version "$release_commit"
 rm -f -- "$staged_version"
-rm -rf -- "$rollback_directory"
+/usr/bin/python3 -I "$safety_helper" cleanup "$rollback_directory"
+rmdir "$state_root/activation-lock"
 
 printf 'Hearth %s is ready on Synology.\n' "$release_commit"

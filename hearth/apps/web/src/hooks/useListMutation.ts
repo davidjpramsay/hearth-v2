@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { HouseholdLists, ListItem, ListItemCommandResult } from '@hearth/shared';
 
@@ -13,13 +13,15 @@ interface ListMutationVariables {
 }
 
 interface MutationContext {
-  lists: HouseholdLists | undefined;
+  previous: ListItem;
 }
 
 export function useListMutation() {
   const queryClient = useQueryClient();
   const [failedItemId, setFailedItemId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const commands = useRef(new Map<string, { item: ListItem; requestId: string }>());
+  const [pendingItemIds, setPendingItemIds] = useState<ReadonlySet<string>>(new Set());
   const mutation = useMutation<
     ListItemCommandResult,
     Error,
@@ -27,16 +29,18 @@ export function useListMutation() {
     MutationContext
   >({
     mutationFn: ({ item }) => {
+      const command = commands.current.get(item.id)!;
+      item = command.item;
       const source = window.matchMedia(COMPANION_QUERY).matches ? 'companion' : 'tv';
       return item.checked
-        ? hearthApi.undoListItem(item.id, createRequestId('list_undo'), source)
-        : hearthApi.completeListItem(item.id, createRequestId('list_complete'), source);
+        ? hearthApi.undoListItem(item.id, command.requestId, source)
+        : hearthApi.completeListItem(item.id, command.requestId, source);
     },
     onMutate: async ({ item }) => {
       setFailedItemId(null);
       setErrorMessage(null);
       await queryClient.cancelQueries({ queryKey: queryKeys.lists });
-      const context = { lists: queryClient.getQueryData<HouseholdLists>(queryKeys.lists) };
+      const context = { previous: item };
       updateItem(queryClient, {
         ...item,
         checked: !item.checked,
@@ -46,18 +50,12 @@ export function useListMutation() {
       return context;
     },
     onSuccess: (result) => {
-      queryClient.setQueryData<HouseholdLists>(queryKeys.lists, (current) =>
-        current === undefined
-          ? current
-          : {
-              ...current,
-              lists: current.lists.map((list) => (list.id === result.list.id ? result.list : list)),
-            },
-      );
+      commands.current.delete(result.item.id);
+      updateItem(queryClient, result.item);
       void queryClient.invalidateQueries({ queryKey: queryKeys.today });
     },
     onError: (error, variables, context) => {
-      if (context?.lists !== undefined) queryClient.setQueryData(queryKeys.lists, context.lists);
+      if (context !== undefined) updateItem(queryClient, context.previous);
       setFailedItemId(variables.item.id);
       setErrorMessage(
         error instanceof HearthApiError
@@ -65,11 +63,28 @@ export function useListMutation() {
           : 'That list change could not be saved.',
       );
     },
+    onSettled: (_result, _error, variables) => {
+      setPendingItemIds((current) => {
+        const next = new Set(current);
+        next.delete(variables.item.id);
+        return next;
+      });
+    },
   });
 
   return {
-    mutate: mutation.mutate,
-    isPending: mutation.isPending,
+    mutate: (variables: ListMutationVariables) => {
+      if (pendingItemIds.has(variables.item.id)) return;
+      const original = commands.current.get(variables.item.id) ?? {
+        item: variables.item,
+        requestId: createRequestId('list_change'),
+      };
+      commands.current.set(variables.item.id, original);
+      setPendingItemIds((current) => new Set(current).add(variables.item.id));
+      mutation.mutate({ item: original.item });
+    },
+    isPending: pendingItemIds.size > 0,
+    pendingItemIds,
     pendingItemId: mutation.isPending ? (mutation.variables?.item.id ?? null) : null,
     failedItemId,
     errorMessage,

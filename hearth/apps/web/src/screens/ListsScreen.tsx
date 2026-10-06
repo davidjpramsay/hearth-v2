@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -6,7 +6,8 @@ import './ListsScreen.css';
 
 import type { DemoScenario, ListItem } from '@hearth/shared';
 
-import { createRequestId } from '../api/core';
+import { useCommandMutation } from '../hooks/useCommandMutation';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { listsApi as hearthApi } from '../api/lists';
 import { queryKeys } from '../api/queryKeys';
 import { Icon } from '../components/Icon';
@@ -30,23 +31,28 @@ export function ListsScreen({
   const itemMutation = useListMutation();
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  const [draft, setDraft] = useState({ text: '', quantity: '' });
+  useUnsavedChanges(draft.text.length > 0 || draft.quantity.length > 0);
   const online = useOnlineStatus(scenario === 'offline');
-  const add = useMutation({
-    mutationFn: ({
-      listId,
-      text,
-      quantity,
-    }: {
-      listId: string;
-      text: string;
-      quantity: string | null;
-    }) =>
-      hearthApi.addListItem(
+  const add = useCommandMutation('list_add_companion', {
+    mutationFn: (
+      {
         listId,
-        { requestId: createRequestId('list_add_companion'), text, quantity },
-        'companion',
-      ),
-    onSuccess: (result) => {
+        text,
+        quantity,
+      }: {
+        listId: string;
+        text: string;
+        quantity: string | null;
+      },
+      requestId: string,
+    ) => hearthApi.addListItem(listId, { requestId, text, quantity }, 'companion'),
+    onSuccess: (result, input) => {
+      setDraft((current) =>
+        current.text.trim() === input.text && (current.quantity.trim() || null) === input.quantity
+          ? { text: '', quantity: '' }
+          : current,
+      );
       queryClient.setQueryData(queryKeys.lists, (current: typeof query.data) =>
         current === undefined
           ? current
@@ -90,7 +96,6 @@ export function ListsScreen({
     const quantityValue = String(data.get('quantity') ?? '').trim();
     if (text.length === 0) return;
     add.mutate({ listId: selectedListIdForCommand, text, quantity: quantityValue || null });
-    form.reset();
   }
 
   return (
@@ -166,7 +171,7 @@ export function ListsScreen({
                   itemMutation.clearError();
                   itemMutation.mutate({ item });
                 }}
-                pending={itemMutation.pendingItemId === item.id}
+                pending={itemMutation.pendingItemIds.has(item.id)}
                 primary={index === 0}
                 selectedListId={selected.id}
                 startsCompleted={item.checked && orderedItems[index - 1]?.checked !== true}
@@ -177,13 +182,26 @@ export function ListsScreen({
             <label className="sr-only" htmlFor="new-list-item">
               Add an item
             </label>
-            <input id="new-list-item" maxLength={160} name="item" placeholder="Add an item" />
+            <input
+              id="new-list-item"
+              maxLength={160}
+              name="item"
+              placeholder="Add an item"
+              value={draft.text}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, text: event.target.value }))
+              }
+            />
             <input
               aria-label="Quantity (optional)"
               className="phone-list-quantity"
               maxLength={40}
               name="quantity"
               placeholder="Qty"
+              value={draft.quantity}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, quantity: event.target.value }))
+              }
             />
             <button disabled={add.isPending} type="submit">
               {add.isPending ? 'Adding…' : 'Add'}
@@ -192,6 +210,9 @@ export function ListsScreen({
           {add.isError ? (
             <p className="list-command-error" role="alert">
               {add.error.message}
+              <button className="text-action" type="button" onClick={add.retryCommand}>
+                Try again
+              </button>
             </p>
           ) : null}
         </section>
@@ -247,7 +268,11 @@ function ListItemRow({
           data-focus-id={`list-item-${item.id}`}
           data-focus-left={`list-choice-${selectedListId}`}
           data-focus-up={focusUp}
-          onClick={onActivate}
+          onClick={() => {
+            if (!pending) onActivate();
+          }}
+          aria-busy={pending}
+          aria-disabled={pending}
           type="button"
         >
           <span className="list-item-check">

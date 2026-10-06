@@ -10,6 +10,8 @@ import { openHearthDatabase } from './database.js';
 import { DEMO_HOUSEHOLD_ID } from './demo/seed.js';
 import { DEMO_TV_ACTOR, type CommandActor, type RepositoryError } from './repository.js';
 import { SqliteHearthRepository } from './sqlite-hearth-repository.js';
+import { PocketMoneyService } from './pocket-money-repository.js';
+import { FixedClock } from './runtime-context.js';
 
 const temporaryDirectories: string[] = [];
 const openDatabases: InstanceType<typeof Database>[] = [];
@@ -39,6 +41,56 @@ const automation: CommandActor = {
 };
 
 describe('SQLite Hearth repository', () => {
+  it('does not mark private occurrences complete from matching demo titles', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-private-chore-generation-'));
+    temporaryDirectories.push(directory);
+    const database = await openHearthDatabase(join(directory, 'hearth.sqlite'));
+    openDatabases.push(database);
+    new SqliteAdminRepository(database);
+    new SqliteHearthRepository(database);
+    database.prepare('DELETE FROM chore_occurrences').run();
+    const clock = new FixedClock('2026-08-03T03:00:00Z');
+    const privateRepository = new SqliteHearthRepository(database, { seedDemo: false, clock });
+    const chores = await privateRepository.getChores(DEMO_HOUSEHOLD_ID, '2026-08-03');
+    const occurrences = chores.groups.flatMap((group) => group.occurrences);
+    expect(occurrences.length).toBeGreaterThan(0);
+    expect(
+      occurrences.every((item) => item.state === 'pending' && item.completionId === null),
+    ).toBe(true);
+    expect(database.prepare('SELECT DISTINCT created_at FROM chore_occurrences').all()).toEqual([
+      { created_at: clock.now().toISOString() },
+    ]);
+  });
+  it('does not allocate distant dates and retains old stored history across clock rollover', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-chore-horizon-'));
+    temporaryDirectories.push(directory);
+    const { database, repository } = await repositoryAt(join(directory, 'hearth.sqlite'));
+    const count = () => database.prepare('SELECT COUNT(*) AS count FROM chore_occurrences').get();
+    const before = count();
+    for (const date of ['1900-01-01', '2040-01-01', '9999-12-20'])
+      await repository.getChores(DEMO_HOUSEHOLD_ID, date);
+    await repository.getToday(DEMO_HOUSEHOLD_ID, '2040-01-01');
+    const admin = new SqliteAdminRepository(database);
+    const money = new PocketMoneyService(repository, admin, database);
+    await money.getOverview(DEMO_HOUSEHOLD_ID, '2040-01-02', '2040-01-02');
+    expect(count()).toEqual(before);
+    expect(
+      (await repository.getChores(DEMO_HOUSEHOLD_ID, '2026-08-09')).groups.flatMap(
+        (group) => group.occurrences,
+      ).length,
+    ).toBeGreaterThan(0);
+    const later = new SqliteHearthRepository(database, {
+      seedDemo: false,
+      clock: new FixedClock('2027-01-01T00:00:00Z'),
+    });
+    const beforeHistory = count();
+    expect(
+      (await later.getChores(DEMO_HOUSEHOLD_ID, '2026-08-03')).groups.flatMap(
+        (group) => group.occurrences,
+      ),
+    ).toContainEqual(expect.objectContaining({ id: 'occurrence_school_bag' }));
+    expect(count()).toEqual(beforeHistory);
+  });
   it('serves a complete Month grid from the durable calendar projection during outage', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hearth-month-'));
     temporaryDirectories.push(directory);

@@ -8,7 +8,7 @@ import './PhotosSettingsScreen.css';
 import { createRequestId, getHearthRuntime } from '../api/core';
 import { photosApi as hearthApi } from '../api/photos';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { PhotoAssetImage } from '../components/PhotoAssetImage';
 import { focusById } from '../focus/focusGraph';
@@ -140,8 +140,18 @@ export function PhotosSettingsScreen() {
       pendingCurationFocus.current = null;
     }
   }, [curation.isSuccess, deletion.isSuccess, source.data]);
-  if (source.isPending) return <AdminLoading />;
-  if (source.isError) return <AdminError message={source.error.message} />;
+  if (source.isPending)
+    return <AdminQueryState title="Manage photos" backTo="/more" backLabel="Back to More" />;
+  if (source.data === undefined)
+    return (
+      <AdminQueryState
+        title="Manage photos"
+        backTo="/more"
+        backLabel="Back to More"
+        error={source.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void source.refetch()}
+      />
+    );
 
   const data = source.data;
   const status = data.collection.source.status;

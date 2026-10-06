@@ -129,6 +129,7 @@ function mockScreen(mutate: ReturnType<typeof vi.fn>, pastQueries: unknown[]) {
     mutate: mutate as unknown as ReturnType<typeof useChoreMutation>['mutate'],
     isPending: false,
     pendingOccurrenceId: null,
+    pendingOccurrenceIds: new Set(),
     failedOccurrenceId: null,
     errorMessage: null,
     clearError: vi.fn(),

@@ -8,14 +8,37 @@ export const OpaqueIdSchema = z
 
 export const LocalDateSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a YYYY-MM-DD local date');
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a YYYY-MM-DD local date')
+  .refine((value) => {
+    const date = new Date(`${value}T12:00:00.000Z`);
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }, 'Expected a real calendar date');
 
 export const LocalTimeSchema = z
   .string()
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Expected a 24-hour HH:mm local time');
 
 export const TimestampSchema = z.iso.datetime({ offset: true });
-export const TimezoneSchema = z.string().min(1).max(80);
+const timezoneValidity = new Map<string, boolean>();
+export const TimezoneSchema = z
+  .string()
+  .min(1)
+  .max(80)
+  .refine((value) => {
+    if (value.length === 0 || value.length > 80) return false;
+    const cached = timezoneValidity.get(value);
+    if (cached !== undefined) return cached;
+    let valid = false;
+    try {
+      new Intl.DateTimeFormat('en-AU', { timeZone: value });
+      valid = true;
+    } catch {
+      /* Do not persist a timezone that will crash clock/date rendering. */
+    }
+    if (timezoneValidity.size >= 64) timezoneValidity.clear();
+    timezoneValidity.set(value, valid);
+    return valid;
+  }, 'Choose a supported timezone');
 export const FAMILY_CALENDAR_COLOR = '#2f766d' as const;
 
 export const CapabilitySchema = z.enum([
@@ -275,6 +298,7 @@ export const WeatherForecastDaySchema = DailyForecastSchema.extend({
 
 export const WeatherForecastSchema = z.object({
   householdId: OpaqueIdSchema,
+  configured: z.boolean().optional(),
   locationLabel: z.string().min(1).max(120).nullable(),
   timezone: TimezoneSchema,
   generatedAt: TimestampSchema,

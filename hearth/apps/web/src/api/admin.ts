@@ -31,11 +31,16 @@ export const adminApi = {
       headers: demoAdminHeaders,
     }),
   createSystemBackup: (requestId: string): Promise<SystemBackupCommandResult> =>
-    request(`${householdApiBase()}/system-backups`, SystemBackupCommandResultSchema, {
-      method: 'POST',
-      headers: demoAdminHeaders,
-      body: JSON.stringify({ requestId }),
-    }),
+    request(
+      `${householdApiBase()}/system-backups`,
+      SystemBackupCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId }),
+      },
+      120_000,
+    ),
   getApplianceUpdate: (): Promise<ApplianceUpdateStatus> =>
     request(`${householdApiBase()}/appliance-update`, ApplianceUpdateStatusSchema, {
       headers: demoAdminHeaders,
@@ -44,11 +49,16 @@ export const adminApi = {
     requestId: string,
     targetVersion: string,
   ): Promise<ApplianceUpdateCommandResult> =>
-    request(`${householdApiBase()}/appliance-updates`, ApplianceUpdateCommandResultSchema, {
-      method: 'POST',
-      headers: demoAdminHeaders,
-      body: JSON.stringify({ requestId, targetVersion }),
-    }),
+    request(
+      `${householdApiBase()}/appliance-updates`,
+      ApplianceUpdateCommandResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify({ requestId, targetVersion }),
+      },
+      120_000,
+    ),
   updateHousehold: (input: { requestId: string; name: string; timezone: string }) =>
     request(`${householdApiBase()}/settings`, AdminOverviewSchema, {
       method: 'PATCH',

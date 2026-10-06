@@ -52,10 +52,19 @@ CalDAV is opt-in outside demo mode through `HEARTH_CALENDAR_CONFIG_PATH`. That
 variable points to a server-only JSON secret outside the repository containing
 the HTTPS server URL, account identifier, app-specific password, household
 timezone and exact allowed calendar names/owner mappings. Empty or ambiguous
-allowlists fail closed. The current workspace contains no credential and no
-live read has been attempted. Apple documents app-specific passwords for
+allowlists fail closed. Credentials are commissioned outside source control;
+current live-validation evidence belongs in OPERATIONS.md. Apple documents app-specific passwords for
 third-party calendar access; a credential must be created and supplied by the
 owner only when live validation is approved.
+Every credential-bearing DAV request and redirect is checked before dispatch. Custom providers stay
+on their configured HTTPS origin; iCloud additionally permits only `caldav.icloud.com` and numbered
+`pNN-caldav.icloud.com` HTTPS service origins on the default port. Discovery responses permit at most
+128 entries, REPORT responses at most 10,000; decoded bodies are capped at 8 MiB before XML parsing
+and DTD/entity declarations are rejected. One transport permits four active requests, 256 admissions
+and 32 MiB per minute, including retries. Ordinary iCalendar/event bounds still apply afterward.
+Home Assistant requests reject redirects and cap decoded responses at 4 MiB within an eight-second
+deadline before JSON parsing. Supported local HTTP needs an independently encrypted path or an
+explicitly accepted trusted-LAN commissioning risk; a private address alone is not encryption.
 
 The responsive Connections > Calendar workflow now creates that configuration
 without exposing it to browser storage or SQLite. An adult supplies an HTTPS
@@ -218,6 +227,10 @@ user-triggered lookup. The chosen label and coordinates are shown to the adult,
 tested against current Open-Meteo conditions, then stored locally in SQLite.
 The forecast remains independent of Home Assistant and needs no API key.
 
+The forecast projection's optional `configured` flag distinguishes missing setup from an outage
+at a saved location. A configured outage offers Retry, not an instruction to set the location again.
+This flag exposes no coordinates or provider credentials; clients accept older responses without it.
+
 `HEARTH_WEATHER_LATITUDE` and `HEARTH_WEATHER_LONGITUDE` remain a deployment
 fallback for existing installations only. A saved household location takes
 precedence. The TV and normal forecast read models never receive coordinates;
@@ -251,7 +264,10 @@ does not contact ESV.
 The adapter calls only `GET https://api.esv.org/v3/passage/text/` with server-side Token
 authorization, requests the short ESV copyright marker, coalesces the result for the local day and
 stores only the bounded rotation in SQLite for outage fallback. Today remains usable when the token
-is absent or ESV is unavailable. The full reading dialog carries ESV attribution and the required
+is absent or ESV is unavailable. Today reads saved text immediately while refreshing in the
+background. Concurrent refreshes are coalesced; failed/null/stale results retry after a one-minute
+backoff on a subsequent read, including within the same local day. Updated text invalidates Today.
+The full reading dialog carries ESV attribution and the required
 copyright notice. Official contract and usage conditions: <https://api.esv.org/docs/>,
 <https://api.esv.org/docs/passage-text/> and <https://api.esv.org/>.
 

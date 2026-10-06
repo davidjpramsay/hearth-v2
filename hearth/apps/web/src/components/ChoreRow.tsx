@@ -8,6 +8,7 @@ import { formatChoreTiming } from '../utils/choreTiming';
 export interface ChoreMutationView {
   mutate: (variables: { action: 'complete' | 'undo'; occurrence: ChoreOccurrence }) => void;
   pendingOccurrenceId: string | null;
+  pendingOccurrenceIds?: ReadonlySet<string>;
   failedOccurrenceId: string | null;
   errorMessage: string | null;
   clearError: () => void;
@@ -29,7 +30,9 @@ export function ChoreRow({
   const excused = occurrence.state === 'excused';
   const cancelled = occurrence.state === 'cancelled';
   const unavailable = skipped || excused || cancelled;
-  const pending = mutation.pendingOccurrenceId === occurrence.id;
+  const pending =
+    mutation.pendingOccurrenceIds?.has(occurrence.id) ??
+    mutation.pendingOccurrenceId === occurrence.id;
   const failed = mutation.failedOccurrenceId === occurrence.id;
   const action = completed ? 'undo' : 'complete';
   const timing = formatChoreTiming(occurrence.availableFromTime, occurrence.dueTime);
@@ -55,6 +58,7 @@ export function ChoreRow({
                     : `Complete ${occurrence.title}`
         }
         aria-disabled={pending || unavailable}
+        aria-busy={pending}
         className={`chore-row focusable${completed ? ' chore-row--complete' : ''}${skipped ? ' chore-row--skipped' : ''}${excused ? ' chore-row--excused' : ''}${cancelled ? ' chore-row--cancelled' : ''}${pending ? ' chore-row--pending' : ''}`}
         onClick={activate}
         type="button"

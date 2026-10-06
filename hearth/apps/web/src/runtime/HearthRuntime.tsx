@@ -20,7 +20,7 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
     queryFn: hearthApi.getRuntime,
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
-    retry: 1,
+    retry: false,
     networkMode: 'online',
   });
   const auth = useQuery({
@@ -36,6 +36,9 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
         <img alt="" src="/brand/hearth-mark.png" />
         <h1>Starting Hearth</h1>
         <p>Loading this home’s local settings…</p>
+        {runtime.fetchStatus === 'paused' ? (
+          <p>Offline · Reconnect to this home’s network.</p>
+        ) : null}
       </main>
     );
   }

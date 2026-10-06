@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCommandMutation } from './useCommandMutation';
 
 import { queryKeys } from '../api/queryKeys';
 import { remindersApi } from '../api/reminders';
@@ -12,9 +13,11 @@ export function useRemindersQuery(includeCompleted = false, enabled = true) {
   });
 }
 
-function useReminderMutation<TVariables>(mutationFn: (variables: TVariables) => Promise<unknown>) {
+function useReminderMutation<TVariables>(
+  mutationFn: (variables: TVariables, requestId: string) => Promise<unknown>,
+) {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useCommandMutation('reminder', {
     mutationFn,
     onSuccess: async () => {
       await Promise.all([
@@ -31,17 +34,22 @@ export function useCreateReminder() {
 
 export function useUpdateReminder() {
   return useReminderMutation(
-    (input: { reminderId: string; title: string; dueLocalDate: string | null }) =>
-      remindersApi.update(input.reminderId, input),
+    (
+      input: { reminderId: string; title: string; dueLocalDate: string | null },
+      requestId: string,
+    ) => remindersApi.update(input.reminderId, input, requestId),
   );
 }
 
 export function useSetReminderCompletion() {
-  return useReminderMutation((input: { reminderId: string; isCompleted: boolean }) =>
-    remindersApi.setCompletion(input.reminderId, input.isCompleted),
+  return useReminderMutation(
+    (input: { reminderId: string; isCompleted: boolean }, requestId: string) =>
+      remindersApi.setCompletion(input.reminderId, input.isCompleted, requestId),
   );
 }
 
 export function useDeleteReminder() {
-  return useReminderMutation((reminderId: string) => remindersApi.delete(reminderId));
+  return useReminderMutation((reminderId: string, requestId: string) =>
+    remindersApi.delete(reminderId, requestId),
+  );
 }

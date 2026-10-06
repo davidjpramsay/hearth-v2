@@ -171,8 +171,9 @@ lines or other cards through them. Agenda rows likewise use solid surfaces.
   attribution stays in the adult Weather location settings so household-facing Weather and Today
   remain clean.
 
-The Calendar view switch is available on both television and phone. Week,
-Month and Agenda keep their own stable URLs beneath `/calendar`; the previous
+The Calendar view switch is available on both television and phone in Agenda, Week, Month order.
+The Calendar navigation destination and `/calendar` open Agenda by default. Agenda, Week and
+Month keep their own stable URLs beneath `/calendar`; the previous
 `/week` and `/month` paths redirect while preserving query parameters. Week and Month earlier,
 current-period and later controls must perform real provider-neutral queries; Agenda is always
 anchored to the household-local current date.
@@ -312,10 +313,16 @@ the phone More hub.
   it. Keep explanations only when they affect a decision, explain state, or protect privacy,
   recovery or an irreversible action.
 - The TV may show connection status and pairing QR/code but should not expose secrets.
-- A non-Android television browser that cannot complete passkey authentication offers **Pair this
-  screen as a television**. It creates a short-lived six-character code for approval in phone More
-  → Televisions, then opens the family dashboard with television scope rather than adult Admin
-  scope. Recovery codes are never a television sign-in mechanism.
+- Signed-out browsers clearly separate **Phone or computer** (adult passkey sign-in) from
+  **Shared screen** (TV or wall tablet approved from an adult phone). Neither path starts
+  automatically. **Connect shared screen** shows three short steps and a six-character code;
+  phone More → **Phones & screens** contains the matching **Connect screen** action. Approval
+  exchanges only the display's private local proof and opens the family dashboard without adult
+  settings access. Expired codes disappear, retry is explicit, and Cancel/Back restores the opener
+  without resuming a late request. Recovery stays under **Trouble signing in?**, with its replacement
+  consequences stated; it is never a screen sign-in mechanism.
+  First household setup is available on passkey-capable phones and desktop computers; a wide
+  window alone never hides it. Actual television browsers are directed to that companion setup.
 - Connections > Calendar offers an adult-only, phone-first setup sequence: enter
   an HTTPS CalDAV address/account/app-specific password, test, review the
   discovered names, select the exact calendars, optionally map each to a person,
@@ -340,8 +347,13 @@ the phone More hub.
   appearance. Display and administration verbs stay distinct, including **Photos** and
   **Manage photos**. Navigation rows use their self-explanatory titles without repeated descriptive
   subtitles, keeping each bar slim and scannable. The administration root is named Hearth settings
-  so it cannot be confused with the Home Assistant action surface. Television pairing is one
-  row/action inside Televisions, not a duplicate call to action on the settings root.
+  so it cannot be confused with the Home Assistant action surface. **Phones & screens** is one
+  connection hub: personal-device address/sign-in and adult passkey management are separate from
+  shared-screen code approval and confirmed disconnection. Put code approval first, with preparation
+  help collapsed, so phone users can enter a displayed code
+  without scrolling through personal-device instructions. Keep existing `/admin/televisions` and
+  `/admin/access` links compatible. Pairing previews are explicitly fictional demo-only content;
+  they are not a second production connection route.
 - Hearth settings groups destinations by family content, household and access, connections and
   displays, then system. Each group is one joined list with a continuous remote-focus order rather
   than a collection of visually unrelated cards. Joined groups use restrained, slightly squared
@@ -408,6 +420,25 @@ payday the interface warns that early recording is allowed. A mistake opens a re
 creates a visible void record; no interface offers silent payment editing or deletion.
 
 ## Required UI states
+
+Admin loading and initial failures retain the page title and Back control; recoverable failures
+offer an inline **Try again**. A background read failure does not hide available settings or drafts.
+Loading chrome remains keyboard-accessible but does not take automatic focus ahead of the loaded
+screen's meaningful entry control.
+Retry restores a usable screen control after the error node disappears. A short burst of remote
+directions through a lazy route load is applied once its controls arrive; activation is not replayed.
+Short request deadlines replace endless startup loading with recovery, without bypassing sign-in.
+
+Meal-week, household, pocket-money-rule, list-add and reminder-create drafts warn before route/history
+navigation or page exit. Automatic release reloads wait while a registered draft exists. Successful
+list/reminder submission clears only the matching submitted draft, not newer typing. Failed or
+unanswered commands keep their original request ID and values when retried.
+
+Incoming meal-plan updates refresh untouched days but preserve edited days. Conflicting days show
+**Use latest dinners** / **Keep my edits**, with Save blocked until a choice is made. Pending week
+saves temporarily disable dinner inputs. Meals follows the current week through Monday rollover
+unless the user intentionally browses; **This week** returns to following. Other weeks use a selected
+day label rather than calling a different date's meal Tonight.
 
 Every data-driven surface needs intentional states for:
 

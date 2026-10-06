@@ -39,6 +39,7 @@ run_ssh "mkdir -p '$remote_installer' && chmod 0700 '$remote_installer'"
 rsync -a --delete --delay-updates --rsync-path=/usr/bin/rsync \
   -e "$rsync_ssh" \
   "$script_dir/activate-staged-release-on-nas.sh" \
+  "$script_dir/release-safety.py" \
   "$script_dir/appliance-update-agent-hook.sh" \
   "$script_dir/appliance-update-agent-on-nas.sh" \
   "$script_dir/install-release-helper-on-nas.sh" \

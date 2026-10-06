@@ -90,11 +90,17 @@ const databasePath =
     ),
   );
 const calendarConfigPath = process.env.HEARTH_CALENDAR_CONFIG_PATH;
-const calendarRuntime = await resolveCalendarRuntime({ demoMode, configPath: calendarConfigPath });
+const unavailableConfigurations: string[] = [];
+const calendarRuntime = await resolveCalendarRuntime({
+  demoMode,
+  configPath: calendarConfigPath,
+  onConfigurationUnavailable: () => unavailableConfigurations.push('calendar'),
+});
 const homeAssistantConfigPath = process.env.HEARTH_HOME_ASSISTANT_CONFIG_PATH;
 const homeAssistantRuntime = await resolveHomeAssistantProvider({
   demoMode,
   configPath: homeAssistantConfigPath,
+  onConfigurationUnavailable: () => unavailableConfigurations.push('home-assistant'),
 });
 const database = await openHearthDatabase(databasePath);
 const esvApiKey = demoMode ? null : await readOptionalSecret(process.env.HEARTH_ESV_API_KEY_PATH);
@@ -304,6 +310,12 @@ const server = buildServer({
 });
 
 let shuttingDown = false;
+for (const integration of unavailableConfigurations) {
+  server.log.warn(
+    { integration },
+    'Optional integration configuration is unavailable; core Hearth startup continued.',
+  );
+}
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {
     if (shuttingDown) return;

@@ -9,7 +9,7 @@ import type { Member as HearthMember } from '@hearth/shared';
 import { adminApi as hearthApi } from '../api/admin';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { MemberAvatarDialog } from '../components/MemberAvatarDialog';
 import { MemberColourPicker } from '../components/MemberColourPicker';
@@ -55,8 +55,15 @@ export function PeopleSettingsScreen() {
       hearthApi.resetMemberAvatar(memberId, createRequestId('member_avatar_reset')),
     onSuccess: refreshHousehold,
   });
-  if (admin.isPending) return <AdminLoading />;
-  if (admin.isError) return <AdminError message={admin.error.message} />;
+  if (admin.isPending) return <AdminQueryState title="People" />;
+  if (admin.data === undefined)
+    return (
+      <AdminQueryState
+        title="People"
+        error={admin.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void admin.refetch()}
+      />
+    );
 
   function addMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

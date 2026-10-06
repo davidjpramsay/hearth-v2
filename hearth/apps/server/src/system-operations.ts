@@ -1,6 +1,17 @@
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { access, chmod, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import {
+  access,
+  chmod,
+  mkdir,
+  mkdtemp,
+  open,
+  link,
+  readdir,
+  rename,
+  rm,
+  stat,
+} from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -488,24 +499,34 @@ export async function restoreHearthBackup(
     if (!isMissingFile(error)) throw error;
   }
   await mkdir(dirname(destination), { recursive: true, mode: 0o700 });
-  const partial = `${destination}.restore-partial`;
+  const legacyPartial = `${destination}.restore-partial`;
   try {
-    await access(partial, constants.F_OK);
+    await access(legacyPartial, constants.F_OK);
     throw new Error('Restore work file already exists; Hearth will not overwrite it.');
   } catch (error) {
     if (!isMissingFile(error)) throw error;
   }
-  const sourceDatabase = new Database(source, { readonly: true, fileMustExist: true });
+  const workDirectory = await mkdtemp(join(dirname(destination), '.hearth-restore-'));
+  const partial = join(workDirectory, 'hearth.sqlite');
   try {
-    await sourceDatabase.backup(partial);
+    await chmod(workDirectory, 0o700);
+    const initialFile = await open(partial, 'wx', 0o600);
+    await initialFile.close();
+    const sourceDatabase = new Database(source, { readonly: true, fileMustExist: true });
+    try {
+      await sourceDatabase.backup(partial);
+    } finally {
+      sourceDatabase.close();
+      await removeSQLiteSidecars(source);
+    }
+    const verified = await verifyHearthDatabaseFile(partial);
+    await chmod(partial, 0o600);
+    // Exclusive publication: another file appearing during the copy is never overwritten.
+    await link(partial, destination);
+    return verified;
   } finally {
-    sourceDatabase.close();
-    await removeSQLiteSidecars(source);
+    await rm(workDirectory, { recursive: true, force: true });
   }
-  const verified = await verifyHearthDatabaseFile(partial);
-  await chmod(partial, 0o600);
-  await rename(partial, destination);
-  return verified;
 }
 
 async function latestBackup(directory: string | null): Promise<{

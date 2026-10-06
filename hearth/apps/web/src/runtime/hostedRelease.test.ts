@@ -3,6 +3,25 @@ import { describe, expect, it, vi } from 'vitest';
 import { createHostedReleaseMonitor } from './hostedRelease';
 
 describe('hosted release monitor', () => {
+  it('defers a new release while a draft is open, then reloads once it is safe', async () => {
+    let version = 'release-a';
+    let dirty = false;
+    const reload = vi.fn();
+    const monitor = createHostedReleaseMonitor({
+      readVersion: async () => version,
+      reload,
+      canReload: () => !dirty,
+    });
+    await expect(monitor.check()).resolves.toBe('initialized');
+    version = 'release-b';
+    dirty = true;
+    await expect(monitor.check()).resolves.toBe('deferred');
+    expect(reload).not.toHaveBeenCalled();
+    dirty = false;
+    await expect(monitor.check()).resolves.toBe('reloaded');
+    await expect(monitor.check()).resolves.toBe('unchanged');
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
   it('establishes a baseline and reloads only when the release changes', async () => {
     const readVersion = vi
       .fn<() => Promise<string>>()

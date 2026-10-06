@@ -17,8 +17,8 @@ export const HearthReminderListSchema = z
   .object({
     id: OpaqueIdSchema,
     title: z.string().trim().min(1).max(120),
-    reminderCount: z.number().int().nonnegative().max(MAX_HEARTH_REMINDERS),
-    incompleteCount: z.number().int().nonnegative().max(MAX_HEARTH_REMINDERS),
+    reminderCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    incompleteCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   })
   .strict();
 
@@ -28,6 +28,7 @@ export const HearthReminderSchema = z
     listId: OpaqueIdSchema,
     title: ReminderTitleSchema,
     dueLocalDate: LocalDateSchema.nullable(),
+    dueDateUnavailable: z.boolean().optional(),
     dueAt: TimestampSchema.nullable(),
     hasDueTime: z.boolean(),
     isCompleted: z.boolean(),
@@ -43,6 +44,7 @@ export const ReminderOverviewSchema = z
     generatedAt: TimestampSchema,
     lists: z.array(HearthReminderListSchema).max(MAX_HEARTH_REMINDER_LISTS),
     reminders: z.array(HearthReminderSchema).max(MAX_HEARTH_REMINDERS),
+    hasMore: z.boolean().optional(),
   })
   .strict();
 

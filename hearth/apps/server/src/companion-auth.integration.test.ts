@@ -21,6 +21,180 @@ afterEach(async () => {
 });
 
 describe('companion passkey authentication', () => {
+  it('allows authorized removal of the initiating passkey without preserving its session', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+    const actor = harness.auth.authenticate(first.token);
+    const spareOptions = await harness.auth.additionalRegistrationOptions(
+      first.session.householdId,
+      actor,
+      {
+        memberId: first.session.memberId,
+        passkeyLabel: 'Spare phone',
+      },
+    );
+    harness.setRegistrationCredentialId('credential_private_spare');
+    await harness.auth.verifyAdditionalRegistration(
+      first.session.householdId,
+      actor,
+      spareOptions.ceremonyId,
+      {},
+    );
+    const own = harness.auth.adultAccess(first.session.householdId, actor).adults[0]!.passkeys[0]!;
+    const result = harness.auth.revokePasskey(
+      first.session.householdId,
+      own.id,
+      actor,
+      'request_revoke_self',
+    );
+    expect(result.access.adults[0]!.passkeys).toHaveLength(1);
+    expect(() => harness.auth.session(first.token)).toThrow(/Sign in/);
+    expect(() => harness.auth.adultAccess(first.session.householdId, actor)).toThrow(/Sign in/);
+    harness.database.close();
+  });
+  it('rejects a passkey revoked while its assertion is being verified', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+    const options = await harness.auth.authenticationOptions('127.0.0.1');
+    harness.engine.verifyAuthentication = async () => {
+      harness.database
+        .prepare('UPDATE passkey_credentials SET revoked_at = ?')
+        .run(new Date().toISOString());
+      return 7;
+    };
+    await expect(
+      harness.auth.verifyAuthentication(options.ceremonyId, { id: 'credential_private_adult' }),
+    ).rejects.toThrow(/no longer available/);
+    expect(() => harness.auth.session(first.token)).toThrow(/Sign in/);
+    expect(() => harness.auth.assertRecentAuthentication(first.token, 300_000)).toThrow(/Sign in/);
+    expect(
+      harness.database.prepare('SELECT COUNT(*) AS count FROM companion_sessions').get(),
+    ).toEqual({ count: 1 });
+    harness.database.close();
+  });
+
+  it.each(['sign-out', 'demotion', 'target-archive'] as const)(
+    'rejects enrollment when %s happens during verification',
+    async (change) => {
+      const harness = await authHarness();
+      const registration = await harness.auth.firstUseRegistrationOptions(
+        setupInput(),
+        '127.0.0.1',
+      );
+      const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+      const actor = harness.auth.authenticate(first.token);
+      insertAdult(harness.database, 'member_alex', 'Alex');
+      const options = await harness.auth.additionalRegistrationOptions(
+        first.session.householdId,
+        actor,
+        { memberId: 'member_alex', passkeyLabel: 'Alex phone' },
+      );
+      harness.setRegistrationCredentialId('credential_alex_race');
+      const verify = harness.engine.verifyRegistration;
+      harness.engine.verifyRegistration = async (input) => {
+        if (change === 'sign-out') harness.auth.signOut(first.token);
+        else if (change === 'demotion')
+          harness.database.prepare("UPDATE members SET role = 'child' WHERE id = ?").run(actor.id);
+        else
+          harness.database
+            .prepare('UPDATE members SET archived_at = ? WHERE id = ?')
+            .run(new Date().toISOString(), 'member_alex');
+        return verify(input);
+      };
+      await expect(
+        harness.auth.verifyAdditionalRegistration(
+          first.session.householdId,
+          actor,
+          options.ceremonyId,
+          {},
+        ),
+      ).rejects.toThrow();
+      expect(
+        harness.database.prepare('SELECT COUNT(*) AS count FROM passkey_credentials').get(),
+      ).toEqual({ count: 1 });
+      harness.database.close();
+    },
+  );
+
+  it.each(['consumed', 'rotated', 'expired'] as const)(
+    'rejects recovery authority %s during registration without revoking existing access',
+    async (change) => {
+      const harness = await authHarness();
+      const registration = await harness.auth.firstUseRegistrationOptions(
+        setupInput(),
+        '127.0.0.1',
+      );
+      const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+      const actor = harness.auth.authenticate(first.token);
+      const confirmation = await harness.auth.recoveryConfirmationOptions(
+        first.session.householdId,
+        actor,
+      );
+      const code = await harness.auth.createRecoveryCode(
+        first.session.householdId,
+        actor,
+        confirmation.ceremonyId,
+        { id: 'credential_private_adult' },
+      );
+      const options = await harness.auth.recoveryRegistrationOptions(
+        { recoveryCode: code.code, passkeyLabel: 'Recovered phone' },
+        '127.0.0.1',
+      );
+      harness.setRegistrationCredentialId('credential_recovery_race');
+      const verify = harness.engine.verifyRegistration;
+      harness.engine.verifyRegistration = async (input) => {
+        if (change === 'expired') harness.advance(181 * 24 * 60 * 60 * 1000);
+        else
+          harness.database
+            .prepare(
+              `UPDATE companion_recovery_codes SET ${change === 'consumed' ? 'consumed_at' : 'revoked_at'} = ?`,
+            )
+            .run(new Date().toISOString());
+        return verify(input);
+      };
+      await expect(harness.auth.verifyRecoveryRegistration(options.ceremonyId, {})).rejects.toThrow(
+        /expired/,
+      );
+      expect(
+        harness.database
+          .prepare('SELECT COUNT(*) AS count FROM passkey_credentials WHERE revoked_at IS NULL')
+          .get(),
+      ).toEqual({ count: 1 });
+      expect(
+        harness.database
+          .prepare('SELECT COUNT(*) AS count FROM companion_sessions WHERE revoked_at IS NULL')
+          .get(),
+      ).toEqual({ count: 1 });
+      harness.database.close();
+    },
+  );
+
+  it('claims first-use setup once even when two registrations overlap', async () => {
+    const harness = await authHarness();
+    const one = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const two = await harness.auth.firstUseRegistrationOptions(
+      { ...setupInput(), householdName: 'Other home' },
+      '127.0.0.1',
+    );
+    const verify = harness.engine.verifyRegistration;
+    let overlap = true;
+    harness.engine.verifyRegistration = async (input) => {
+      if (overlap) {
+        overlap = false;
+        await harness.auth.verifyFirstUseRegistration(two.ceremonyId, {});
+      }
+      return verify(input);
+    };
+    await expect(harness.auth.verifyFirstUseRegistration(one.ceremonyId, {})).rejects.toThrow(
+      /already set up/,
+    );
+    expect(harness.database.prepare('SELECT COUNT(*) AS count FROM households').get()).toEqual({
+      count: 1,
+    });
+    harness.database.close();
+  });
   it('creates first-use household data and stores only passkey material and a session hash', async () => {
     const harness = await authHarness();
     const options = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
@@ -493,6 +667,7 @@ async function authHarness() {
   });
   return {
     auth,
+    engine,
     database,
     consumed: () => consumed,
     advance: (milliseconds: number) => {

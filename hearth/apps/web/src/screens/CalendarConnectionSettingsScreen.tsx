@@ -11,7 +11,7 @@ import { connectionsApi as hearthApi } from '../api/connections';
 import { invalidateCalendarDisplays } from '../api/calendarCache';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
+import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useAdminQueries';
@@ -130,9 +130,34 @@ export function CalendarConnectionSettingsScreen() {
     },
   });
 
-  if (admin.isPending || connection.isPending) return <AdminLoading />;
-  if (admin.isError) return <AdminError message={admin.error.message} />;
-  if (connection.isError) return <AdminError message={connection.error.message} />;
+  if (admin.isPending || connection.isPending)
+    return (
+      <AdminQueryState
+        title="Calendar"
+        backTo="/admin/connections"
+        backLabel="Back to Connections"
+      />
+    );
+  if (admin.data === undefined)
+    return (
+      <AdminQueryState
+        title="Calendar"
+        backTo="/admin/connections"
+        backLabel="Back to Connections"
+        error={admin.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void admin.refetch()}
+      />
+    );
+  if (connection.data === undefined)
+    return (
+      <AdminQueryState
+        title="Calendar"
+        backTo="/admin/connections"
+        backLabel="Back to Connections"
+        error={connection.error ?? new Error('Couldn’t load these settings.')}
+        onRetry={() => void connection.refetch()}
+      />
+    );
 
   const showForm = connection.data === null || editMode !== 'none';
   const mutationError =

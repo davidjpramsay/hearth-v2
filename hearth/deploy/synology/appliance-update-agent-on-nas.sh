@@ -1,18 +1,19 @@
 #!/bin/sh
 
-set -eu
+set -efu
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
 release_root=/volume1/docker/hearth-v2
-control_root="$release_root/update-agent"
-command_fifo="$control_root/commands"
+control_root=/usr/local/etc/hearth-v2/control
 status_file="$control_root/status.json"
-staged_version="$release_root/staged-source-version"
+safety_helper=/usr/local/sbin/hearth-v2-release-safety.py
 environment=/usr/local/etc/hearth-v2/.env
 activation_helper=/usr/local/sbin/hearth-v2-activate-staged
 pid_file=/var/run/hearth-v2-update-agent.pid
+
+/usr/bin/python3 -I "$safety_helper" check
 
 cleanup() {
   if [ -r "$pid_file" ] && [ "$(sed -n '1p' "$pid_file")" = "$$" ]; then
@@ -60,7 +61,7 @@ write_status() {
   started=$5
   completed=$6
   request=$7
-  temporary="$status_file.tmp.$$"
+  temporary=$(mktemp "$control_root/status.XXXXXX")
   printf '{"requestId":%s,"phase":"%s","progress":%s,"message":"%s","targetVersion":%s,"startedAt":%s,"completedAt":%s,"storage":{"state":"%s","message":"%s"}}\n' \
     "$request" "$phase" "$progress" "$message" "$target" "$started" "$completed" \
     "$storage_state" "$storage_message" > "$temporary"
@@ -75,7 +76,8 @@ chmod 0600 "$pid_file"
 write_status idle 0 'Ready to install a verified update.' null null null null
 
 while :; do
-  while IFS= read -r line; do
+    line=$(/usr/bin/python3 -I "$safety_helper" read-command)
+    if [ -z "$line" ]; then continue; fi
     set -- $line
     if [ "$#" -ne 2 ]; then
       continue
@@ -83,8 +85,7 @@ while :; do
     request_id=$1
     release_commit=$2
     case "$request_id" in
-      [a-z][a-z0-9_-]*) ;;
-      *) continue ;;
+      ''|[!a-z]*|*[!a-z0-9_-]*) continue ;;
     esac
     if [ "${#request_id}" -gt 96 ]; then
       continue
@@ -98,6 +99,11 @@ while :; do
     quoted_target="\"$release_commit\""
     quoted_request="\"$request_id\""
     quoted_started="\"$started\""
+    if [ "$(sed -n 's/^HEARTH_VERSION=//p' "$environment")" = "$release_commit" ]; then
+      write_status succeeded 100 'This release is already installed.' "$quoted_target" \
+        "$quoted_started" "\"$started\"" "$quoted_request"
+      continue
+    fi
     write_status queued 10 'Update queued.' "$quoted_target" \
       "$quoted_started" null "$quoted_request"
     refresh_storage
@@ -110,11 +116,12 @@ while :; do
 
     write_status installing 35 'Downloading and installing the verified release.' \
       "$quoted_target" "$quoted_started" null "$quoted_request"
-    staged_tmp="$staged_version.tmp.$$"
-    printf '%s\n' "$release_commit" > "$staged_tmp"
-    chown root:root "$staged_tmp"
-    chmod 0644 "$staged_tmp"
-    mv -f "$staged_tmp" "$staged_version"
+    if ! /usr/bin/python3 -I "$safety_helper" stage "$release_commit"; then
+      completed=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+      write_status failed 0 'Only the latest verified release can be installed.' "$quoted_target" \
+        "$quoted_started" "\"$completed\"" "$quoted_request"
+      continue
+    fi
 
     if "$activation_helper"; then
       completed=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
@@ -124,8 +131,7 @@ while :; do
     else
       completed=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
       refresh_storage
-      write_status failed 100 'Update failed. The previous release was restored.' \
+      write_status failed 100 'Update failed. Check system status.' \
         "$quoted_target" "$quoted_started" "\"$completed\"" "$quoted_request"
     fi
-  done < "$command_fifo"
 done

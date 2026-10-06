@@ -16,6 +16,7 @@ import {
 } from '../hooks/useReminderQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 
 type ReminderFilter = 'open' | 'all';
 
@@ -27,8 +28,8 @@ export function RemindersScreen({
   scenario: DemoScenario | 'offline';
 }) {
   const [filter, setFilter] = useState<ReminderFilter>('open');
-  const [title, setTitle] = useState('');
-  const [dueLocalDate, setDueLocalDate] = useState('');
+  const [draft, setDraft] = useState({ title: '', dueLocalDate: '' });
+  const { title, dueLocalDate } = draft;
   // Both views use one projection so switching filters never removes the focused controls.
   const query = useRemindersQuery(true, !preparing);
   const createReminder = useCreateReminder();
@@ -37,6 +38,7 @@ export function RemindersScreen({
   const deleteReminder = useDeleteReminder();
   const runtime = useHearthRuntime();
   const online = useOnlineStatus(scenario === 'offline');
+  useUnsavedChanges(title.length > 0 || dueLocalDate.length > 0);
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
@@ -61,12 +63,16 @@ export function RemindersScreen({
     event.preventDefault();
     const cleanTitle = title.trim();
     if (cleanTitle.length === 0) return;
+    const submittedDate = dueLocalDate;
     createReminder.mutate(
-      { title: cleanTitle, dueLocalDate: dueLocalDate.length === 0 ? null : dueLocalDate },
+      { title: cleanTitle, dueLocalDate: submittedDate.length === 0 ? null : submittedDate },
       {
         onSuccess: () => {
-          setTitle('');
-          setDueLocalDate('');
+          setDraft((current) =>
+            current.title.trim() === cleanTitle && current.dueLocalDate === submittedDate
+              ? { title: '', dueLocalDate: '' }
+              : current,
+          );
         },
       },
     );
@@ -75,6 +81,11 @@ export function RemindersScreen({
   return (
     <div className="screen reminders-screen">
       <ScreenHeader title="Reminders" meta={`${openCount} open`} />
+      {overview.hasMore ? (
+        <StatusBanner kind="unavailable">
+          Showing the first 1,000 · Remove old reminders to see more.
+        </StatusBanner>
+      ) : null}
 
       {!online ? (
         <StatusBanner kind="offline">Offline · Showing saved reminders.</StatusBanner>
@@ -92,7 +103,7 @@ export function RemindersScreen({
             data-focus-up="reminders-filter-open"
             data-focus-down={firstReminderFocusId}
             maxLength={240}
-            onChange={(event) => setTitle(event.target.value)}
+            onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
             placeholder="Add a reminder"
             value={title}
           />
@@ -106,7 +117,9 @@ export function RemindersScreen({
             data-focus-right="reminder-create-submit"
             data-focus-up="reminders-filter-open"
             data-focus-down={firstReminderFocusId}
-            onChange={(event) => setDueLocalDate(event.target.value)}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, dueLocalDate: event.target.value }))
+            }
             type="date"
             value={dueLocalDate}
           />
@@ -148,7 +161,21 @@ export function RemindersScreen({
       </div>
 
       {commandError === null ? null : (
-        <StatusBanner kind="unavailable">{commandError.message}</StatusBanner>
+        <StatusBanner kind="unavailable">
+          {commandError.message}{' '}
+          <button
+            className="text-action"
+            type="button"
+            onClick={() => {
+              const failed = [createReminder, updateReminder, completion, deleteReminder].find(
+                (command) => command.isError,
+              );
+              failed?.retryCommand();
+            }}
+          >
+            Try again
+          </button>
+        </StatusBanner>
       )}
 
       {visibleLists.length === 0 ? (
@@ -414,6 +441,7 @@ function formatDue(
   timezone: string,
 ): string {
   if (reminder.isCompleted) return 'Completed';
+  if (reminder.dueDateUnavailable) return 'Date unavailable · Edit to correct';
   if (reminder.dueLocalDate === null) return 'No due date';
   const dateLabel = relativeDateLabel(reminder.dueLocalDate, localDate, locale);
   if (!reminder.hasDueTime || reminder.dueAt === null) return dateLabel;

@@ -153,6 +153,12 @@ jobs:
             --file hearth/deploy/synology/compose.build.yaml \
             config --quiet
 
+      - name: Verify privileged release boundaries in an isolated fixture
+        run: |
+          sudo install -d -m 0700 /var/lib/hearth-release-tests
+          sudo env HEARTH_SAFETY_TEST_ROOT=/var/lib/hearth-release-tests \
+            python3 -B hearth/deploy/synology/test_release_safety.py -v
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 

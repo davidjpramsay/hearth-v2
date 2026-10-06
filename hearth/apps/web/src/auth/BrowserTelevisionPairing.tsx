@@ -4,14 +4,28 @@ import { createPortal } from 'react-dom';
 
 import { createRequestId } from '../api/core';
 import { pairingApi as hearthApi } from '../api/pairing';
+import { Icon } from '../components/Icon';
+import { ScreenConnectionSteps } from '../components/ScreenConnectionSteps';
+import { connectionNavigation } from './connectionNavigation';
 
 export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Promise<void> }) {
   const pairingSecret = useRef<string | null>(null);
   const completed = useRef(false);
   const backButton = useRef<HTMLButtonElement | null>(null);
+  const entryButton = useRef<HTMLButtonElement | null>(null);
+  const generation = useRef(0);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [active, setActive] = useState(false);
+  useEffect(
+    () => () => {
+      generation.current++;
+      pairingSecret.current = null;
+    },
+    [],
+  );
   const start = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (attempt: number) => {
       const secret = createPairingSecret();
       pairingSecret.current = secret;
       const session = await hearthApi.createBrowserTelevisionSession(
@@ -20,105 +34,143 @@ export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Pro
         secret,
       );
       return {
+        attempt,
         pairing: session.pairing,
         exchangeRequestId: createRequestId('browser_tv_exchange'),
       };
     },
-    onError: () => {
-      pairingSecret.current = null;
+    onError: (_error, attempt) => {
+      if (attempt === generation.current) pairingSecret.current = null;
     },
   });
+  const session = start.data?.attempt === attempt ? start.data : undefined;
 
   const status = useQuery({
-    queryKey: ['browser-television-pairing', start.data?.pairing.id],
+    queryKey: ['browser-television-pairing', session?.pairing.id],
     queryFn: async () => {
-      if (start.data === undefined) throw new Error('The pairing session has not started.');
-      const pairing = await hearthApi.getPairing(start.data.pairing.id);
+      if (session === undefined) throw new Error('The pairing session has not started.');
+      const pairing = await hearthApi.getPairing(session.pairing.id);
+      if (session.attempt !== generation.current) throw new Error('This connection was cancelled.');
       if (pairing.status !== 'approved') return { pairing, device: null };
       const secret = pairingSecret.current;
       if (secret === null) throw new Error('The private pairing session was interrupted.');
       const device = await hearthApi.exchangeBrowserTelevisionCredential(
         pairing.id,
-        start.data.exchangeRequestId,
+        session.exchangeRequestId,
         secret,
       );
+      if (session.attempt !== generation.current) throw new Error('This connection was cancelled.');
       pairingSecret.current = null;
       return { pairing, device };
     },
-    enabled: start.data !== undefined,
+    enabled: active && session !== undefined,
     retry: false,
+    refetchOnWindowFocus: false,
     refetchInterval: (query) =>
-      query.state.data?.pairing.status === 'pending' || query.state.data === undefined
+      query.state.status !== 'error' &&
+      (query.state.data?.pairing.status === 'pending' || query.state.data === undefined)
         ? 1_000
         : false,
   });
 
   useEffect(() => {
-    if (status.data?.device === null || status.data?.device === undefined || completed.current) {
+    if (!active || session === undefined || status.data?.device == null || completed.current) {
       return;
     }
     completed.current = true;
     void onComplete();
-  }, [onComplete, status.data?.device]);
+  }, [active, onComplete, session, status.data?.device]);
 
   useEffect(() => {
-    if (active) backButton.current?.focus();
+    if (!active) return;
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    backButton.current?.focus();
+    return () => dialog?.close();
   }, [active]);
 
   const retry = () => {
     pairingSecret.current = null;
     completed.current = false;
     start.reset();
-    start.mutate();
+    const next = ++generation.current;
+    setAttempt(next);
+    start.mutate(next);
   };
   const begin = () => {
     setActive(true);
-    start.mutate();
+    const next = ++generation.current;
+    setAttempt(next);
+    start.mutate(next);
   };
   const cancel = () => {
+    setAttempt(++generation.current);
     pairingSecret.current = null;
     completed.current = false;
     start.reset();
     setActive(false);
+    requestAnimationFrame(() => entryButton.current?.focus());
   };
-  const pairing = status.data?.pairing ?? start.data?.pairing;
-  const error = start.error ?? status.error;
+  const pairing = session === undefined ? undefined : (status.data?.pairing ?? session.pairing);
+  const error = start.error ?? (session === undefined ? null : status.error);
 
   if (!active) {
     return (
-      <div className="browser-tv-pairing-entry">
-        <strong>Television browser</strong>
-        <span>Pair without giving the screen admin access.</span>
-        <button className="button button--secondary" onClick={begin} type="button">
-          Pair this screen as a television
+      <section className="connection-choice" aria-labelledby="shared-device-title">
+        <Icon name="television" />
+        <h2 id="shared-device-title">Shared screen</h2>
+        <p>A TV or wall tablet. An adult approves it from their phone. No settings access.</p>
+        <button
+          ref={entryButton}
+          className="button button--secondary"
+          onClick={begin}
+          type="button"
+        >
+          Connect shared screen
         </button>
-      </div>
+      </section>
     );
   }
 
   return createPortal(
-    <main className="runtime-gate runtime-gate--setup browser-tv-pairing-overlay">
+    <dialog
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby="screen-connect-title"
+      className="runtime-gate runtime-gate--setup browser-tv-pairing-overlay"
+      onCancel={(event) => {
+        event.preventDefault();
+        cancel();
+      }}
+      onKeyDown={(event) => {
+        if (['Escape', 'BrowserBack', 'GoBack'].includes(event.key)) {
+          event.preventDefault();
+          cancel();
+        } else connectionNavigation(event);
+      }}
+    >
       <img alt="" src="/brand/hearth-mark.png" />
-      <h1>Connect this screen</h1>
+      <h1 id="screen-connect-title">Connect this screen</h1>
       {pairing === undefined && error === null ? (
-        <p role="status">Creating a private television pairing code…</p>
+        <p role="status">Getting a connection code…</p>
       ) : null}
       {error === null && pairing !== undefined ? (
-        <section className="browser-tv-pairing" aria-labelledby="browser-tv-pairing-instructions">
-          <p id="browser-tv-pairing-instructions">
-            On your phone, open <strong>More → Televisions</strong> and approve this code.
-          </p>
-          <div aria-label={`Pairing code ${pairing.code}`} className="browser-tv-pairing__code">
-            {pairing.code.split('').map((character, index) => (
-              <span key={`${character}-${index}`}>{character}</span>
-            ))}
-          </div>
+        <section className="browser-tv-pairing" aria-label="Screen connection">
+          <ScreenConnectionSteps />
+          <code className="screen-connection-address">{window.location.origin}</code>
+          {pairing.status === 'pending' ? (
+            <div aria-label={`Pairing code ${pairing.code}`} className="browser-tv-pairing__code">
+              {pairing.code.split('').map((character, index) => (
+                <span key={`${character}-${index}`}>{character}</span>
+              ))}
+            </div>
+          ) : null}
           <p className="browser-tv-pairing__status" role="status">
             {pairing.status === 'approved'
-              ? 'Approved. Opening Hearth…'
+              ? 'Connected. Opening Hearth…'
               : pairing.status === 'expired'
-                ? 'This code has expired.'
-                : 'Waiting for approval…'}
+                ? 'Code expired. Get a new code to try again.'
+                : 'Waiting for your phone…'}
           </p>
         </section>
       ) : null}
@@ -133,22 +185,11 @@ export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Pro
             Get a new code
           </button>
         ) : null}
-        <button
-          ref={backButton}
-          className="button button--quiet"
-          type="button"
-          onClick={cancel}
-          onKeyDown={(event) => {
-            if (['Escape', 'BrowserBack', 'GoBack'].includes(event.key)) {
-              event.preventDefault();
-              cancel();
-            }
-          }}
-        >
-          Back to sign in
+        <button ref={backButton} className="button button--quiet" type="button" onClick={cancel}>
+          Cancel connection
         </button>
       </div>
-    </main>,
+    </dialog>,
     globalThis.document.body,
   );
 }
@@ -161,7 +202,7 @@ function createPairingSecret(): string {
 }
 
 function browserDeviceName(): string {
-  return /Tizen|SMART-TV|SamsungBrowser/i.test(globalThis.navigator.userAgent)
+  return /Tizen|SMART-TV/i.test(globalThis.navigator.userAgent)
     ? 'Samsung television browser'
-    : 'Browser television';
+    : 'Shared screen';
 }

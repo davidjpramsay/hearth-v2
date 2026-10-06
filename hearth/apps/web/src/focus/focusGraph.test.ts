@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   FocusMemory,
   focusById,
+  focusControl,
   focusIsWithin,
   nextFocusId,
   nextSpatialTarget,
@@ -23,6 +24,19 @@ function rectangle(element: HTMLElement, x: number, y: number) {
 }
 
 describe('focus graph', () => {
+  it('preserves guarded busy rows without enabling unavailable or native-disabled controls', () => {
+    document.body.innerHTML =
+      '<main id="main-content"><button>A</button><button aria-disabled="true" aria-busy="true" data-focus-id="busy">Saving</button><button aria-disabled="true">Unavailable</button><button disabled aria-busy="true">Disabled</button></main>';
+    const [start, busy, unavailable, disabled] = [...document.querySelectorAll('button')];
+    [start, busy, unavailable, disabled].forEach((element, index) =>
+      rectangle(element!, 120 * index, 0),
+    );
+    expect(nextSpatialTarget(start!, 'right')).toBe(busy);
+    expect(focusById('busy')).toBe(true);
+    expect(focusIsWithin(document.querySelector('main'))).toBe(true);
+    expect(focusControl(unavailable!)).toBe(false);
+    expect(focusControl(disabled!)).toBe(false);
+  });
   it('leaves a wide chart horizontally instead of jumping to controls above it', () => {
     document.body.innerHTML =
       '<aside><button>Nav</button></aside><main><button>Mode</button><button>Chart</button></main>';
@@ -142,6 +156,33 @@ describe('focus graph', () => {
     document.body.innerHTML = '<button data-focus-id="chore-one">Complete</button>';
     expect(focusById('chore-one')).toBe(true);
     expect(document.activeElement).toHaveAttribute('data-focus-id', 'chore-one');
+  });
+
+  it('ignores retained controls beneath a hidden outgoing screen', () => {
+    document.body.innerHTML =
+      '<main id="main-content"><div><button data-focus-id="outgoing">Old screen</button></div></main>';
+    const button = document.querySelector('button')!;
+    const content = document.querySelector('#main-content');
+    expect(focusById('outgoing')).toBe(true);
+    button.parentElement!.style.display = 'none';
+    expect(focusIsWithin(content)).toBe(false);
+    expect(focusById('outgoing')).toBe(false);
+  });
+
+  it('waits for loaded screen entry without disabling manual loading-screen navigation', () => {
+    document.body.innerHTML =
+      '<main id="main-content"><section data-focus-loading="true"><button data-focus-id="admin-back">Back</button></section></main>';
+    const back = document.querySelector('button')!;
+    expect(focusById('screen-entry')).toBe(false);
+    expect(focusControl(back)).toBe(true);
+    expect(document.activeElement).toBe(back);
+    document.querySelector('section')!.removeAttribute('data-focus-loading');
+    back.insertAdjacentHTML(
+      'afterend',
+      '<button data-focus-id="loaded-entry" data-focus-entry="true">Manage</button>',
+    );
+    expect(focusById('screen-entry')).toBe(true);
+    expect(document.activeElement).toHaveAttribute('data-focus-id', 'loaded-entry');
   });
 
   it('can focus a phone entry control without shifting the initial viewport', () => {

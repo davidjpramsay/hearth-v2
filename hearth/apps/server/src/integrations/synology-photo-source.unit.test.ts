@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -11,6 +12,7 @@ import { FixedClock } from '../runtime-context.js';
 import {
   SynologyFolderPhotoSourceProvider,
   resolveSynologyPhotoSourceConfiguration,
+  readApprovedPhoto,
 } from './synology-photo-source.js';
 
 const temporaryDirectories: string[] = [];
@@ -22,6 +24,62 @@ afterEach(async () => {
 });
 
 describe('SynologyFolderPhotoSourceProvider', () => {
+  it('rejects a substituted FIFO without waiting for a writer', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-photo-fifo-'));
+    temporaryDirectories.push(directory);
+    const fifo = join(directory, 'replaced.jpg');
+    execFileSync('mkfifo', [fifo]);
+    await expect(readApprovedPhoto(directory, fifo)).rejects.toThrow(/changed/);
+  }, 1000);
+  it('reads pinned approved bytes and rejects a substituted ancestor or leaf symlink', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-photo-boundary-'));
+    temporaryDirectories.push(directory);
+    const source = join(directory, 'source');
+    const outside = join(directory, 'outside');
+    await mkdir(source);
+    await mkdir(outside);
+    await writeFile(join(source, 'safe.jpg'), 'approved image bytes');
+    await writeFile(join(outside, 'private.jpg'), 'private image bytes');
+    expect((await readApprovedPhoto(source, join(source, 'safe.jpg'))).toString()).toBe(
+      'approved image bytes',
+    );
+    await symlink(join(outside, 'private.jpg'), join(source, 'linked.jpg'));
+    await symlink(outside, join(source, 'album'));
+    await expect(readApprovedPhoto(source, join(source, 'linked.jpg'))).rejects.toThrow(
+      /approved folder/,
+    );
+    await expect(readApprovedPhoto(source, join(source, 'album', 'private.jpg'))).rejects.toThrow(
+      /approved folder/,
+    );
+  });
+  it('loads patched libheif and preserves legitimate AVIF upload and folder import', async () => {
+    const [major = 0, minor = 0, patch = 0] = (sharp.versions.heif ?? '0.0.0')
+      .split('.')
+      .map((part) => Number.parseInt(part, 10));
+    expect(major * 1_000_000 + minor * 1_000 + patch).toBeGreaterThanOrEqual(1_023_002);
+    const fixture = await photoFixture();
+    const bytes = await sharp({
+      create: { width: 80, height: 48, channels: 3, background: '#426848' },
+    })
+      .avif()
+      .toBuffer();
+    const uploaded = await fixture.provider.uploadPhoto('household_photo_test', {
+      bytes,
+      mimeType: 'image/avif',
+      capturedAt: null,
+      actorId: 'member_adult',
+    });
+    expect(uploaded?.photo).toMatchObject({ width: 80, height: 48, source: 'hearth-upload' });
+    await writeFile(join(fixture.source, 'family.avif'), bytes);
+    const imported = await fixture.provider.refreshApprovedPhotos('household_photo_test');
+    expect(imported.index).toMatchObject({
+      managedPhotoCount: 1,
+      importedPhotoCount: 1,
+      corruptFileCount: 0,
+    });
+    await fixture.close();
+  });
+
   it('indexes orientation-correct derivatives without exposing source paths', async () => {
     const fixture = await photoFixture();
     await writeFile(

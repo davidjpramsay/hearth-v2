@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { ChoreCommandResult, ChoreList, ChoreOccurrence, TodaySummary } from '@hearth/shared';
 
@@ -13,19 +13,28 @@ interface ChoreMutationVariables {
 }
 
 interface MutationContext {
-  today: TodaySummary | undefined;
-  chores: ChoreList | undefined;
-  localDate: string;
+  previous: ChoreOccurrence;
+  isToday: boolean;
 }
 
 export function useChoreMutation({ asAdmin = false }: { asAdmin?: boolean } = {}) {
   const queryClient = useQueryClient();
   const [failedOccurrenceId, setFailedOccurrenceId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const commands = useRef(
+    new Map<
+      string,
+      { action: ChoreMutationVariables['action']; occurrence: ChoreOccurrence; requestId: string }
+    >(),
+  );
+  const [pendingOccurrenceIds, setPendingOccurrenceIds] = useState<ReadonlySet<string>>(new Set());
 
   const mutation = useMutation<ChoreCommandResult, Error, ChoreMutationVariables, MutationContext>({
     mutationFn: async ({ action, occurrence }) => {
-      const requestId = createRequestId(`chore_${action}`);
+      const command = commands.current.get(occurrence.id)!;
+      const requestId = command.requestId;
+      action = command.action;
+      occurrence = command.occurrence;
       if (action === 'complete') {
         return hearthApi.completeChore(occurrence.id, requestId, asAdmin);
       }
@@ -45,9 +54,8 @@ export function useChoreMutation({ asAdmin = false }: { asAdmin?: boolean } = {}
         queryClient.cancelQueries({ queryKey: queryKeys.pocketMoneyRoot }),
       ]);
       const context = {
-        today: isToday ? queryClient.getQueryData<TodaySummary>(queryKeys.today) : undefined,
-        chores: queryClient.getQueryData<ChoreList>(choresKey),
-        localDate: occurrence.localDate,
+        previous: occurrence,
+        isToday,
       };
       const optimistic =
         action === 'complete'
@@ -69,6 +77,7 @@ export function useChoreMutation({ asAdmin = false }: { asAdmin?: boolean } = {}
       return context;
     },
     onSuccess: (result) => {
+      commands.current.delete(result.occurrence.id);
       updateOccurrence(
         queryClient,
         result.occurrence,
@@ -80,20 +89,34 @@ export function useChoreMutation({ asAdmin = false }: { asAdmin?: boolean } = {}
       });
     },
     onError: (error, variables, context) => {
-      if (context?.today !== undefined) queryClient.setQueryData(queryKeys.today, context.today);
-      if (context?.chores !== undefined) {
-        queryClient.setQueryData(queryKeys.choresForDate(context.localDate), context.chores);
-      }
+      if (context !== undefined) updateOccurrence(queryClient, context.previous, context.isToday);
       setFailedOccurrenceId(variables.occurrence.id);
       setErrorMessage(
         error instanceof HearthApiError ? error.payload.error.message : 'Couldn’t mark this done.',
       );
     },
+    onSettled: (_result, _error, variables) => {
+      setPendingOccurrenceIds((current) => {
+        const next = new Set(current);
+        next.delete(variables.occurrence.id);
+        return next;
+      });
+    },
   });
 
   return {
-    mutate: mutation.mutate,
-    isPending: mutation.isPending,
+    mutate: (variables: ChoreMutationVariables) => {
+      if (pendingOccurrenceIds.has(variables.occurrence.id)) return;
+      const original = commands.current.get(variables.occurrence.id) ?? {
+        ...variables,
+        requestId: createRequestId(`chore_${variables.action}`),
+      };
+      commands.current.set(variables.occurrence.id, original);
+      setPendingOccurrenceIds((current) => new Set(current).add(variables.occurrence.id));
+      mutation.mutate({ action: original.action, occurrence: original.occurrence });
+    },
+    isPending: pendingOccurrenceIds.size > 0,
+    pendingOccurrenceIds,
     pendingOccurrenceId: mutation.isPending ? (mutation.variables?.occurrence.id ?? null) : null,
     failedOccurrenceId,
     errorMessage,

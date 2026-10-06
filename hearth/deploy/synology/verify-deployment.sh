@@ -27,6 +27,12 @@ grep -q 'stop_agents' "$script_dir/appliance-update-agent-hook.sh"
 grep -q 'agents_running' "$script_dir/appliance-update-agent-hook.sh"
 grep -q 'printf.*"\$\$".*"\$pid_file"' "$script_dir/appliance-update-agent-on-nas.sh"
 grep -q '"$update_hook" start' "$script_dir/activate-staged-release-on-nas.sh"
+grep -q 'read-command' "$script_dir/release-safety.py"
+grep -q 'O_NOFOLLOW' "$script_dir/release-safety.py"
+grep -q 'verify_release' "$script_dir/release-safety.py"
+grep -q '/usr/local/etc/hearth-v2/control:/run/hearth-update' "$script_dir/compose.yaml"
+grep -q 'release-safety.py' "$script_dir/install-release-helper.sh"
+python3 -I -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' "$script_dir/release-safety.py"
 
 docker compose \
   --env-file "$environment_file" \

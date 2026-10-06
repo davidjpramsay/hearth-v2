@@ -49,9 +49,13 @@ const EsvResponseSchema = z.object({
 
 export interface DailyVerseProvider {
   getDailyVerse(householdId: string, localDate: string): Promise<DailyVerseSummary | null>;
+  getCachedDailyVerse?(householdId: string, localDate: string): DailyVerseSummary | null;
 }
 
 export class UnconfiguredDailyVerseProvider implements DailyVerseProvider {
+  getCachedDailyVerse(): null {
+    return null;
+  }
   async getDailyVerse(): Promise<null> {
     return null;
   }
@@ -59,6 +63,9 @@ export class UnconfiguredDailyVerseProvider implements DailyVerseProvider {
 
 export class FakeDailyVerseProvider implements DailyVerseProvider {
   async getDailyVerse(): Promise<DailyVerseSummary> {
+    return this.getCachedDailyVerse();
+  }
+  getCachedDailyVerse(): DailyVerseSummary {
     return DailyVerseSummarySchema.parse({
       text: 'Let kindness shape the way you speak and serve one another today.',
       reference: 'Demo preview',
@@ -71,7 +78,11 @@ export class FakeDailyVerseProvider implements DailyVerseProvider {
 }
 
 export class EsvDailyVerseProvider implements DailyVerseProvider {
-  private readonly dailyResults = new Map<string, DailyVerseSummary | null>();
+  private readonly dailyResults = new Map<
+    string,
+    { value: DailyVerseSummary | null; retryAt: number }
+  >();
+  private readonly inFlight = new Map<string, Promise<DailyVerseSummary | null>>();
 
   constructor(
     private readonly database: Database.Database,
@@ -84,17 +95,41 @@ export class EsvDailyVerseProvider implements DailyVerseProvider {
 
   async getDailyVerse(householdId: string, localDate: string): Promise<DailyVerseSummary | null> {
     const resultKey = `${householdId}:${localDate}`;
-    if (this.dailyResults.has(resultKey)) return this.dailyResults.get(resultKey) ?? null;
+    const saved = this.dailyResults.get(resultKey);
+    if (saved !== undefined && saved.retryAt > this.now().getTime()) return saved.value;
+    const pending = this.inFlight.get(resultKey);
+    if (pending !== undefined) return pending;
+    const refresh = this.refresh(householdId, localDate).finally(() =>
+      this.inFlight.delete(resultKey),
+    );
+    this.inFlight.set(resultKey, refresh);
+    return refresh;
+  }
 
+  getCachedDailyVerse(householdId: string, localDate: string): DailyVerseSummary | null {
+    return (
+      this.dailyResults.get(`${householdId}:${localDate}`)?.value ??
+      this.readCache(householdId, referenceForLocalDate(localDate))
+    );
+  }
+
+  private async refresh(householdId: string, localDate: string): Promise<DailyVerseSummary | null> {
+    const resultKey = `${householdId}:${localDate}`;
+    // This appliance has one household; retain only today's in-memory result.
+    for (const key of this.dailyResults.keys())
+      if (key.startsWith(`${householdId}:`)) this.dailyResults.delete(key);
     const reference = referenceForLocalDate(localDate);
     try {
       const verse = await this.fetchVerse(reference);
       this.writeCache(householdId, verse);
-      this.dailyResults.set(resultKey, verse);
+      this.dailyResults.set(resultKey, {
+        value: verse,
+        retryAt: this.now().getTime() + 86_400_000,
+      });
       return verse;
     } catch {
       const stale = this.readCache(householdId, reference);
-      this.dailyResults.set(resultKey, stale);
+      this.dailyResults.set(resultKey, { value: stale, retryAt: this.now().getTime() + 60_000 });
       return stale;
     }
   }

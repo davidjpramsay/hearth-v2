@@ -4,6 +4,7 @@ import ICAL from 'ical.js';
 import { DAVClient, type DAVCalendar, type DAVCalendarObject } from 'tsdav';
 
 import { addLocalDays, localDateInTimezone } from '@hearth/core';
+import { createCalDavTransport } from './caldav-transport.js';
 
 import {
   CalendarProviderError,
@@ -66,7 +67,7 @@ export async function discoverCalDavCalendars(
         credentials: { username: input.username, password: input.appPassword },
         authMethod: 'Basic',
         defaultAccountType: 'caldav',
-        fetch: timeoutFetch,
+        fetch: createCalDavTransport(input.serverUrl),
       });
     await client.login({ loadCollections: false, loadObjects: false });
     const available = (await client.fetchCalendars()).filter(
@@ -125,6 +126,7 @@ export class CalDavCalendarProvider implements CalendarProvider {
     this.now = options.now ?? (() => new Date());
     this.calendarAllowlist = options.calendarAllowlist.map((calendar) => ({ ...calendar }));
     this.householdTimezone = options.householdTimezone;
+    const transport = createCalDavTransport(options.serverUrl);
     this.clientFactory =
       options.clientFactory ??
       (() =>
@@ -133,7 +135,7 @@ export class CalDavCalendarProvider implements CalendarProvider {
           credentials: { username: options.username, password: options.appPassword },
           authMethod: 'Basic',
           defaultAccountType: 'caldav',
-          fetch: timeoutFetch,
+          fetch: transport,
         }));
   }
 
@@ -606,18 +608,6 @@ function statusFrom(error: unknown): number | null {
     return 401;
   }
   return null;
-}
-
-async function timeoutFetch(
-  input: Parameters<typeof fetch>[0],
-  init?: Parameters<typeof fetch>[1],
-): Promise<Response> {
-  const timeoutSignal = AbortSignal.timeout(15_000);
-  const signal =
-    init?.signal === null || init?.signal === undefined
-      ? timeoutSignal
-      : AbortSignal.any([init.signal, timeoutSignal]);
-  return fetch(input, { ...init, signal });
 }
 
 function truncate(value: string, maximum: number): string {

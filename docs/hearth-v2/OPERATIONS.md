@@ -10,6 +10,17 @@ development-server workflow for focused UI work. Run
 dependencies on that audit. Routine screenshots are ignored test artifacts. Refresh committed
 visual evidence deliberately with `pnpm test:visual:update`, then inspect the image diff.
 
+Do not rebuild or replace `apps/web/dist` while a built-app browser gate is running: preview can
+temporarily serve a missing entry/chunk and invalidate the evidence. Complete code/build verification
+first, then run the browser gate against that stable output.
+
+Dependency remediation on 2026-10-05 pins sharp 0.35.4, Fastify 5.12.5 and Vitest 4.1.11, with
+major-preserving fast-uri 3.1.8/4.1.5, js-yaml 4.3.2 and brace-expansion 1.1.21/5.0.12 overrides.
+The photo-provider unit gate checks the actually loaded libheif is at least 1.23.2 and exercises AVIF
+upload/import. Both installed URI-parser majors have malformed-authority regression controls.
+Audit success is point-in-time package evidence, not a substitute for the repository security scan
+or Linux/container/live NAS checks. Recheck registry advisories before publishing each release.
+
 After the Fastify security update (D-083), numeric `HEARTH_TRUST_PROXY_HOPS` is ignored. Optional
 `HEARTH_TRUST_PROXY_ADDRESSES` lists only verified proxy IPs/CIDRs, never all LAN addresses. Leaving
 it blank is safe and keeps the app usable, but clients behind one proxy share authentication
@@ -296,9 +307,13 @@ deployment:
 /volume1/docker/hearth-v2/
   source/              exact staged Hearth source tree
   staging/             temporary release staging
-  staged-source-version       candidate copied but not yet activated
+  staged-source-version       legacy untrusted candidate, independently verified by root
+
+/volume1/.hearth-v2-state/     root-protected metadata and rollback storage
+  staged-source-version       verified candidate awaiting activation
   active-source-version       last release that passed readiness
   previous-source-version     retained rollback image version
+  rollback.*/                 private stopped-database recovery copies
 
 /volume1/hearth-v2-private/
   data/                SQLite, managed photos, derivatives and online backups
@@ -494,6 +509,27 @@ card fails closed with a one-time setup message. Development installations hide 
 must keep using its verified `hearth-update <full-commit>` command until an equivalent platform
 agent with automatic database rollback is commissioned; setting `HEARTH_UPDATE_PLATFORM=termux`
 without that agent is unsupported.
+
+D-089 changes the host trust boundary. The NAS needs `/usr/bin/python3` (3.8+ with SQLite support).
+Install the updated fixed helper and activate the new verified release together under explicit
+deployment approval: an existing container still mounts the old control directory and cannot
+migrate that mount merely by refreshing its browser. The new mount is
+`/usr/local/etc/hearth-v2/control`; root-only markers/rollback copies are in
+`/volume1/.hearth-v2-state`, not deployment-writable staging or the DSM system partition.
+Root verifies the fixed successful GitHub workflow
+independently before stopping Hearth and requires readiness plus the requested health version.
+If a directory identity, link, ownership, snapshot digest or release check fails, stop safely and
+retain protected recovery evidence for the operator. Do not relax these checks to complete an update.
+No installer, mount migration, network/firewall change or deployment is implied by local verification.
+
+DSM ACLs can override a requested 0600 Unix file mode in an inherited shared folder. A mode-only
+check must stop safely rather than silently accepting that condition; it does not by itself prove
+effective access by another NAS account. Inspect `synoacltool -get` on the dedicated Hearth folders
+during commissioning. Any ACL changes need separate approval and a preserved ACL/recovery record.
+Keep diagnostic snapshots inside private container temporary storage or a verified mode-700 work
+directory under a protected volume parent; verify copy/restore integrity and delete only the exact
+disposable artifacts afterwards. A successful drill on an old installed image does not certify the
+new helper, mount migration or activated release.
 
 ### Root-owned release-helper boundary
 

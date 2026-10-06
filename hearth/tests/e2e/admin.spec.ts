@@ -140,6 +140,7 @@ test('desktop admin uses a full workspace while phone admin stays compact', asyn
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin/chore-day');
+  await expect(page.getByRole('heading', { name: 'Chores this week' })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Administration' })).toBeHidden();
   await expect(page.locator('.companion-shell--admin .phone-tabs')).toBeVisible();
 
@@ -745,8 +746,10 @@ test('television code is approved on the companion and can be revoked', async ({
   await page.goto('/admin/televisions');
   const newDevice = page.locator('.device-row').filter({ hasText: 'Living room TV' }).last();
   await expect(newDevice).toContainText('Connected');
-  await newDevice.getByRole('button', { name: 'Revoke' }).click();
-  await expect(newDevice).toContainText('Revoked');
+  await newDevice.getByRole('button', { name: 'Disconnect', exact: true }).click();
+  await expect(newDevice).toContainText('It will need a new code to reconnect.');
+  await newDevice.getByRole('button', { name: 'Disconnect', exact: true }).click();
+  await expect(newDevice).toContainText('Disconnected');
 });
 
 test('television pairing has deterministic initial focus and Back behaviour', async ({ page }) => {

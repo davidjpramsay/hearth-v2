@@ -36,12 +36,29 @@ export function WeatherScreen({
 
   const forecast = query.data;
   if (forecast.current === null || forecast.hourly.length === 0) {
+    const configured =
+      forecast.configured ?? (forecast.source !== null || forecast.locationLabel !== null);
     return (
       <div className="screen weather-screen weather-screen--empty">
-        <EmptyState title="Set a weather location" description="Choose it in Household settings." />
-        <Link className="weather-setup-link focusable" to="/admin/household">
-          Open settings <Icon name="chevron-right" />
-        </Link>
+        <EmptyState
+          title={configured ? 'Weather is unavailable' : 'Set a weather location'}
+          description={
+            configured ? 'Your location is saved. Try again.' : 'Choose it in Household settings.'
+          }
+        />
+        {configured ? (
+          <button
+            className="weather-setup-link focusable"
+            onClick={() => void query.refetch()}
+            type="button"
+          >
+            Try again
+          </button>
+        ) : (
+          <Link className="weather-setup-link focusable" to="/admin/household">
+            Open settings <Icon name="chevron-right" />
+          </Link>
+        )}
       </div>
     );
   }

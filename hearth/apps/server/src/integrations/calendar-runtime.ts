@@ -19,7 +19,13 @@ export const CalDavRuntimeConfigSchema = z
     serverUrl: z
       .string()
       .url()
-      .refine((value) => new URL(value).protocol === 'https:', 'Expected an HTTPS URL'),
+      .refine((value) => {
+        try {
+          return new URL(value).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      }, 'Expected an HTTPS URL'),
     username: z.string().trim().min(1).max(320),
     appPassword: z.string().min(1).max(512),
     householdTimezone: TimezoneSchema,
@@ -97,6 +103,7 @@ export class ManagedCalendarProvider implements CalendarProvider {
 export async function resolveCalendarRuntime(input: {
   demoMode: boolean;
   configPath: string | undefined;
+  onConfigurationUnavailable?: () => void;
 }): Promise<CalendarRuntime | null> {
   if (input.demoMode) {
     if (input.configPath !== undefined) {
@@ -110,7 +117,9 @@ export async function resolveCalendarRuntime(input: {
   try {
     return await loadCalendarRuntime(input.configPath);
   } catch (error) {
-    if (error instanceof CalendarRuntimeReadError && error.missing) {
+    if (error instanceof CalendarRuntimeReadError || error instanceof z.ZodError) {
+      if (!(error instanceof CalendarRuntimeReadError && error.missing))
+        input.onConfigurationUnavailable?.();
       return unconfiguredCalendarRuntime();
     }
     throw error;

@@ -2,8 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IconName } from '../components/Icon';
 import { Link } from 'react-router-dom';
 
-import { runtimeApi as hearthApi } from '../api/runtime';
-import { authStatusQueryKey } from '../auth/queryKeys';
+import { signOutAndClear } from '../auth/signOut';
 import { AdminError, AdminLoading } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useAdminQueries';
@@ -49,11 +48,6 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
         icon: 'users',
         path: '/admin/people',
       },
-      {
-        title: 'Adult access',
-        icon: 'shield',
-        path: '/admin/access',
-      },
     ],
   },
   {
@@ -65,7 +59,7 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
         path: '/admin/connections',
       },
       {
-        title: 'Paired televisions',
+        title: 'Phones & screens',
         icon: 'television',
         path: '/admin/televisions',
       },
@@ -109,10 +103,7 @@ export function AdminScreen() {
   const queryClient = useQueryClient();
   const admin = useAdminQuery();
   const signOut = useMutation({
-    mutationFn: hearthApi.signOut,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: authStatusQueryKey });
-    },
+    mutationFn: () => signOutAndClear(queryClient),
   });
   if (admin.isPending) return <AdminLoading />;
   if (admin.isError) return <AdminError message={admin.error.message} />;

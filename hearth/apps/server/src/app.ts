@@ -59,7 +59,6 @@ import {
   FirstUsePasskeyOptionsRequestSchema,
   HouseholdListsSchema,
   HouseholdListSettingsSchema,
-  type HearthReminder,
   HomeActionIdSchema,
   HomeActionResultSchema,
   HomeAssistantConnectionCommandResultSchema,
@@ -126,7 +125,6 @@ import {
   SetReminderCompletionRequestSchema,
   SystemBackupCommandResultSchema,
   SystemStatusSchema,
-  TodaySummarySchema,
   TimestampSchema,
   TodayConfigurationCommandResultSchema,
   TodayConfigurationSchema,
@@ -181,6 +179,7 @@ import {
   type HomeAssistantConnectionRepository,
 } from './home-assistant-connection-repository.js';
 import { RealtimeHub } from './realtime.js';
+import { createTodayReader } from './today-reader.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
 import {
@@ -429,87 +428,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     done(null, body);
   });
 
-  const readToday = async (householdId: string, localDate: string) => {
-    const [
-      today,
-      household,
-      lists,
-      meals,
-      gallery,
-      todayConfiguration,
-      activeNotice,
-      reminderOverview,
-    ] = await Promise.all([
-      repository.getToday(householdId, localDate),
-      adminRepository.getHousehold(householdId),
-      planningRepository.getLists(householdId),
-      planningRepository.getMealPlan(householdId, localDate),
-      photoRepository.getGallery(householdId).catch(() => null),
-      todayContentRepository.getConfiguration(householdId),
-      todayContentRepository.getActiveNotice(householdId),
-      reminderRepository.getOverview(householdId, false),
-    ]);
-    const members = memberLookup(household.members);
-    const primaryList = lists.lists[0];
-    const dinner = meals.days[0]?.entries.find((entry) => entry.slot === 'dinner');
-    const featuredPhoto =
-      gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ?? null;
-    const dailyVerse = todayConfiguration.sections.dailyVerse
-      ? await dailyVerseProvider.getDailyVerse(householdId, localDate)
-      : null;
-    const openReminders = reminderOverview.reminders
-      .filter((reminder) => !reminder.isCompleted)
-      .toSorted((left, right) => compareTodayReminders(left, right, localDate));
-    const reminderSummary = todayConfiguration.sections.reminders
-      ? {
-          openCount: openReminders.length,
-          items: openReminders.slice(0, 3).map((reminder) => ({
-            id: reminder.id,
-            title: reminder.title,
-            dueAt: reminder.dueAt,
-            hasDueTime: reminder.hasDueTime,
-          })),
-        }
-      : null;
-    return TodaySummarySchema.parse({
-      ...today,
-      household: { ...household, mode: today.household.mode },
-      dinner: dinner?.mealName ?? today.dinner,
-      listSummary:
-        primaryList === undefined
-          ? today.listSummary
-          : { name: primaryList.name, remainingCount: primaryList.remainingCount },
-      notice: activeNotice?.message ?? null,
-      dailyVerse,
-      reminderSummary,
-      sections: todayConfiguration.sections,
-      photo: !todayConfiguration.sections.photo
-        ? null
-        : gallery === null
-          ? today.photo
-          : featuredPhoto === null
-            ? null
-            : {
-                url: featuredPhoto.displayUrl,
-                alt: featuredPhoto.alt,
-                orientation: featuredPhoto.orientation,
-                width: featuredPhoto.width,
-                height: featuredPhoto.height,
-              },
-      calendars: today.calendars.map((calendar) => ({
-        ...calendar,
-        owner: calendar.owner === null ? null : (members.get(calendar.owner.id) ?? calendar.owner),
-      })),
-      events: today.events.map((event) => ({
-        ...event,
-        owner: event.owner === null ? null : (members.get(event.owner.id) ?? event.owner),
-      })),
-      chores: today.chores.map((chore) => ({
-        ...chore,
-        assignee: members.get(chore.assignee.id) ?? chore.assignee,
-      })),
-    });
-  };
+  const readToday = createTodayReader({
+    repository,
+    adminRepository,
+    planningRepository,
+    photoRepository,
+    todayContentRepository,
+    reminderRepository,
+    dailyVerseProvider,
+    realtime,
+    now: () => runtime.clock.now(),
+  });
 
   server.addHook('preHandler', async (request, reply) => {
     const routeUrl = request.routeOptions.url;
@@ -1226,7 +1155,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return run(reply, async () => {
       const asset = await adminRepository.getMemberAvatar(params.householdId, params.memberId);
       return reply
-        .header('Cache-Control', 'private, max-age=31536000, immutable')
+        .header('Cache-Control', 'private, no-store')
         .header('Content-Length', String(asset.bytes.byteLength))
         .header('X-Content-Type-Options', 'nosniff')
         .type(asset.mimeType)
@@ -1299,7 +1228,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (body === null) return reply;
     return run(reply, async () =>
       PairingRequestSchema.parse(
-        await adminRepository.createPairing(body.deviceName, body.requestId),
+        await adminRepository.createPairing(
+          body.deviceName,
+          body.requestId,
+          undefined,
+          undefined,
+          request.ip,
+        ),
       ),
     );
   });
@@ -1314,6 +1249,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           body.requestId,
           credentialHash(body.pairingSecret),
           body.applicationVersion,
+          request.ip,
         ),
       }),
     );
@@ -1689,7 +1625,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           throw new RepositoryError('NOT_FOUND', 'That family photo could not be found.');
         }
         return reply
-          .header('Cache-Control', 'private, max-age=31536000, immutable')
+          .header('Cache-Control', 'private, no-store')
           .header('Content-Length', String(asset.bytes.byteLength))
           .header('X-Content-Type-Options', 'nosniff')
           .type(asset.mimeType)
@@ -2432,17 +2368,36 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       'X-Accel-Buffering': 'no',
     });
     reply.raw.write(': connected\n\n');
+    let closed = false;
+    const send = async (data: string) => {
+      if (closed) return;
+      if (
+        runtime.mode === 'private' &&
+        !(await hasPrivateHouseholdReadAccess(
+          request.headers,
+          params.householdId,
+          options,
+          adminRepository,
+        ).catch(() => false))
+      ) {
+        close();
+        reply.raw.end();
+        return;
+      }
+      if (!closed) reply.raw.write(data);
+    };
     const unsubscribe = realtime.subscribe(params.householdId, (event) => {
       const parsed = RealtimeEventSchema.parse(event);
-      reply.raw.write(
-        `id: ${parsed.id}\nevent: ${parsed.kind}\ndata: ${JSON.stringify(parsed)}\n\n`,
-      );
+      void send(`id: ${parsed.id}\nevent: ${parsed.kind}\ndata: ${JSON.stringify(parsed)}\n\n`);
     });
-    const keepAlive = setInterval(() => reply.raw.write(': keep-alive\n\n'), 20_000);
-    request.raw.once('close', () => {
+    const keepAlive = setInterval(() => void send(': keep-alive\n\n'), 20_000);
+    const close = () => {
+      if (closed) return;
+      closed = true;
       clearInterval(keepAlive);
       unsubscribe();
-    });
+    };
+    reply.raw.once('close', close);
     return reply;
   });
 
@@ -2621,28 +2576,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   return server;
-}
-
-function compareTodayReminders(
-  left: HearthReminder,
-  right: HearthReminder,
-  localDate: string,
-): number {
-  const priority = reminderPriority(left, localDate) - reminderPriority(right, localDate);
-  if (priority !== 0) return priority;
-  const leftDue = left.dueAt ?? left.dueLocalDate ?? '';
-  const rightDue = right.dueAt ?? right.dueLocalDate ?? '';
-  const due = leftDue.localeCompare(rightDue);
-  if (due !== 0) return due;
-  const title = left.title.localeCompare(right.title);
-  return title === 0 ? left.id.localeCompare(right.id) : title;
-}
-
-function reminderPriority(reminder: HearthReminder, localDate: string): number {
-  if (reminder.dueLocalDate === null) return 2;
-  if (reminder.dueLocalDate < localDate) return 0;
-  if (reminder.dueLocalDate === localDate) return 1;
-  return 3;
 }
 
 function parse<T extends z.ZodType>(

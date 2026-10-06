@@ -214,15 +214,23 @@ test('the collage uses each photo once, fits both orientations and rotates calml
   await expect(page.locator('.photos-collage--feature-end')).toBeVisible();
   const mirroredFeatureBox = await page.locator('.photos-hero').boundingBox();
   expect((mirroredFeatureBox?.x ?? 0) + (mirroredFeatureBox?.width ?? 0) / 2).toBeGreaterThan(960);
-  await captureEvidence(page, {
-    animations: 'disabled',
-    path: resolve(evidence, 'photos-auto-mirrored-tv-1080.png'),
-  });
   await page.getByRole('button', { name: 'Pause automatic photo rotation' }).click();
   await expect(page.locator('.photos-rotation-note')).toHaveAttribute(
     'aria-label',
     /Automatic photo rotation paused\./,
   );
+  // The accelerated 600 ms timer can rotate again while image decoding and
+  // screenshot capture wait. Freeze the mirrored composition before testing it.
+  await page.locator('[data-photo-id="photo_park_football"]').click();
+  await expect(page.locator('.photos-hero')).toHaveAttribute(
+    'data-photo-id',
+    'photo_park_football',
+  );
+  await expect(page.locator('.photos-collage--feature-end')).toBeVisible();
+  await captureEvidence(page, {
+    animations: 'disabled',
+    path: resolve(evidence, 'photos-auto-mirrored-tv-1080.png'),
+  });
   await page.locator('.photos-hero').focus();
   const leftTargetFocusId = await page.locator('.photos-hero').getAttribute('data-focus-left');
   expect(leftTargetFocusId).not.toBeNull();
@@ -419,6 +427,13 @@ test('automatic rotation pauses while Hearth is hidden and resumes when it retur
 test('Photos has deliberate empty, cached-unavailable and failure/retry states', async ({
   page,
 }) => {
+  // Exercise explicit Retry independently of stream-open catch-up, which can
+  // legitimately recover a fail-once demo response before the button is clicked.
+  await page.addInitScript(() => {
+    window.EventSource = class extends EventTarget {
+      close() {}
+    } as unknown as typeof EventSource;
+  });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos?scenario=empty');
   await expect(page.getByRole('heading', { name: 'No family photos selected' })).toBeVisible();
