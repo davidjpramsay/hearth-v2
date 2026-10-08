@@ -1,5 +1,9 @@
+import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
+import sharp from 'sharp';
 
 // Exercise the exact native template, not a second browser implementation.
 const kotlin = await readFile(
@@ -13,7 +17,7 @@ const nginx = await readFile(new URL('../../deploy/synology/nginx.conf', import.
 const policy = nginx.match(/add_header Content-Security-Policy "([^"]+)"/)?.[1];
 if (policy === undefined) throw new Error('Production CSP was not found.');
 
-test('launcher bitmap renditions keep wide banner and square icon proportions', async () => {
+test('launcher renditions preserve the original fern left of Hearth and correct proportions', async () => {
   for (const asset of [
     { name: 'tv_banner', width: 320, height: 180 },
     { name: 'tv_icon', width: 160, height: 160 },
@@ -24,7 +28,37 @@ test('launcher bitmap renditions keep wide banner and square icon proportions', 
     expect(png.subarray(1, 4).toString()).toBe('PNG');
     expect(png.readUInt32BE(16)).toBe(asset.width);
     expect(png.readUInt32BE(20)).toBe(asset.height);
+    const rgba = await sharp(png).ensureAlpha().raw().toBuffer();
+    let fernPixels = 0;
+    let wordmarkPixels = 0;
+    for (let y = 0; y < asset.height; y++) {
+      for (let x = 0; x < asset.width; x++) {
+        const offset = (y * asset.width + x) * 4;
+        if (rgba[offset]! > 245 && rgba[offset + 1]! > 235 && rgba[offset + 2]! > 215) {
+          if (x < asset.width * 0.29) fernPixels++;
+          else wordmarkPixels++;
+        }
+      }
+    }
+    // The mark scales in two dimensions; compare area rather than canvas width.
+    expect(fernPixels).toBeGreaterThan(asset.width * asset.height * 0.004);
+    expect(wordmarkPixels).toBeGreaterThan(fernPixels);
+    const source = await readFile(
+      new URL(`../../apps/tv/app/src/main/res/drawable/${asset.name}.xml`, import.meta.url),
+      'utf8',
+    );
+    expect(source).toContain('@drawable/tv_launcher_fern');
+    expect(source).toContain('@drawable/tv_wordmark');
   }
+  const fern = await readFile(
+    new URL('../../apps/tv/app/src/main/res/drawable/tv_launcher_fern.xml', import.meta.url),
+    'utf8',
+  );
+  expect(fern).toContain('android:src="@drawable/hearth_mark"');
+  await promisify(execFile)(process.execPath, [
+    fileURLToPath(new URL('../../apps/tv/design/render-launcher.mjs', import.meta.url)),
+    '--check',
+  ]);
   const manifest = await readFile(
     new URL('../../apps/tv/app/src/main/AndroidManifest.xml', import.meta.url),
     'utf8',

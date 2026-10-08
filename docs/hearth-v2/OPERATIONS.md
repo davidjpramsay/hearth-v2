@@ -705,8 +705,9 @@ For a TV-shell-only repair, install the matching signed APK with `adb install -r
 Keystore pairing and local preferences; never uninstall or clear app data as a sizing/icon fix.
 Native startup must report the 1920×1080 logical viewport at the appropriate display-density scale,
 including fresh reload/cold restoration. A cached launcher image can require an ordinary launcher
-restart, without clearing its settings. Launcher wordmark assets have explicit 16:9 banner and
-square icon bounds; source outline attribution is under `apps/tv/design/OFL.txt` (D-093).
+restart, without clearing its settings. Launcher fern-plus-wordmark assets have explicit 16:9
+banner and square icon bounds. The original mark is unchanged; source outline attribution is
+under `apps/tv/design/OFL.txt` (D-093).
 
 The release shell accepts only an entered HTTPS Hearth origin. Debug cleartext
 is restricted to `10.0.2.2`, `127.0.0.1` and `localhost`; use the emulator host

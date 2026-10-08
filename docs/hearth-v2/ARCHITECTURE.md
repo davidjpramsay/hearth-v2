@@ -89,7 +89,7 @@ Owns the television and responsive companion presentation. It consumes only the 
 
 A minimal Kotlin Android TV application that provides:
 
-- TV launcher category and original wordmark banner/icon with explicit intrinsic proportions
+- TV launcher category and original fern-plus-wordmark banner/icon with explicit intrinsic proportions
 - full-screen exact-origin controlled WebView
 - TV-only 1920-pixel logical viewport across Android display densities
 - application identity, network-status and exit-only native message bridge

@@ -18,11 +18,14 @@ logical canvas across 1080p and 4K output.
 
 The native shell sets that viewport at document start for the exact paired origin, with a
 post-parser fallback on older WebViews. Reloads therefore retain TV layout independently of the
-server startup script. The wide and square launcher wordmarks use Nunito Sans outlines with
-attribution in `design/OFL.txt`.
+server startup script. The wide and square launcher assets retain the original Hearth fern to
+the left of the Nunito Sans wordmark, with outline attribution in `design/OFL.txt`. Only the
+launcher composition tints the existing transparent mark cream; the original brand file is unchanged.
 
-Vectors are the source artwork; matching xhdpi PNG renditions keep bitmap-oriented launchers
-compatible without stretching a square icon into the wide banner.
+Bounded native layer lists compose the original mark and vector lettering. Matching xhdpi PNG
+renditions keep bitmap-oriented launchers compatible without stretching a square icon into the
+wide banner. From `hearth/`, regenerate with `node apps/tv/design/render-launcher.mjs` or verify
+their pixels against the native source resources with the same command plus `--check`.
 
 ## Build
 

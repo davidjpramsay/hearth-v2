@@ -15,9 +15,12 @@ Record durable choices here. New decisions should include date, status, context,
   AndroidX document-start support and use an origin-checked commit/finished fallback on older
   WebViews. Keep strict CSP, navigation restrictions, credentials and the three-message bridge
   unchanged. Give both launcher resources explicit bounds: a 16:9 full-background eucalyptus/
-  cream Hearth wordmark banner and a matching square icon. Nunito Sans outline attribution is
-  retained; no system font or borrowed app branding is used. Supply xhdpi 320×180 banner and
-  160×160 icon PNG renditions of the exact vector artwork for bitmap-oriented launchers.
+  cream Hearth banner and a matching square icon, both retaining the original fern to the left
+  of the wordmark. Native layer lists compose the original transparent mark, tinted cream only
+  in these launcher resources, with Nunito Sans vector lettering. Outline attribution is retained;
+  no system font or borrowed app branding is used. Supply xhdpi 320×180 banner and 160×160 icon
+  PNG renditions generated from those same native resources for bitmap-oriented launchers.
+  The original mark and web branding remain unchanged.
 - Consequence: Cold loads, reloads and restored routes do not depend solely on the server startup
   script for TV identity/size. Phone/browser sizing is untouched. Install with the existing signing
   identity and `adb install -r`; do not uninstall or clear pairing/launcher preferences to refresh

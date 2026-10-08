@@ -94,6 +94,19 @@ wordmarks, and the isolated banner render is inspected. Final launcher-cache dis
 is pending while the household uses other TV apps. Overnight standby, forced network loss, APK
 release signing/distribution and complete physical-TV commissioning remain not run.
 
+Launcher identity correction on 2026-10-08 retains the original transparent Hearth fern to the
+left of the wordmark in both bounded resources. Native composition tints it cream; the original
+mark and web branding remain unchanged. `node apps/tv/design/render-launcher.mjs --check` verifies
+both committed PNGs against their native source composition. The same focused browser command
+passes 13 tests, now also asserting visible fern pixels, both source references and exact
+source/raster agreement; an initial assertion incorrectly compared scaled icon area with width,
+then passes after correction to an area-proportional threshold. `pnpm verify:tv` passes the 14
+JVM tests, Debug/Release lint and both builds; format, lint and `git diff --check` pass. Both
+isolated renders are visually inspected. `adb install -r` succeeds without changing pairing;
+APK resource readback confirms the xhdpi icon and banner mapping. A read-only physical screenshot
+still shows the old launcher artwork while its settings panel is open. Launcher display refresh
+is not proved, and no launcher settings, data or foreground navigation are changed to force it.
+
 ## Per-change definition of done
 
 A change is complete only when:
