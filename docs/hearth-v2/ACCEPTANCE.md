@@ -75,11 +75,12 @@ corrected/tested; these stopped attempts are not successful deployments.
 
 TV-shell repair checkpoint on 2026-10-08 (D-093): `pnpm verify:tv` passes 14 JVM tests, both lint
 variants (zero errors) and Debug/minified Release builds. `pnpm build`, `pnpm format:check`,
-`pnpm lint`, `pnpm verify:ci` and `git diff --check` pass; CI inventory covers 939 tests, not a full
-939-test execution. The focused built-browser command for `native-tv-viewport`,
-`production-bootstrap`, `games-remote` and `shell-clock` passes 12 tests. Its four new cases exercise
+`pnpm lint`, `pnpm verify:ci` and `git diff --check` pass; CI inventory covers 940 tests, not a full
+940-test execution. The focused built-browser command for `native-tv-viewport`,
+`production-bootstrap`, `games-remote` and `shell-clock` passes 13 tests. Its four new behavior cases exercise
 the exact Kotlin script under strict CSP, with the server sizing script disabled, at density-two
-1080p/4K, plus missing-meta/idempotent fallback and subframe exclusion. Browser plugin unavailable;
+1080p/4K, plus missing-meta/idempotent fallback and subframe exclusion; another check asserts
+the 320×180 banner, 160×160 icon PNGs and manifest mapping. Browser plugin unavailable;
 repository Playwright used. Phone shell-clock and normal-browser startup remain covered.
 
 The repaired matching debug APK is installed with `adb install -r` on the physical Android 12 TCL

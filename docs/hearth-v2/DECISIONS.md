@@ -16,7 +16,8 @@ Record durable choices here. New decisions should include date, status, context,
   WebViews. Keep strict CSP, navigation restrictions, credentials and the three-message bridge
   unchanged. Give both launcher resources explicit bounds: a 16:9 full-background eucalyptus/
   cream Hearth wordmark banner and a matching square icon. Nunito Sans outline attribution is
-  retained; no system font, borrowed app branding or generated raster logo is required.
+  retained; no system font or borrowed app branding is used. Supply xhdpi 320×180 banner and
+  160×160 icon PNG renditions of the exact vector artwork for bitmap-oriented launchers.
 - Consequence: Cold loads, reloads and restored routes do not depend solely on the server startup
   script for TV identity/size. Phone/browser sizing is untouched. Install with the existing signing
   identity and `adb install -r`; do not uninstall or clear pairing/launcher preferences to refresh

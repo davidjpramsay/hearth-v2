@@ -13,6 +13,26 @@ const nginx = await readFile(new URL('../../deploy/synology/nginx.conf', import.
 const policy = nginx.match(/add_header Content-Security-Policy "([^"]+)"/)?.[1];
 if (policy === undefined) throw new Error('Production CSP was not found.');
 
+test('launcher bitmap renditions keep wide banner and square icon proportions', async () => {
+  for (const asset of [
+    { name: 'tv_banner', width: 320, height: 180 },
+    { name: 'tv_icon', width: 160, height: 160 },
+  ]) {
+    const png = await readFile(
+      new URL(`../../apps/tv/app/src/main/res/drawable-xhdpi/${asset.name}.png`, import.meta.url),
+    );
+    expect(png.subarray(1, 4).toString()).toBe('PNG');
+    expect(png.readUInt32BE(16)).toBe(asset.width);
+    expect(png.readUInt32BE(20)).toBe(asset.height);
+  }
+  const manifest = await readFile(
+    new URL('../../apps/tv/app/src/main/AndroidManifest.xml', import.meta.url),
+    'utf8',
+  );
+  expect(manifest).toContain('android:banner="@drawable/tv_banner"');
+  expect(manifest).toContain('android:icon="@drawable/tv_icon"');
+});
+
 for (const scenario of [
   { name: 'density-two 1080p', width: 960, height: 540, scale: '0.5' },
   { name: 'density-two 4K', width: 1920, height: 1080, scale: '1.0' },

@@ -21,6 +21,9 @@ post-parser fallback on older WebViews. Reloads therefore retain TV layout indep
 server startup script. The wide and square launcher wordmarks use Nunito Sans outlines with
 attribution in `design/OFL.txt`.
 
+Vectors are the source artwork; matching xhdpi PNG renditions keep bitmap-oriented launchers
+compatible without stretching a square icon into the wide banner.
+
 ## Build
 
 Install Java 17+, Android SDK/platform/build-tools 36, then set `sdk.dir` in ignored
