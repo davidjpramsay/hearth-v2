@@ -15,6 +15,7 @@ import java.io.ByteArrayInputStream
 
 class HearthWebViewClient(
     private val trustedOrigin: String,
+    private val fallbackViewportScript: String? = null,
     private val onReady: (String) -> Unit,
     private val onUnavailable: (String?) -> Unit,
 ) : WebViewClient() {
@@ -31,11 +32,23 @@ class HearthWebViewClient(
     }
 
     override fun onPageCommitVisible(view: WebView, url: String) {
-        if (TrustedOrigin.matches(trustedOrigin, url)) onReady(url)
+        showReady(view, url)
     }
 
     override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
-        if (TrustedOrigin.matches(trustedOrigin, url)) onReady(url)
+        showReady(view, url)
+    }
+
+    override fun onPageFinished(view: WebView, url: String) {
+        // Older WebViews get a final post-parser pass, without weakening origin/CSP checks.
+        if (fallbackViewportScript != null) showReady(view, url)
+    }
+
+    private fun showReady(view: WebView, url: String) {
+        if (!TrustedOrigin.matches(trustedOrigin, url)) return
+        val script = fallbackViewportScript
+        if (script == null) onReady(url)
+        else view.evaluateJavascript(script) { onReady(url) }
     }
 
     override fun onReceivedError(

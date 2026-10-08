@@ -16,6 +16,11 @@ logic remains in the server, web and shared packages.
 Jellyfin and other media apps remain independent. The shell targets API 24+ and a fixed 1920-pixel
 logical canvas across 1080p and 4K output.
 
+The native shell sets that viewport at document start for the exact paired origin, with a
+post-parser fallback on older WebViews. Reloads therefore retain TV layout independently of the
+server startup script. The wide and square launcher wordmarks use Nunito Sans outlines with
+attribution in `design/OFL.txt`.
+
 ## Build
 
 Install Java 17+, Android SDK/platform/build-tools 36, then set `sdk.dir` in ignored
@@ -30,6 +35,8 @@ pnpm verify:tv
 
 The debug APK is `app/build/outputs/apk/debug/app-debug.apk`. Release builds require the household
 signing key outside this repository.
+
+Update an existing signed installation with `adb install -r`; do not uninstall or clear pairing.
 
 ## Pair
 

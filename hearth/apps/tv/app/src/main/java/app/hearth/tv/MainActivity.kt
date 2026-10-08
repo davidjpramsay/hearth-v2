@@ -21,6 +21,8 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
@@ -280,13 +282,12 @@ class MainActivity : ComponentActivity() {
             isFocusable = true
             isFocusableInTouchMode = true
             val metrics = resources.displayMetrics
-            setInitialScale(
-                tvInitialScalePercent(
-                    widthPixels = metrics.widthPixels,
-                    heightPixels = metrics.heightPixels,
-                    density = metrics.density,
-                ),
+            val initialScale = tvInitialScalePercent(
+                widthPixels = metrics.widthPixels,
+                heightPixels = metrics.heightPixels,
+                density = metrics.density,
             )
+            setInitialScale(initialScale)
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -301,9 +302,16 @@ class MainActivity : ComponentActivity() {
                 userAgentString = "$userAgentString HearthTV/${BuildConfig.VERSION_NAME}"
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) safeBrowsingEnabled = true
             }
+            val viewportScript = tvViewportScript(initialScale)
+            val supportsDocumentStart = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
+            if (supportsDocumentStart) {
+                // Exact paired origin only; no credential or native capability is injected.
+                WebViewCompat.addDocumentStartJavaScript(this, viewportScript, setOf(origin))
+            }
             webChromeClient = WebChromeClient()
             webViewClient = HearthWebViewClient(
                 trustedOrigin = origin,
+                fallbackViewportScript = if (supportsDocumentStart) null else viewportScript,
                 onReady = ::showWebContent,
                 onUnavailable = ::showWebUnavailable,
             )

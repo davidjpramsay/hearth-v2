@@ -2,10 +2,34 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-093 — The native TV shell owns TV sizing and a legible launcher wordmark
+
+- Date: 2026-10-08
+- Status: accepted
+- Context: The physical TCL exposes a 1920×1080 Android surface at density two. The older deployed
+  server's CSP-blocked inline startup left it at a 960×540 phone viewport after reloading. Its
+  launcher artwork also had no useful wide intrinsic bounds and displayed a stretched square mark.
+- Choice: Keep D-047's 1920×1080 logical canvas. Register a main-frame-only native document-start
+  sizing script, limited to the exact paired origin, before loading any route. Compute scale from
+  native metrics; watch parser insertion only until DOMContentLoaded, then disconnect. Feature-test
+  AndroidX document-start support and use an origin-checked commit/finished fallback on older
+  WebViews. Keep strict CSP, navigation restrictions, credentials and the three-message bridge
+  unchanged. Give both launcher resources explicit bounds: a 16:9 full-background eucalyptus/
+  cream Hearth wordmark banner and a matching square icon. Nunito Sans outline attribution is
+  retained; no system font, borrowed app branding or generated raster logo is required.
+- Consequence: Cold loads, reloads and restored routes do not depend solely on the server startup
+  script for TV identity/size. Phone/browser sizing is untouched. Install with the existing signing
+  identity and `adb install -r`; do not uninstall or clear pairing/launcher preferences to refresh
+  artwork. A launcher may need an ordinary restart to drop its image cache. Browser emulation and
+  physical TCL evidence remain distinct; overnight standby and network loss are separate gates.
+- References: [AndroidX document-start API](<https://developer.android.com/reference/androidx/webkit/WebViewCompat#addDocumentStartJavaScript(android.webkit.WebView,java.lang.String,java.util.Set%3Cjava.lang.String%3E)>),
+  [Android TV icon/banner guidance](https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines).
+
 ## D-092 — Family Games uses a household-supplied local archive
 
 - Date: 2026-10-06
-- Status: accepted; local code, Android, archive and focused browser gates passed; not published or deployed
+- Status: accepted; verified release `7cfd04d` and the private archive installed on 2026-10-08;
+  physical TCL board/selection/Back checks passed, full commissioning remains open
 - Context: The owner requested a Connections-like word-grouping game and supplied a Desktop
   archive with boards and answers. This expands the product with one calm family game, not a web
   browser, newspaper interface or media integration.

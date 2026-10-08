@@ -89,7 +89,7 @@ Owns the television and responsive companion presentation. It consumes only the 
 
 A minimal Kotlin Android TV application that provides:
 
-- TV launcher category, banner and icon
+- TV launcher category and original wordmark banner/icon with explicit intrinsic proportions
 - full-screen exact-origin controlled WebView
 - TV-only 1920-pixel logical viewport across Android display densities
 - application identity, network-status and exit-only native message bridge
@@ -98,6 +98,13 @@ A minimal Kotlin Android TV application that provides:
 - last-route restoration plus native server, network, revocation and WebView recovery
 
 Business logic remains in server/core. Do not create a second chore/calendar implementation in Kotlin.
+
+The shell also installs a main-frame-only document-start viewport script for the exact paired
+origin. Native display metrics determine the scale; a short-lived parser observer handles the head
+and viewport arriving after document start. Older WebViews receive an origin-checked post-commit/
+post-parser fallback. This is a layout guard, not a new bridge capability: it reads no credentials,
+storage or API data and does not weaken CSP. The server's same-origin startup script remains in
+place for ordinary browsers and appearance. See D-093.
 
 ### `archive/apple-reminders-bridge`
 

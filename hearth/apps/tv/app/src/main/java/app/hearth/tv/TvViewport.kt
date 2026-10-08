@@ -18,3 +18,37 @@ internal fun tvInitialScalePercent(
         .roundToInt()
         .coerceIn(25, 100)
 }
+
+/** Native display metrics, not the default mobile viewport, own TV layout. */
+internal fun tvViewportScript(initialScalePercent: Int): String {
+    val scale = initialScalePercent.coerceIn(25, 100) / 100.0
+    return """
+        (() => {
+          if (window !== window.top) return;
+          const content = 'width=1920, height=1080, initial-scale=$scale, minimum-scale=$scale, maximum-scale=$scale, user-scalable=no, viewport-fit=cover';
+          const apply = () => {
+            const root = document.documentElement;
+            if (!root) return;
+            root.dataset.hearthTv = 'true';
+            root.dataset.hearthTvNative = 'true';
+            if (!document.head) return;
+            let viewport = document.querySelector('meta[name="viewport"]');
+            if (!viewport) {
+              viewport = document.createElement('meta');
+              viewport.name = 'viewport';
+              document.head.appendChild(viewport);
+            }
+            if (viewport.content !== content) viewport.content = content;
+          };
+          apply();
+          if (document.readyState === 'loading') {
+            const observer = new MutationObserver(apply);
+            observer.observe(document, { childList: true, subtree: true });
+            document.addEventListener('DOMContentLoaded', () => {
+              apply();
+              observer.disconnect();
+            }, { once: true });
+          }
+        })();
+    """.trimIndent()
+}

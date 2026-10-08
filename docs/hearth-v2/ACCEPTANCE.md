@@ -64,6 +64,35 @@ clock check now includes Weather, Reminders and Games. The rebuilt focused Games
 production-bootstrap and shell-clock suite passes 26 tests in 44.9 seconds. Failed candidate
 `ae3c1e5` publishes no images and the on-host verification guard starts no live installation.
 
+Owner-approved live release checkpoint on 2026-10-08: hosted run `37755078289` passes all jobs,
+including all 935 browser tests and publication of the exact `7cfd04d` images. The protected Synology
+helper activates that release; external readiness/health pass in private mode. The owner's archive
+is installed only in private data. Authenticated readback from the paired physical TCL returns
+`ready`, `household-archive` and 1,213 puzzles with no-store caching. The stopped-database recovery
+guard passes; the effective network identity, existing DNS/firewall helper and unrelated containers
+are unchanged. Installer preflight mistakes stop before replacing the running release and are
+corrected/tested; these stopped attempts are not successful deployments.
+
+TV-shell repair checkpoint on 2026-10-08 (D-093): `pnpm verify:tv` passes 14 JVM tests, both lint
+variants (zero errors) and Debug/minified Release builds. `pnpm build`, `pnpm format:check`,
+`pnpm lint`, `pnpm verify:ci` and `git diff --check` pass; CI inventory covers 939 tests, not a full
+939-test execution. The focused built-browser command for `native-tv-viewport`,
+`production-bootstrap`, `games-remote` and `shell-clock` passes 12 tests. Its four new cases exercise
+the exact Kotlin script under strict CSP, with the server sizing script disabled, at density-two
+1080p/4K, plus missing-meta/idempotent fallback and subframe exclusion. Browser plugin unavailable;
+repository Playwright used. Phone shell-clock and normal-browser startup remain covered.
+
+The repaired matching debug APK is installed with `adb install -r` on the physical Android 12 TCL
+without re-pairing. New-process launch and fresh reload report 1920×1080, DPR 2, scale 0.5 and the
+native marker. Today/Games are contained, the TV rail is visible, phone tabs absent, and a reload
+reports zero page/console/log errors. Actual D-pad events reach Games from Today, select/deselect
+tiles, and close Archive with Back to its opener; no guess or household mutation is submitted.
+Screenshots are inspected locally and kept out of Git because they contain private household or
+supplied archive content. Both installed icon/banner resources resolve to the new bounded
+wordmarks, and the isolated banner render is inspected. Final launcher-cache display confirmation
+is pending while the household uses other TV apps. Overnight standby, forced network loss, APK
+release signing/distribution and complete physical-TV commissioning remain not run.
+
 ## Per-change definition of done
 
 A change is complete only when:
@@ -83,6 +112,11 @@ A change is complete only when:
 
 ### Launch and navigation
 
+- The native TV shell retains its 1920×1080 logical canvas at density two after cold launch,
+  reload and route restoration even when the server sizing script is unavailable. Phone tabs stay
+  absent, the TV rail remains accessible, and the script never marks/resizes subframes.
+- The physical launcher displays a legible Hearth wordmark in a correctly proportioned tile;
+  installing a repair preserves pairing and local preferences.
 - Cold launch reaches useful cached/current Today content within the product performance target.
 - Resume after overnight television standby restores Hearth without manual process recovery.
 - Every primary screen is reachable with D-pad and Back.
