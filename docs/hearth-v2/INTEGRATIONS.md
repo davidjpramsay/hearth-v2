@@ -6,6 +6,20 @@ Hearth presents one family experience without pretending to own every underlying
 
 No external credentials are required for the first rendered prototype. Seed data and fake adapters must use the same contracts as real providers.
 
+## Household puzzle archive
+
+Games reads an explicitly supplied local JSON archive through `HEARTH_GAMES_ARCHIVE_PATH`.
+The import expects `puzzle_number`, real ISO `date`, a four-by-four `starting_board` and four
+`groups` containing `category`, `difficulty` (0–3) and four `words`. Extra source fields are not
+executed, returned or fetched. Preserve original boards and textual symbols; special visual
+editions use their supplied text labels, not downloaded newspaper artwork.
+
+The supplied archive is a fixed snapshot, not a live provider connection or subscription.
+Do not scrape a paywall, request NYT credentials or bundle the downloaded data into source,
+images, public test fixtures or releases. Local import does not establish redistribution rights.
+Demo/tests use original Hearth content. Existing offline/cached household functions are unaffected
+by a missing or invalid game archive.
+
 ## Calendar providers
 
 The first household provider is iCloud through a standards-based CalDAV

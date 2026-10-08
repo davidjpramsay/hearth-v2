@@ -298,6 +298,25 @@ the phone More hub.
   Hearth. Every action is D-pad reachable, reports its result inline and restores focus. The optional
   Synology folder-import row is secondary and absent as a prerequisite for normal phone uploads.
 
+### Games
+
+- Games opens Word groups, with a four-column board, a clear selected state and explicit Submit.
+  Selecting four tiles never submits automatically. Correct groups replace their row; four misses
+  reveal the remaining answers. Repeating the same group does not consume another mistake.
+- Shuffle preserves tile identity and selections. A three-correct guess reports **One away**.
+  Solved groups show their category and all four tiles, not just a colour.
+- Earlier/later and Archive select numbered, dated puzzles. Archive supports search and bounded
+  pages, with contained D-pad/Tab/Back navigation and opener focus restoration.
+- Start at puzzle #1 after the requested reset. Later visits resume the earliest uncompleted
+  puzzle, while an explicit archive selection remains available. Browse in ascending puzzle order.
+  Completed puzzles have a visible archive marker/count and a **Next puzzle** action after a win;
+  the win remains visible until the player chooses to continue. Replaying does not erase completion.
+- Progress survives reload on this device; a fresh puzzle never inherits another puzzle's guesses.
+  A completed game can be replayed. Restarting unfinished progress requires confirmation.
+- Keep the original Hearth design, no newspaper images, logos, screenshots or replica interface.
+  A fixed snapshot never implies a live daily subscription. An unavailable import fails only Games;
+  cached boards remain playable offline. No external website is contacted during play.
+
 ### Home
 
 - A deliberately curated set of scenes and important states.

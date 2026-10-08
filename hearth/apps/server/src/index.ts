@@ -6,6 +6,7 @@ import type { RuntimeMode } from '@hearth/shared';
 import { SqliteAdminRepository } from './admin-repository.js';
 import { createApplianceUpdateRepository } from './appliance-update.js';
 import { buildServer } from './app.js';
+import { GamesArchive } from './games-archive.js';
 import { RealtimeHub } from './realtime.js';
 import {
   CalendarConnectionService,
@@ -279,6 +280,7 @@ const companionAuth =
     : new CompanionAuthService(database, companionAuthConfiguration);
 
 const server = buildServer({
+  gamesArchive: new GamesArchive(process.env.HEARTH_GAMES_ARCHIVE_PATH, demoMode),
   realtimeHub,
   demoMode,
   runtime: { mode: runtimeMode, householdId: runtimeHouseholdId, clock },

@@ -31,6 +31,7 @@ const baseNavigation: NavigationItem[] = [
   { label: 'Meals', path: '/meals', icon: 'meal', enabled: true },
   { label: 'Home', path: '/home', icon: 'home', enabled: true },
   { label: 'Photos', path: '/photos', icon: 'image', enabled: true },
+  { label: 'Games', path: '/games', icon: 'games', enabled: true },
 ];
 
 const phoneNavigation = baseNavigation.filter((item) =>
@@ -159,7 +160,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
             data-focus-id="nav-appearance"
             data-focus-left="nav-appearance"
             data-focus-right={`appearance-${preferences.theme}`}
-            data-focus-up="nav-photos"
+            data-focus-up="nav-games"
             to="/appearance"
           >
             <Icon name="moon" />
@@ -230,7 +231,7 @@ function PhoneNavigation() {
     pathname === '/more' ||
     pathname === '/appearance' ||
     pathname.startsWith('/admin') ||
-    ['/lists', '/meals', '/home', '/photos', '/reminders'].includes(pathname);
+    ['/lists', '/meals', '/home', '/photos', '/reminders', '/games'].includes(pathname);
   return (
     <nav className="phone-tabs" aria-label="Primary navigation">
       {phoneNavigation.map((item, index) => (

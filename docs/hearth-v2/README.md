@@ -5,7 +5,7 @@ phone browser. It owns reminders, chores, routines, pocket money, lists, meals, 
 connected calendars remain provider-owned.
 
 The active product includes Today, Week, Month, Weather, Hearth reminders, Chores, Lists, Meals,
-Home, Photos and phone administration. Home Assistant remains the authority for physical devices
+Home, Photos, local Games and phone administration. Home Assistant remains the authority for physical devices
 and voice. Native television media apps remain separate.
 
 ## Source of truth

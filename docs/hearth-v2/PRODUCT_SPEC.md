@@ -222,6 +222,19 @@ pause, resume, next, previous and volume have core Home Assistant intent
 support. The deployment must not describe song-starting as available until
 that custom flow and its target-player mapping have been installed and tested.
 
+### 12. Family games
+
+- Games offers a word-grouping puzzle: sixteen tiles, four groups of four, four incorrect guesses,
+  shuffle, deselection, duplicate-guess protection and a three-of-four hint.
+- Use the household-supplied local puzzle archive, not a website scraper, subscription credential
+  or remotely embedded newspaper interface. Keep Hearth's own visual language and navigation.
+- Archive selection works by puzzle number/date on TV and phone. Progress is per device, isolated
+  by household, and does not affect chores, pocket money or household records.
+- Begin at the first puzzle and keep completion markers independently of replay progress. Resume
+  the earliest uncompleted puzzle on a later visit, with explicit **Next puzzle** after a win.
+- The downloaded archive is external runtime data, never published in source, images or demo
+  fixtures. Preserve attribution and original boards/text; do not claim redistribution rights.
+
 ## Television home screen
 
 The default Today screen should include, in order of prominence:

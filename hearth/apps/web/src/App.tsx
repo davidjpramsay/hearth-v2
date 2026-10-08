@@ -52,6 +52,9 @@ const AgendaScreen = lazy(async () => ({
 const MoreScreen = lazy(async () => ({
   default: (await import('./screens/MoreScreen')).MoreScreen,
 }));
+const GamesScreen = lazy(async () => ({
+  default: (await import('./screens/GamesScreen')).GamesScreen,
+}));
 const AdminScreen = lazy(async () => ({
   default: (await import('./screens/AdminScreen')).AdminScreen,
 }));
@@ -180,6 +183,7 @@ export function App() {
           />
           <Route path="/home" element={<HomeScreen preparing={preparing} scenario={scenario} />} />
           <Route path="/more" element={<MoreScreen />} />
+          <Route path="/games" element={<GamesScreen />} />
           <Route path="/appearance" element={<AppearanceSettingsScreen />} />
           <Route path="/admin/appearance" element={<Navigate replace to="/appearance" />} />
           <Route

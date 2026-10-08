@@ -2,6 +2,13 @@
 
 The roadmap is deliberately vertical. Each phase must leave a coherent, testable product state rather than a wide collection of unfinished modules.
 
+## Requested addition — Family word-grouping game
+
+Add Games using the household-supplied local puzzle archive, with original Hearth styling and
+TV/phone controls. Verify rules, safe imports, authenticated reads, per-device progress, archive
+selection, dark mode and D-pad-only use. Do not publish the supplied puzzle data or claim live
+daily updates. Live archive installation, deployment and physical-device checks remain separate.
+
 ## Phase 0 — Foundation and decision validation
 
 ### Work

@@ -21,6 +21,10 @@ upload/import. Both installed URI-parser majors have malformed-authority regress
 Audit success is point-in-time package evidence, not a substitute for the repository security scan
 or Linux/container/live NAS checks. Recheck registry advisories before publishing each release.
 
+The 2026-10-08 Games release advances sharp to 0.35.5 to address the newly published
+[upstream librsvg advisory](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w).
+The household archive remains private runtime data and is excluded from source and image layers.
+
 After the Fastify security update (D-083), numeric `HEARTH_TRUST_PROXY_HOPS` is ignored. Optional
 `HEARTH_TRUST_PROXY_ADDRESSES` lists only verified proxy IPs/CIDRs, never all LAN addresses. Leaving
 it blank is safe and keeps the app usable, but clients behind one proxy share authentication
@@ -297,6 +301,22 @@ for private mode and `data/hearth-demo.sqlite` for demo/test. Do not point
 private mode at a copied demo database. The adult first-use command is implemented but remains inert
 without the approved private HTTPS origin and external one-time code. Do not enrol a real passkey or
 enter household data until that origin/certificate is commissioned.
+
+## Household Games archive
+
+Set `HEARTH_GAMES_ARCHIVE_PATH` to the absolute local `connections.json` supplied by the owner.
+The server reads it only when Games is used. Demo/test mode normally supplies small original
+puzzles; an explicit path may be used for a local read-only import check. Never commit a Desktop
+archive, download report or newspaper puzzle collection into the repository or image layers.
+
+Production Compose points to `/data/game-archives/connections.json`. Install the supplied file
+inside the existing private data directory only under explicit live-deployment approval and
+preserve the service identity/ACL. No new host mount, port, DNS rule or network access is needed.
+Replacing the file atomically refreshes it on a later Games read (one-minute cache). Invalid or
+missing archives do not block startup or household services. Back up the complete data directory
+to retain the archive; SQLite copies do not contain it. Browser game progress remains per device.
+Refreshing pinned Compose for this new environment field is a separate approved helper step;
+preserve commissioned DNS/bridge settings rather than overwriting them with the generic template.
 
 ## Synology paths
 

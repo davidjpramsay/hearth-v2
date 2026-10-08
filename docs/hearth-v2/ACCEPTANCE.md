@@ -1,5 +1,62 @@
 # Hearth v2 acceptance and definition of done
 
+## Family Games acceptance
+
+- Validate the owner's complete supplied archive without copying it into source, fixtures or images.
+- Sixteen tiles form four groups; allow four misses, report three-of-four, and do not penalize an
+  identical repeated guess. Correct groups lock; terminal states reveal results and allow replay.
+- Shuffle preserves selections/identity. Archive number/date search, pages and earlier/later work.
+- Progress survives reload and puzzle switching on the same device; malformed/blocked storage
+  remains playable. Another household or changed board cannot inherit that progress.
+- The requested v1-only reset starts at #1 without changing unrelated storage. Persisted completions
+  appear in ascending Archive, survive replay/attempt eviction, and resume the earliest uncompleted
+  puzzle on a later visit. A win stays visible until **Next puzzle** or replay is chosen.
+- Private reads require the existing household passkey/display authority; failed imports expose no
+  source paths and cannot slow startup, reveal household data or take down other modules.
+- Test mobile, tablet, 1080p/4K, light/dark, keyboard/D-pad/Back, focus restoration and accessibility.
+- Live NAS data installation, signing/physical-device checks and automatic daily archive updates
+  are not established by local browser tests.
+
+Games evidence as of 2026-10-06: `pnpm verify:code` passes format, lint, types, 267 unit,
+137 integration/API and 24 migration tests, deployment validation and production builds.
+`pnpm verify:tv` passes unit tests, Debug/Release lint and both APK builds. `pnpm verify:ci`
+proves complete, non-overlapping coverage of the 933-test inventory; it does not run those tests.
+`pnpm test:e2e:built tests/e2e/games.spec.ts tests/e2e/games-remote.spec.ts tests/e2e/remote.spec.ts tests/e2e/appearance.spec.ts tests/e2e/keyboard-layout.spec.ts --max-failures=0`
+passes 73 tests. This covers light/dark phone portrait/landscape, tablet, short TV, 1080p/4K,
+page/console health, serious/critical accessibility, a fully remote-only solve/Back flow,
+archive pagination/search, focus, storage failures, loaded-board offline play, guesses and reloads.
+The Desktop archive independently passes the production parser for all 1,213 puzzles; an isolated
+local browser also checks the actual newest/oldest boards and a correct imported group.
+Only original demo content is used in screenshots and committed tests. The Browser plugin is not
+available; the repository Playwright workflow is used. `git diff --check` passes. The full 933-test
+suite, container image rebuild and physical hardware are not run for this addition. No puzzle data
+is committed/published or installed on the live NAS, and this feature is not pushed or deployed.
+
+Progression/reset refinement on 2026-10-06: `pnpm verify:code` passes format, lint, types,
+270 unit, 137 integration/API and 24 migration tests, deployment validation and production builds.
+`pnpm verify:ci` proves the updated 935-test inventory is completely and uniquely sharded; the
+full inventory is not executed for this refinement. The built browser command
+`pnpm test:e2e:built tests/e2e/games.spec.ts tests/e2e/games-remote.spec.ts tests/e2e/games-progression.spec.ts tests/e2e/appearance.spec.ts --max-failures=0`
+passes 40 tests, including the scoped legacy reset, completion/replay/resume, phone archive
+containment and remote-only solve/Back. Phone completion badges are visually inspected using
+original demo content. The supplied 1,213-puzzle archive also passes an isolated browser check of
+the first-puzzle default, newest archive selection, actual puzzle completion and next-puzzle resume,
+with no page errors. That standalone check initially read a previous board before navigation had
+settled; waiting for the selected number and expected tile count fixes the test synchronization.
+Physical devices and live NAS deployment are not run for this refinement.
+
+Owner-approved release preparation on 2026-10-08: the current preserved Games work passes
+`pnpm verify:code` (270 unit, 137 API/integration and 24 migration tests plus format, lint, types,
+deployment validation and production builds), `pnpm verify:tv`, and `pnpm verify:ci` (935 distinct
+browser tests in four non-overlapping shards). The built browser command covering Games,
+Games remote/progression, Appearance, production bootstrap, Remote and keyboard layout passes
+79 tests in 2.3 minutes. TV light and phone dark demo screenshots are visually inspected; the
+1,213-puzzle private archive independently passes first-puzzle, archive selection, completion and
+next-puzzle checks. Today's dependency audit initially rejects sharp 0.35.4; the narrow 0.35.5
+patch passes the repeated code gate and `pnpm audit:dependencies` reports no known vulnerabilities.
+Hosted verification, image publication, private archive installation and physical TCL acceptance
+remain pending at this source checkpoint. The archive is excluded from Git and public images.
+
 ## Per-change definition of done
 
 A change is complete only when:

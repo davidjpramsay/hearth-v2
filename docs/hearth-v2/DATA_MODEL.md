@@ -2,6 +2,22 @@
 
 This document defines conceptual entities and invariants. Concrete table/column names may evolve through migrations, but ownership and history rules should remain stable.
 
+## Device-local games and external puzzle data
+
+The supplied Connections archive is not a SQLite table or source fixture. Each imported puzzle
+has a unique number/date, four groups and difficulty levels, and a unique sixteen-tile starting
+board. The immutable API identifier includes a content digest. Catalogue entries expose only
+identifier, number and date; individual reads return the board and groups.
+
+Browser progress (version 2) contains at most eight validated four-tile guesses and a permutation
+of the sixteen original tile indices. It is scoped by runtime mode and household, capped at 2,000
+recent attempts and validated against the actual board before reuse. A separate index retains up
+to 5,000 completed IDs, including after replay or attempt eviction. The requested one-time reset
+discards v1 game storage only; v2 records survive later visits/releases. No member name, answer text,
+household mutation, token or passkey enters this store. Progress is not synced between devices and
+is not included in household database backups. The external archive is included when the complete
+Hearth data directory is backed up, not by a SQLite-only recovery copy.
+
 ## Identity and tenancy
 
 ### Household

@@ -2,6 +2,25 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-092 — Family Games uses a household-supplied local archive
+
+- Date: 2026-10-06
+- Status: accepted; local code, Android, archive and focused browser gates passed; not published or deployed
+- Context: The owner requested a Connections-like word-grouping game and supplied a Desktop
+  archive with boards and answers. This expands the product with one calm family game, not a web
+  browser, newspaper interface or media integration.
+- Choice: Preserve the grouping rules in core and use original Hearth presentation. Load the
+  supplied JSON lazily behind authenticated household reads, with descriptor/size/schema bounds
+  and no external fetch. Keep data outside public source and images. Store replay-validated,
+  household-isolated numeric progress on each device; importing a changed board changes its ID.
+- Progress refinement: At the owner's request, start at #1 and discard prior v1 Games progress on
+  each browser loading this version. Keep a separate v2 completion index through replays and recent
+  attempt eviction. Resume the earliest uncompleted puzzle on a later visit and browse ascending.
+  This does not clear other browser storage, credentials, the archive or household data.
+- Consequences: The fixed snapshot does not update itself; supplied text substitutes for any
+  special visual edition. Device progress is not shared or a household audit record. Source/data
+  publication, live installation and physical-TV commissioning are not implied by local work.
+
 ## D-087 — Keyboard directions follow the rendered layout
 
 - Date: 2026-09-20

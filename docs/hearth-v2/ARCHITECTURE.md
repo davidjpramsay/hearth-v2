@@ -1,5 +1,27 @@
 # Hearth v2 architecture
 
+## Local Games boundary
+
+Games serves only the household-supplied archive through authenticated, no-store household GETs:
+`…/games/word-groups` returns bounded puzzle metadata; `…/games/word-groups/:puzzleId` returns one
+validated board and its groups. No archive path or source URL enters a request or response. Answers
+are game data, not an authorization secret; client-side evaluation is not an anti-cheating boundary.
+
+The archive adapter reads one descriptor-pinned regular file, bounded to 10 MiB and 5,000 puzzles.
+It validates dates, identifiers, four difficulty levels and the complete sixteen-tile partition;
+content-derived IDs prevent changed answers inheriting stale guesses. Reads are lazy, coalesced and
+cached for one minute. Malformed/missing data affects only Games, preserving a previously loaded
+archive as stale. There is no remote fetch, embedded newspaper interface or new credential.
+
+Game rules live in core. Browser progress stores numeric guesses/order only, isolated by runtime
+and household, validated by replay and bounded to the 2,000 most recently played puzzles. This is
+device-local game state, not a household command, offline write queue or authoritative shared
+record; no database migration or audit event is needed for each tile selection. Version 2 keeps a
+separate bounded index of up to 5,000 completed puzzle IDs so replay or eviction of an old detailed
+attempt does not forget a completion. The owner's 2026-10-06 reset discards only old v1 Games keys
+on each device when it loads this version. Other browser storage and all household state are left
+alone. V2 progress is not reset on subsequent visits or ordinary releases.
+
 ## System topology
 
 ```text

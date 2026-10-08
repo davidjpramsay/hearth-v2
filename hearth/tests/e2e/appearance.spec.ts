@@ -196,7 +196,7 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
   await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
   await page.keyboard.press('ArrowUp');
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();
-  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/appearance$/);
@@ -223,7 +223,7 @@ test('television rail opens the per-display Appearance control', async ({ page }
   await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
   await page.keyboard.press('ArrowUp');
   await expect(page.locator('[data-focus-id="nav-today"]')).toBeFocused();
-  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/appearance$/);

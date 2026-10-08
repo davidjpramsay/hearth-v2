@@ -11,6 +11,8 @@ import {
 
 import {
   AddListItemRequestSchema,
+  GameCatalogueSchema,
+  WordGroupsPuzzleSchema,
   AdditionalPasskeyOptionsRequestSchema,
   ActivityFeedSchema,
   AdminOverviewSchema,
@@ -179,6 +181,7 @@ import {
   type HomeAssistantConnectionRepository,
 } from './home-assistant-connection-repository.js';
 import { RealtimeHub } from './realtime.js';
+import { GamesArchive } from './games-archive.js';
 import { createTodayReader } from './today-reader.js';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
@@ -313,6 +316,7 @@ export interface BuildServerOptions {
   releaseVersion?: string;
   trustedProxyAddresses?: string[];
   readiness?: () => Promise<void> | void;
+  gamesArchive?: GamesArchive;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -330,6 +334,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           clock: new FixedClock(DEMO_NOW),
         });
   const demoMode = runtime.mode !== 'private';
+  const gamesArchive = options.gamesArchive ?? new GamesArchive(undefined, demoMode);
   const releaseVersion =
     options.releaseVersion?.trim() || process.env.HEARTH_VERSION?.trim() || 'development';
   const repository = options.repository ?? new InMemoryHearthRepository();
@@ -1292,6 +1297,33 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       ),
     );
   });
+
+  server.get('/api/v1/households/:householdId/games/word-groups', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+    return run(reply, async () => {
+      await adminRepository.getHousehold(params.householdId);
+      return GameCatalogueSchema.parse(await gamesArchive.catalogue());
+    });
+  });
+
+  server.get(
+    '/api/v1/households/:householdId/games/word-groups/:puzzleId',
+    async (request, reply) => {
+      const params = parse(
+        HouseholdParamsSchema.extend({ puzzleId: OpaqueIdSchema }),
+        request.params,
+        reply,
+      );
+      if (params === null) return reply;
+      reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+      return run(reply, async () => {
+        await adminRepository.getHousehold(params.householdId);
+        return WordGroupsPuzzleSchema.parse(await gamesArchive.puzzle(params.puzzleId));
+      });
+    },
+  );
 
   server.get('/api/v1/households/:householdId/reminders', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);

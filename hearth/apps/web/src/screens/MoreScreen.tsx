@@ -24,6 +24,7 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
         icon: 'image',
         path: '/photos',
       },
+      { title: 'Games', icon: 'games', path: '/games' },
     ],
   },
   {

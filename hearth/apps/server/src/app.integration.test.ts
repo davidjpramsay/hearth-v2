@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildServer, LOGGER_REDACT_PATHS } from './app.js';
+import { GamesArchive } from './games-archive.js';
 import type { ApplianceUpdateRepository } from './appliance-update.js';
 import type { CompanionAuthRepository } from './companion-auth.js';
 import { LATEST_MIGRATION_VERSION } from './database.js';
@@ -65,6 +66,64 @@ describe('private realtime authorization lifecycle', () => {
     hub.publish('household_hearth_demo', 'today.changed', 'must_not_be_delivered');
     expect(await reader.read()).toEqual({ done: true, value: undefined });
     reader.releaseLock();
+  });
+});
+
+describe('authenticated local Games reads', () => {
+  it('returns only catalogue metadata and one puzzle, with no-store and bounded identifiers', async () => {
+    const app = server();
+    const url = '/api/v1/households/household_hearth_demo/games/word-groups';
+    const catalogue = await app.inject(url);
+    expect(catalogue.statusCode).toBe(200);
+    expect(catalogue.headers['cache-control']).toBe('private, no-store');
+    expect(catalogue.json().puzzles[0]).toEqual({
+      id: 'word_groups_demo_3',
+      number: 3,
+      date: '2026-08-03',
+    });
+    const board = await app.inject(`${url}/word_groups_demo_3`);
+    expect(board.json().board).toHaveLength(16);
+    expect(board.json().groups).toHaveLength(4);
+    expect((await app.inject(`${url}/bad.id`)).statusCode).toBe(400);
+    expect((await app.inject(`${url}/puzzle_missing`)).statusCode).toBe(404);
+    expect(
+      (await app.inject('/api/v1/households/household_missing/games/word-groups')).statusCode,
+    ).toBe(404);
+  });
+  it('rejects missing, forged and wrong-household authority before archive reads', async () => {
+    const archive = new GamesArchive(undefined, true);
+    const read = vi.spyOn(archive, 'catalogue');
+    const app = buildServer({
+      logger: false,
+      gamesArchive: archive,
+      companionAuth: privateCompanionAuth(),
+      runtime: {
+        mode: 'private',
+        householdId: 'household_hearth_demo',
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(app);
+    const url = '/api/v1/households/household_hearth_demo/games/word-groups';
+    for (const headers of [
+      {},
+      { 'X-Hearth-Demo-Actor': 'member_maya' },
+      { cookie: 'hearth_session=forged' },
+    ]) {
+      expect((await app.inject({ url, headers })).statusCode).toBe(401);
+    }
+    expect(read).not.toHaveBeenCalled();
+    expect(
+      (await app.inject({ url, headers: { cookie: 'hearth_session=private-session' } })).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await app.inject({
+          url: url.replace('household_hearth_demo', 'household_other'),
+          headers: { cookie: 'hearth_session=private-session' },
+        })
+      ).statusCode,
+    ).toBe(403);
   });
 });
 
@@ -563,6 +622,7 @@ describe('Hearth v2 API', () => {
       `${base}/pocket-money?weekStart=2026-08-03&asOf=2026-08-03`,
       `${base}/events`,
       `${base}/reminders?includeCompleted=false`,
+      `${base}/games/word-groups`,
     ];
     for (const url of privateReadUrls) {
       const response = await app.inject({ method: 'GET', url });
