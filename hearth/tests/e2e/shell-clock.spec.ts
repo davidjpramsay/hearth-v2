@@ -6,11 +6,14 @@ const householdRoutes = [
   '/calendar/week',
   '/calendar/month',
   '/calendar/agenda',
+  '/weather',
+  '/reminders',
   '/chores',
   '/lists',
   '/meals',
   '/home',
   '/photos',
+  '/games',
   '/more',
 ] as const;
 

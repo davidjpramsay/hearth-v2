@@ -57,6 +57,13 @@ patch passes the repeated code gate and `pnpm audit:dependencies` reports no kno
 Hosted verification, image publication, private archive installation and physical TCL acceptance
 remain pending at this source checkpoint. The archive is excluded from Git and public images.
 
+The first hosted Games candidate is correctly blocked by the existing rail-clock geometry test:
+the scrollable navigation's negative top margin extends four pixels into the clock box. This is
+reproduced locally, corrected by keeping only horizontal/bottom negative margins, and the same
+clock check now includes Weather, Reminders and Games. The rebuilt focused Games, remote,
+production-bootstrap and shell-clock suite passes 26 tests in 44.9 seconds. Failed candidate
+`ae3c1e5` publishes no images and the on-host verification guard starts no live installation.
+
 ## Per-change definition of done
 
 A change is complete only when:
