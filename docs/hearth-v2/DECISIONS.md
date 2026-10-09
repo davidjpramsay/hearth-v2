@@ -5,7 +5,7 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-097 — Compact phone setup and owner-controlled lost-access recovery
 
 - Date: 2026-10-09
-- Status: implemented locally; production screen cleanup verified, UI release and physical phones open
+- Status: verified and deployed; fresh physical phone sign-ins remain open after the owner-requested reset
 - Context: Both adults had controller permissions, but only David had keys. Recovery on a second
   phone replaced his original key without creating Rachael's own identity. Optional recovery warnings,
   technical key labels and an inert final-key Remove control made ordinary setup confusing.

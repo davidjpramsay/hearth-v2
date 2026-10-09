@@ -40,6 +40,28 @@ and exercises named-adult setup selection plus keyboard movement. Screenshots st
 Browser plugin unavailable; repository Playwright and its CLI are used. Hosted verification,
 publication, exact live activation and actual iPhone Safari sign-ins remain separate gates.
 
+Live release checkpoint: canonical application commit `7a20a2ef65e723053353b042641fdc9ba6452968`
+passes hosted Verify Hearth run `37894968640`, including all 940 browser tests, Android, containers
+and verified image publication. Exact server/web images are activated on the private NAS; external
+readiness/health return ready/private with the expected version and migration 27. A premature
+activation is rejected before restarting anything because staging is unfinished; staging subsequently
+completes and the guarded retry succeeds. A transient 502 during the deliberate container replacement
+is recorded, not treated as a persistent outage. Commissioned runtime Compose and the installed
+release/firewall/update-hook hashes remain unchanged. One active native Google TV remains.
+
+The owner then explicitly requests **reset all passkey sign-ins** after reporting that no saved key
+is recognised. A separately tested, exact-household NAS-owner transaction takes a checked private
+backup, revokes one remaining active passkey, one phone session and one unused recovery code, and
+atomically issues a fresh digest-only recovery grant for David. It retains all credential/audit
+history, both adult accounts, household content and the chosen TV. Readback proves zero active
+passkeys, zero phone sessions, two adult accounts and one active screen; health remains ready.
+The reset fixture passes locally and on DSM, including changed-key rejection/rollback, unrelated
+household isolation, retained TV/content, recovery and system audit. This is a data-maintenance
+operation, not another application deployment or authentication disablement. New Face ID/passkey
+enrolment and independent sign-in for David and Rachael remain **not run**. A prepared private code
+handoff requires the owner to open it; native Finder/TextEdit automation fails and Terminal control
+is unavailable, so code visibility is not claimed. No recovery code or credential is put in chat.
+
 ## Adult controllers and shared-screen clarity (D-096) — 2026-10-09
 
 `pnpm verify:code` passes formatting, lint, type checks, 301 unit tests (including ten new controller

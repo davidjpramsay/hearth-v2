@@ -197,6 +197,17 @@ owner-confirmed obsolete browser connections. Readback retains only the native G
 2026-10-08 as active and three matching system audits. Adult keys/sessions/permissions, content and
 networking are unchanged. New UI publication and both physical phone sign-ins remain separate gates.
 
+The exact `7a20a2e` application release subsequently passes complete hosted verification and is
+activated with commissioned Compose/networking preserved. After the owner explicitly requests an
+all-phone sign-in reset, a backed-up, tested, exact-household system transaction revokes the remaining
+phone keys/sessions and unused recovery grant, without deleting people, content or TV authorization.
+It issues a fresh David-only recovery grant atomically. Readback has zero active phone keys/sessions,
+two adult accounts and one active native Google TV. A fresh passkey on each real phone is still
+required; do not describe the reset as restored controller access. Old Apple Passwords entries may
+remain on the phones but cannot authenticate. The operator must not revive revoked keys or disable
+authentication to make that chooser succeed. The actual device owner completes code entry, Save
+and Face ID; keep codes out of chat/source/logs, and remove each private code file after consumption.
+
 The CalDAV adapter also fails closed without private configuration. In
 non-demo mode, `HEARTH_CALENDAR_CONFIG_PATH` must point to a JSON secret mounted
 outside the repository with mode similar to other container secrets. Required
