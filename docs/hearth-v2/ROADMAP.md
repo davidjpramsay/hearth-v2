@@ -471,7 +471,9 @@ physical-TCL comfort assessment remains part of the household pilot.
 ### Completion criteria
 
 - Photos are attractive, correctly oriented and do not expose filesystem paths.
-- The television never remains on indefinitely after the room is unoccupied.
+- Presence and quiet-hours policies can turn the panel off when the room is unoccupied. The owner's
+  explicit foreground-display choice (D-094) may keep Hearth visible while resumed; leaving Hearth
+  restores normal idle behaviour, and manual/Home Assistant standby remains available.
 - Backup restoration is performed, not merely documented.
 - Synology, Pi, router and TV restart scenarios recover without developer intervention.
 - The system passes `ACCEPTANCE.md` on actual target hardware.

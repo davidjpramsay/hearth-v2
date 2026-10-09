@@ -2,6 +2,43 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-095 — Phone chrome respects wrapping, safe areas and the visible viewport
+
+- Date: 2026-10-09
+- Status: reviewed for release; physical iPhone acceptance remains open
+- Context: The owner supplied an iPhone image with clipped date/card content and reported the
+  bottom navigation conflicting with iOS controls. The date was nowrap, mobile text inflation was
+  left automatic, and page padding did not include the bar's home-indicator inset.
+- Choice: Keep authored text sizing at 100% without disabling zoom; wrap phone dates and event
+  titles, allow heading reflow and keep the shell at its container width. Share one safe-area-aware
+  navigation-height token with page padding. Position the bar from `100dvh`, retaining a bottom
+  fallback. While a companion-width editing control is focused, hide the bar only when an unzoomed
+  visual viewport is more than 150 pixels shorter than the layout viewport. Restore it on resize
+  or focus change; coalesce event delivery and keep only a boolean React state.
+- Consequence: No household, authentication, storage, TV sizing or provider contract changes.
+  Desktop mobile emulation and injected keyboard geometry establish only local rendering/state
+  evidence; actual Safari toolbar, keyboard, picker and installed-web-app behaviour need physical
+  iPhone acceptance. Publishing/deploying the server/web release remains a separate operation.
+- References: [WebKit safe-area guidance](https://webkit.org/blog/7929/designing-websites-for-iphone-x/),
+  [Visual viewport](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport).
+
+## D-094 — Keep Hearth visible only while the TV activity is foregrounded
+
+- Date: 2026-10-09
+- Status: accepted at the owner's explicit request
+- Context: The physical TCL entered Google Ambient Mode after its ten-minute idle timeout while
+  Jellyfin continued playing music and Hearth was displayed. Hearth's window did not request screen
+  retention. The owner chose to keep Hearth visible while it is open.
+- Choice: Add `FLAG_KEEP_SCREEN_ON` in the TV activity's `onResume` and clear it in `onPause`.
+  This narrows the earlier static-display policy to permit the owner's explicit foreground choice.
+  Keep normal system idle settings and manual/Home Assistant standby available. No media-session
+  inspection, background wake lock, web bridge message or provider permission is added.
+- Consequence: Hearth prevents automatic Ambient Mode while resumed; leaving it releases that
+  request. Browser/phone display policy is unchanged. Install over the existing signed package to
+  retain pairing and preferences. Actual idle behaviour and foreground/background window state
+  are separate from compilation evidence.
+- Reference: [Android TV Ambient Mode](https://developer.android.com/training/tv/playback/ambient-mode).
+
 ## D-093 — The native TV shell owns TV sizing and a legible launcher wordmark
 
 - Date: 2026-10-08

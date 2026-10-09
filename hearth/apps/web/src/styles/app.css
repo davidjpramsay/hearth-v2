@@ -1396,15 +1396,16 @@
 }
 .companion-content {
   min-height: calc(100dvh - 58px);
-  padding-bottom: 90px;
+  padding-bottom: calc(var(--phone-tabs-height) + 12px);
 }
 .companion-shell .phone-tabs {
   width: min(100%, 680px);
-  height: 78px;
-  padding: 6px 12px;
+  height: var(--phone-tabs-height);
+  padding: 6px 12px env(safe-area-inset-bottom, 0px);
   position: fixed;
   z-index: 20;
   bottom: 0;
+  top: calc(100dvh - var(--phone-tabs-height));
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid #e2d9d0;
@@ -3112,6 +3113,10 @@
   display: none;
 }
 
+.phone-tabs[hidden] {
+  display: none !important;
+}
+
 @media (min-width: 3000px) {
   .app-shell {
     width: 50vw;
@@ -3227,6 +3232,7 @@
     --radius-panel: 16px;
   }
   .app-shell {
+    width: 100%;
     min-width: 0;
     min-height: 0;
     display: block;
@@ -3239,7 +3245,8 @@
     position: sticky;
     z-index: 19;
     top: 0;
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: baseline;
     justify-content: space-between;
     gap: 14px;
@@ -3253,11 +3260,13 @@
     min-height: calc(100dvh - 52px);
     height: auto;
     overflow: visible;
-    padding-bottom: 82px;
+    padding-bottom: calc(var(--phone-tabs-height) + 12px);
   }
   .screen {
     min-height: calc(100dvh - 134px);
     padding: 22px var(--safe) 28px;
+    padding-left: max(var(--safe), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--safe), env(safe-area-inset-right, 0px));
   }
   .screen-header {
     min-height: 72px;
@@ -3301,6 +3310,8 @@
   }
   .section-heading {
     min-height: 43px;
+    gap: 8px;
+    flex-wrap: wrap;
   }
   .section-heading h2 {
     font-size: 21px;
@@ -3333,6 +3344,9 @@
   }
   .event-row__body strong {
     font-size: 18px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
   }
   .event-row__body span {
     font-size: 15px;
@@ -3437,15 +3451,30 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: calc(72px + env(safe-area-inset-bottom));
-    padding: 6px 8px env(safe-area-inset-bottom);
+    top: calc(100dvh - var(--phone-tabs-height));
+    height: var(--phone-tabs-height);
+    padding: 6px max(8px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px)
+      max(8px, env(safe-area-inset-left, 0px));
     border-top: 1px solid var(--hairline);
     background: var(--surface);
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .household-date-time--mobile,
+  .household-date-time--companion {
+    padding-left: max(var(--safe), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--safe), env(safe-area-inset-right, 0px));
+  }
+  .household-date-time--mobile .household-date-time__date,
+  .household-date-time--companion .household-date-time__date {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+    line-height: 1.25;
   }
   html {
-    scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(var(--phone-tabs-height) + 20px);
   }
 }
 
@@ -3456,12 +3485,16 @@
   }
   .companion-shell .phone-tabs {
     width: 100%;
-    height: calc(72px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
+    height: var(--phone-tabs-height);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .household-date-time--companion {
     min-height: 52px;
     padding: 7px var(--safe);
+    padding-left: max(var(--safe), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--safe), env(safe-area-inset-right, 0px));
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
   }
   .companion-content {
     min-height: calc(100dvh - 52px);

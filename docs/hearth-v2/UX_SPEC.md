@@ -40,6 +40,12 @@ Primary commands are Up, Down, Left, Right, Select and Back.
   rather than competing primary destinations. Reminders are native household records and remain
   available even before the first reminder is created; administration remains phone-first.
 - Every household surface shows the live household-local time and date in shared application chrome: in the television rail and in a compact companion header on phone/admin layouts. Individual screens do not repeat their own clock. Pairing and pre-authentication setup remain uncluttered exceptions.
+- Phone dates and event titles wrap within the available width. Keep automatic mobile text
+  inflation at the authored responsive size while retaining user zoom. The phone navigation and
+  page's trailing space share the full home-indicator safe-area allowance, including landscape
+  side insets. Anchor the bar to the dynamic visible viewport as browser controls expand/collapse;
+  hide it only during focused editing with a keyboard-sized visual-viewport reduction, then restore
+  it when that reduction ends. Native editing and pinch zoom remain available.
 - The television rail starts with the time and date in place of the Hearth logo/title; no duplicate clock appears in its footer.
 - The focused destination and focused action are always visually obvious.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.

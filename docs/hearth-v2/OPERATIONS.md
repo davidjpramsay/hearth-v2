@@ -709,6 +709,11 @@ restart, without clearing its settings. Launcher fern-plus-wordmark assets have 
 banner and square icon bounds. The original mark is unchanged; source outline attribution is
 under `apps/tv/design/OFL.txt` (D-093).
 
+The owner's foreground-display choice (D-094) uses `FLAG_KEEP_SCREEN_ON` only while the activity
+is resumed and clears it on pause. Do not globally disable Ambient Mode or change the television's
+idle timeout for this feature. Keep manual and Home Assistant standby available; foreground flag
+readback alone does not prove a complete unattended idle interval or overnight recovery.
+
 The release shell accepts only an entered HTTPS Hearth origin. Debug cleartext
 is restricted to `10.0.2.2`, `127.0.0.1` and `localhost`; use the emulator host
 alias or `adb reverse tcp:4320 tcp:4320` rather than permitting arbitrary LAN

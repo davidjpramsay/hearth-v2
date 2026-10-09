@@ -152,7 +152,9 @@ Can understand the current household state and use clearly exposed room controls
   substantial rotating occupants instead of compressing all five into shallow strips.
 - Overlay only minimal next-event or household information in ambient mode.
 - Exit immediately on remote input, voice request or important alert.
-- Never leave a static dashboard on overnight; allow Home Assistant to turn the panel off.
+- At the owner's explicit request, keep the Android TV Hearth display visible while its activity
+  is foregrounded. Leaving Hearth restores the television's normal idle behaviour. Manual standby
+  and Home Assistant panel-off commands remain available, including overnight.
 
 Member profile photos are separate from the ambient family-photo collection. An adult administrator
 can choose a portrait or landscape image in People, directly drag and pinch/scroll a square crop,
@@ -299,5 +301,6 @@ Meal planning may follow the first vertical release if schedule or quality would
 - All household mutations must be authenticated and auditable.
 - Time calculations must use `Australia/Perth` as the household default while storing instants in UTC.
 - Recurrence, daylight-saving imports and all-day events require automated tests even though Perth itself does not observe DST.
-- No static display should remain illuminated indefinitely without presence or an explicit media session.
+- No static display should remain illuminated indefinitely without presence, an explicit media
+  session or the owner's explicit foreground-display choice (D-094).
 - The product must be usable with D-pad only and meet WCAG 2.2 AA contrast and reduced-motion expectations where applicable.

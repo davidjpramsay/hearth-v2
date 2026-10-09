@@ -37,6 +37,7 @@
   --evening-overlay: transparent;
   --safe: 48px;
   --rail: 254px;
+  --phone-tabs-height: calc(72px + env(safe-area-inset-bottom, 0px));
   font-family: 'Source Sans 3 Variable', 'Source Sans 3', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -90,6 +91,11 @@ body,
 #root {
   min-height: 100%;
   margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {

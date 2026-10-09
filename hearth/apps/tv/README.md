@@ -11,6 +11,7 @@ logic remains in the server, web and shared packages.
 - `HttpOnly`, `SameSite=Strict` device session
 - native offline, revoked and recovery states
 - Back/D-pad forwarding and route restoration
+- foreground screen retention, released on pause (D-094)
 - no arbitrary intents, JavaScript bridge, files, provider credentials or media control
 
 Jellyfin and other media apps remain independent. The shell targets API 24+ and a fixed 1920-pixel

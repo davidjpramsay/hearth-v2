@@ -1,5 +1,75 @@
 # Hearth v2 acceptance and definition of done
 
+## Phone fit and bottom navigation (D-095)
+
+- Long phone dates and event titles remain inside the viewport, including narrow and zoomed layouts.
+- Last content can scroll above the full navigation/home-indicator area. Browser-toolbar resizing
+  retains accessible navigation; focused editing with a keyboard-sized visual-viewport reduction
+  hides the bar and dismissal restores it without changing the draft or zoom.
+- Physical iPhone acceptance covers Safari toolbar expansion/collapse, keyboard dismissal, native
+  date controls and an installed home-screen web app. Desktop emulation cannot close these gates.
+
+Local checkpoint on 2026-10-09: web type checking, scoped ESLint, production build and
+`git diff --check` pass. Chromium mobile
+rendering at 393×852, 393×650, 320×700 and 844×390 shows no horizontal document overflow; a long sample
+date/title remains contained and the bar follows viewport height. Today → More → Reminders opens
+the form. Injecting a 360-pixel visual viewport while its text input is focused hides navigation;
+restoring the actual viewport restores it. This is simulated geometry, not an iOS keyboard run.
+The built preview also renders at 1920×1080 with the TV rail visible and phone tabs hidden. At the
+end of the 393×852 page, the photo bottom is 740 and navigation top 780, leaving content accessible.
+Inspected screenshots show the intended layouts; page identity, meaningful content and console
+checks pass with no framework overlay or errors. Screenshots and CLI artifacts stay outside Git.
+Browser plugin unavailable; the installed Playwright CLI is used with fictional local demo data.
+Unit/browser suites, physical Safari and live NAS deployment were unrun at this initial checkpoint.
+
+## Foreground TV display retention (D-094)
+
+- While Hearth is resumed, its window requests screen retention; pausing releases that request.
+- Normal system screensaver settings, manual standby and independent media playback are preserved.
+
+Physical TCL checkpoint on 2026-10-09: `assembleDebug` succeeds and the APK signing certificate
+matches the prior installed package. `adb install -r` succeeds without re-pairing; installed/local
+APK SHA-256 matches `91999a1994ce543dd8de1ea3ab2af3a44a31679d799b2be1c2ed70bd83790fd2`.
+The paired Today screen is visually inspected. Window readback shows `KEEP_SCREEN_ON` while Hearth
+is foregrounded, no flag after Home, and the flag restored after returning to Hearth. Jellyfin's
+existing process remains active and playing with its three-item queue. The ten-minute system
+timeout and enabled screensaver remain unchanged. `git diff --check` passes. Unit/browser suites,
+an unattended full idle interval and overnight/manual-standby acceptance are not run for this change.
+Screenshots remain temporary private evidence, outside Git. At this initial checkpoint the TV APK
+is installed, source is local, and no NAS/web release or network change is made.
+
+## Reviewed TV/phone release preparation — 2026-10-09
+
+Review retains the prepared foreground window flag and responsive phone changes. It adds 21
+deterministic keyboard-hook tests covering editing focus, textarea/content-editable controls,
+non-keyboard inputs, toolbar-sized changes, the 150-pixel threshold, zoom, layout-height changes,
+companion breakpoints, unavailable VisualViewport, event coalescing and subscription/frame cleanup.
+An initial jsdom run exposes an undefined content-editable predicate; requiring an explicit `true`
+keeps the result boolean and the repeated hook suite passes. No draft value is read by the hook.
+The older roadmap and overnight-static-display assertion are aligned with the explicitly approved
+foreground choice rather than silently contradicting D-094.
+
+`pnpm verify` passes format, lint, types, 291 unit, 137 API/integration and 24 migration tests,
+deployment checks, production builds, five CI-policy tests, complete non-overlapping browser shard
+coverage, and all 940 built-browser tests (20.2 minutes). `pnpm audit:dependencies` reports no known
+vulnerabilities. `pnpm verify:tv` passes 14 JVM tests, Debug/Release lint and both APK builds.
+The rebuilt debug APK still has the exact previously physically verified SHA-256 above, so no
+reinstallation is needed. `git diff --check` and scoped authoritative-document formatting pass.
+
+An isolated built preview at `127.0.0.1:4324`, using its own fictional demo API/database at port
+4314, passes rendered inspection at 393×852, 393×650, 320×700, 844×390 and 1920×1080. A deliberately
+long visible date wraps to two lines at 320 pixels and a long event title remains inside its card.
+Today → More → Reminders, simulated keyboard hide/dismissal and draft retention pass, with no page
+or console errors. After scrolling, the final reminder ends at 723.22 pixels above navigation at
+780 pixels. The TV layout remains one-screen with its rail visible and phone tabs hidden. Browser
+plugin unavailable; Playwright CLI and repository tests are used. Temporary screenshots contain
+fictional data only and are not committed.
+
+Hosted container verification/publication and private Synology activation remain separate steps;
+local success does not authorize an unverified image or replacement of commissioned networking.
+Physical iPhone Safari toolbar, real keyboard/date controls and home-screen-web-app checks remain
+unverified, as do a full unattended TV idle interval and overnight/manual-standby recovery.
+
 ## Family Games acceptance
 
 - Validate the owner's complete supplied archive without copying it into source, fixtures or images.
@@ -515,7 +585,9 @@ live-system commissioning tasks requiring owner approval.
   orientation-aware spans and phone landscape shows three substantial rotating occupants rather
   than five compressed strips.
 - Remote/voice input exits ambient mode immediately.
-- The same static dashboard is not left illuminated overnight.
+- Normal overnight standby remains available. The owner's explicit foreground-display choice
+  (D-094) requests screen retention only while Hearth is resumed and releases it on pause; it does
+  not disable manual or Home Assistant standby.
 - Missing/corrupt photos fail gracefully.
 - An authenticated adult can choose multiple supported phone photos without first configuring a
   shared folder. Each image is capped at 25 MB, decoded server-side, orientation-corrected and

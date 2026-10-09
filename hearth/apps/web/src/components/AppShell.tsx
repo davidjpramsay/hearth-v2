@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 
 import { useAppearance } from '../appearance/appearance';
 import { HouseholdClockProvider } from '../hooks/useHouseholdClock';
+import { usePhoneKeyboardOpen } from '../hooks/usePhoneKeyboardOpen';
 import { useHearthRuntime } from '../runtime/context';
 import { HouseholdDateTime } from './HouseholdDateTime';
 import { Icon, type IconName } from './Icon';
@@ -227,13 +228,14 @@ function isAdminNavigationActive(pathname: string, item: AdminNavigationItem): b
 
 function PhoneNavigation() {
   const { pathname } = useLocation();
+  const keyboardOpen = usePhoneKeyboardOpen();
   const moreActive =
     pathname === '/more' ||
     pathname === '/appearance' ||
     pathname.startsWith('/admin') ||
     ['/lists', '/meals', '/home', '/photos', '/reminders', '/games'].includes(pathname);
   return (
-    <nav className="phone-tabs" aria-label="Primary navigation">
+    <nav className="phone-tabs" aria-label="Primary navigation" hidden={keyboardOpen}>
       {phoneNavigation.map((item, index) => (
         <PhoneTab item={item} index={index} pathname={pathname} key={item.label} />
       ))}

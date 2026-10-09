@@ -91,6 +91,7 @@ A minimal Kotlin Android TV application that provides:
 
 - TV launcher category and original fern-plus-wordmark banner/icon with explicit intrinsic proportions
 - full-screen exact-origin controlled WebView
+- foreground-only screen retention through the activity window flag, released on pause (D-094)
 - TV-only 1920-pixel logical viewport across Android display densities
 - application identity, network-status and exit-only native message bridge
 - predictive/remote Back callback forwarded to the React history handler
