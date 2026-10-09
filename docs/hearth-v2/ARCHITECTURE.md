@@ -505,6 +505,22 @@ and sessions. Hearth never places a shared admin token in a URL and does not per
 passkey to be revoked before recovery exists. Passkeys still require a stable private hostname and
 HTTPS secure origin before real household data is entered.
 
+D-097 adds an optional `signInOnThisDevice` registration intent. Legacy requests retain the helper's
+session. The explicit phone-setup flow freezes this intent in the ceremony and, only after verified
+registration and commit-time administrator/session/target checks, creates a session for the chosen
+adult and revokes the initiating browser session in the same transaction. Other sessions and keys
+remain active. The replacement token is internal to the server and reaches the browser only in the
+existing Secure/HttpOnly/Strict cookie; the response remains credential/audit metadata. The client
+closes the old document and clears private caches without calling sign-out on the new cookie.
+
+If every adult loses access, `deploy/synology/owner-access.py` is a deliberately local operator
+exception, not a web endpoint or shared password. It requires root or the NAS administrators group,
+existing private-database access, a verified online backup and exact active-adult targeting. It
+issues a 128-bit, 15-minute, digest-only one-time recovery record. Its private file is never printed
+by the tool or persisted in source/logs. Issuance changes no keys, sessions, roles or household data;
+the existing user-verified recovery ceremony later consumes it and replaces only that adult's access.
+Every operator mutation has a truthful system/NAS-owner audit in the same transaction.
+
 Appliance update status is an administrator-only service, not a browser privilege. Starting an
 update requires a new passkey-authenticated session no more than five minutes old. The server accepts
 only the exact release exposed by its fixed verified-workflow provider, creates an online recovery
@@ -628,7 +644,9 @@ not give GitHub Actions network or credential access to the private household de
 migration. The stable private hostname and trusted certificate remain commissioning inputs because
 adult passkeys bind to that origin. See D-031.
 
-The server is also the sole process allowed to create database recovery copies. In private mode it
+The server creates routine database recovery copies. The explicitly authorized local NAS-owner
+maintenance tool may also create a checked private online backup before access repair (D-097).
+In private mode the server
 uses SQLite online backup into the restricted data volume, verifies and prunes those files, and
 serves only a typed aggregate status to authenticated adults. Restore is intentionally outside the
 HTTP application: the production image contains a CLI that verifies a retained copy and writes it

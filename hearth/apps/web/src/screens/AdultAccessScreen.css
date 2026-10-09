@@ -81,6 +81,23 @@
   min-height: 44px;
 }
 
+.adult-access-advanced {
+  margin-top: 18px;
+}
+
+.adult-access-advanced > summary {
+  min-height: 44px;
+  padding: 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.adult-passkey-protected {
+  grid-column: 2 / -1;
+  max-width: 32em;
+  line-height: 1.45;
+}
+
 .adult-access-section,
 .adult-access-add,
 .adult-recovery {

@@ -151,7 +151,7 @@ test('phone connects a screen from a pasted code and confirms disconnection', as
   await expect(device).toContainText('Disconnected');
   await expect(device.getByRole('button')).toHaveCount(0);
   await page.getByRole('link', { name: 'Manage adult sign-in' }).click();
-  await expect(page.getByText('Save a passkey on this device')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Set up this phone' })).toBeVisible();
   await page.getByRole('link', { name: 'Back to Phones & screens' }).click();
   await expect(page.getByRole('heading', { name: 'Phones & screens', exact: true })).toBeVisible();
 });
@@ -222,7 +222,8 @@ test('empty screens and an unavailable clipboard have clear next steps', async (
     });
   });
   await page.goto('/admin/televisions');
-  await expect(page.getByText('No screens connected. Add one above.')).toBeVisible();
+  await expect(page.getByText('No screens connected. Add a TV below.')).toBeVisible();
+  await page.getByText('Use Hearth on another phone', { exact: true }).click();
   await page.getByRole('button', { name: 'Copy address' }).click();
   await expect(page.getByRole('status')).toHaveText('Select and copy the address above.');
 });

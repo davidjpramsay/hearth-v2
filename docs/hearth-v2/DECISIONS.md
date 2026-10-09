@@ -2,6 +2,32 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-097 — Compact phone setup and owner-controlled lost-access recovery
+
+- Date: 2026-10-09
+- Status: implemented locally; production screen cleanup verified, UI release and physical phones open
+- Context: Both adults had controller permissions, but only David had keys. Recovery on a second
+  phone replaced his original key without creating Rachael's own identity. Optional recovery warnings,
+  technical key labels and an inert final-key Remove control made ordinary setup confusing.
+- Choice: Keep two compact named-adult rows and connected screens, with key/recovery details secondary.
+  **Set up this phone** explicitly saves the chosen adult's key and signs this browser in as them,
+  only after current adult authority and new user-verified registration succeed. Freeze the optional
+  `signInOnThisDevice` intent in the ceremony; absent/false preserves legacy behavior. Revoke only
+  the initiating helper session, preserve other sessions and permissions, and clear old client caches.
+  Put recovery behind Advanced, without warning badges. Replace the blocked final-key Remove button
+  with a visible reason. Never claim key counts are a physical-phone inventory.
+- Operator exception: A local root/NAS-administrators-group tool with existing database access may
+  create a checked online backup and issue a 128-bit, 15-minute, one-time code for an existing active
+  adult. Store only its digest; write the raw code to a fresh private file, never a URL, stdout, log,
+  repository or chat. The existing user-verified recovery flow remains mandatory. Issuing a code
+  changes no key/session/permission; successful recovery replaces only that adult's old access.
+  Record actual system/NAS-owner provenance, not a forged member session. No public operator route,
+  broad token, new role, household reset, TV reset or networking change.
+- Cleanup: Revoke only owner-confirmed obsolete screen IDs, retain the explicitly chosen active TV,
+  preserve rows/history and audit atomically. Repeating the same cleanup is inert. Keep working
+  adult access until independent successor phone sign-ins are physically verified. This supersedes
+  D-096's manual helper sign-out step only for the new explicitly opted-in phone setup action.
+
 ## D-096 — Adult controllers are people; paired screens are separate connections
 
 - Date: 2026-10-09

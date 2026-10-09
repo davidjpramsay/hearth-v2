@@ -84,6 +84,7 @@ interface AdditionalRegistrationCeremony {
   actorSessionHash: string;
   passkeyLabel: string;
   userId: Uint8Array;
+  signInOnThisDevice: boolean;
 }
 
 interface RecoveryConfirmationCeremony {
@@ -267,7 +268,7 @@ export interface CompanionAuthRepository {
     actor: CommandActor,
     ceremonyId: string,
     response: unknown,
-  ): Promise<PasskeyRegistrationResult>;
+  ): Promise<PasskeyRegistrationResult & { signedInToken?: string }>;
   recoveryConfirmationOptions(
     householdId: string,
     actor: CommandActor,
@@ -598,6 +599,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
       actorSessionHash: this.actorSessionHash(actor),
       passkeyLabel: input.passkeyLabel,
       userId,
+      signInOnThisDevice: input.signInOnThisDevice === true,
     });
     return ceremonyOptions(ceremonyId, options, expiresAt);
   }
@@ -607,7 +609,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     actor: CommandActor,
     ceremonyId: string,
     response: unknown,
-  ): Promise<PasskeyRegistrationResult> {
+  ): Promise<PasskeyRegistrationResult & { signedInToken?: string }> {
     this.assertAdultAdministrator(householdId, actor);
     const ceremony = this.takeAdditionalRegistrationCeremony(ceremonyId);
     if (
@@ -620,7 +622,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     const credential = await this.verifyNewCredential(ceremony.challenge, response);
     const now = this.now().toISOString();
     const credentialRowId = opaqueId('passkey');
-    const audit = this.database.transaction(() => {
+    const result = this.database.transaction(() => {
       this.assertAdultAdministrator(householdId, actor);
       this.readAdultMember(householdId, ceremony.memberId);
       this.assertCredentialIsNew(credential.id);
@@ -633,7 +635,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
         label: ceremony.passkeyLabel,
         now,
       });
-      return this.writeAudit({
+      const audit = this.writeAudit({
         householdId,
         actorId: actor.id,
         action: 'auth.passkey.register',
@@ -642,11 +644,20 @@ export class CompanionAuthService implements CompanionAuthRepository {
         now,
         safeSummary: { firstUse: false, memberId: ceremony.memberId },
       });
+      if (!ceremony.signInOnThisDevice) return { audit };
+      const signedIn = this.createSession(householdId, ceremony.memberId, credential.id);
+      this.database
+        .prepare('UPDATE companion_sessions SET revoked_at = ? WHERE token_hash = ?')
+        .run(now, ceremony.actorSessionHash);
+      return { audit, signedInToken: signedIn.token };
     })();
-    return PasskeyRegistrationResultSchema.parse({
-      credential: this.readPasskeySummary(credentialRowId),
-      audit,
-    });
+    return {
+      ...PasskeyRegistrationResultSchema.parse({
+        credential: this.readPasskeySummary(credentialRowId),
+        audit: result.audit,
+      }),
+      ...(result.signedInToken === undefined ? {} : { signedInToken: result.signedInToken }),
+    };
   }
 
   async recoveryConfirmationOptions(

@@ -11,7 +11,7 @@ import { adultAccessApi } from '../api/adultAccess';
 import { runtimeApi } from '../api/runtime';
 import { AdminAuthBoundary } from '../auth/AdminAuthBoundary';
 import { createAdditionalPasskey, passkeysAvailable } from '../auth/passkeys';
-import { signOutAndClear } from '../auth/signOut';
+import { clearIdentityAndReload } from '../auth/signOut';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { AdultAccessScreen } from './AdultAccessScreen';
 import { TelevisionsSettingsScreen } from './TelevisionsSettingsScreen';
@@ -28,7 +28,7 @@ vi.mock('../auth/passkeys', () => ({
   createAdditionalPasskey: vi.fn(),
   createConfirmedRecoveryCode: vi.fn(),
 }));
-vi.mock('../auth/signOut', () => ({ signOutAndClear: vi.fn() }));
+vi.mock('../auth/signOut', () => ({ clearIdentityAndReload: vi.fn() }));
 vi.mock('../api/runtime', () => ({ runtimeApi: { getAuthStatus: vi.fn() } }));
 
 const overview: AdminOverview = {
@@ -124,7 +124,11 @@ describe('adult phones and shared screens', () => {
       'Family access · no household settings',
     );
     expect(within(adults).queryByText('Child')).not.toBeInTheDocument();
-    expect(screen.getByText(/No screen code is needed for a phone/)).toBeVisible();
+    expect(screen.getByText(/No TV code needed/)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Set up Daniel’s phone' })).toHaveAttribute(
+      'href',
+      '/admin/access?adult=member_daniel',
+    );
     expect(adminApi.approvePairing).not.toHaveBeenCalled();
   });
 
@@ -168,7 +172,7 @@ describe('adult phones and shared screens', () => {
   it('makes empty and revoked-only lists honest without suggesting another phone pairing', () => {
     mockAdmin({ ...overview, pairedDevices: [device('device_old', 'revoked')] });
     renderPage(<TelevisionsSettingsScreen />);
-    expect(screen.getByText('No screens connected. Add one above.')).toBeVisible();
+    expect(screen.getByText('No screens connected. Add a TV below.')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
   });
 });
@@ -213,20 +217,17 @@ describe('new adult sign-in guidance', () => {
 
   it('requires the adult’s own device and separates permissions, credentials and recovery', async () => {
     renderPage(<AdultAccessScreen />);
-    expect(
-      await screen.findByRole('heading', { name: 'Set up each adult’s own sign-in' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Set up this phone' })).toBeVisible();
     expect(screen.getByText(/Signed in as/)).toHaveTextContent('Maya');
-    expect(screen.getByText(/Saving a key does not switch/)).toHaveTextContent('Maya’s own phone');
+    expect(screen.getByText(/This phone will then sign in/)).toHaveTextContent('Maya’s phone');
     fireEvent.change(screen.getByLabelText('Adult'), { target: { value: 'member_daniel' } });
-    expect(screen.getByText(/Saving a key does not switch/)).toHaveTextContent(
-      'Daniel’s own phone',
-    );
-    expect(screen.getByText(/For lost access, not for connecting/)).toBeVisible();
+    expect(screen.getByText(/This phone will then sign in/)).toHaveTextContent('Daniel’s phone');
+    expect(screen.queryByText('Recovery needed')).not.toBeInTheDocument();
+    expect(screen.getByText(/Optional safety net/)).not.toBeVisible();
     expect(createAdditionalPasskey).not.toHaveBeenCalled();
   });
 
-  it('saves for the selected adult without switching identity or automatically signing out', async () => {
+  it('requests an explicit verified sign-in for the selected adult and clears the helper identity', async () => {
     vi.mocked(createAdditionalPasskey).mockResolvedValue({
       credential: {
         id: 'passkey_new',
@@ -252,19 +253,16 @@ describe('new adult sign-in guidance', () => {
     await screen.findByRole('heading', { name: 'Adult access' });
     fireEvent.change(screen.getByLabelText('Adult'), { target: { value: 'member_daniel' } });
     fireEvent.change(screen.getByLabelText('Passkey name'), { target: { value: 'Daniel phone' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add passkey' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Set up this phone' }));
     await waitFor(() =>
       expect(createAdditionalPasskey).toHaveBeenCalledWith(
-        { memberId: 'member_daniel', passkeyLabel: 'Daniel phone' },
+        { memberId: 'member_daniel', passkeyLabel: 'Daniel phone', signInOnThisDevice: true },
         expect.anything(),
       ),
     );
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'saved for Daniel. Still signed in as Maya',
+    await waitFor(() =>
+      expect(clearIdentityAndReload).toHaveBeenCalledWith(expect.any(QueryClient), '/'),
     );
-    expect(signOutAndClear).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out and test sign-in' }));
-    await waitFor(() => expect(signOutAndClear).toHaveBeenCalledOnce());
   });
 
   it('preserves the final-passkey recovery guard', async () => {
@@ -288,7 +286,12 @@ describe('new adult sign-in guidance', () => {
       ],
     });
     renderPage(<AdultAccessScreen />);
-    expect(await screen.findByRole('button', { name: 'Remove' })).toBeDisabled();
+    await screen.findByText(
+      'Only sign-in key. Add another key or create recovery before removing it.',
+    );
+    fireEvent.click(screen.getByText('Advanced sign-in & recovery'));
+    expect(screen.getByText(/Only sign-in key/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
     expect(adultAccessApi.revokePasskey).not.toHaveBeenCalled();
   });
 });

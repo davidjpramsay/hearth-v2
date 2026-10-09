@@ -469,6 +469,13 @@ credential and adds these one-time recovery records. Recovery expires after 180 
 use consumes the code and revokes the recovered adult's prior passkeys and sessions before issuing
 the replacement session.
 
+D-097 reuses this digest-only table for local NAS-owner recovery, with a 15-minute rather than
+180-day expiry. For this operator exception the legacy non-null `created_by_member_id` FK identifies
+the beneficiary, not a claimed browser actor. The mandatory same-transaction audit records the
+actual `system` issuer (`nas_owner_uid_<uid>`, source `system`, summary `issuer: nas-owner`).
+Never infer an authenticated member ceremony from this legacy field. Issuance replaces only that
+adult's prior unused code and does not revive a revoked key or create a browser session.
+
 ## Audit event
 
 Required fields:

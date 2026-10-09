@@ -33,6 +33,7 @@ grep -q 'verify_release' "$script_dir/release-safety.py"
 grep -q '/usr/local/etc/hearth-v2/control:/run/hearth-update' "$script_dir/compose.yaml"
 grep -q 'release-safety.py' "$script_dir/install-release-helper.sh"
 python3 -I -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' "$script_dir/release-safety.py"
+python3 -I "$script_dir/owner-access.test.py"
 
 docker compose \
   --env-file "$environment_file" \

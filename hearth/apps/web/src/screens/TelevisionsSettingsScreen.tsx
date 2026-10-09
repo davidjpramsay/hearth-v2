@@ -60,8 +60,7 @@ export function TelevisionsSettingsScreen() {
   return (
     <AdminPage title="Phones & screens">
       <p className="device-access-summary">
-        Signed in as <strong>{admin.data.actor.displayName}</strong>. Phones sign in as adults; only
-        shared screens use a connection code.
+        Signed in as <strong>{admin.data.actor.displayName}</strong>.
       </p>
       <div className="device-setup-options">
         <section className="device-setup-card" aria-labelledby="phone-setup-title">
@@ -69,7 +68,7 @@ export function TelevisionsSettingsScreen() {
             <Icon name="shield" />
             <h2 id="phone-setup-title">Adult phones</h2>
           </header>
-          <p>Each adult uses their own Hearth passkey. No screen code is needed for a phone.</p>
+          <p>Phones sign in with a passkey. No TV code needed.</p>
           <ul className="device-adult-list" aria-label="Adult control permissions">
             {adults.map((adult) => (
               <li key={adult.id}>
@@ -79,111 +78,51 @@ export function TelevisionsSettingsScreen() {
                     ? 'Household controller'
                     : 'Family access · no household settings'}
                 </span>
+                <Link
+                  className="admin-secondary"
+                  to={`/admin/access?adult=${encodeURIComponent(adult.id)}`}
+                  aria-label={`Set up ${adult.displayName}’s phone`}
+                >
+                  Set up phone
+                </Link>
               </li>
             ))}
           </ul>
-          <p>Open this address on each phone and choose Sign in with a passkey.</p>
-          <div className="device-home-address">
-            <input aria-label="Hearth address" readOnly value={window.location.origin} />
-            <button
-              className="admin-secondary"
-              type="button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(window.location.origin);
-                  setCopyState('copied');
-                } catch {
-                  setCopyState('failed');
-                }
-              }}
-            >
-              {copyState === 'copied' ? 'Copied' : 'Copy address'}
-            </button>
-          </div>
-          {copyState === 'failed' ? <p role="status">Select and copy the address above.</p> : null}
-          <p>
-            New adult or no saved passkey? Set it up on that adult’s phone, then check their
-            sign-in.
-          </p>
           <Link className="admin-secondary device-setup-link" to="/admin/access">
             Manage adult sign-in <Icon name="chevron-right" />
           </Link>
           <details className="device-setup-help">
-            <summary>What makes a phone a controller?</summary>
-            <p>
-              The signed-in adult’s permissions, not a phone pairing. A household controller can
-              change settings and approve shared screens. Manage this in{' '}
-              <Link to="/admin/people">People</Link>. Passkeys can sync between an adult’s devices;
-              the list above is not a list of connected phones.
-            </p>
-          </details>
-        </section>
-        <section className="device-setup-card" aria-labelledby="screen-setup-title">
-          <header>
-            <Icon name="television" />
-            <h2 id="screen-setup-title">Shared screen</h2>
-          </header>
-          <p>
-            A TV or wall tablet. Family access, without adult settings. Connect it once, not on
-            every phone.
-          </p>
-          <form className="pair-code-form" onSubmit={submit}>
-            <label htmlFor="pair-code">Code from the screen</label>
-            <div>
-              <input
-                autoCapitalize="characters"
-                autoComplete="off"
-                spellCheck={false}
-                disabled={approve.isPending}
-                id="pair-code"
-                maxLength={16}
-                name="code"
-                pattern="[A-Z0-9]{6}"
-                placeholder="ABC123"
-                required
-                value={code}
-                onChange={(event) => {
-                  setCode(event.target.value.replaceAll(/[\s-]/g, '').toUpperCase().slice(0, 6));
-                  approve.reset();
+            <summary>Use Hearth on another phone</summary>
+            <p>Open this address on that phone and sign in as its owner.</p>
+            <div className="device-home-address">
+              <input aria-label="Hearth address" readOnly value={window.location.origin} />
+              <button
+                className="admin-secondary"
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(window.location.origin);
+                    setCopyState('copied');
+                  } catch {
+                    setCopyState('failed');
+                  }
                 }}
-              />
-              <button disabled={approve.isPending || code.length !== 6} type="submit">
-                {approve.isPending ? 'Connecting…' : 'Connect screen'}
+              >
+                {copyState === 'copied' ? 'Copied' : 'Copy address'}
               </button>
             </div>
-          </form>
-          <details className="device-setup-help">
-            <summary>Where do I get the code?</summary>
-            <ol className="device-setup-steps">
-              <li>Open Hearth on the screen and choose Connect shared screen.</li>
-              <li>Enter its six-character code here.</li>
-              <li>The screen opens Hearth automatically.</li>
-            </ol>
+            {copyState === 'failed' ? (
+              <p role="status">Select and copy the address above.</p>
+            ) : null}
           </details>
-          {approve.isSuccess ? (
-            <p className="save-confirmation" role="status">
-              {approve.data.name} connected. You can use it now.
-            </p>
-          ) : null}
-          {approve.isError ? (
-            <AdminError message={approve.error.message} onRetry={approve.retryCommand} />
-          ) : null}
-          {runtime.mode === 'demo' ? (
-            <Link className="tv-demo-link" to="/pair">
-              Preview shared-screen setup
-            </Link>
-          ) : null}
         </section>
       </div>
       <section className="device-list" aria-labelledby="connected-tvs">
         <h2 ref={connectedHeading} id="connected-tvs" tabIndex={-1}>
           Connected screens
         </h2>
-        <p className="device-setup-empty">
-          These screens still have access. This does not mean they are online right now.
-        </p>
         {connected.length > 0 ? null : (
-          <p className="device-setup-empty">No screens connected. Add one above.</p>
+          <p className="device-setup-empty">No screens connected. Add a TV below.</p>
         )}
         {revoke.isSuccess ? (
           <p className="save-confirmation" role="status">
@@ -238,13 +177,65 @@ export function TelevisionsSettingsScreen() {
           </article>
         ))}
       </section>
+      <div className="device-setup-options device-add-screen">
+        <section className="device-setup-card" aria-labelledby="screen-setup-title">
+          <header>
+            <Icon name="television" />
+            <h2 id="screen-setup-title">Add a TV or screen</h2>
+          </header>
+          <p>Enter the code shown by Hearth on the TV.</p>
+          <form className="pair-code-form" onSubmit={submit}>
+            <label htmlFor="pair-code">Code from the screen</label>
+            <div>
+              <input
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={approve.isPending}
+                id="pair-code"
+                maxLength={16}
+                name="code"
+                pattern="[A-Z0-9]{6}"
+                placeholder="ABC123"
+                required
+                value={code}
+                onChange={(event) => {
+                  setCode(event.target.value.replaceAll(/[\s-]/g, '').toUpperCase().slice(0, 6));
+                  approve.reset();
+                }}
+              />
+              <button disabled={approve.isPending || code.length !== 6} type="submit">
+                {approve.isPending ? 'Connecting…' : 'Connect screen'}
+              </button>
+            </div>
+          </form>
+          <details className="device-setup-help">
+            <summary>Where do I get the code?</summary>
+            <ol className="device-setup-steps">
+              <li>Open Hearth on the screen and choose Connect shared screen.</li>
+              <li>Enter its six-character code here.</li>
+              <li>The screen opens Hearth automatically.</li>
+            </ol>
+          </details>
+          {approve.isSuccess ? (
+            <p className="save-confirmation" role="status">
+              {approve.data.name} connected. You can use it now.
+            </p>
+          ) : null}
+          {approve.isError ? (
+            <AdminError message={approve.error.message} onRetry={approve.retryCommand} />
+          ) : null}
+          {runtime.mode === 'demo' ? (
+            <Link className="tv-demo-link" to="/pair">
+              Preview shared-screen setup
+            </Link>
+          ) : null}
+        </section>
+      </div>
       {disconnected.length === 0 ? null : (
         <details className="device-disconnected-history">
           <summary>Disconnected screen history ({disconnected.length})</summary>
-          <p>
-            These old connections cannot access Hearth. Kept for history; no cleanup or new phone
-            pairing is needed.
-          </p>
+          <p>Disconnected. These screens no longer have access.</p>
           {disconnected.map((device) => (
             <article className="device-row" key={device.id}>
               <span className="admin-setting-row__icon">

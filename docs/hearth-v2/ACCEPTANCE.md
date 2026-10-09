@@ -1,5 +1,45 @@
 # Hearth v2 acceptance and definition of done
 
+## Compact phone setup and NAS-owner repair (D-097) — 2026-10-09
+
+- Compact named adults and connected screens replace recovery warnings and technical key inventories.
+  Key/recovery controls remain under Advanced. A protected final key has a visible explanation,
+  not an inert Remove button.
+- Explicit setup verifies the new key and current administrator authority, preserves permissions,
+  atomically replaces only the initiating browser session and clears its old private caches.
+  Omitted/false intent retains legacy behavior; tokens remain cookie-only.
+- Local owner recovery requires OS administrator authority, existing database access, a checked
+  private online backup and an exact active adult. Grants are 128-bit, digest-only, 15-minute and
+  one-time. Issuance touches no key/session; public recovery still requires a verified new passkey.
+  No public owner bypass, household reset or networking change is permitted.
+- Obsolete-screen cleanup preserves the chosen TV, history and system audit. Invalid/foreign/retained
+  targets reject atomically and repeats are inert.
+
+Eight operator tests pass locally and on DSM Python 3.8. Live cleanup creates a checked private
+online backup, revokes exactly three owner-confirmed old browser connections and reads back one
+active native Google TV paired 2026-10-08, with three system audits. Adult keys/sessions/permissions,
+content and networking are unchanged. New UI release and David/Rachael's independent physical
+sign-ins are not proved by this metadata-only checkpoint.
+
+Local release checks: `pnpm verify:code` passes formatting, lint, types, 302 unit tests, 140
+API/integration tests, 24 migration tests, eight owner-tool tests, deployment checks and production
+builds. The operator-issued fixture is consumed through normal verified recovery, cannot replay,
+and leaves the other adult's session active. The optional phone-setup path passes session-isolation,
+cookie-only transport, legacy behavior and revoked/demoted/archived commit-time rejection tests.
+`pnpm verify:ci` passes five policy tests and complete non-overlapping 940-test inventory coverage;
+`pnpm audit:dependencies` reports no known vulnerabilities. `git diff --check` passes.
+
+`pnpm test:e2e:built tests/e2e/device-connection.spec.ts tests/e2e/admin.spec.ts tests/e2e/runtime.spec.ts`
+passes all 75 browser checks (2.4 minutes), including phone/TV/4K light/dark layouts, accessibility,
+private entry, confirmation/cancel, lost-reply retry, history and keyboard/D-pad. Earlier runs stop
+on obsolete text selectors and a clipboard action now intentionally hidden under address help;
+they are failed runs, not release evidence. The repeated run opens that help and checks its actual
+fallback, without weakening the assertion. The CLI captures fictional two-adult/one-TV renders at
+393×852, 844×390 and 1920×1080, verifies page identity, containment and zero console warnings/errors,
+and exercises named-adult setup selection plus keyboard movement. Screenshots stay outside Git.
+Browser plugin unavailable; repository Playwright and its CLI are used. Hosted verification,
+publication, exact live activation and actual iPhone Safari sign-ins remain separate gates.
+
 ## Adult controllers and shared-screen clarity (D-096) — 2026-10-09
 
 `pnpm verify:code` passes formatting, lint, type checks, 301 unit tests (including ten new controller

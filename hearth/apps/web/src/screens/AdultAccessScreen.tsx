@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import './AdultAccessScreen.css';
 
@@ -17,20 +18,20 @@ import {
   createConfirmedRecoveryCode,
   passkeysAvailable,
 } from '../auth/passkeys';
-import { signOutAndClear } from '../auth/signOut';
+import { clearIdentityAndReload } from '../auth/signOut';
 
 export function AdultAccessScreen() {
   const runtime = useHearthRuntime();
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [revealedCode, setRevealedCode] = useState<{
     code: string;
     expiresAt: string;
   } | null>(null);
   const [confirmRemoval, setConfirmRemoval] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const [selectedAdultId, setSelectedAdultId] = useState<string | null>(null);
-  const signOut = useMutation({ mutationFn: () => signOutAndClear(queryClient) });
+  const [selectedAdultId, setSelectedAdultId] = useState<string | null>(searchParams.get('adult'));
   const access = useQuery({
     queryKey: queryKeys.adultAccess,
     queryFn: adultAccessApi.getAdultAccess,
@@ -44,7 +45,12 @@ export function AdultAccessScreen() {
   };
   const addPasskey = useMutation({
     mutationFn: createAdditionalPasskey,
-    onSuccess: refresh,
+    onSuccess: (result) => {
+      const controller = admin.data?.household.members
+        .find((member) => member.id === result.credential.memberId)
+        ?.capabilities.includes('household.admin');
+      return clearIdentityAndReload(queryClient, controller ? '/admin/televisions' : '/');
+    },
   });
   const createRecovery = useMutation({
     mutationFn: createConfirmedRecoveryCode,
@@ -76,9 +82,9 @@ export function AdultAccessScreen() {
       ? access.data!
       : demoAdultAccess(admin.data.household.id, admin.data.actor.id, admin.data.household.members);
   const available = runtime.mode === 'private' && passkeysAvailable();
-  const selectedAdult = data.adults.find(
-    (adult) => adult.member.id === (selectedAdultId ?? data.actorMemberId),
-  );
+  const selectedAdult =
+    data.adults.find((adult) => adult.member.id === selectedAdultId) ??
+    data.adults.find((adult) => adult.member.id === data.actorMemberId);
   const savedAdult = data.adults.find(
     (adult) => adult.member.id === addPasskey.data?.credential.memberId,
   );
@@ -89,6 +95,7 @@ export function AdultAccessScreen() {
     addPasskey.mutate({
       memberId: String(form.get('memberId') ?? ''),
       passkeyLabel: String(form.get('passkeyLabel') ?? ''),
+      signInOnThisDevice: true,
     });
   }
 
@@ -98,33 +105,9 @@ export function AdultAccessScreen() {
       backTo="/admin/televisions"
       backLabel="Back to Phones & screens"
     >
-      <div className="adult-access-intro">
-        <span>
-          <Icon name="shield" />
-        </span>
-        <div>
-          <h2>Set up each adult’s own sign-in</h2>
-          <p>
-            Signed in as <strong>{admin.data.actor.displayName}</strong>. Adult phones do not use TV
-            connection codes.
-          </p>
-          <p>
-            A passkey is a secure sign-in key saved by the phone’s password manager. It may sync to
-            that adult’s other devices; it is not a list of connected phones.
-          </p>
-          <ol className="adult-access-steps">
-            <li>
-              Open Hearth on the phone belonging to the adult you want to set up. An existing
-              household controller signs in to help.
-            </li>
-            <li>Choose that adult below and save the new passkey to their own password manager.</li>
-            <li>
-              Sign the helper out, then sign in with the new adult’s passkey. Check their name
-              appears in Phones &amp; screens.
-            </li>
-          </ol>
-        </div>
-      </div>
+      <p className="device-access-summary">
+        Signed in as <strong>{admin.data.actor.displayName}</strong>.
+      </p>
       {runtime.mode === 'private' ? null : (
         <div className="admin-demo-note">
           Demo preview: real passkeys and recovery codes are available only on the private HTTPS
@@ -139,7 +122,7 @@ export function AdultAccessScreen() {
 
       <section className="adult-access-section" aria-labelledby="adult-passkeys-title">
         <header>
-          <h2 id="adult-passkeys-title">Adult passkeys</h2>
+          <h2 id="adult-passkeys-title">Adults</h2>
         </header>
         <div className="adult-access-accounts">
           {data.adults.map((adult) => (
@@ -155,40 +138,11 @@ export function AdultAccessScreen() {
                       ? 'Household controller'
                       : 'Family access · no household settings'}
                   </p>
-                  <p>
-                    {adult.passkeys.length === 0
-                      ? 'No passkey enrolled'
-                      : `${adult.passkeys.length} ${adult.passkeys.length === 1 ? 'passkey' : 'passkeys'}`}
-                  </p>
                 </div>
-                <span className={adult.recovery.configured ? 'access-ready' : 'access-attention'}>
-                  {adult.recovery.configured ? 'Recovery ready' : 'Recovery needed'}
+                <span className={adult.passkeys.length > 0 ? 'access-ready' : 'access-attention'}>
+                  {adult.passkeys.length > 0 ? 'Sign-in set up' : 'Needs sign-in'}
                 </span>
               </header>
-              {adult.passkeys.length === 0 ? (
-                <p className="adult-access-empty">
-                  No sign-in key yet. Use the form below on this adult’s own phone.
-                </p>
-              ) : (
-                <div className="adult-passkey-list">
-                  {adult.passkeys.map((passkey) => {
-                    const finalWithoutRecovery =
-                      adult.passkeys.length === 1 && !adult.recovery.configured;
-                    return (
-                      <PasskeyRow
-                        confirmRemoval={confirmRemoval === passkey.id}
-                        disabled={runtime.mode !== 'private' || revoke.isPending}
-                        finalWithoutRecovery={finalWithoutRecovery}
-                        key={passkey.id}
-                        onCancel={() => setConfirmRemoval(null)}
-                        onConfirm={() => revoke.mutate(passkey.id)}
-                        onRemove={() => setConfirmRemoval(passkey.id)}
-                        passkey={passkey}
-                      />
-                    );
-                  })}
-                </div>
-              )}
             </article>
           ))}
         </div>
@@ -196,16 +150,16 @@ export function AdultAccessScreen() {
 
       <form className="adult-access-add" onSubmit={submitPasskey}>
         <div>
-          <h2>Save a passkey on this device</h2>
+          <h2>Set up this phone</h2>
           <p>
-            Use {selectedAdult?.member.displayName ?? 'this adult'}’s own phone and password
-            manager. Saving a key does not switch the signed-in adult.
+            On {selectedAdult?.member.displayName ?? 'this adult'}’s phone, save their passkey. This
+            phone will then sign in as them.
           </p>
         </div>
         <label>
           Adult
           <select
-            value={selectedAdultId ?? data.actorMemberId}
+            value={selectedAdult?.member.id ?? ''}
             disabled={!available || addPasskey.isPending}
             name="memberId"
             onChange={(event) => {
@@ -223,7 +177,8 @@ export function AdultAccessScreen() {
         <label>
           Passkey name
           <input
-            defaultValue="My device"
+            key={selectedAdult?.member.id}
+            defaultValue={`${selectedAdult?.member.displayName ?? 'My'}’s phone`}
             disabled={!available || addPasskey.isPending}
             maxLength={80}
             name="passkeyLabel"
@@ -235,29 +190,12 @@ export function AdultAccessScreen() {
           disabled={!available || addPasskey.isPending}
           type="submit"
         >
-          {addPasskey.isPending ? 'Waiting for passkey…' : 'Add passkey'}
+          {addPasskey.isPending ? 'Waiting for passkey…' : 'Set up this phone'}
         </button>
         {addPasskey.isSuccess ? (
           <p className="form-message form-message--success" role="status">
-            {addPasskey.data.credential.label} saved for{' '}
-            {savedAdult?.member.displayName ?? 'the selected adult'}. Still signed in as{' '}
-            {admin.data.actor.displayName}. Complete setup by signing out and checking the new
-            sign-in.
-          </p>
-        ) : null}
-        {addPasskey.isSuccess ? (
-          <button
-            className="admin-secondary adult-access-check"
-            disabled={signOut.isPending}
-            onClick={() => signOut.mutate()}
-            type="button"
-          >
-            {signOut.isPending ? 'Signing out…' : 'Sign out and test sign-in'}
-          </button>
-        ) : null}
-        {signOut.isError ? (
-          <p className="form-message form-message--error" role="alert">
-            {signOut.error.message}
+            Phone sign-in saved for {savedAdult?.member.displayName ?? 'the selected adult'}.
+            Opening Hearth…
           </p>
         ) : null}
         {addPasskey.isError ? (
@@ -267,60 +205,100 @@ export function AdultAccessScreen() {
         ) : null}
       </form>
 
-      <section className="adult-recovery" aria-labelledby="adult-recovery-title">
-        <div>
-          <h2 id="adult-recovery-title">Your recovery code</h2>
-          <p>A new code replaces the old one and is shown once.</p>
-          <p>
-            For lost access, not for connecting another adult’s phone. Using recovery replaces your
-            old passkeys and sessions.
-          </p>
-        </div>
-        {revealedCode === null ? null : (
-          <div className="adult-recovery-reveal" role="status">
-            <strong>Write this down now</strong>
-            <code>{revealedCode.code}</code>
-            <span>Valid until {formatDate(revealedCode.expiresAt)} · one use only</span>
-            <button
-              className="admin-secondary"
-              type="button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(revealedCode.code);
-                  setCopyState('copied');
-                } catch {
-                  setCopyState('failed');
-                }
-              }}
-            >
-              {copyState === 'copied' ? 'Copied' : 'Copy code'}
-            </button>
-            {copyState === 'failed' ? (
-              <span className="adult-recovery-copy-error" role="alert">
-                Copy was unavailable. Select and copy the code above.
-              </span>
-            ) : null}
-          </div>
-        )}
-        <button
-          className="admin-secondary adult-recovery-create"
-          disabled={!available || createRecovery.isPending}
-          onClick={() => createRecovery.mutate()}
-          type="button"
-        >
-          <Icon name="shield" />
-          {createRecovery.isPending
-            ? 'Confirming passkey…'
-            : ownRecoveryReady(data)
-              ? 'Replace recovery code'
-              : 'Create recovery code'}
-        </button>
-        {createRecovery.isError ? (
+      <details className="adult-access-advanced">
+        <summary>Advanced sign-in &amp; recovery</summary>
+        <p className="device-setup-empty">
+          Passkeys can sync between devices. These are sign-in keys, not a phone inventory.
+        </p>
+        {data.adults.map((adult) => (
+          <section className="adult-access-section" key={adult.member.id}>
+            <h2>{adult.member.displayName}’s sign-in keys</h2>
+            {adult.passkeys.length === 0 ? (
+              <p>No sign-in key yet.</p>
+            ) : (
+              adult.passkeys.map((passkey) => (
+                <PasskeyRow
+                  confirmRemoval={confirmRemoval === passkey.id}
+                  disabled={runtime.mode !== 'private' || revoke.isPending}
+                  finalWithoutRecovery={adult.passkeys.length === 1 && !adult.recovery.configured}
+                  key={passkey.id}
+                  onCancel={() => setConfirmRemoval(null)}
+                  onConfirm={() => revoke.mutate(passkey.id)}
+                  onRemove={() => setConfirmRemoval(passkey.id)}
+                  passkey={passkey}
+                />
+              ))
+            )}
+          </section>
+        ))}
+        {revoke.isError ? (
           <p className="form-message form-message--error" role="alert">
-            {createRecovery.error.message}
+            {revoke.error.message}
           </p>
         ) : null}
-      </section>
+        {revoke.isSuccess ? (
+          <p className="form-message form-message--success" role="status">
+            Sign-in key removed.
+          </p>
+        ) : null}
+        <section className="adult-recovery" aria-labelledby="adult-recovery-title">
+          <div>
+            <h2 id="adult-recovery-title">Your recovery code</h2>
+            <p>
+              Optional safety net for lost access—not a phone invitation. A new code replaces the
+              old one.
+            </p>
+          </div>
+          {revealedCode === null ? null : (
+            <div className="adult-recovery-reveal" role="status">
+              <strong>Write this down now</strong>
+              <code>{revealedCode.code}</code>
+              <span>Valid until {formatDate(revealedCode.expiresAt)} · one use only</span>
+              <button
+                className="admin-secondary"
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(revealedCode.code);
+                    setCopyState('copied');
+                  } catch {
+                    setCopyState('failed');
+                  }
+                }}
+              >
+                {copyState === 'copied' ? 'Copied' : 'Copy code'}
+              </button>
+              {copyState === 'failed' ? (
+                <span className="adult-recovery-copy-error" role="alert">
+                  Copy was unavailable. Select and copy the code above.
+                </span>
+              ) : null}
+            </div>
+          )}
+          <button
+            className="admin-secondary adult-recovery-create"
+            disabled={!available || createRecovery.isPending}
+            onClick={() => createRecovery.mutate()}
+            type="button"
+          >
+            <Icon name="shield" />
+            {createRecovery.isPending
+              ? 'Confirming passkey…'
+              : ownRecoveryReady(data)
+                ? 'Replace recovery code'
+                : 'Create recovery code'}
+          </button>
+          {createRecovery.isError ? (
+            <p className="form-message form-message--error" role="alert">
+              {createRecovery.error.message}
+            </p>
+          ) : null}
+        </section>
+        <p className="device-setup-empty">
+          Lost access on every phone? The NAS owner can issue a one-time recovery code without
+          resetting the household or TV.
+        </p>
+      </details>
     </AdminPage>
   );
 }
@@ -354,7 +332,11 @@ function PasskeyRow({
           {formatDate(passkey.createdAt)}
         </small>
       </div>
-      {confirmRemoval ? (
+      {finalWithoutRecovery ? (
+        <small className="adult-passkey-protected">
+          Only sign-in key. Add another key or create recovery before removing it.
+        </small>
+      ) : confirmRemoval ? (
         <div className="adult-passkey-confirm" role="group" aria-label={`Remove ${passkey.label}`}>
           <button className="admin-secondary" disabled={disabled} onClick={onCancel} type="button">
             Keep
@@ -364,17 +346,7 @@ function PasskeyRow({
           </button>
         </div>
       ) : (
-        <button
-          className="admin-danger"
-          disabled={disabled || finalWithoutRecovery}
-          onClick={onRemove}
-          title={
-            finalWithoutRecovery
-              ? 'Create a recovery code before removing the final passkey'
-              : undefined
-          }
-          type="button"
-        >
+        <button className="admin-danger" disabled={disabled} onClick={onRemove} type="button">
           Remove
         </button>
       )}

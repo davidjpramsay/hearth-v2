@@ -99,9 +99,8 @@ export function PrivateHouseholdAccess({
       <details className="connection-sign-in-help">
         <summary>Trouble signing in?</summary>
         <p>
-          On a new device, choose your saved Hearth passkey. For another adult, an existing
-          household controller can help save a new passkey on that adult’s phone from Phones &amp;
-          screens → Manage adult sign-in. Do not connect a controller phone as a shared screen.
+          Choose your saved Hearth passkey. For a new adult, a controller uses Set up phone beside
+          their name in Phones &amp; screens, on that adult’s own phone.
         </p>
         <button
           className="button button--quiet"
@@ -112,8 +111,8 @@ export function PrivateHouseholdAccess({
           Use a recovery code
         </button>
         <p>
-          Recovery is for lost access. It replaces that adult’s old passkeys and sessions, not a
-          normal new-phone setup.
+          Lost access on every phone? The NAS owner can issue a one-time recovery code without
+          resetting your household or TV. Recovery replaces only that adult’s old sign-ins.
         </p>
       </details>
     </AccessFrame>
@@ -162,7 +161,7 @@ function RecoveryAccess({
         <label>
           New passkey name
           <input
-            defaultValue="Replacement device"
+            placeholder="For example: David’s phone"
             disabled={!available || recover.isPending}
             maxLength={80}
             name="passkeyLabel"

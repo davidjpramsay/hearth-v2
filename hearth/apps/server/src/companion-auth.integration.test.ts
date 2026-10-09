@@ -1,6 +1,9 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -21,6 +24,150 @@ afterEach(async () => {
 });
 
 describe('companion passkey authentication', () => {
+  it('accepts a local owner grant through normal one-time verified recovery without changing another adult', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+    insertAdult(harness.database, 'member_alex', 'Alex');
+    const directory = await mkdtemp(join(tmpdir(), 'hearth-owner-grant-test-'));
+    temporaryDirectories.push(directory);
+    const script = fileURLToPath(
+      new URL('../../../deploy/synology/owner-access.py', import.meta.url),
+    );
+    // Library-level fixture exercises the real issuer against the migrated database.
+    // The CLI's independent OS-administrator gate is covered by its Python tests.
+    await promisify(execFile)('python3', [
+      '-I',
+      '-c',
+      `import importlib.util, sqlite3, pathlib, datetime, sys
+spec=importlib.util.spec_from_file_location('owner',sys.argv[1]); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+with sqlite3.connect(sys.argv[2]) as c:
+ m.issue_recovery(c,sys.argv[3],sys.argv[4],pathlib.Path(sys.argv[5]),datetime.datetime.fromisoformat('2026-08-02T23:42:00+00:00'))`,
+      script,
+      harness.database.name,
+      first.session.householdId,
+      'member_alex',
+      directory,
+    ]);
+    const code = (await readFile(join(directory, 'one-time-recovery.txt'), 'utf8')).trim();
+    expect(harness.auth.session(first.token).displayName).toBe('David');
+    const options = await harness.auth.recoveryRegistrationOptions(
+      { recoveryCode: code, passkeyLabel: 'Alex phone' },
+      '127.0.0.1',
+    );
+    harness.setRegistrationCredentialId('credential_owner_recovered_alex');
+    const result = await harness.auth.verifyRecoveryRegistration(options.ceremonyId, {});
+    expect(result.session.displayName).toBe('Alex');
+    expect(harness.auth.session(first.token).displayName).toBe('David');
+    await expect(
+      harness.auth.recoveryRegistrationOptions(
+        { recoveryCode: code, passkeyLabel: 'Another phone' },
+        '127.0.0.1',
+      ),
+    ).rejects.toThrow(/not accepted/);
+    expect(
+      harness.database
+        .prepare(
+          "SELECT actor_type, source_channel FROM audit_events WHERE action_type='auth.recovery-code.rotate'",
+        )
+        .get(),
+    ).toEqual({ actor_type: 'system', source_channel: 'system' });
+    harness.database.close();
+  });
+
+  it('explicit phone setup switches only the initiating browser after verified enrolment', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+    const secondOptions = await harness.auth.authenticationOptions('127.0.0.1');
+    const otherBrowser = await harness.auth.verifyAuthentication(secondOptions.ceremonyId, {
+      id: 'credential_private_adult',
+    });
+    const actor = harness.auth.authenticate(first.token);
+    insertAdult(harness.database, 'member_alex', 'Alex');
+    const options = await harness.auth.additionalRegistrationOptions(
+      first.session.householdId,
+      actor,
+      {
+        memberId: 'member_alex',
+        passkeyLabel: 'Alex phone',
+        signInOnThisDevice: true,
+      },
+    );
+    expect(harness.auth.session(first.token).displayName).toBe('David');
+    harness.setRegistrationCredentialId('credential_alex_phone');
+    const result = await harness.auth.verifyAdditionalRegistration(
+      first.session.householdId,
+      actor,
+      options.ceremonyId,
+      {},
+    );
+    expect(result.signedInToken).toBeDefined();
+    expect(harness.auth.session(result.signedInToken!).displayName).toBe('Alex');
+    expect(() => harness.auth.session(first.token)).toThrow(/Sign in/);
+    expect(harness.auth.session(otherBrowser.token).displayName).toBe('David');
+    expect(
+      harness.database
+        .prepare('SELECT COUNT(*) AS count FROM passkey_credentials WHERE revoked_at IS NULL')
+        .get(),
+    ).toEqual({ count: 2 });
+    await expect(
+      harness.auth.verifyAdditionalRegistration(
+        first.session.householdId,
+        actor,
+        options.ceremonyId,
+        {},
+      ),
+    ).rejects.toThrow();
+    harness.database.close();
+  });
+
+  it('phone setup keeps its token exclusively in the HttpOnly cookie, not the response', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+    insertAdult(harness.database, 'member_alex', 'Alex');
+    const app = buildServer({
+      logger: false,
+      demoMode: false,
+      companionAuth: harness.auth,
+      adminRepository: new SqliteAdminRepository(harness.database, { seedDemo: false }),
+      runtime: {
+        mode: 'private',
+        householdId: first.session.householdId,
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(app);
+    const headers = { cookie: harness.auth.sessionCookie(first.token).split(';')[0]! };
+    const options = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/${first.session.householdId}/adult-access/passkey-registration-options`,
+      headers,
+      payload: { memberId: 'member_alex', passkeyLabel: 'Alex phone', signInOnThisDevice: true },
+    });
+    harness.setRegistrationCredentialId('credential_route_alex');
+    const result = await app.inject({
+      method: 'POST',
+      url: `/api/v1/households/${first.session.householdId}/adult-access/passkey-registration-verifications`,
+      headers,
+      payload: { ceremonyId: options.json().ceremonyId, response: {} },
+    });
+    expect(result.statusCode).toBe(200);
+    const cookie = String(result.headers['set-cookie']);
+    expect(cookie).toMatch(/HttpOnly; SameSite=Strict.*Secure/);
+    expect(Object.keys(result.json()).sort()).toEqual(['audit', 'credential']);
+    const session = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/session',
+      headers: { cookie: cookie.split(';')[0]! },
+    });
+    expect(session.json()).toMatchObject({ displayName: 'Alex' });
+    const old = await app.inject({ method: 'GET', url: '/api/v1/auth/session', headers });
+    expect(old.statusCode).toBe(401);
+    harness.database.close();
+  });
+
   it('allows authorized removal of the initiating passkey without preserving its session', async () => {
     const harness = await authHarness();
     const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
@@ -89,7 +236,7 @@ describe('companion passkey authentication', () => {
       const options = await harness.auth.additionalRegistrationOptions(
         first.session.householdId,
         actor,
-        { memberId: 'member_alex', passkeyLabel: 'Alex phone' },
+        { memberId: 'member_alex', passkeyLabel: 'Alex phone', signInOnThisDevice: true },
       );
       harness.setRegistrationCredentialId('credential_alex_race');
       const verify = harness.engine.verifyRegistration;

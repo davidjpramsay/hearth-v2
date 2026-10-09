@@ -141,15 +141,16 @@ origin stable after enrolment; changing the WebAuthn relying-party hostname requ
    permissions. In **People**, an adult needs **Can change household setup** to manage Hearth and
    approve screens; being an adult or saving a passkey alone does not grant that permission.
 3. If another adult has no Hearth passkey, open Hearth on that adult's own phone. An existing
-   controller temporarily signs in to help, then opens **Phones & screens → Manage adult sign-in**,
-   selects the intended adult, labels their key and saves it to that adult's password manager.
+   controller temporarily signs in to help, then opens **Phones & screens → Set up phone** beside
+   the intended adult, checks the name and saves the key to that adult's password manager.
    The phone owner completes the passkey prompt. Do not save both adults' keys to the helper's
    account or use recovery as an invitation. Browser/OS nearby-device sign-in may help the existing
    controller authenticate without copying a credential; follow its official prompt. See
    [Apple's passkey sign-in guidance](https://support.apple.com/en-au/guide/iphone/iphf538ea8d0/ios).
-4. Saving the key leaves the helper signed in. Explicitly sign out, sign in with the new adult's
-   own key and verify their name and settings access. This physical check proves controller access;
-   a passkey count or a local simulated registration does not.
+4. Use **Set up this phone** on that adult's phone. After the owner saves their verified passkey,
+   this explicit action signs the browser in as them automatically. Check their name and settings
+   access, then test a later sign-out/sign-in. Other phones remain signed in. Existing permissions
+   remain unchanged; key counts and simulated registration do not prove physical phone access.
 5. The TV is connected separately, once: it displays a six-character code, a signed-in controller
    enters that code in **Phones & screens**, and the TV receives only shared-screen permissions.
    Both controller phones manage the same household; do not pair the TV once per phone.
@@ -163,6 +164,38 @@ Passkeys can sync between one adult's devices; their labels/counts are not a phy
 inventory. Real enrolment, privilege changes and stale connection removal need the owner's
 confirmation and must be reported separately from local UI/build verification. No networking,
 server secrets, household content or calendar credentials are changed by this workflow.
+
+### If every adult loses access
+
+The NAS owner can recover an existing adult without another phone or resetting the household/TV.
+Use the verified release's local tool from an authorized NAS shell:
+
+```sh
+python3 -I hearth/deploy/synology/owner-access.py \
+  --database /absolute/private/hearth.sqlite \
+  --household household_example issue-recovery --member member_example
+```
+
+Resolve exact paths and the named active adult from safe metadata first. This requires root or DSM
+administrators-group membership plus existing private database access, not a web session. The tool
+rejects missing/linked database paths, creates a checked private SQLite online backup and issues a
+128-bit one-time code valid for 15 minutes. Output contains only private file locations and expiry.
+Read the code privately in the owner's terminal; never capture it in chat, tool output or logs.
+On the intended adult's phone use **Trouble signing in? → Use a recovery code**, give the new key a
+meaningful name and complete the device passkey prompt. Issuance alone changes no key/session;
+successful user-verified recovery replaces only that adult's prior access. No privileges are added.
+Delete the exact private code file after consumption/expiry and retain the checked backup under the
+commissioned private retention policy. Stop rather than relaxing file/DSM ACL checks.
+
+The same tool supports `revoke-screens --keep device_current --revoke device_old` (repeat `--revoke`
+for exact obsolete targets). It preserves rows/history and audits actual NAS-owner system authority,
+not a forged member session. Foreign-household, missing, duplicate or retained targets reject the
+whole transaction; repeated revocations are inert. Never wildcard devices or revive revoked keys.
+
+Live checkpoint 2026-10-09: a checked private online backup precedes revocation of exactly three
+owner-confirmed obsolete browser connections. Readback retains only the native Google TV paired
+2026-10-08 as active and three matching system audits. Adult keys/sessions/permissions, content and
+networking are unchanged. New UI publication and both physical phone sign-ins remain separate gates.
 
 The CalDAV adapter also fails closed without private configuration. In
 non-demo mode, `HEARTH_CALENDAR_CONFIG_PATH` must point to a JSON secret mounted

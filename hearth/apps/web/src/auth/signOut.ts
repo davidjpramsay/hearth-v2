@@ -4,6 +4,15 @@ import { clearHearthClient } from '../api/core';
 
 export async function signOutAndClear(queryClient: QueryClient): Promise<void> {
   await runtimeApi.signOut();
+  await clearIdentityAndReload(queryClient, '/');
+}
+
+// After an explicit verified enrolment, the server has already replaced this browser's cookie.
+// Do not call signOut here: that would revoke the newly established adult session.
+export async function clearIdentityAndReload(
+  queryClient: QueryClient,
+  path: '/' | '/admin/televisions',
+): Promise<void> {
   window.dispatchEvent(new Event('hearth:sign-out'));
   await queryClient.cancelQueries();
   queryClient.clear();
@@ -14,5 +23,5 @@ export async function signOutAndClear(queryClient: QueryClient): Promise<void> {
     if (event.persisted) window.location.reload();
   });
   // A new document also unmounts private views and closes retained realtime streams.
-  window.location.replace('/');
+  window.location.replace(path);
 }

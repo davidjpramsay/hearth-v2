@@ -1,5 +1,10 @@
 # Hearth v2 implementation roadmap
 
+Adult-access repair (2026-10-09, D-097): simplify named-phone setup, keep optional recovery secondary
+and support backed-up local NAS-owner lost-access recovery without resetting the household or TV.
+Exact obsolete-screen cleanup is verified separately from UI release and both physical phone
+sign-ins. Never close device acceptance from passkey counts.
+
 The roadmap is deliberately vertical. Each phase must leave a coherent, testable product state rather than a wide collection of unfinished modules.
 
 ## Requested addition — Family word-grouping game

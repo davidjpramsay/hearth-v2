@@ -162,6 +162,7 @@ export const AdditionalPasskeyOptionsRequestSchema = z
   .object({
     memberId: OpaqueIdSchema,
     passkeyLabel: z.string().trim().min(1).max(80),
+    signInOnThisDevice: z.boolean().optional(),
   })
   .strict();
 

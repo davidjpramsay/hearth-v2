@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { signOutAndClear } from './signOut';
+import { clearIdentityAndReload, signOutAndClear } from './signOut';
 import { getHearthRuntime } from '../api/core';
 
 afterEach(() => {
@@ -9,6 +9,22 @@ afterEach(() => {
 });
 
 describe('private sign-out cleanup', () => {
+  it('clears the previous identity after enrolment without signing out the new cookie', async () => {
+    const client = new QueryClient();
+    client.setQueryData(['old-adult'], { name: 'previous adult' });
+    const fetch = vi.fn();
+    const replace = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    vi.stubGlobal('window', {
+      location: { replace },
+      dispatchEvent: vi.fn(),
+      addEventListener: vi.fn(),
+    });
+    await clearIdentityAndReload(client, '/admin/televisions');
+    expect(fetch).not.toHaveBeenCalled();
+    expect(client.getQueryCache().getAll()).toHaveLength(0);
+    expect(replace).toHaveBeenCalledWith('/admin/televisions');
+  });
   it('cancels pending reads, clears private caches and closes the old document before navigation', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['household_private', 'today'], { notice: 'private household record' });

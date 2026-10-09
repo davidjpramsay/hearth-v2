@@ -164,11 +164,14 @@ test('Adult access explains private passkeys and recovery without exposing demo 
 
   await expect(page).toHaveURL(/\/admin\/access$/);
   await expect(page.getByRole('heading', { name: 'Adult access' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Adult passkeys' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Adults', exact: true })).toBeVisible();
   await expect(page.getByText(/real passkeys and recovery codes are available only/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add passkey' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Set up this phone' })).toBeDisabled();
+  await expect(page.getByText('Recovery needed', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Your recovery code' })).toBeHidden();
+  await page.getByText('Advanced sign-in & recovery', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Create recovery code' })).toBeDisabled();
-  await expect(page.getByRole('heading', { name: 'Maya' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Maya', exact: true })).toBeVisible();
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
   expect(consoleProblems).toEqual([]);
 });
@@ -804,6 +807,7 @@ for (const viewport of [
       path: resolve(accessEvidence, `adult-access-${viewport.name}.png`),
       animations: 'disabled',
     });
+    await page.getByText('Advanced sign-in & recovery', { exact: true }).click();
     await page.getByRole('heading', { name: 'Your recovery code' }).scrollIntoViewIfNeeded();
     await captureEvidence(page, {
       path: resolve(accessEvidence, `adult-access-recovery-${viewport.name}.png`),

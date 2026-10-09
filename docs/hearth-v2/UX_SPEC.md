@@ -374,9 +374,10 @@ the phone More hub.
   subtitles, keeping each bar slim and scannable. The administration root is named Hearth settings
   so it cannot be confused with the Home Assistant action surface. **Phones & screens** is one
   connection hub: personal-device address/sign-in and adult passkey management are separate from
-  shared-screen code approval and confirmed disconnection. Put code approval first, with preparation
-  help collapsed, so phone users can enter a displayed code
-  without scrolling through personal-device instructions. Keep existing `/admin/televisions` and
+  shared-screen code approval and confirmed disconnection. Show compact adult rows first, with
+  one named-phone setup action per adult. Keep address help, key details and recovery collapsed;
+  optional recovery must not show a "Recovery needed" warning on ordinary controller rows.
+  Keep existing `/admin/televisions` and
   `/admin/access` links compatible. Pairing previews are explicitly fictional demo-only content;
   they are not a second production connection route.
 - Hearth settings groups destinations by family content, household and access, connections and
@@ -397,7 +398,9 @@ the phone More hub.
   and see which eligible notice currently wins. It also owns the six optional
   Today summary switches; on a phone these are full-width joined rows with a compact icon, title and
   trailing switch. It is not a general layout editor.
-- Adult access shows every named adult's enrolled passkeys and recovery readiness. An administrator
+- Adult access shows each named adult's sign-in setup, with key details and optional recovery under
+  **Advanced sign-in & recovery**. Never render a dead Remove button for the final protected key;
+  explain visibly how to add another key or configure recovery instead. An administrator
   can enrol another passkey on that adult's phone, revoke a lost credential and, after confirming
   their current passkey, rotate a one-time recovery code that is displayed only once. The signed-out
   recovery surface explains that recovery replaces the passkey and signs out that adult's older
@@ -405,9 +408,10 @@ the phone More hub.
 - Phones & screens leads with **Adult phones**, the signed-in adult and the existing controller
   permissions for each adult. Phone access is personal passkey sign-in; only a TV/wall display uses
   a six-character connection code. Synced passkeys are not a connected-phone inventory. Enrol a
-  new adult's key on that adult's own phone/password manager, then sign the helper out and check the
-  intended adult can sign in. Explain that enrolment does not change permissions or the active
-  session. Keep recovery distinct from normal phone setup. List authorized screens with paired and
+  new adult's key on that adult's own phone/password manager. **Set up this phone** explicitly
+  signs this browser in as the chosen adult after verified registration, replacing only the helper's
+  current browser session and clearing its private caches. Existing permissions remain unchanged.
+  Keep recovery distinct from normal phone setup. List authorized screens with paired and
   last-contact times, without calling them online. Collapse disconnected screen history, preserve
   its records and require explicit confirmation for a currently authorized screen's revocation.
 

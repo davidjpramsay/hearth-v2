@@ -1052,16 +1052,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const params = parse(HouseholdParamsSchema, request.params, reply);
       const body = parse(PasskeyCeremonyVerificationRequestSchema, request.body, reply);
       if (params === null || body === null) return reply;
-      return run(reply, async () =>
-        PasskeyRegistrationResultSchema.parse(
-          await companionAuth(options).verifyAdditionalRegistration(
-            params.householdId,
-            companionActor(request.headers, options),
-            body.ceremonyId,
-            body.response,
-          ),
-        ),
-      );
+      return run(reply, async () => {
+        const auth = companionAuth(options);
+        const result = await auth.verifyAdditionalRegistration(
+          params.householdId,
+          companionActor(request.headers, options),
+          body.ceremonyId,
+          body.response,
+        );
+        if (result.signedInToken !== undefined) {
+          reply.header('Set-Cookie', auth.sessionCookie(result.signedInToken));
+        }
+        return PasskeyRegistrationResultSchema.parse(result);
+      });
     },
   );
 
