@@ -167,6 +167,8 @@
   z-index: 1;
   inset: 0;
   border: 0;
+  outline: none;
+  box-shadow: none;
   background: transparent;
   cursor: pointer;
 }
@@ -174,23 +176,49 @@
   position: absolute;
   z-index: 2;
   left: 48px;
-  right: 48px;
   bottom: 38px;
+  width: max-content;
+  max-width: calc(100% - 96px);
   min-height: 74px;
-  padding: 0 25px;
+  padding: 12px 25px;
+  border: 0;
   border-radius: 16px;
   color: white;
   background: rgb(20 25 23 / 88%);
   display: flex;
   align-items: center;
   gap: 24px;
-  pointer-events: none;
+  text-align: left;
+  cursor: pointer;
+}
+.photo-ambient__overlay.focusable:focus-visible {
+  box-shadow: none;
+  transform: none;
+}
+.photo-ambient__clock {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  line-height: 1.15;
+}
+.photo-ambient__clock strong {
+  white-space: nowrap;
+}
+.photo-ambient__return {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.photo-ambient__return svg {
+  width: 24px;
+  height: 24px;
 }
 .photo-ambient__overlay strong {
   font-size: 38px;
 }
 .photo-ambient__overlay span {
-  font-size: 23px;
+  font-size: 24px;
 }
 .photos-empty > svg {
   width: 72px;
@@ -308,10 +336,10 @@
   }
   .photo-ambient__overlay {
     left: 16px;
-    right: 16px;
+    max-width: calc(100% - 32px);
     bottom: 18px;
     min-height: 58px;
-    padding: 0 16px;
+    padding: 10px 16px;
     gap: 14px;
   }
   .photo-ambient__overlay strong {

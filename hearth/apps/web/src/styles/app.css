@@ -262,6 +262,12 @@
   background: var(--sky-soft);
   border-color: #c9dff1;
 }
+.tv-rail .focusable:focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: -3px;
+  box-shadow: none;
+  transform: none;
+}
 .rail-item--future {
   width: 100%;
   color: #7b8181;

@@ -256,7 +256,11 @@ rather than from browser fixtures. Demo mode uses deterministic forecasts. Priva
 server-only Open-Meteo adapter when a saved or fallback location is configured, coalesces concurrent
 requests, caches successful responses for five minutes and retains the last safe response during a
 temporary provider outage. `GET /api/v1/households/:householdId/weather` returns current conditions,
-24 hourly points and seven daily points through one typed projection. The safe location label may
+up to 25 hourly points (the complete provider-local day plus the next midnight endpoint) and seven
+daily points through one typed projection. No schema shape changes are needed: the existing hourly
+bound is 48. The browser derives the minute-position dot from the shared household clock and uses
+measured SVG width/height; it does not add a forecast poll or animation loop. Missing hours remain
+gaps and an old cached day has no live marker. The safe location label may
 appear; coordinates never enter this forecast contract. An optional `configured` boolean keeps a
 saved-location outage distinct from missing setup, including when no forecast has ever been cached.
 

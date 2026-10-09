@@ -781,7 +781,9 @@ describe('Hearth v2 API', () => {
         apparentTemperatureCelsius: 13,
       },
     });
-    expect(weather.json().hourly).toHaveLength(24);
+    expect(weather.json().hourly).toHaveLength(25);
+    expect(weather.json().hourly[0].time).toBe('2026-08-03T00:00');
+    expect(weather.json().hourly[24].time).toBe('2026-08-04T00:00');
     expect(weather.json().daily).toHaveLength(7);
     expect(weather.json().daily[0]).toMatchObject({
       maxWindSpeedKph: 24,

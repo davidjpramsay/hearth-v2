@@ -22,7 +22,7 @@ import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
 import { usePhotoRotationPreference } from '../hooks/usePhotoRotationPreference';
 import { usePhotosQuery } from '../hooks/usePhotoQueries';
-import { useHouseholdClock } from '../hooks/useHouseholdClock';
+import { useHouseholdDateTime } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { COMPANION_LANDSCAPE_QUERY } from '../layout/viewportQueries';
 import {
@@ -63,7 +63,7 @@ export function PhotosScreen({
   const [collageRef, collageSize] = useElementSize<HTMLDivElement>(
     !preparing && query.data !== undefined,
   );
-  const householdTime = useHouseholdClock();
+  const { time: householdTime, date: householdDate } = useHouseholdDateTime();
 
   const gallery = query.data;
   const favouriteCount = gallery?.photos.reduce(
@@ -345,18 +345,30 @@ export function PhotosScreen({
             loading="eager"
             src={selected.displayUrl}
           />
-          <div className="photo-ambient__overlay">
-            <strong>{householdTime}</strong>
-            <span>Press any button to return</span>
-          </div>
+          <button
+            aria-hidden="true"
+            className="photo-ambient__tap-target"
+            onClick={() => setAmbient(false)}
+            tabIndex={-1}
+            type="button"
+          />
           <button
             aria-label="Exit ambient photos"
-            className="photo-ambient__tap-target"
+            aria-describedby="photos-ambient-clock"
+            className="photo-ambient__overlay focusable"
             data-back-dismiss="true"
             data-focus-id="photos-exit-ambient"
             onClick={() => setAmbient(false)}
             type="button"
-          />
+          >
+            <span className="photo-ambient__clock" id="photos-ambient-clock">
+              <strong>{householdTime}</strong>
+              <span>{householdDate}</span>
+            </span>
+            <span className="photo-ambient__return">
+              <Icon name="chevron-left" /> Back
+            </span>
+          </button>
         </div>
       ) : null}
     </div>

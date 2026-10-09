@@ -37,6 +37,18 @@ test('every television household page shows one consistent date and time in the 
     await expect(clock.locator('.household-date-time__time')).toHaveText('7:42 am');
     await expect(clock.locator('.household-date-time__date')).toHaveText('Monday 3 August');
     await expect(page.locator('.household-date-time:visible')).toHaveCount(1);
+    await page.keyboard.press('Tab');
+    const weatherLink = page.locator('[data-focus-id="nav-weather"]');
+    await weatherLink.focus();
+    await expect(weatherLink).toBeFocused();
+    await expect(weatherLink).toHaveCSS('outline-offset', '-3px');
+    await expect(weatherLink).toHaveCSS('box-shadow', 'none');
+    await expect(weatherLink).toHaveCSS('transform', 'none');
+    const focusBounds = await weatherLink.boundingBox();
+    expect(focusBounds!.x).toBeGreaterThanOrEqual(navigationBounds!.x);
+    expect(focusBounds!.x + focusBounds!.width).toBeLessThanOrEqual(
+      navigationBounds!.x + navigationBounds!.width,
+    );
   }
 });
 

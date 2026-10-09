@@ -51,6 +51,16 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
   await expect(page.locator('[data-focus-id="photos-start-ambient"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: /Ambient family photo/ })).toBeVisible();
+  const returnControl = page.getByRole('button', { name: 'Exit ambient photos' });
+  await expect(returnControl).toBeFocused();
+  await expect(returnControl).toContainText('7:42 am');
+  await expect(returnControl).toContainText('Monday 3 August');
+  await expect(returnControl).toContainText('Back');
+  await expect(page.locator('.photo-ambient__tap-target')).toHaveAttribute('tabindex', '-1');
+  await expect(page.locator('.photo-ambient__tap-target')).toHaveCSS('outline-style', 'none');
+  await expect(page.locator('.photo-ambient__tap-target')).toHaveCSS('box-shadow', 'none');
+  const clockControlBounds = await returnControl.boundingBox();
+  expect(clockControlBounds!.width).toBeLessThan(1920 / 2);
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('dialog', { name: /Ambient family photo/ })).toHaveCount(0);
   await expect(page.locator('[data-focus-id="photos-start-ambient"]')).toBeFocused();
@@ -726,6 +736,26 @@ for (const viewport of [
       path: resolve(evidence, `photos-${viewport.name}.png`),
       animations: 'disabled',
     });
+    await page.getByRole('button', { name: 'Start ambient' }).click();
+    const ambient = page.getByRole('dialog', { name: /Ambient family photo/ });
+    const returnControl = page.getByRole('button', { name: 'Exit ambient photos' });
+    await expect(ambient).toBeVisible();
+    await expect(returnControl).toBeFocused();
+    await expect(returnControl).toContainText('Monday 3 August');
+    const bounds = await returnControl.boundingBox();
+    expect(bounds!.width).toBeLessThan(viewport.width - (viewport.width < 1200 ? 31 : 95));
+    expect(bounds!.width).toBeLessThan(Math.max(360, viewport.width / 2));
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
+    await expect(page.locator('.photo-ambient__image')).toHaveCSS('object-fit', 'contain');
+    await returnControl.click();
+    await expect(ambient).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Start ambient' })).toBeFocused();
+    await page.getByRole('button', { name: 'Start ambient' }).click();
+    await expect(ambient).toBeVisible();
+    await page.locator('.photo-ambient__tap-target').click();
+    await expect(ambient).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Start ambient' })).toBeFocused();
   });
 }
 
@@ -795,6 +825,17 @@ for (const viewport of [
     const results = await new AxeBuilder({ page }).analyze();
     expect(
       results.violations.filter((violation) =>
+        ['serious', 'critical'].includes(violation.impact ?? ''),
+      ),
+    ).toEqual([]);
+    await page.getByRole('button', { name: 'Start ambient' }).click();
+    await expect(page.getByRole('button', { name: 'Exit ambient photos' })).toBeFocused();
+    await expect(
+      page.getByRole('button', { name: 'Exit ambient photos' }),
+    ).toHaveAccessibleDescription('7:42 am Monday 3 August');
+    const ambientResults = await new AxeBuilder({ page }).analyze();
+    expect(
+      ambientResults.violations.filter((violation) =>
         ['serious', 'critical'].includes(violation.impact ?? ''),
       ),
     ).toEqual([]);

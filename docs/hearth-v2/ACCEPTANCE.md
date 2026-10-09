@@ -1,5 +1,80 @@
 # Hearth v2 acceptance and definition of done
 
+## Rail focus and compact ambient clock — 2026-10-09 (D-098)
+
+- Side-menu keyboard/D-pad focus uses an inset outline and stays inside the row without a clipped
+  outer glow or focus-induced enlargement. Other screen controls keep their existing focus treatment.
+- Fullscreen photos retain native-ratio `contain` display without a viewport-wide focus frame.
+  The content-width clock/date/Back control is the single keyboard and screen-reader exit target;
+  the transparent full-image click target has no outline and is outside Tab/accessibility order.
+- Any remote key, Back, the visible return control or a photo-area click exits immediately and
+  restores Start ambient focus. The return control exposes the shared time/date as its accessible
+  description. Phone portrait/landscape and television layouts keep the control contained.
+
+The local `pnpm verify:code` gate passes format, lint, workspace types, 321 unit tests, 140
+API/integration tests, 24 migration tests, eight owner-tool tests, deployment checks and production
+builds, retaining the pending fixed-day weather changes. `pnpm verify:ci` passes five policy tests
+and unchanged complete/non-overlapping 940-test inventory coverage, not the complete execution.
+`pnpm test:e2e:built tests/e2e/photos.spec.ts tests/e2e/shell-clock.spec.ts tests/e2e/appearance.spec.ts
+tests/e2e/weather.spec.ts tests/e2e/keyboard-layout.spec.ts tests/e2e/remote.spec.ts --max-failures=0`
+passes all 83 checks (2.5 minutes). Coverage includes inset rail focus across household routes,
+ambient entry/exit and restored focus, pointer dismissal, bounded clock backgrounds on five
+viewports, TV/phone ambient accessibility, light/dark, reduced motion, cached/corrupt photos and
+the pending weather graph regressions. No native APK change is needed for these web styles.
+
+CLI inspection at `127.0.0.1:4326` follows keyboard-only Weather rail focus → Photos → ambient
+entry. Rail focus is fully contained, stationary and inset. The clock control measures about
+323 logical pixels on TV and 212 on phone, rather than spanning the viewport; 4K retains uniform
+application scaling. Six viewports (320×700, 390×844, 844×390, 1366×768, 1920×1080 and 3840×2160)
+keep the caption and text contained with no full-image outline/shadow. Correct page identity,
+meaningful content, no framework overlay and zero console warnings/errors pass. TV menu, TV ambient
+and phone ambient screenshots are visually inspected outside Git.
+
+Owner-supplied HEIC references are inspected through temporary JPEG copies outside the repository;
+the Photos library originals are unchanged and never uploaded into Hearth. All rendered automated
+checks use fictional local demo assets, not private household photos. Browser plugin unavailable;
+repository Playwright and CLI are used. Physical TCL/iPhone verification, full hosted release,
+commit/push and live deployment remain **not run**; private NAS, networking, content and pairings
+are unchanged.
+
+## Fixed weather day and proportional graph — 2026-10-09 (D-077 refinement)
+
+- The day axis always runs from household-local midnight through the following midnight, not from
+  the current hour. The server returns at most 25 points within the unchanged shared schema.
+- A filled dot follows the existing shared minute clock on the forecast curve. Deliberate hour
+  inspection has a separate hollow marker and survives clock ticks/reads. **Now** or remote Select
+  returns to following; a fresh day resets even an inspection of the old midnight endpoint.
+- Missing samples remain gaps; an old cached day is marked stale and receives no live dot.
+- Plot geometry uses measured logical width and height, observes the HTML canvas, and falls back
+  to window resize when ResizeObserver is absent. Phone controls do not cover the graph; the whole
+  day is visible without horizontal scrolling. Existing uniform 4K application scaling is retained.
+
+`pnpm verify:code` passes format, lint, workspace types, 321 unit tests (34 shared, 35 core, 67 server,
+185 web), 140 API/integration tests, 24 migration tests, eight owner-tool tests, deployment checks
+and production builds. The new regressions cover day bounds at midnight/noon/late evening,
+timezone conversion, clock progression, inspection, rollover, observer ownership and missing hours.
+Initial test-harness failures (cleanup, hidden desktop controls and types) are corrected and the
+entire gate is repeated; those failed runs are not passing evidence. `pnpm verify:ci` passes five
+policy tests and the unchanged complete/non-overlapping 940-test inventory, not its execution.
+
+Built-browser verification uses `pnpm test:e2e:built tests/e2e/weather.spec.ts
+tests/e2e/calendar-weather-settings.spec.ts tests/e2e/remote.spec.ts tests/e2e/shell-clock.spec.ts
+tests/e2e/keyboard-layout.spec.ts --max-failures=0` passes all 45 checks on the final build (1.3
+minutes), including remote Select/Now, modes, boundaries, stale weather and accessibility.
+Local CLI rendering at `127.0.0.1:4326/weather`
+uses only fictional demo data: 320×700, 390×844, 844×390, 820×1180, 1180×820, 1366×768, 1920×1080
+and 3840×2160 are contained. The dot remains 12×12 logical pixels, uniformly 24×24 on 4K, and
+television content remains one-screen. An initial 4K geometry assertion incorrectly compares
+physical transformed bounds with logical SVG coordinates; the corrected check compares client
+dimensions and independently checks equal dot dimensions. Final phone, TV and compact dark TV
+screenshots are visually inspected outside Git. Page identity, meaningful content, absence of an
+error overlay and zero console warnings/errors pass; phone hour inspection and Now restoration
+retain the separate live dot. Browser plugin unavailable; repository Playwright and CLI are used.
+
+No private household, authentication, calendar, TV pairing, NAS configuration or network state is
+changed. Full 940-test execution, hosted images, commit/push, live deployment, physical iPhone
+Safari and physical TCL weather acceptance remain **not run** for this change.
+
 ## Compact phone setup and NAS-owner repair (D-097) — 2026-10-09
 
 - Compact named adults and connected screens replace recovery warnings and technical key inventories.

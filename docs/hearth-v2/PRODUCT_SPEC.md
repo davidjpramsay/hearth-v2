@@ -169,7 +169,9 @@ Hearth data backup boundary.
 ### 8. Notices and household summary
 
 - A dedicated Weather destination follows Calendar in primary navigation and presents current
-  conditions, a single mode-switching 24-hour graph and a comparable seven-day forecast.
+  conditions, a single mode-switching household-local midnight-to-midnight graph and a comparable
+  seven-day forecast. Its filled dot follows the current time; inspecting another hour does not
+  move the live marker.
 - The graph exposes temperature with apparent temperature, rain probability with expected amount,
   and sustained wind with gusts and direction. Television use requires only D-pad directions and
   Select; the phone uses the same information in a stacked touch-friendly layout.

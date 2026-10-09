@@ -58,7 +58,8 @@ describe('Open-Meteo weather provider', () => {
     expect(requestUrl.origin + requestUrl.pathname).toBe('https://api.open-meteo.com/v1/forecast');
     expect(requestUrl.searchParams.get('timezone')).toBe('Australia/Perth');
     expect(requestUrl.searchParams.get('forecast_days')).toBe('16');
-    expect(requestUrl.searchParams.get('forecast_hours')).toBe('24');
+    expect(requestUrl.searchParams.get('forecast_hours')).toBe('25');
+    expect(requestUrl.searchParams.get('past_hours')).toBe('24');
     expect(requestUrl.searchParams.get('past_days')).toBe('7');
     expect(requestUrl.searchParams.get('wind_speed_unit')).toBe('kmh');
     expect(requestUrl.searchParams.get('daily')?.split(',')).toEqual(
@@ -72,15 +73,15 @@ describe('Open-Meteo weather provider', () => {
         apparentTemperatureCelsius: 13,
         condition: 'partly-cloudy',
         label: 'Mostly clear',
-        precipitationProbabilityPercent: 30,
+        precipitationProbabilityPercent: 20,
         windSpeedKph: 18,
         windGustKph: 30,
         windDirectionDegrees: 214,
       },
       summary: { temperatureCelsius: 15, condition: 'Mostly clear', source: 'open-meteo' },
     });
-    expect(forecast.hourly).toHaveLength(3);
-    expect(forecast.hourly[1]).toMatchObject({
+    expect(forecast.hourly).toHaveLength(4);
+    expect(forecast.hourly[2]).toMatchObject({
       time: '2026-08-17T22:00',
       precipitationProbabilityPercent: 40,
       precipitationMillimetres: 0.4,
@@ -114,6 +115,31 @@ describe('Open-Meteo weather provider', () => {
       dominantWindDirectionDegrees: null,
     });
   });
+
+  it.each(['00:00', '12:30', '23:45'])(
+    'returns the same complete local day at %s, not a rolling window',
+    async (time) => {
+      const response = structuredClone(RESPONSE);
+      response.current.time = `2026-08-17T${time}`;
+      const times = Array.from({ length: 72 }, (_, index) =>
+        new Date(Date.parse('2026-08-16T00:00:00Z') + index * 3_600_000).toISOString().slice(0, 16),
+      );
+      response.hourly = Object.fromEntries(
+        Object.entries(response.hourly).map(([key, values]) => [
+          key,
+          key === 'time' ? times : times.map((_, index) => values[index % values.length]),
+        ]),
+      ) as typeof response.hourly;
+      const provider = new OpenMeteoWeatherProvider(
+        { latitude: -31.95, longitude: 115.86 },
+        { fetchImpl: vi.fn(async () => Response.json(response)) as typeof fetch },
+      );
+      const snapshot = await provider.read('Australia/Perth');
+      expect(snapshot.hourly).toHaveLength(25);
+      expect(snapshot.hourly[0]!.time).toBe('2026-08-17T00:00');
+      expect(snapshot.hourly.at(-1)!.time).toBe('2026-08-18T00:00');
+    },
+  );
 
   it('retains the forecast when daily wind is missing instead of inventing calm weather', async () => {
     const response = structuredClone(RESPONSE);

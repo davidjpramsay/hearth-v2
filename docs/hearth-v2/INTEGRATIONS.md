@@ -250,8 +250,11 @@ fallback for existing installations only. A saved household location takes
 precedence. The TV and normal forecast read models never receive coordinates;
 the adult-only settings contract exposes them only under an Advanced disclosure.
 
-The adapter requests current temperature, apparent temperature, condition and wind; 24 hourly
-temperature, apparent-temperature, precipitation, wind and direction points; and daily low/high,
+The adapter requests current temperature, apparent temperature, condition and wind; a bounded
+24 past plus 25 forward hourly samples (hour-relative Open-Meteo parameters), then projects only
+the provider-local current day's midnight through the following midnight, at most 25 points.
+This preserves the morning part of the graph even late in the day. Each point includes temperature,
+apparent temperature, precipitation, wind and direction; the daily request includes low/high,
 condition, maximum rain probability, `wind_speed_10m_max` and `wind_direction_10m_dominant`.
 Wind units are explicitly km/h; missing daily wind does not discard otherwise valid days.
 It normalizes WMO codes into Hearth's compact presentation

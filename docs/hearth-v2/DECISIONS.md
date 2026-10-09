@@ -2,6 +2,24 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-098 — Bounded rail focus and an unframed ambient photo
+
+- Date: 2026-10-09
+- Status: implemented locally; release and physical-device verification remain separate
+- Context: Physical TV photographs show clipped side-menu focus edges and an unexpected outer
+  outline in fullscreen photos. The old clock background spans almost the complete viewport.
+- Choice: Use a stationary three-pixel inset outline on rail controls, with no outer shadow or
+  scale that the scrolling container can clip. Keep other screens' focus treatment unchanged.
+  Ambient mode reads time and date from the existing shared clock and presents one intrinsic-width
+  clock/date/Back button inside the safe insets. Put keyboard/remote focus and Back dismissal on
+  that visible control. The transparent full-image pointer target remains clickable but is hidden
+  from assistive technology, outside Tab order and explicitly outline-free. Any remote key still
+  exits and restores Start ambient focus; screen readers receive the clock/date as the control's
+  description.
+- Consequence: Focus stays obvious without framing the whole photo. Native-ratio `contain` display,
+  rotation, reduced motion and photo storage remain unchanged. No timer, provider, credential,
+  API, household mutation, native APK or networking change is added.
+
 ## D-097 — Compact phone setup and owner-controlled lost-access recovery
 
 - Date: 2026-10-09
@@ -1482,6 +1500,13 @@ Official platform references:
 - Refinement (2026-09-07): keep range bars on Weather only; Calendar Week retains icon, rain and
   low/high text. Weather's daily rows add maximum wind and prevailing direction from the same
   Open-Meteo request, with optional nullable fields for older cached forecasts.
+- Refinement (2026-10-09): replace the rolling window with the fixed household-local day, including
+  the next midnight endpoint (at most 25 points within the existing 48-point schema). The shared
+  minute clock positions a filled dot on the curve independently of manual hour inspection;
+  **Now** resumes following. Measured plot coordinates replace non-uniform SVG stretching and
+  the phone's 760-pixel scroll canvas. Missing samples remain gaps, stale prior-day data has no live
+  dot, and geometry uses provider-local wall time rather than the browser timezone. No new provider,
+  credential, persistence, background worker or networking change is introduced.
 
 ## D-078 — Retire Apple Reminders and make reminders Hearth-owned
 

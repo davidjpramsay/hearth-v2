@@ -288,9 +288,9 @@ export function demoForecastForDay(index: number): DailyForecast {
 
 export function createDemoWeatherForecast(): WeatherForecast {
   const temperatures = [
-    14, 13, 13, 14, 15, 17, 19, 21, 22, 22, 21, 19, 17, 16, 15, 14, 13, 13, 12, 12, 12, 11, 11, 11,
+    12, 12, 11, 11, 11, 11, 12, 13, 14, 15, 17, 19, 21, 22, 22, 21, 19, 17, 16, 15, 14, 13, 13, 12,
+    12,
   ];
-  const startHour = 8;
   return {
     householdId: DEMO_HOUSEHOLD_ID,
     locationLabel: 'Baldivis, WA',
@@ -311,10 +311,10 @@ export function createDemoWeatherForecast(): WeatherForecast {
       windDirectionDegrees: 270,
     },
     hourly: temperatures.map((temperature, index) => {
-      const absoluteHour = startHour + index;
+      const absoluteHour = index;
       const localDate = absoluteHour < 24 ? '2026-08-03' : '2026-08-04';
       const hour = absoluteHour % 24;
-      const rainChance = index >= 10 && index <= 13 ? 35 : index >= 14 ? 20 : 10;
+      const rainChance = hour >= 18 && hour <= 21 ? 35 : hour >= 22 ? 20 : 10;
       return {
         time: `${localDate}T${String(hour).padStart(2, '0')}:00`,
         temperatureCelsius: temperature,

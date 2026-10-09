@@ -55,21 +55,14 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   await expect(page.locator('[data-focus-id="weather-mode-temperature"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(chart).toBeFocused();
-  await expect(page.locator('.weather-selected-hour')).toContainText('8 am');
+  await expect(page.locator('.weather-selected-hour')).toContainText('Now · 7 am');
 
   const firstHourAlignment = await page.evaluate(() => {
     const marker = document.querySelector('.weather-chart__marker');
     const markerStrip = document.querySelector('.weather-chart__markers');
-    const selectedLine = document.querySelector('.weather-chart__selected-line');
     const firstHour = document.querySelector('.weather-chart__hour');
     const chartSvg = document.querySelector('.weather-chart__canvas > svg');
-    if (
-      marker === null ||
-      markerStrip === null ||
-      selectedLine === null ||
-      firstHour === null ||
-      chartSvg === null
-    )
+    if (marker === null || markerStrip === null || firstHour === null || chartSvg === null)
       return null;
 
     const centre = (element: Element) => {
@@ -79,7 +72,6 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
 
     return {
       markerToHour: Math.abs(centre(marker) - centre(firstHour)),
-      markerToSelection: Math.abs(centre(marker) - centre(selectedLine)),
       markerBottom: marker.getBoundingClientRect().bottom,
       markerStripBottom: markerStrip.getBoundingClientRect().bottom,
       svgTop: chartSvg.getBoundingClientRect().top,
@@ -87,12 +79,11 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   });
   expect(firstHourAlignment).not.toBeNull();
   expect(firstHourAlignment?.markerToHour).toBeLessThanOrEqual(1);
-  expect(firstHourAlignment?.markerToSelection).toBeLessThanOrEqual(1);
   expect(firstHourAlignment?.markerBottom).toBeLessThanOrEqual(firstHourAlignment?.svgTop ?? 0);
   expect(firstHourAlignment?.markerStripBottom).toBeCloseTo(firstHourAlignment?.svgTop ?? 0, 0);
 
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.weather-selected-hour')).toContainText('9 am');
+  await expect(page.locator('.weather-selected-hour')).toContainText('8 am');
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="weather-mode-rain"]')).toHaveAttribute(
     'aria-pressed',
@@ -106,7 +97,11 @@ test('@visual @a11y Weather is readable and remote-operable on television', asyn
   );
   await expect(page.locator('.weather-selected-hour')).toContainText('Gusts');
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('.weather-selected-hour')).toContainText('8 am');
+  await expect(page.locator('.weather-selected-hour')).toContainText('7 am');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.weather-selected-hour')).toContainText('Now · 7 am');
+  for (let hour = 6; hour >= 0; hour -= 1) await page.keyboard.press('ArrowLeft');
+  await expect(chart).toHaveAttribute('aria-valuenow', '0');
   await page.keyboard.press('ArrowLeft');
   // Leaving the chart goes to the aligned rail item, not a diagonal shortcut
   // back to the current route's link.
@@ -193,6 +188,11 @@ test('@visual Weather stacks without page overflow on phone', async ({ page }) =
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   ).toBe(true);
   await expect(page.locator('.weather-chart')).toHaveCSS('scrollbar-width', 'none');
+  expect(
+    await page
+      .locator('.weather-chart')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
+  ).toBe(true);
   await expect(page.locator('.weather-day__wind').first()).toHaveText('Up to 24 km/h W');
   expect(
     await page

@@ -48,6 +48,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
   it when that reduction ends. Native editing and pinch zoom remain available.
 - The television rail starts with the time and date in place of the Hearth logo/title; no duplicate clock appears in its footer.
 - The focused destination and focused action are always visually obvious.
+- Television rail rows use a stable inset focus outline, without enlargement or an outer glow that
+  the scrolling navigation clips. Apply the same bounded treatment to the rail's Appearance action.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
 - Arrow navigation follows rendered control positions, not fixed cross-screen links; responsive
   reflow therefore changes direction naturally. Hidden, disabled and inert controls are skipped.
@@ -163,16 +165,22 @@ lines or other cards through them. Agenda rows likewise use solid surfaces.
 
 - Current conditions show temperature, apparent temperature, today's low/high, condition, rain
   likelihood and wind without exposing coordinates or provider machinery.
-- One large 24-hour chart switches between Temperature, Rain and Wind. Left/Right moves the selected
-  hour; Up/Down changes the mode. Mode buttons remain directly selectable by touch and keyboard.
+- One daily midnight-to-midnight chart switches between Temperature, Rain and Wind. The axis stays
+  fixed throughout the household-local day; its right-hand midnight starts the next day. A filled
+  dot follows the shared household clock each minute, on the forecast curve rather than claiming
+  a new observation. Left/Right inspects another hour with a distinct hollow marker; Up/Down changes
+  mode. **Now** or remote Select returns to following time without removing the live dot. A new day's forecast resets
+  old-day inspection; an old cached day never receives a misleading current-time dot.
 - Temperature plots actual and apparent temperature. Rain plots probability and reports expected
   millimetres for the selected hour. Wind plots sustained speed and gusts with direction arrows.
 - The next seven days use one shared temperature domain. Each row carries day, condition, rain
   probability, daily maximum wind speed with prevailing direction, low, range bar and high; Today
   also carries a current-temperature marker. Wind wraps to a second line on phones. Missing wind
   reads **Wind unavailable**, not zero; a reported zero reads **Calm**.
-- Phone presentation stacks naturally without page-level horizontal overflow. A wide chart may
-  scroll within its own bounded region, with explicit previous/next-hour controls.
+- Phone presentation stacks naturally with the full day visible and no horizontal graph scrolling.
+  Recompute geometry from the actual plot width and height rather than stretching a desktop SVG;
+  labels, icons and round markers retain their proportions. Use fewer ticks/icons on a narrow phone,
+  with explicit previous/next-hour controls. Missing samples leave gaps, never fabricated data.
 - A stale or offline cached forecast remains visible with one quiet status cue. Provider
   attribution stays in the adult Weather location settings so household-facing Weather and Today
   remain clean.
@@ -283,7 +291,10 @@ the phone More hub.
   available to assistive technology. Manual D-pad/touch selection restarts that interval. A clearly labelled Pause/Resume
   control is reachable by remote and touch, hidden tabs do not consume rotations, and reduced-motion
   mode leaves the collage static.
-- Optional minimal overlay: time, next event and discreet notification badge.
+- Ambient photos have one content-width clock/date and **Back** control, bounded by the safe insets
+  rather than a full-width background strip. It reads the shared household clock. Keyboard/remote
+  focus is visible on that compact control, never as an outline around the whole photograph or
+  viewport. The full-image pointer dismiss area is not a second keyboard/screen-reader stop.
 - Immediate remote exit.
 - Photo storage/import errors should never reveal filesystem paths or technical details to the household.
 - Phone-first Photos administration begins with **Add photos**, opens the native

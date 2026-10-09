@@ -200,6 +200,26 @@
   gap: 52px;
 }
 
+.weather-now {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  color: var(--eucalyptus);
+  background: var(--surface);
+  font-size: 16px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.weather-hour-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .weather-selected-hour {
   min-width: 0;
   margin: 0;
@@ -333,8 +353,9 @@
   font-style: normal;
 }
 
-.weather-chart svg {
+.weather-chart__plot {
   width: 100%;
+  height: 0;
   min-height: 0;
   flex: 1 1 auto;
   display: block;
@@ -361,6 +382,7 @@
 
 .weather-chart__primary,
 .weather-chart__secondary,
+.weather-chart__rain-chance,
 .weather-chart__rain-amount {
   fill: none;
   stroke-linecap: round;
@@ -390,10 +412,16 @@
   stroke-width: 2.5;
 }
 
+.weather-chart__rain-chance {
+  stroke: var(--sky);
+  stroke-width: 1.5;
+}
+
 .weather-chart__selected-line {
   stroke: color-mix(in srgb, var(--eucalyptus) 84%, var(--ink));
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
+  stroke-dasharray: 3 4;
 }
 
 .weather-chart__selected-point {
@@ -403,26 +431,29 @@
   vector-effect: non-scaling-stroke;
 }
 
+.weather-chart__now line {
+  stroke: var(--eucalyptus);
+  stroke-width: 1;
+  opacity: 0.45;
+  vector-effect: non-scaling-stroke;
+}
+
+.weather-chart__now circle {
+  fill: var(--eucalyptus);
+  stroke: var(--surface);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
 .weather-hour-step {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--hairline);
   border-radius: 11px;
-  position: absolute;
-  z-index: 3;
-  top: 42%;
   color: var(--ink);
   background: var(--surface-glass);
   display: none;
   place-items: center;
-}
-
-.weather-hour-step--previous {
-  left: 4px;
-}
-
-.weather-hour-step--next {
-  right: 4px;
 }
 
 .weather-hour-step:disabled {
@@ -788,9 +819,7 @@
   }
 
   .weather-chart {
-    margin-inline: -8px;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
+    overflow: hidden;
     scrollbar-width: none;
   }
 
@@ -799,8 +828,18 @@
   }
 
   .weather-chart__canvas {
-    width: 760px;
+    width: 100%;
     height: 224px;
+  }
+
+  .weather-hourly__topline {
+    flex-wrap: wrap;
+  }
+
+  .weather-chart-legend {
+    order: 3;
+    width: 100%;
+    margin-bottom: 6px;
   }
 
   .weather-hour-step {
@@ -808,7 +847,7 @@
   }
 
   .weather-hour-step:disabled {
-    visibility: hidden;
+    visibility: visible;
   }
 
   .weather-day {

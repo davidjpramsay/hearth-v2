@@ -7,6 +7,11 @@ sign-ins. Never close device acceptance from passkey counts.
 
 The roadmap is deliberately vertical. Each phase must leave a coherent, testable product state rather than a wide collection of unfinished modules.
 
+Weather refinement (2026-10-09, D-077): a fixed household-local midnight-to-midnight axis, separate
+live-clock and inspection markers, gap-safe geometry and measured phone/TV sizing replace the
+rolling/stretched graph locally. Keep hosted/full-suite release and physical Safari/TCL acceptance
+separate; no live deployment or networking change is included.
+
 ## Requested addition — Family word-grouping game
 
 Add Games using the household-supplied local puzzle archive, with original Hearth styling and

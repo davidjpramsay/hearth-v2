@@ -171,7 +171,9 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
     url.searchParams.set('wind_speed_unit', 'kmh');
     url.searchParams.set('timezone', timezone);
     url.searchParams.set('forecast_days', '16');
-    url.searchParams.set('forecast_hours', '24');
+    // Keep the complete local day, including tomorrow's midnight endpoint.
+    url.searchParams.set('forecast_hours', '25');
+    url.searchParams.set('past_hours', '24');
     url.searchParams.set('past_days', '7');
 
     const controller = new AbortController();
@@ -267,22 +269,19 @@ function mapOpenMeteoResponse(
     );
   }
 
-  const firstHourlyIndex = Math.max(
-    0,
-    response.hourly.time.findIndex((time) => time >= response.current.time),
-  );
+  const day = response.current.time.slice(0, 10);
+  const nextDay = new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   const hourly: HourlyWeatherForecast[] = [];
-  for (
-    let index = firstHourlyIndex;
-    index < Math.min(firstHourlyIndex + 24, response.hourly.time.length);
-    index += 1
-  ) {
+  for (const [index, time] of response.hourly.time.entries()) {
+    if (time < `${day}T00:00` || time > `${nextDay}T00:00` || hourly.length >= 25) continue;
     const entry = hourlyEntry(response.hourly, index);
     if (entry !== null) hourly.push(entry);
   }
 
   const currentCondition = describeWeatherCode(response.current.weather_code);
-  const currentHour = hourly[0];
+  const currentHour = hourly.find(
+    (hour) => hour.time === `${response.current.time.slice(0, 13)}:00`,
+  );
   const details = WeatherCurrentConditionsSchema.parse({
     time: response.current.time,
     temperatureCelsius: Math.round(response.current.temperature_2m),
