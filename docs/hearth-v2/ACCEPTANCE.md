@@ -1,5 +1,36 @@
 # Hearth v2 acceptance and definition of done
 
+## Adult controllers and shared-screen clarity (D-096) — 2026-10-09
+
+`pnpm verify:code` passes formatting, lint, type checks, 301 unit tests (including ten new controller
+access tests), 137 API/integration tests, 24 migration tests, deployment scaffolding and production
+builds. `pnpm verify:ci` passes five policy tests and preserves all 940 browser tests in four
+non-overlapping shards. `pnpm audit:dependencies` reports no known vulnerabilities; authoritative
+document formatting and `git diff --check` pass.
+
+The initial broader 265-test browser run stops after one connection-flow failure: after connecting
+and then disconnecting a screen, both old and new success messages remain. It records 256 passes
+and eight unrun tests, not a passing gate. Clear completed approval feedback after disconnection,
+clear completed disconnection feedback before a new approval, and clear the accepted code; retain
+immutable command identities for unanswered requests. The repeated command
+`pnpm test:e2e:built tests/e2e/device-connection.spec.ts tests/e2e/admin.spec.ts tests/e2e/runtime.spec.ts`
+passes all 75 tests, including the failed flow, role guidance, history, confirmation/cancel, expired
+codes, exact lost-reply retries, private access boundaries and keyboard/D-pad checks.
+
+Local fictional-data rendering at 393×852, 844×390 and 1920×1080 shows readable entry/hub/access
+screens. The browser suite also covers 320×700, 390×844, 820×1180 and 3840×2160, light/dark modes and
+accessibility. CLI inspection verifies page identity, meaningful content, no framework overlay,
+horizontal containment and zero console errors/warnings. Manage adult sign-in → Adult access →
+Back, confirmed demo-screen disconnection, collapsed/expanded inert history and Enter to collapse
+are exercised. Browser plugin unavailable; repository Playwright and its installed CLI are used.
+Screenshots contain fictional data only, remain outside Git and do not prove iPhone Safari.
+
+Live cleanup is blocked on authenticated UI access while the owner's Mac is locked. No live screen,
+passkey, session, permission, household record, networking or NAS configuration is changed.
+David's and Rachael's physical passkey enrolment/sign-in and controller permissions remain open;
+identify exact obsolete active-screen targets before revoking them. Publication/deployment and
+full hosted verification of this new revision remain separate release gates.
+
 ## Phone fit and bottom navigation (D-095)
 
 - Long phone dates and event titles remain inside the viewport, including narrow and zoomed layouts.
@@ -655,6 +686,14 @@ theme reporting remain untested until the physical-TV pilot.
 ### Security and privacy
 
 - Television pairing can be revoked.
+- Adult-controller clarity (D-096): Phones & screens identifies the signed-in adult, distinguishes
+  existing controller permissions from passkey enrolment and puts phone guidance before TV code
+  approval. No phone is claimed ready until its owner signs in with their own passkey. Disconnected
+  screens are retained in collapsed history, not mixed into authorized screens; contact timestamps
+  do not imply online status. Confirmed screen revocation restores focus and leaves adult passkeys
+  unchanged. Local regression and rendered checks are recorded separately from live cleanup.
+  David's and Rachael's actual phone sign-ins and exact stale-screen cleanup remain unverified
+  until authenticated on-device evidence is obtained. No live records are removed by this change.
 - A private non-Android television browser can replace unsupported passkey sign-in with a
   short-code pairing approved by an authenticated adult. The raw device secret is absent from the
   URL, rendered UI, local/session storage, response bodies and logs; after exchange it exists only

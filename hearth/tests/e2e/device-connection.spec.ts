@@ -38,11 +38,15 @@ for (const viewport of viewports) {
         page.getByRole('button', { name: 'Connect screen', exact: true }),
       ).toBeDisabled();
       await expect(page.getByRole('link', { name: 'Manage adult sign-in' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Adult phones' })).toBeVisible();
+      await expect(page.locator('.device-access-summary')).toContainText('Signed in as Maya');
       if (viewport.width <= 390) {
+        await expect(page.getByRole('heading', { name: 'Adult phones' })).toBeInViewport();
+        await page.getByLabel('Code from the screen').scrollIntoViewIfNeeded();
         await expect(page.getByLabel('Code from the screen')).toBeInViewport();
-        await expect(
-          page.getByRole('button', { name: 'Connect screen', exact: true }),
-        ).toBeInViewport();
+        const connectScreen = page.getByRole('button', { name: 'Connect screen', exact: true });
+        await connectScreen.scrollIntoViewIfNeeded();
+        await expect(connectScreen).toBeInViewport();
       }
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       expect(await contained(page)).toBe(true);
@@ -129,6 +133,7 @@ test('phone connects a screen from a pasted code and confirms disconnection', as
   await expect(page.getByRole('status')).toHaveText(
     'Kitchen wall screen connected. You can use it now.',
   );
+  await expect(code).toHaveValue('');
   const device = page.locator('.device-row').filter({ hasText: 'Kitchen wall screen' });
   await expect(device).toContainText('Connected');
   await device.getByRole('button', { name: 'Disconnect', exact: true }).click();
@@ -136,7 +141,15 @@ test('phone connects a screen from a pasted code and confirms disconnection', as
   await expect(device).toContainText('Connected');
   await device.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await device.getByRole('button', { name: 'Disconnect', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText(
+    'Kitchen wall screen disconnected. Its old connection no longer works.',
+  );
+  await expect(page.getByRole('heading', { name: 'Connected screens' })).toBeFocused();
+  await expect(device).toBeHidden();
+  await page.getByText('Disconnected screen history (1)', { exact: true }).click();
+  await expect(device).toBeVisible();
   await expect(device).toContainText('Disconnected');
+  await expect(device.getByRole('button')).toHaveCount(0);
   await page.getByRole('link', { name: 'Manage adult sign-in' }).click();
   await expect(page.getByText('Save a passkey on this device')).toBeVisible();
   await page.getByRole('link', { name: 'Back to Phones & screens' }).click();

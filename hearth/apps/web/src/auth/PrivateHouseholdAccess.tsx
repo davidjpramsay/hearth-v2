@@ -71,7 +71,10 @@ export function PrivateHouseholdAccess({
         <section className="connection-choice" aria-labelledby="personal-device-title">
           <Icon name="shield" />
           <h2 id="personal-device-title">Phone or computer</h2>
-          <p>Your personal device. Sign in with an adult passkey.</p>
+          <p>
+            Adult control. Sign in as yourself with your Hearth passkey. No TV connection code is
+            needed.
+          </p>
           {!available ? (
             <p className="form-message form-message--error" role="alert">
               Open Hearth from its private HTTPS address on a passkey-capable device.
@@ -96,8 +99,9 @@ export function PrivateHouseholdAccess({
       <details className="connection-sign-in-help">
         <summary>Trouble signing in?</summary>
         <p>
-          On a new device, choose your saved Hearth passkey. If you need a new passkey, an adult can
-          help from Phones &amp; screens.
+          On a new device, choose your saved Hearth passkey. For another adult, an existing
+          household controller can help save a new passkey on that adult’s phone from Phones &amp;
+          screens → Manage adult sign-in. Do not connect a controller phone as a shared screen.
         </p>
         <button
           className="button button--quiet"
@@ -107,6 +111,10 @@ export function PrivateHouseholdAccess({
         >
           Use a recovery code
         </button>
+        <p>
+          Recovery is for lost access. It replaces that adult’s old passkeys and sessions, not a
+          normal new-phone setup.
+        </p>
       </details>
     </AccessFrame>
   );

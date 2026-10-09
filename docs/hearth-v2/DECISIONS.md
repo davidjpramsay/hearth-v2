@@ -2,6 +2,30 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-096 — Adult controllers are people; paired screens are separate connections
+
+- Date: 2026-10-09
+- Status: implemented locally; live cleanup and both physical phone sign-ins remain open
+- Context: The household owner could not distinguish adult-phone access from TV pairing, and
+  retained disconnected screens looked like current connections. Enrolling a passkey for another
+  adult also left the helper's browser session active, without a clear verification step.
+- Choice: Put adult-phone guidance first in Phones & screens (superseding D-091's screen-form-first
+  ordering), show the current signed-in adult and each adult's existing controller permissions.
+  Phones use that adult's own passkey, not a display code. Describe synced passkeys as sign-in keys,
+  never as a count of physical phones. On Adult access, guide enrolment using the intended adult's
+  own phone/password manager, then explicitly sign the helper out and test the intended adult's
+  sign-in. Saving a key never silently changes the session or grants administrator permissions.
+  Show only authorized screens in the main list, with paired/last-contact times; authorization is
+  not online status. Retain revoked connections in collapsed disconnected history. A confirmed
+  disconnection announces its result and restores focus to the connected-screen heading.
+  Clear the accepted code and superseded completed action feedback so connected/disconnected
+  success messages cannot contradict each other; do not discard unanswered command identities.
+- Consequence: No new account, invitation credential, pairing/auth API, migration, public endpoint
+  or networking change. Existing revocation/idempotency and final-passkey recovery guards remain.
+  Never guess stale live connections from age alone or erase audit history. Live access cleanup
+  requires exact target identification; enrolling/checking the two real phones requires their
+  owners to complete passkey prompts. Local fictional-data tests are not physical-phone evidence.
+
 ## D-095 — Phone chrome respects wrapping, safe areas and the visible viewport
 
 - Date: 2026-10-09

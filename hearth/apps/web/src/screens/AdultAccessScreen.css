@@ -57,6 +57,30 @@
   line-height: 1.45;
 }
 
+.adult-access-intro {
+  align-items: flex-start;
+}
+
+.adult-access-intro > div {
+  min-width: 0;
+}
+
+.adult-access-steps {
+  padding-left: 22px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.adult-access-steps li + li {
+  margin-top: 8px;
+}
+
+.adult-access-check {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 44px;
+}
+
 .adult-access-section,
 .adult-access-add,
 .adult-recovery {

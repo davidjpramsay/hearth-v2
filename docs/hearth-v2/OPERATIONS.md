@@ -133,6 +133,37 @@ environment variable, Compose, source, chat, logs, SQLite or a URL. Hearth rate 
 attempts and consumes the file after the first adult passkey and household are committed. Keep the
 origin stable after enrolment; changing the WebAuthn relying-party hostname requires new credentials.
 
+### Adult phones versus shared-screen pairing
+
+1. Open the same trusted private HTTPS Hearth address on each adult's phone. Choose **Sign in with
+   a passkey**, not **Connect shared screen**. Each person uses their own Hearth passkey.
+2. A household controller checks **More → Phones & screens** for the signed-in name and controller
+   permissions. In **People**, an adult needs **Can change household setup** to manage Hearth and
+   approve screens; being an adult or saving a passkey alone does not grant that permission.
+3. If another adult has no Hearth passkey, open Hearth on that adult's own phone. An existing
+   controller temporarily signs in to help, then opens **Phones & screens → Manage adult sign-in**,
+   selects the intended adult, labels their key and saves it to that adult's password manager.
+   The phone owner completes the passkey prompt. Do not save both adults' keys to the helper's
+   account or use recovery as an invitation. Browser/OS nearby-device sign-in may help the existing
+   controller authenticate without copying a credential; follow its official prompt. See
+   [Apple's passkey sign-in guidance](https://support.apple.com/en-au/guide/iphone/iphf538ea8d0/ios).
+4. Saving the key leaves the helper signed in. Explicitly sign out, sign in with the new adult's
+   own key and verify their name and settings access. This physical check proves controller access;
+   a passkey count or a local simulated registration does not.
+5. The TV is connected separately, once: it displays a six-character code, a signed-in controller
+   enters that code in **Phones & screens**, and the TV receives only shared-screen permissions.
+   Both controller phones manage the same household; do not pair the TV once per phone.
+6. Before cleanup, identify the actual current TV and inspect names/paired/last-contact times.
+   Old contact is not proof a connection is unused. Revoke only confirmed obsolete active screens
+   through the authenticated confirmation action, then read back the result. Revoked records are
+   inert history and stay collapsed; do not delete the database rows or audit history. Retain both
+   adults' working passkeys and sessions. Reconnecting a revoked screen requires a new code.
+
+Passkeys can sync between one adult's devices; their labels/counts are not a physical-phone
+inventory. Real enrolment, privilege changes and stale connection removal need the owner's
+confirmation and must be reported separately from local UI/build verification. No networking,
+server secrets, household content or calendar credentials are changed by this workflow.
+
 The CalDAV adapter also fails closed without private configuration. In
 non-demo mode, `HEARTH_CALENDAR_CONFIG_PATH` must point to a JSON secret mounted
 outside the repository with mode similar to other container secrets. Required

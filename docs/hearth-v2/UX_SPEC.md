@@ -402,6 +402,14 @@ the phone More hub.
   their current passkey, rotate a one-time recovery code that is displayed only once. The signed-out
   recovery surface explains that recovery replaces the passkey and signs out that adult's older
   sessions; no shared password or invitation URL is exposed.
+- Phones & screens leads with **Adult phones**, the signed-in adult and the existing controller
+  permissions for each adult. Phone access is personal passkey sign-in; only a TV/wall display uses
+  a six-character connection code. Synced passkeys are not a connected-phone inventory. Enrol a
+  new adult's key on that adult's own phone/password manager, then sign the helper out and check the
+  intended adult can sign in. Explain that enrolment does not change permissions or the active
+  session. Keep recovery distinct from normal phone setup. List authorized screens with paired and
+  last-contact times, without calling them online. Collapse disconnected screen history, preserve
+  its records and require explicit confirmation for a currently authorized screen's revocation.
 
 ### Appearance and evening comfort
 

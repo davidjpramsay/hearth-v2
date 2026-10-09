@@ -43,7 +43,10 @@ export function AdminAuthBoundary({ children }: { children: ReactNode }) {
       <section className="admin-auth-gate" aria-labelledby="admin-sign-in-title">
         <img alt="" src="/brand/hearth-mark.png" />
         <h1 id="admin-sign-in-title">Sign in to manage Hearth</h1>
-        <p>Adult passkey required.</p>
+        <p>
+          Use your own adult passkey for controller access. A shared-screen connection does not give
+          this phone household settings.
+        </p>
         {!available ? (
           <p className="form-message form-message--error" role="alert">
             Open Hearth from its private HTTPS address on a passkey-capable device.

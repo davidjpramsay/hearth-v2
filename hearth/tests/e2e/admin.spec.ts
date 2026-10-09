@@ -749,7 +749,12 @@ test('television code is approved on the companion and can be revoked', async ({
   await newDevice.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(newDevice).toContainText('It will need a new code to reconnect.');
   await newDevice.getByRole('button', { name: 'Disconnect', exact: true }).click();
-  await expect(newDevice).toContainText('Disconnected');
+  await expect(page.getByRole('status')).toContainText('Living room TV disconnected');
+  await expect(page.getByRole('heading', { name: 'Connected screens' })).toBeFocused();
+  await page.getByText('Disconnected screen history (1)', { exact: true }).click();
+  await expect(page.locator('.device-disconnected-history .device-row')).toContainText(
+    'Disconnected',
+  );
 });
 
 test('television pairing has deterministic initial focus and Back behaviour', async ({ page }) => {

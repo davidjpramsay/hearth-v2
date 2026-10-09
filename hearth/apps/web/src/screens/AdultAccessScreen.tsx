@@ -17,6 +17,7 @@ import {
   createConfirmedRecoveryCode,
   passkeysAvailable,
 } from '../auth/passkeys';
+import { signOutAndClear } from '../auth/signOut';
 
 export function AdultAccessScreen() {
   const runtime = useHearthRuntime();
@@ -28,6 +29,8 @@ export function AdultAccessScreen() {
   } | null>(null);
   const [confirmRemoval, setConfirmRemoval] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [selectedAdultId, setSelectedAdultId] = useState<string | null>(null);
+  const signOut = useMutation({ mutationFn: () => signOutAndClear(queryClient) });
   const access = useQuery({
     queryKey: queryKeys.adultAccess,
     queryFn: adultAccessApi.getAdultAccess,
@@ -73,6 +76,12 @@ export function AdultAccessScreen() {
       ? access.data!
       : demoAdultAccess(admin.data.household.id, admin.data.actor.id, admin.data.household.members);
   const available = runtime.mode === 'private' && passkeysAvailable();
+  const selectedAdult = data.adults.find(
+    (adult) => adult.member.id === (selectedAdultId ?? data.actorMemberId),
+  );
+  const savedAdult = data.adults.find(
+    (adult) => adult.member.id === addPasskey.data?.credential.memberId,
+  );
 
   function submitPasskey(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,15 +103,26 @@ export function AdultAccessScreen() {
           <Icon name="shield" />
         </span>
         <div>
-          <h2>Connect a phone or computer</h2>
+          <h2>Set up each adult’s own sign-in</h2>
           <p>
-            Use the device you want to connect. An adult signs in here, then saves a passkey for the
-            right person below.
+            Signed in as <strong>{admin.data.actor.displayName}</strong>. Adult phones do not use TV
+            connection codes.
           </p>
           <p>
-            If this is another adult’s device, sign out afterwards so they can sign in with their
-            own passkey.
+            A passkey is a secure sign-in key saved by the phone’s password manager. It may sync to
+            that adult’s other devices; it is not a list of connected phones.
           </p>
+          <ol className="adult-access-steps">
+            <li>
+              Open Hearth on the phone belonging to the adult you want to set up. An existing
+              household controller signs in to help.
+            </li>
+            <li>Choose that adult below and save the new passkey to their own password manager.</li>
+            <li>
+              Sign the helper out, then sign in with the new adult’s passkey. Check their name
+              appears in Phones &amp; screens.
+            </li>
+          </ol>
         </div>
       </div>
       {runtime.mode === 'private' ? null : (
@@ -129,6 +149,13 @@ export function AdultAccessScreen() {
                 <div>
                   <h3>{adult.member.displayName}</h3>
                   <p>
+                    {admin.data.household.members
+                      .find((member) => member.id === adult.member.id)
+                      ?.capabilities.includes('household.admin')
+                      ? 'Household controller'
+                      : 'Family access · no household settings'}
+                  </p>
+                  <p>
                     {adult.passkeys.length === 0
                       ? 'No passkey enrolled'
                       : `${adult.passkeys.length} ${adult.passkeys.length === 1 ? 'passkey' : 'passkeys'}`}
@@ -139,7 +166,9 @@ export function AdultAccessScreen() {
                 </span>
               </header>
               {adult.passkeys.length === 0 ? (
-                <p className="adult-access-empty">Add a passkey from this adult’s phone.</p>
+                <p className="adult-access-empty">
+                  No sign-in key yet. Use the form below on this adult’s own phone.
+                </p>
               ) : (
                 <div className="adult-passkey-list">
                   {adult.passkeys.map((passkey) => {
@@ -168,11 +197,22 @@ export function AdultAccessScreen() {
       <form className="adult-access-add" onSubmit={submitPasskey}>
         <div>
           <h2>Save a passkey on this device</h2>
-          <p>Choose who will use it.</p>
+          <p>
+            Use {selectedAdult?.member.displayName ?? 'this adult'}’s own phone and password
+            manager. Saving a key does not switch the signed-in adult.
+          </p>
         </div>
         <label>
           Adult
-          <select defaultValue={data.actorMemberId} disabled={!available} name="memberId">
+          <select
+            value={selectedAdultId ?? data.actorMemberId}
+            disabled={!available || addPasskey.isPending}
+            name="memberId"
+            onChange={(event) => {
+              setSelectedAdultId(event.target.value);
+              addPasskey.reset();
+            }}
+          >
             {data.adults.map((adult) => (
               <option key={adult.member.id} value={adult.member.id}>
                 {adult.member.displayName}
@@ -184,7 +224,7 @@ export function AdultAccessScreen() {
           Passkey name
           <input
             defaultValue="My device"
-            disabled={!available}
+            disabled={!available || addPasskey.isPending}
             maxLength={80}
             name="passkeyLabel"
             required
@@ -199,7 +239,25 @@ export function AdultAccessScreen() {
         </button>
         {addPasskey.isSuccess ? (
           <p className="form-message form-message--success" role="status">
-            {addPasskey.data.credential.label} is ready.
+            {addPasskey.data.credential.label} saved for{' '}
+            {savedAdult?.member.displayName ?? 'the selected adult'}. Still signed in as{' '}
+            {admin.data.actor.displayName}. Complete setup by signing out and checking the new
+            sign-in.
+          </p>
+        ) : null}
+        {addPasskey.isSuccess ? (
+          <button
+            className="admin-secondary adult-access-check"
+            disabled={signOut.isPending}
+            onClick={() => signOut.mutate()}
+            type="button"
+          >
+            {signOut.isPending ? 'Signing out…' : 'Sign out and test sign-in'}
+          </button>
+        ) : null}
+        {signOut.isError ? (
+          <p className="form-message form-message--error" role="alert">
+            {signOut.error.message}
           </p>
         ) : null}
         {addPasskey.isError ? (
@@ -213,6 +271,10 @@ export function AdultAccessScreen() {
         <div>
           <h2 id="adult-recovery-title">Your recovery code</h2>
           <p>A new code replaces the old one and is shown once.</p>
+          <p>
+            For lost access, not for connecting another adult’s phone. Using recovery replaces your
+            old passkeys and sessions.
+          </p>
         </div>
         {revealedCode === null ? null : (
           <div className="adult-recovery-reveal" role="status">
