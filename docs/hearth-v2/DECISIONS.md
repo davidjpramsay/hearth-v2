@@ -5,7 +5,7 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-098 — Bounded rail focus and an unframed ambient photo
 
 - Date: 2026-10-09
-- Status: implemented locally; release and physical-device verification remain separate
+- Status: implemented and privately deployed in `5fffd5e`; physical-device verification remains separate
 - Context: Physical TV photographs show clipped side-menu focus edges and an unexpected outer
   outline in fullscreen photos. The old clock background spans almost the complete viewport.
 - Choice: Use a stationary three-pixel inset outline on rail controls, with no outer shadow or

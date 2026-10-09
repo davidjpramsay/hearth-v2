@@ -9,8 +9,9 @@ The roadmap is deliberately vertical. Each phase must leave a coherent, testable
 
 Weather refinement (2026-10-09, D-077): a fixed household-local midnight-to-midnight axis, separate
 live-clock and inspection markers, gap-safe geometry and measured phone/TV sizing replace the
-rolling/stretched graph locally. Keep hosted/full-suite release and physical Safari/TCL acceptance
-separate; no live deployment or networking change is included.
+rolling/stretched graph. The combined D-098 rail-focus/ambient-clock release `5fffd5e` passes all
+940 hosted browser checks and is privately deployed with commissioned networking preserved.
+Actual Safari/TCL rendering and remote acceptance remain open; see the release evidence in Acceptance.
 
 ## Requested addition — Family word-grouping game
 

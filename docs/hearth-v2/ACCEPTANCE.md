@@ -1,5 +1,52 @@
 # Hearth v2 acceptance and definition of done
 
+## Approved combined display release — 2026-10-09
+
+The owner explicitly approved commit, push and private deployment of D-098 and the D-077 weather
+refinement. Application release `5fffd5eca9e868bfacc8d06fba717782dee68513` is pushed to `main` and
+`codex/tv-fit-wordmark` and activated on the existing private Synology. The following evidence
+supersedes the release-not-run status of the earlier local checkpoints below, not their open
+physical-device acceptance gates.
+
+- [Verify Hearth run 37938465472](https://github.com/davidjpramsay/hearth-v2/actions/runs/37938465472)
+  succeeds for that exact commit: dependency audit has no known vulnerabilities; format, lint,
+  workspace types, 321 unit tests, 140 API/integration tests, 24 migration tests, eight owner-tool
+  tests, deployment checks and production builds pass. Five CI policy tests and complete inventory
+  coverage pass. All four built-browser shards pass 235 tests each: **940 passed**, no failing,
+  flaky or unrun tests. Android TV test/lint/build, both image builds, eight isolated privileged
+  release-safety tests and verified image publication also pass.
+- The local `pnpm verify` run completes its code and CI gates. Its duplicate full browser execution
+  is deliberately interrupted after the exact hosted suite succeeds: 368 passed, one interrupted,
+  571 not run, exit 130. It is **not** counted as a passing local full-suite execution. The prior
+  final-build 83 focused checks remain separate local evidence.
+- `sh /tmp/hearth-stage-preserving-runtime-20261009.sh
+5fffd5eca9e868bfacc8d06fba717782dee68513` stages the exact archive with the complete commissioned
+  runtime excluded. `ssh -o BatchMode=yes hearth-synology 'sudo -n
+/usr/local/sbin/hearth-v2-activate-staged'` exits zero after verified image pull, protected
+  stopped-database recovery snapshot, replacement, bridge/DNS verification and readiness.
+  Commissioned runtime Compose and environment SHA-256 values are identical before and after.
+  Root-owned Compose/network configuration, external household data/photos/secrets, credentials
+  and pairings are not replaced or reset. No installer, public exposure or APK rebuild is needed.
+- External `/api/v1/readiness`, `/api/v1/runtime` and `/api/v1/health` return HTTP 200 in private
+  mode. Health reports the exact application commit and SQLite readiness. Unauthenticated runtime
+  correctly withholds household data and reports `requiresSetup: false`. A transient HTTP 502
+  observed during container replacement clears; the final private origin is healthy.
+- Downloading this run's `browser-build` artifact with `gh run download 37938465472 --name
+browser-build` and comparing it with the served files using `cmp` confirms byte-identical HTML,
+  entry JavaScript/CSS, Photos JavaScript/CSS and Weather JavaScript/CSS. This checks the actual
+  deployed frontend rather than only server version or image availability.
+- Playwright CLI reloads the live private `/admin` page at 390×844: Hearth title, meaningful sign-in
+  content, no framework overlay, zero console warnings/errors, visible Tab movement from adult
+  sign-in to shared-screen connection, and a visually inspected contained screenshot pass. No
+  authentication ceremony or pairing request is initiated. Browser plugin unavailable; CLI is used.
+
+Actual TCL display/remote and actual iPhone Safari acceptance of these new layouts remain **not
+run**. `adb connect` to the previously approved TV endpoint returns `No route to host`; no network
+configuration is changed to bypass it. The existing shell receives the web release through its
+normal release detection/reload path. The owner should open Weather and fullscreen Photos on the
+TV, and refresh Hearth on the phone, to confirm the physical rendering. This evidence-only follow-up
+does not change application code or require another container activation.
+
 ## Rail focus and compact ambient clock — 2026-10-09 (D-098)
 
 - Side-menu keyboard/D-pad focus uses an inset outline and stays inside the row without a clipped
@@ -33,9 +80,9 @@ and phone ambient screenshots are visually inspected outside Git.
 Owner-supplied HEIC references are inspected through temporary JPEG copies outside the repository;
 the Photos library originals are unchanged and never uploaded into Hearth. All rendered automated
 checks use fictional local demo assets, not private household photos. Browser plugin unavailable;
-repository Playwright and CLI are used. Physical TCL/iPhone verification, full hosted release,
-commit/push and live deployment remain **not run**; private NAS, networking, content and pairings
-are unchanged.
+repository Playwright and CLI are used. At this local checkpoint physical TCL/iPhone verification,
+full hosted release, commit/push and live deployment were **not run**; private NAS, networking,
+content and pairings were unchanged. See the approved release evidence above for subsequent status.
 
 ## Fixed weather day and proportional graph — 2026-10-09 (D-077 refinement)
 
@@ -71,9 +118,10 @@ screenshots are visually inspected outside Git. Page identity, meaningful conten
 error overlay and zero console warnings/errors pass; phone hour inspection and Now restoration
 retain the separate live dot. Browser plugin unavailable; repository Playwright and CLI are used.
 
-No private household, authentication, calendar, TV pairing, NAS configuration or network state is
-changed. Full 940-test execution, hosted images, commit/push, live deployment, physical iPhone
-Safari and physical TCL weather acceptance remain **not run** for this change.
+At this local checkpoint no private household, authentication, calendar, TV pairing, NAS configuration
+or network state was changed. Full 940-test execution, hosted images, commit/push, live deployment,
+physical iPhone Safari and physical TCL weather acceptance were **not run**. See the approved release
+evidence above for subsequent status; actual Safari/TCL acceptance remains open.
 
 ## Compact phone setup and NAS-owner repair (D-097) — 2026-10-09
 
