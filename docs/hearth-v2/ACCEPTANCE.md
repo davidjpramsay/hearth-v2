@@ -1,5 +1,97 @@
 # Hearth v2 acceptance and definition of done
 
+## People cards and Weather controls — release candidate 2026-10-10
+
+The owner authorizes committing and pushing both follow-ups and will install manually through
+**System health → Hearth update** after publication. These changes build on the prior verified
+release `068d65b7bfca202bbdf0ebfcb044af2d58a6d6f2`. The local preparation evidence below is retained.
+Fresh pre-push `pnpm verify:code` and `pnpm verify:ci` pass, and `pnpm audit` reports no known
+vulnerabilities. A read-only health check confirms the private NAS is healthy on that prior release.
+The new exact candidate must pass the complete hosted gate, including all **1035 browser cases**,
+Android/container checks and immutable image publication before being offered for installation.
+Publication is not NAS deployment. No staging, activation, configuration/networking change or live
+household write is authorized or performed in this release preparation. Actual installed version,
+physical TCL/D-pad and iPhone Safari acceptance remain post-install checks.
+
+## Weather D-pad exit — 2026-10-10
+
+The chart previously consumed Up/Down to cycle graph types, leaving the only directional exit at
+the first inspected hour. The new compact-TV regression reproduces that trap before the fix.
+Up now returns to the active Temperature/Rain/Wind button while preserving mode and hour; Left
+walks through the button row to Weather in the rail. Down still cycles graphs, Left/Right still
+inspect hours and Select still restores **Now**. Known Weather controls use the existing focus
+helper rather than changing the shared spatial engine, native Back, modal handling or focus memory.
+
+The first broader run finds that a chart-only route strands the Previous hour / Now / Next hour
+buttons. The final scoped bindings connect Wind to those actions, skip disabled endpoint buttons
+and return through the graph/buttons. The original all-controls arrow-reachability assertion is
+retained and passes. Re-entry uses the nearest control chosen by the existing spatial engine,
+then bounded Up/Left keys; it does not falsely require Temperature as every spatial entry.
+Rail traversal retains the actual Weather → Reminders → Chores order. Viewport checks allow only
+0.001% IntersectionObserver subpixel rounding, not visibly clipped controls.
+
+`pnpm verify:code` passes formatting, lint, workspace types, **361 unit**, **143 API/integration**,
+**24 migration** tests, deployment checks and production web/server builds. Eight additional
+Weather unit cases cover Up exits in all modes, graph/hour-row traversal, disabled endpoints,
+preserved mode/hour and untouched modified browser shortcuts. Final scoped ESLint/Prettier and
+`git diff --check` pass. `pnpm verify:ci` passes five policy checks and inventories all **1035
+browser cases**, without claiming full-suite execution. The final built-browser command passes
+**78 cases in 3.1 minutes**:
+
+```sh
+pnpm test:e2e:built tests/e2e/weather.spec.ts tests/e2e/rail-visibility.spec.ts \
+  tests/e2e/native-tv-viewport.spec.ts tests/e2e/keyboard-layout.spec.ts \
+  tests/e2e/chore-assignees.spec.ts --max-failures=0 \
+  --output=/tmp/hearth-weather-focus-TSzdjT/final --reporter=line
+```
+
+Eight new light/dark remote cases cover 1366×768, 1672×941, 1920×1080 and 3840×2160. Each uses
+only D-pad/Select to inspect first/middle/last samples in every mode, return to the rail, re-enter,
+visit enabled hour actions and navigate to Chores without Back, Tab or scripted focus. Mode/hour
+remain unchanged by focus movement; focused targets stay visible and shell scroll stays zero.
+Page identity/content, overlay absence, console health, screenshots and serious/critical
+accessibility pass. Broader cases retain mobile Weather geometry/taps, offline freshness, Now,
+all-controls reachability, other-screen navigation, native viewport sizing, the TV rail and the
+pending People-card fix. `view_image` inspects compact light and 4K dark screenshots outside Git.
+Browser plugin unavailable; existing Playwright uses isolated localhost demo data. Local preparation
+performed no push, publication, NAS deployment, APK change, private configuration, networking or
+live household write. The owner subsequently authorizes the release candidate above; actual
+physical TV/remote and iPhone Safari remain not run.
+
+## Chore People-card sizing — 2026-10-10
+
+A local-only follow-up removes the general form-label top margin from every People card, including
+later siblings, and uses equal flexible grid rows. It fixes the taller first card and offset later
+cards in both create/edit forms without changing selection, saved assignments, other form spacing,
+target sizes or the shared-screen/admin boundary. Names can wrap; no fixed clipping height is added.
+
+Before the CSS change, the new 390×844 light geometry check fails on the inherited **17px** top
+margin, reproducing the owner's screenshot. After rebuilding, `pnpm verify:code` passes formatting,
+lint, workspace types, **353 unit**, **143 API/integration**, **24 migration** tests, deployment safety
+checks and production web/server builds. `pnpm verify:ci` passes five policy checks and inventories
+all **1027 browser cases**; it is not full-suite execution. Scoped document formatting and
+`git diff --check` pass. The final rendered command passes **23 cases in 1.5 minutes**:
+
+```sh
+pnpm test:e2e:built tests/e2e/chore-assignees.spec.ts tests/e2e/planning.spec.ts \
+  tests/e2e/screen-admin-isolation.spec.ts tests/e2e/keyboard-layout.spec.ts \
+  -g 'chore People picker|phone Family Planning|phone routines assign|one-off chore creation|@a11y /admin/routines|paired .* has no administration links|all admin routes|admin text fields retain|admin screens retain visible' \
+  --max-failures=0 --output=/tmp/hearth-people-card-sizing-9cVRwU/after --reporter=line
+```
+
+Twelve light/dark People-picker cases cover 320×700, 390×844, 844×390, 1366×768, 1920×1080 and
+3840×2160 adult-browser viewports. They assert zero card margins, equal widths/heights, aligned row
+tops and exact grid gaps before/after selection and in both forms, alongside existing keyboard
+toggle, empty-save, exact-assignment and API readback checks. Page identity/content, overlay absence,
+console health, mobile containment and serious/critical accessibility pass. Broader checks retain
+TV chore expansion and paired-screen exclusion from administration. `view_image` inspects the
+before failure, corrected two-column phone creation form and dark wide-browser editor. Browser
+plugin unavailable; existing Playwright tests use isolated localhost demo data. Screenshots stay
+outside Git under the command's output directory. Local preparation did not push, publish or
+deploy this sizing follow-up; the owner subsequently authorizes the release candidate above.
+Actual iPhone Safari and physical TV checks remain not run. No live household data, networking,
+credentials, configuration or APK is changed.
+
 ## Combined release candidate — 2026-10-10
 
 The owner approves committing/pushing the pending shared-screen isolation, phone dock, compact

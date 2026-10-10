@@ -1564,6 +1564,17 @@ Official platform references:
   when a chart control receives focus. No DTO, provider request, saved preference, authority, background
   behaviour or runtime-networking change is needed.
 
+  D-pad refinement (2026-10-10): the chart must not consume every direction indefinitely. Up
+  returns to the active graph button without changing mode/hour; the explicit button row moves
+  Left through Wind/Rain/Temperature and then to Weather in the rail. Down retains graph cycling,
+  Left/Right retains hour inspection and Select retains **Now**. This exit is bounded at all hours
+  and all TV sizes, without requiring Back or stepping through a whole day's samples. The handlers
+  also connect Wind to Previous hour / Now / Next hour, skip disabled endpoint actions and retain
+  a bounded return through the graph/buttons. Modified browser shortcuts remain untouched.
+  All visible Weather controls must keep an arrow path; the chart escape cannot strand hour actions.
+  Use the existing focus helper only for Weather's known controls; general spatial navigation,
+  modal isolation, focus memory and native Back handling are unchanged.
+
 ## D-078 — Retire Apple Reminders and make reminders Hearth-owned
 
 - Date: 2026-08-27

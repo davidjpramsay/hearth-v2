@@ -49,6 +49,118 @@ const view = () => (
 );
 
 describe('weather clock and inspection', () => {
+  it.each(['Temperature', 'Rain', 'Wind'])(
+    'returns from the %s chart to its graph button without changing the inspected hour',
+    (mode) => {
+      render(view());
+      const button = screen.getByRole('button', { name: mode });
+      fireEvent.click(button);
+      const chart = screen.getByRole('slider');
+      chart.focus();
+      fireEvent.keyDown(chart, { key: 'ArrowRight' });
+      expect(chart).toHaveAttribute('aria-valuenow', '9');
+      expect(fireEvent.keyDown(chart, { key: 'ArrowUp' })).toBe(false);
+      expect(button).toHaveFocus();
+      expect(button).toHaveAttribute('aria-pressed', 'true');
+      expect(chart).toHaveAttribute('aria-valuenow', '9');
+      expect(chart).toHaveAccessibleName(/Up returns to the graph buttons/);
+    },
+  );
+
+  it('moves left through graph buttons to the menu without changing the graph or inspected hour', () => {
+    render(
+      <MemoryRouter>
+        <a data-focus-id="nav-weather" href="/weather">
+          Weather menu
+        </a>
+        <WeatherScreen preparing={false} scenario="healthy" />
+      </MemoryRouter>,
+    );
+    const wind = screen.getByRole('button', { name: 'Wind' });
+    const rain = screen.getByRole('button', { name: 'Rain' });
+    const temperature = screen.getByRole('button', { name: 'Temperature' });
+    fireEvent.click(wind);
+    wind.focus();
+    expect(fireEvent.keyDown(wind, { key: 'ArrowLeft' })).toBe(false);
+    expect(rain).toHaveFocus();
+    fireEvent.keyDown(rain, { key: 'ArrowLeft' });
+    expect(temperature).toHaveFocus();
+    fireEvent.keyDown(temperature, { key: 'ArrowLeft' });
+    expect(screen.getByRole('link', { name: 'Weather menu' })).toHaveFocus();
+    expect(wind).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '8');
+  });
+
+  it('moves right and down through graph controls without activating a different mode', () => {
+    render(view());
+    const temperature = screen.getByRole('button', { name: 'Temperature' });
+    const rain = screen.getByRole('button', { name: 'Rain' });
+    const wind = screen.getByRole('button', { name: 'Wind' });
+    temperature.focus();
+    fireEvent.keyDown(temperature, { key: 'ArrowRight' });
+    expect(rain).toHaveFocus();
+    fireEvent.keyDown(rain, { key: 'ArrowRight' });
+    expect(wind).toHaveFocus();
+    fireEvent.keyDown(wind, { key: 'ArrowRight' });
+    const previous = screen.getByRole('button', { name: 'Previous hour' });
+    const now = screen.getByRole('button', { name: 'Return to current time' });
+    const next = screen.getByRole('button', { name: 'Next hour' });
+    expect(previous).toHaveFocus();
+    fireEvent.keyDown(previous, { key: 'ArrowRight' });
+    expect(now).toHaveFocus();
+    fireEvent.keyDown(now, { key: 'ArrowRight' });
+    expect(next).toHaveFocus();
+    fireEvent.keyDown(next, { key: 'ArrowRight' });
+    expect(next).toHaveFocus();
+    fireEvent.keyDown(next, { key: 'ArrowDown' });
+    expect(screen.getByRole('slider')).toHaveFocus();
+    expect(temperature).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it.each([0, 24])('skips a disabled hour button at index %s without losing the exit', (hour) => {
+    render(view());
+    const chart = screen.getByRole('slider');
+    const previous = screen.getByRole('button', { name: 'Previous hour' });
+    const now = screen.getByRole('button', { name: 'Return to current time' });
+    const next = screen.getByRole('button', { name: 'Next hour' });
+    const wind = screen.getByRole('button', { name: 'Wind' });
+    for (let step = 0; step < Math.abs(hour - 8); step += 1)
+      fireEvent.keyDown(chart, { key: hour < 8 ? 'ArrowLeft' : 'ArrowRight' });
+    expect(chart).toHaveAttribute('aria-valuenow', String(hour));
+    wind.focus();
+    fireEvent.keyDown(wind, { key: 'ArrowRight' });
+    if (hour === 0) {
+      expect(previous).toBeDisabled();
+      expect(now).toHaveFocus();
+      fireEvent.keyDown(now, { key: 'ArrowLeft' });
+      expect(wind).toHaveFocus();
+      fireEvent.keyDown(wind, { key: 'ArrowRight' });
+    } else {
+      expect(next).toBeDisabled();
+      expect(previous).toHaveFocus();
+      fireEvent.keyDown(previous, { key: 'ArrowRight' });
+      expect(now).toHaveFocus();
+      fireEvent.keyDown(now, { key: 'ArrowRight' });
+      expect(now).toHaveFocus();
+    }
+    fireEvent.keyDown(now, { key: 'ArrowUp' });
+    expect(wind).toHaveFocus();
+    fireEvent.keyDown(wind, { key: 'ArrowLeft' });
+    expect(screen.getByRole('button', { name: 'Rain' })).toHaveFocus();
+    expect(chart).toHaveAttribute('aria-valuenow', String(hour));
+  });
+
+  it('leaves browser modifier shortcuts untouched on graph buttons', () => {
+    render(view());
+    const temperature = screen.getByRole('button', { name: 'Temperature' });
+    temperature.focus();
+    for (const modifier of [{ altKey: true }, { ctrlKey: true }, { metaKey: true }]) {
+      expect(fireEvent.keyDown(temperature, { key: 'ArrowRight', ...modifier })).toBe(true);
+      expect(temperature).toHaveFocus();
+      expect(temperature).toHaveAttribute('aria-pressed', 'true');
+    }
+  });
+
   it('maps taps through CSS zoom and ignores scrolling or cancelled pointers', () => {
     vi.stubGlobal('PointerEvent', MouseEvent);
     const { container } = render(view());

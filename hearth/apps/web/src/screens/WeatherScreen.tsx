@@ -12,6 +12,7 @@ import './WeatherScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
 import { EmptyState, FailureState, LoadingState } from '../components/Status';
+import { focusById, nextFocusId } from '../focus/focusGraph';
 import { useHouseholdDateTime } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useSharedScreen } from '../runtime/sharedScreen';
@@ -153,12 +154,15 @@ export function WeatherScreen({
             data-focus-left={index === 0 ? 'nav-weather' : `weather-mode-${MODES[index - 1]}`}
             data-focus-right={
               index === MODES.length - 1
-                ? `weather-mode-${candidate}`
+                ? selectedIndex === 0
+                  ? 'weather-hour-now'
+                  : 'weather-hour-previous'
                 : `weather-mode-${MODES[index + 1]}`
             }
             data-focus-down="weather-chart"
             key={candidate}
             onClick={() => setMode(candidate)}
+            onKeyDown={handleWeatherControlKeys}
             type="button"
           >
             {capitalise(candidate)}
@@ -186,10 +190,16 @@ export function WeatherScreen({
             <button
               aria-label="Previous hour"
               className="weather-hour-step focusable"
+              data-focus-id="weather-hour-previous"
+              data-focus-left="weather-mode-wind"
+              data-focus-right="weather-hour-now"
+              data-focus-up="weather-mode-wind"
+              data-focus-down="weather-chart"
               disabled={selectedIndex === 0}
               onClick={() =>
                 setInspection({ day, time: hours[Math.max(0, selectedIndex - 1)]!.time })
               }
+              onKeyDown={handleWeatherControlKeys}
               type="button"
             >
               <Icon name="chevron-left" />
@@ -198,7 +208,15 @@ export function WeatherScreen({
               aria-label="Return to current time"
               aria-pressed={following}
               className="weather-now focusable"
+              data-focus-id="weather-hour-now"
+              data-focus-left={selectedIndex === 0 ? 'weather-mode-wind' : 'weather-hour-previous'}
+              data-focus-right={
+                selectedIndex >= hours.length - 1 ? 'weather-hour-now' : 'weather-hour-next'
+              }
+              data-focus-up="weather-mode-wind"
+              data-focus-down="weather-chart"
               onClick={() => setInspection(null)}
+              onKeyDown={handleWeatherControlKeys}
               type="button"
             >
               Now
@@ -206,6 +224,11 @@ export function WeatherScreen({
             <button
               aria-label="Next hour"
               className="weather-hour-step focusable"
+              data-focus-id="weather-hour-next"
+              data-focus-left="weather-hour-now"
+              data-focus-right="weather-hour-next"
+              data-focus-up="weather-mode-wind"
+              data-focus-down="weather-chart"
               disabled={selectedIndex >= hours.length - 1}
               onClick={() =>
                 setInspection({
@@ -213,6 +236,7 @@ export function WeatherScreen({
                   time: hours[Math.min(hours.length - 1, selectedIndex + 1)]!.time,
                 })
               }
+              onKeyDown={handleWeatherControlKeys}
               type="button"
             >
               <Icon name="chevron-right" />
@@ -262,12 +286,33 @@ export function WeatherScreen({
       });
       return;
     }
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-      event.preventDefault();
-      const currentModeIndex = MODES.indexOf(mode);
-      const delta = event.key === 'ArrowUp' ? -1 : 1;
-      setMode(MODES[(currentModeIndex + delta + MODES.length) % MODES.length]!);
+    if (event.key === 'ArrowUp') {
+      if (focusById(`weather-mode-${mode}`)) event.preventDefault();
+      return;
     }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setMode((current) => MODES[(MODES.indexOf(current) + 1) % MODES.length]!);
+    }
+  }
+}
+
+function handleWeatherControlKeys(event: KeyboardEvent<HTMLButtonElement>): void {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+  const direction =
+    event.key === 'ArrowLeft'
+      ? 'left'
+      : event.key === 'ArrowRight'
+        ? 'right'
+        : event.key === 'ArrowUp'
+          ? 'up'
+          : event.key === 'ArrowDown'
+            ? 'down'
+            : null;
+  // Weather's known control rows have an explicit exit. Do not leave it to
+  // geometry, which can pick another chart control on a short/zoomed TV.
+  if (direction !== null && focusById(nextFocusId(event.currentTarget, direction))) {
+    event.preventDefault();
   }
 }
 
@@ -345,7 +390,7 @@ function WeatherChart({
 
   return (
     <div
-      aria-label={`${capitalise(mode)} daily forecast, midnight to midnight. The filled dot marks the current time. Use left and right to inspect hours, or up and down to change graph. Select returns to current time.`}
+      aria-label={`${capitalise(mode)} daily forecast, midnight to midnight. The filled dot marks the current time. Use left and right to inspect hours. Down changes graph. Up returns to the graph buttons; left from Temperature returns to the side menu. Select returns to current time.`}
       aria-valuemax={hours.length - 1}
       aria-valuemin={0}
       aria-valuenow={selectedIndex}

@@ -174,8 +174,14 @@ lines or other cards through them. Agenda rows likewise use solid surfaces.
 - One daily midnight-to-midnight chart switches between Temperature, Rain and Wind. The axis stays
   fixed throughout the household-local day; its right-hand midnight starts the next day. A filled
   dot follows the shared household clock each minute, on the forecast curve rather than claiming
-  a new observation. Left/Right inspects another hour with a distinct hollow marker; Up/Down changes
-  mode. **Now** or remote Select returns to following time without removing the live dot. A new day's forecast resets
+  a new observation. Left/Right inspects another hour with a distinct hollow marker; Down changes
+  mode. Up returns focus from the chart to its active Temperature/Rain/Wind button without changing
+  the graph or inspected hour. Left moves along those buttons and, from Temperature, to Weather
+  in the side menu. This bounded D-pad exit works at every hour, including either midnight endpoint;
+  Back and repeatedly stepping to the first hour must never be the only escape.
+  Right from Wind reaches Previous hour / Now / Next hour. Their arrows return to the graph or
+  graph buttons and skip disabled endpoint actions; every visible control stays remote-reachable.
+  **Now** or remote Select returns to following time without removing the live dot. A new day's forecast resets
   old-day inspection; an old cached day never receives a misleading current-time dot.
 - Temperature plots temperature and apparent temperature. Rain uses two aligned lanes in the one
   active daily graph: a purple probability line on a fixed 0–100% scale, and blue expected-rain
@@ -231,6 +237,9 @@ the phone More hub.
   shows **Choose at least one person.** beside People, moves focus to the picker and sends no command.
   Choosing a person clears that error without discarding the rest of the draft. Focus alone never
   selects a person; there is no first-child or adult fallback assignment.
+  People cards have equal flexible row heights and consistent grid gaps in create/edit forms;
+  general form-label spacing must not offset later cards. Names can wrap without clipping, and
+  selection or keyboard focus must not change card size.
 - The phone schedule editor lets an adult move active schedules earlier or later with substantial,
   labelled controls. That explicit top-to-bottom order is the television order; drag, touch or
   hidden heuristics are never required. New schedules append to the end.

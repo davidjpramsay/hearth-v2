@@ -22,6 +22,145 @@ test.afterEach(async ({ page }) => {
   expect(browserErrors.get(page)).toEqual([]);
 });
 
+for (const viewport of [
+  { width: 1366, height: 768 },
+  { width: 1672, height: 941 },
+  { width: 1920, height: 1080 },
+  { width: 3840, height: 2160 },
+]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Weather chart returns to the menu with D-pad at ${viewport.width} in ${theme}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto('/weather');
+      await expect(page).toHaveURL(/\/weather$/);
+      await expect(page).toHaveTitle('Hearth');
+      await expect(page.getByRole('heading', { name: 'Weather', exact: true })).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+      const chart = page.locator('[data-focus-id="weather-chart"]');
+      const weatherMenu = page.locator('[data-focus-id="nav-weather"]');
+      const temperature = page.getByRole('button', { name: 'Temperature', exact: true });
+      await expect(temperature).toBeFocused();
+
+      for (const [modeIndex, mode] of ['Temperature', 'Rain', 'Wind'].entries()) {
+        for (const hourIndex of [0, 7, 24]) {
+          if (await weatherMenu.evaluate((element) => element === document.activeElement)) {
+            await enterWeatherGraphButtons(page);
+          }
+          for (let index = 0; index < modeIndex; index += 1)
+            await page.keyboard.press('ArrowRight');
+          const button = page.getByRole('button', { name: mode, exact: true });
+          await expect(button).toBeFocused();
+          await page.keyboard.press('Enter');
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
+          await page.keyboard.press('ArrowDown');
+          await expect(chart).toBeFocused();
+          const priorHour = Number(await chart.getAttribute('aria-valuenow'));
+          for (let step = 0; step < Math.abs(hourIndex - priorHour); step += 1) {
+            await page.keyboard.press(hourIndex < priorHour ? 'ArrowLeft' : 'ArrowRight');
+          }
+          await expect(chart).toHaveAttribute('aria-valuenow', String(hourIndex));
+          await expect(chart).toBeFocused();
+          await page.keyboard.press('ArrowUp');
+          await expect(button).toBeFocused();
+          // IntersectionObserver rounds fractional button bounds. Allow only
+          // numeric noise (0.001%), not a partially clipped control.
+          await expect(button).toBeInViewport({ ratio: 0.99999 });
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
+          await expect(chart).toHaveAttribute('aria-valuenow', String(hourIndex));
+          for (let index = 0; index <= modeIndex; index += 1) {
+            await page.keyboard.press('ArrowLeft');
+          }
+          await expect(weatherMenu).toBeFocused();
+          await expect(weatherMenu).toBeInViewport({ ratio: 0.99999 });
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
+          await expect(chart).toHaveAttribute('aria-valuenow', String(hourIndex));
+          expect(await page.locator('.app-shell').evaluate((shell) => shell.scrollTop)).toBe(0);
+          if (mode === 'Rain' && hourIndex === 7) {
+            await captureEvidence(page, {
+              path: testInfo.outputPath(`weather-menu-rain-${theme}.png`),
+            });
+          }
+
+          // Keep the hour-action row reachable too, skipping only disabled
+          // endpoint buttons. It must have the same bounded route back out.
+          await enterWeatherGraphButtons(page);
+          await page.keyboard.press('ArrowRight');
+          await page.keyboard.press('ArrowRight');
+          await expect(page.getByRole('button', { name: 'Wind', exact: true })).toBeFocused();
+          await page.keyboard.press('ArrowRight');
+          const previous = page.getByRole('button', { name: 'Previous hour', exact: true });
+          const now = page.getByRole('button', { name: 'Return to current time', exact: true });
+          const next = page.getByRole('button', { name: 'Next hour', exact: true });
+          if (hourIndex === 0) {
+            await expect(previous).toBeDisabled();
+          } else {
+            await expect(previous).toBeFocused();
+            await page.keyboard.press('ArrowRight');
+          }
+          await expect(now).toBeFocused();
+          await page.keyboard.press('ArrowRight');
+          if (hourIndex === 24) {
+            await expect(next).toBeDisabled();
+            await expect(now).toBeFocused();
+          } else {
+            await expect(next).toBeFocused();
+          }
+          await page.keyboard.press('ArrowDown');
+          await expect(chart).toBeFocused();
+          await expect(chart).toHaveAttribute('aria-valuenow', String(hourIndex));
+          await page.keyboard.press('ArrowUp');
+          await expect(button).toBeFocused();
+          for (let index = 0; index <= modeIndex; index += 1) {
+            await page.keyboard.press('ArrowLeft');
+          }
+          await expect(weatherMenu).toBeFocused();
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
+        }
+      }
+
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(
+        results.violations.filter((violation) =>
+          ['serious', 'critical'].includes(violation.impact ?? ''),
+        ),
+      ).toEqual([]);
+      await page.keyboard.press('ArrowDown');
+      await expect(page.locator('[data-focus-id="nav-reminders"]')).toBeFocused();
+      await page.keyboard.press('ArrowDown');
+      await expect(page.locator('[data-focus-id="nav-chores"]')).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/chores$/);
+      await expect(page.getByRole('heading', { name: 'Chores', exact: true })).toBeVisible();
+    });
+  }
+}
+
+async function enterWeatherGraphButtons(page: Page) {
+  // The shared spatial engine enters the nearest visible control, not always
+  // Temperature. Navigate back to that button using only the same bounded
+  // Up/Left paths a remote user has; do not programmatically assign focus.
+  await page.keyboard.press('ArrowRight');
+  let focused = await page.evaluate(
+    () => (document.activeElement as HTMLElement | null)?.dataset.focusId,
+  );
+  if (focused === 'weather-chart' || focused?.startsWith('weather-hour-')) {
+    await page.keyboard.press('ArrowUp');
+    focused = await page.evaluate(
+      () => (document.activeElement as HTMLElement | null)?.dataset.focusId,
+    );
+  }
+  const buttons = ['weather-mode-temperature', 'weather-mode-rain', 'weather-mode-wind'];
+  expect(buttons).toContain(focused);
+  for (let step = 0; step < buttons.indexOf(focused!); step += 1) {
+    await page.keyboard.press('ArrowLeft');
+  }
+  await expect(page.getByRole('button', { name: 'Temperature', exact: true })).toBeFocused();
+}
+
 test('compact television keeps every day visible offline and restores the normal freshness cue', async ({
   context,
   page,

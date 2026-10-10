@@ -29,7 +29,9 @@ for (const viewport of [
   { name: 'narrow phone', width: 320, height: 700 },
   { name: 'phone', width: 390, height: 844 },
   { name: 'landscape phone', width: 844, height: 390 },
+  { name: 'short large browser', width: 1366, height: 768 },
   { name: 'wide adult browser', width: 1920, height: 1080 },
+  { name: '4K adult browser', width: 3840, height: 2160 },
 ]) {
   for (const theme of ['light', 'dark'] as const) {
     test(`chore People picker saves only explicit choices at ${viewport.name} in ${theme}`, async ({
@@ -64,6 +66,8 @@ for (const viewport of [
       const form = page.locator('.routine-add-form');
       await expect(form.getByRole('heading', { name: 'Add a chore' })).toBeVisible();
       await expect(form.locator('input[name="assigneeIds"]:checked')).toHaveCount(0);
+      await expectUniformPeopleCards(form);
+      await captureEvidence(page, { path: testInfo.outputPath(`people-unselected-${theme}.png`) });
       const ezra = form.getByRole('checkbox', { name: /Ezra/ });
       const alex = form.getByRole('checkbox', { name: /Alex/ });
       const alexId = await alex.inputValue();
@@ -76,6 +80,7 @@ for (const viewport of [
       await form.getByRole('button', { name: 'Add chore', exact: true }).click();
       await expect(form.getByRole('alert')).toHaveText('Choose at least one person.');
       await expectVisiblePeopleError(form.getByRole('alert'));
+      await expectUniformPeopleCards(form);
       await expect(form.locator('input[name="assigneeIds"]').first()).toBeFocused();
       await expect(ezra).toHaveAttribute('aria-invalid', 'true');
       await expect(ezra).toHaveAccessibleDescription(/Choose at least one person/);
@@ -99,6 +104,7 @@ for (const viewport of [
       await alex.focus();
       await page.keyboard.press('Space');
       await expect(alex).toBeChecked();
+      await expectUniformPeopleCards(form);
       await form.getByRole('button', { name: 'Add chore', exact: true }).focus();
       await page.keyboard.press('Enter');
       await expect(page.getByRole('status')).toContainText('Selection test chore was scheduled');
@@ -112,6 +118,7 @@ for (const viewport of [
       const savedAlex = editor.getByRole('checkbox', { name: /Alex/ });
       await expect(savedEzra).not.toBeChecked();
       await expect(savedAlex).toBeChecked();
+      await expectUniformPeopleCards(editor);
       await expect(editor.getByLabel('Helpful note')).toHaveValue('Keep this draft');
       await savedAlex.uncheck();
       await expect(savedAlex).not.toBeChecked();
@@ -122,6 +129,7 @@ for (const viewport of [
       await savedEzra.check();
       await savedAlex.check();
       await expect(editor.getByRole('alert')).toHaveCount(0);
+      await expectUniformPeopleCards(editor);
       await editor.locator('.routine-assignees').scrollIntoViewIfNeeded();
       await captureEvidence(page, { path: testInfo.outputPath(`people-selected-${theme}.png`) });
       await editor.getByRole('button', { name: 'Save future schedule' }).click();
@@ -146,6 +154,46 @@ for (const viewport of [
       expect(stored.filter((item) => item.title !== 'Selection test chore')).toEqual(original);
       expect(issues).toEqual([]);
     });
+  }
+}
+
+async function expectUniformPeopleCards(form: Locator) {
+  const grid = await form.locator('.routine-assignees__options').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      columns: style.gridTemplateColumns.split(' ').length,
+      rowGap: Number.parseFloat(style.rowGap),
+      columnGap: Number.parseFloat(style.columnGap),
+      cards: Array.from(element.querySelectorAll('label'), (card) => {
+        const bounds = card.getBoundingClientRect();
+        const cardStyle = getComputedStyle(card);
+        return {
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+          marginTop: cardStyle.marginTop,
+          marginBottom: cardStyle.marginBottom,
+        };
+      }),
+    };
+  });
+  expect(grid.cards).toHaveLength(3);
+  const first = grid.cards[0]!;
+  for (const [index, card] of grid.cards.entries()) {
+    expect(card.marginTop).toBe('0px');
+    expect(card.marginBottom).toBe('0px');
+    expect(Math.abs(card.width - first.width)).toBeLessThan(1);
+    expect(Math.abs(card.height - first.height)).toBeLessThan(1);
+    if (index % grid.columns !== 0) {
+      const previous = grid.cards[index - 1]!;
+      expect(Math.abs(card.y - previous.y)).toBeLessThan(1);
+      expect(Math.abs(card.x - previous.x - previous.width - grid.columnGap)).toBeLessThan(1);
+    }
+    if (index >= grid.columns) {
+      const above = grid.cards[index - grid.columns]!;
+      expect(Math.abs(card.y - above.y - above.height - grid.rowGap)).toBeLessThan(1);
+    }
   }
 }
 

@@ -3953,9 +3953,11 @@
 .routine-assignees__options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-auto-rows: 1fr;
   gap: 8px;
 }
-.routine-assignees__options label {
+.routine-assignees__options label,
+.routine-assignees__options label + label {
   min-height: 66px;
   margin: 0;
   padding: 9px 10px;
