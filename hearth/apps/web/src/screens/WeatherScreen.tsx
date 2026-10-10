@@ -11,9 +11,10 @@ import type {
 import './WeatherScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
-import { EmptyState, FailureState, LoadingState, StatusBanner } from '../components/Status';
+import { EmptyState, FailureState, LoadingState } from '../components/Status';
 import { useHouseholdDateTime } from '../hooks/useHouseholdClock';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useSharedScreen } from '../runtime/sharedScreen';
 import { useWeatherForecastQuery } from '../hooks/useWeatherForecastQuery';
 import {
   chartGeometry,
@@ -33,6 +34,7 @@ export function WeatherScreen({
 }) {
   const query = useWeatherForecastQuery(!preparing);
   const online = useOnlineStatus(scenario === 'offline');
+  const sharedScreen = useSharedScreen();
   const { instant } = useHouseholdDateTime();
   const [mode, setMode] = useState<WeatherMode>('temperature');
   const [inspection, setInspection] = useState<{ day: string; time: string } | null>(null);
@@ -49,7 +51,11 @@ export function WeatherScreen({
         <EmptyState
           title={configured ? 'Weather is unavailable' : 'Set a weather location'}
           description={
-            configured ? 'Your location is saved. Try again.' : 'Choose it in Household settings.'
+            configured
+              ? 'Your location is saved. Try again.'
+              : sharedScreen
+                ? 'Ask an adult to choose a location from their phone.'
+                : 'Choose it in Household settings.'
           }
         />
         {configured ? (
@@ -60,7 +66,7 @@ export function WeatherScreen({
           >
             Try again
           </button>
-        ) : (
+        ) : sharedScreen ? null : (
           <Link className="weather-setup-link focusable" to="/admin/household">
             Open settings <Icon name="chevron-right" />
           </Link>
@@ -87,6 +93,11 @@ export function WeatherScreen({
   const selectedIndex = following ? currentIndex : inspectedIndex;
   const selected = hours[selectedIndex]!;
   const today = forecast.daily.find((day) => day.localDate === forecast.current?.time.slice(0, 10));
+  const savedMessage = !online
+    ? 'Offline · Showing saved weather.'
+    : forecast.freshness === 'stale' || clock.day !== day
+      ? 'Showing the last saved forecast.'
+      : null;
 
   return (
     <div className="screen weather-screen">
@@ -96,8 +107,12 @@ export function WeatherScreen({
           <p>
             {forecast.locationLabel ?? 'Local weather'} <Icon name="location" />
           </p>
-          <span className="weather-updated">
-            <i aria-hidden="true" /> {updatedLabel(forecast.updatedAt, forecast.generatedAt)}
+          <span
+            className={`weather-updated${savedMessage === null ? '' : ' weather-updated--saved'}`}
+            role={savedMessage === null ? undefined : 'status'}
+          >
+            <i aria-hidden="true" />{' '}
+            {savedMessage ?? updatedLabel(forecast.updatedAt, forecast.generatedAt)}
           </span>
         </div>
         <div className="weather-current" aria-label={currentConditionsLabel(forecast.current)}>
@@ -108,14 +123,16 @@ export function WeatherScreen({
           <div className="weather-current__feels">
             <span>Feels like {forecast.current.apparentTemperatureCelsius}°</span>
             <strong>
-              {today?.lowTemperatureCelsius ?? '–'}° / {today?.highTemperatureCelsius ?? '–'}°
+              <span>Low</span> {today?.lowTemperatureCelsius ?? '–'}° / <span>High</span>{' '}
+              {today?.highTemperatureCelsius ?? '–'}°
             </strong>
           </div>
           <div className="weather-current__detail">
             <strong>{forecast.current.label}</strong>
             <div>
               <span>
-                <Icon name="droplet" /> {forecast.current.precipitationProbabilityPercent}%
+                <Icon name="droplet" /> {forecast.current.precipitationProbabilityPercent}% rain
+                chance
               </span>
               <span>
                 <Icon name="wind" /> {forecast.current.windSpeedKph} km/h{' '}
@@ -125,12 +142,6 @@ export function WeatherScreen({
           </div>
         </div>
       </header>
-
-      {!online ? (
-        <StatusBanner kind="offline">Offline · Showing saved weather.</StatusBanner>
-      ) : forecast.freshness === 'stale' || clock.day !== day ? (
-        <StatusBanner kind="stale">Showing the last saved forecast.</StatusBanner>
-      ) : null}
 
       <div aria-label="Weather graph" className="weather-mode-switch" role="group">
         {MODES.map((candidate, index) => (
@@ -165,7 +176,12 @@ export function WeatherScreen({
             mode={mode}
             following={following && nowMinute !== null}
           />
-          <ChartLegend mode={mode} />
+          {mode === 'rain' ? null : <ChartLegend mode={mode} />}
+          {savedMessage === null ? null : (
+            <span className="weather-saved-age">
+              {updatedLabel(forecast.updatedAt, forecast.generatedAt)}
+            </span>
+          )}
           <div className="weather-hour-actions">
             <button
               aria-label="Previous hour"
@@ -212,6 +228,7 @@ export function WeatherScreen({
             nowMinute={nowMinute}
             inspecting={!following}
             onKeyDown={(event) => handleChartKeys(event)}
+            onInspect={(index) => setInspection({ day, time: hours[index]!.time })}
             selectedIndex={selectedIndex}
           />
         </div>
@@ -264,7 +281,7 @@ function SelectedHourSummary({
   following: boolean;
 }) {
   return (
-    <p aria-live="polite" className="weather-selected-hour">
+    <p aria-live="polite" className={`weather-selected-hour weather-selected-hour--${mode}`}>
       <time dateTime={hour.time}>
         {following ? `Now · ${hourLabel(hour.time)}` : hourLabel(hour.time)}
       </time>
@@ -282,6 +299,7 @@ function WeatherChart({
   inspecting,
   selectedIndex,
   onKeyDown,
+  onInspect,
 }: {
   day: string;
   hours: readonly HourlyWeatherForecast[];
@@ -290,8 +308,10 @@ function WeatherChart({
   inspecting: boolean;
   selectedIndex: number;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
+  onInspect: (index: number) => void;
 }) {
   const plotRef = useRef<SVGSVGElement>(null);
+  const pointerStart = useRef<readonly [number, number] | null>(null);
   const [size, setSize] = useState({ width: 1000, height: 238 });
   const geometry = useMemo(
     () => chartGeometry(hours, mode, day, size.width, size.height),
@@ -321,7 +341,7 @@ function WeatherChart({
     // Observe the HTML canvas so rotation/resizing actually updates the viewBox.
     observer.observe(canvas.parentElement!);
     return () => observer.disconnect();
-  }, []);
+  }, [mode]);
 
   return (
     <div
@@ -329,12 +349,37 @@ function WeatherChart({
       aria-valuemax={hours.length - 1}
       aria-valuemin={0}
       aria-valuenow={selectedIndex}
-      aria-valuetext={`${hourLabel(hours[selectedIndex]?.time ?? hours[0]?.time ?? '00:00')}, ${selectedPrimaryValue(hours[selectedIndex] ?? hours[0]!, mode)}`}
-      className="weather-chart focusable"
+      aria-valuetext={`${hourLabel(hours[selectedIndex]?.time ?? hours[0]?.time ?? '00:00')}, ${selectedPrimaryValue(hours[selectedIndex] ?? hours[0]!, mode)}, ${selectedSecondaryValue(hours[selectedIndex] ?? hours[0]!, mode)}`}
+      className={`weather-chart weather-chart--${mode} focusable`}
       data-focus-id="weather-chart"
       data-focus-left="nav-weather"
       data-focus-up={`weather-mode-${mode}`}
       onKeyDown={onKeyDown}
+      onPointerDown={(event) => {
+        pointerStart.current = event.button === 0 ? [event.clientX, event.clientY] : null;
+      }}
+      onPointerCancel={() => {
+        pointerStart.current = null;
+      }}
+      onPointerUp={(event) => {
+        const start = pointerStart.current;
+        pointerStart.current = null;
+        const bounds = plotRef.current?.getBoundingClientRect();
+        // Tap-to-inspect does not capture a pointer or steal one-finger scrolling.
+        if (
+          start === null ||
+          bounds === undefined ||
+          Math.hypot(event.clientX - start[0], event.clientY - start[1]) > 10
+        )
+          return;
+        const x = ((event.clientX - bounds.left) * size.width) / bounds.width;
+        const nearest = hours.reduce(
+          (best, _, index) =>
+            Math.abs(geometry.x(index) - x) < Math.abs(geometry.x(best) - x) ? index : best,
+          0,
+        );
+        onInspect(nearest);
+      }}
       role="slider"
       tabIndex={0}
     >
@@ -381,22 +426,30 @@ function WeatherChart({
           ))}
           {mode === 'rain' ? (
             <>
-              <g className="weather-chart__rain-bars">
-                {hours.map((hour, index) => {
-                  const y = geometry.y(hour.precipitationProbabilityPercent);
-                  return (
-                    <rect
-                      height={geometry.baseline - y}
-                      key={hour.time}
-                      rx="3"
-                      width={geometry.barWidth}
-                      x={geometry.x(index) - geometry.barWidth / 2}
-                      y={y}
-                    />
-                  );
-                })}
-              </g>
-              <path className="weather-chart__rain-amount" d={geometry.secondaryPath} />
+              <text
+                className="weather-chart__lane-label weather-chart__lane-label--chance"
+                x={geometry.left}
+                y={14}
+              >
+                Rain chance (%)
+              </text>
+              <text
+                className="weather-chart__lane-label weather-chart__lane-label--amount"
+                x={geometry.left}
+                y={geometry.rainTop - 12}
+              >
+                Expected rain (mm per hour)
+              </text>
+              {geometry.rainTicks.map((tick) => (
+                <g className="weather-chart__grid weather-chart__rain-grid" key={tick.value}>
+                  <line x1={geometry.left} x2={geometry.right} y1={tick.y} y2={tick.y} />
+                  <text x={geometry.left - 10} y={tick.y + 5} textAnchor="end">
+                    {tick.label}
+                  </text>
+                </g>
+              ))}
+              <path className="weather-chart__rain-area" d={geometry.areaPath} />
+              <RainfallBars hours={hours} geometry={geometry} />
               <path className="weather-chart__rain-chance" d={geometry.primaryPath} />
             </>
           ) : (
@@ -451,12 +504,39 @@ function WeatherChart({
   );
 }
 
+function RainfallBars({
+  hours,
+  geometry,
+}: {
+  hours: readonly HourlyWeatherForecast[];
+  geometry: ReturnType<typeof chartGeometry>;
+}) {
+  return (
+    <g className="weather-chart__rain-bars">
+      {hours.map((hour, index) => {
+        const y = geometry.rainY(hour.precipitationMillimetres);
+        return (
+          <rect
+            height={geometry.baseline - y}
+            key={hour.time}
+            rx="2"
+            width={geometry.barWidth}
+            x={geometry.x(index) - geometry.barWidth / 2}
+            y={y}
+            data-millimetres={hour.precipitationMillimetres}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
 function ChartLegend({ mode }: { mode: WeatherMode }) {
   const labels =
     mode === 'temperature'
-      ? (['Actual', 'Feels like'] as const)
+      ? (['Temperature (°C)', 'Feels like'] as const)
       : mode === 'wind'
-        ? (['Wind', 'Gusts'] as const)
+        ? (['Wind (km/h)', 'Gusts'] as const)
         : (['Rain chance', 'Expected rain'] as const);
   return (
     <div className={`weather-chart-legend weather-chart-legend--${mode}`} aria-hidden="true">
@@ -480,9 +560,14 @@ function SevenDayForecast({
   const domain = temperatureDomain(days);
   return (
     <section className="weather-week" aria-labelledby="weather-week-title">
-      <h2 className="sr-only" id="weather-week-title">
-        Seven days
-      </h2>
+      <div className="weather-week__header">
+        <h2 id="weather-week-title">Seven days</h2>
+        <div className="weather-week__columns" aria-hidden="true">
+          <span>Rain chance</span>
+          <span>Maximum wind</span>
+          <span>Low–high temperature</span>
+        </div>
+      </div>
       <div className="weather-week__rows">
         {days.slice(0, 7).map((day, index) => {
           const rangeStart = rangePercent(day.lowTemperatureCelsius, domain);
@@ -490,7 +575,7 @@ function SevenDayForecast({
           const current = rangePercent(currentTemperature, domain);
           return (
             <article
-              className={`weather-day${index === 0 ? ' weather-day--today' : ''}`}
+              className={`weather-day weather-day--${day.condition}${index === 0 ? ' weather-day--today' : ''}`}
               key={day.localDate}
             >
               <strong>{index === 0 ? 'Today' : weekday(day.localDate)}</strong>
@@ -560,7 +645,7 @@ function hourlyMarkerTone(hour: HourlyWeatherForecast): 'day' | 'night' | 'rain'
 
 function selectedPrimaryValue(hour: HourlyWeatherForecast, mode: WeatherMode): string {
   if (mode === 'temperature') return `${hour.temperatureCelsius}°`;
-  if (mode === 'rain') return `${hour.precipitationProbabilityPercent}%`;
+  if (mode === 'rain') return `${hour.precipitationProbabilityPercent}% chance`;
   return `${hour.windSpeedKph} km/h ${compassDirection(hour.windDirectionDegrees)}`;
 }
 
@@ -575,7 +660,7 @@ function chartTextSummary(hours: readonly HourlyWeatherForecast[], mode: Weather
     return `Temperature ranges from ${Math.min(...hours.map((hour) => hour.temperatureCelsius))}° to ${Math.max(...hours.map((hour) => hour.temperatureCelsius))}° across this day. The right-hand midnight starts the following day.`;
   }
   if (mode === 'rain') {
-    return `The highest rain chance is ${Math.max(...hours.map((hour) => hour.precipitationProbabilityPercent))}%.`;
+    return `The highest rain chance is ${Math.max(...hours.map((hour) => hour.precipitationProbabilityPercent))}%. The purple line shows probability on a fixed 0 to 100 percent scale. Blue bars show expected rain in millimetres per hour on a separate zero-based scale. The highest hourly amount is ${Math.max(...hours.map((hour) => hour.precipitationMillimetres)).toFixed(1)} mm.`;
   }
   return `Wind reaches ${Math.max(...hours.map((hour) => hour.windSpeedKph))} kilometres per hour, with gusts up to ${Math.max(...hours.map((hour) => hour.windGustKph))}.`;
 }

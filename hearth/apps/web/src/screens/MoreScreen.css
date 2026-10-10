@@ -65,11 +65,6 @@
   transform: none;
 }
 
-.more-card--emphasis {
-  color: var(--plum);
-  background: color-mix(in srgb, var(--plum-soft) 72%, var(--surface));
-}
-
 .more-card__icon {
   width: 44px;
   height: 44px;
@@ -83,11 +78,6 @@
 .more-card__icon svg {
   width: 23px;
   height: 23px;
-}
-
-.more-card--emphasis .more-card__icon {
-  color: var(--plum);
-  background: color-mix(in srgb, var(--plum-soft) 82%, var(--surface));
 }
 
 .more-card strong {
@@ -140,9 +130,4 @@
 :root[data-theme='dark'] .more-grid {
   background: var(--surface-glass);
   box-shadow: none;
-}
-
-:root[data-theme='dark'] .more-card--emphasis {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--plum-soft) 62%, var(--surface-glass));
 }

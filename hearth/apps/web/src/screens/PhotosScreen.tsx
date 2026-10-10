@@ -23,6 +23,7 @@ import { focusById } from '../focus/focusGraph';
 import { usePhotoRotationPreference } from '../hooks/usePhotoRotationPreference';
 import { usePhotosQuery } from '../hooks/usePhotoQueries';
 import { useHouseholdDateTime } from '../hooks/useHouseholdClock';
+import { useSharedScreen } from '../runtime/sharedScreen';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { COMPANION_LANDSCAPE_QUERY } from '../layout/viewportQueries';
 import {
@@ -44,6 +45,7 @@ export function PhotosScreen({
   preparing: boolean;
 }) {
   const query = usePhotosQuery(!preparing);
+  const sharedScreen = useSharedScreen();
   const online = useOnlineStatus(scenario === 'offline');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -214,7 +216,11 @@ export function PhotosScreen({
       <section className="state-panel photos-empty" aria-labelledby="photos-empty-title">
         <Icon name="image" />
         <h1 id="photos-empty-title">No family photos selected</h1>
-        <p>Add photos in More → Manage photos.</p>
+        <p>
+          {sharedScreen
+            ? 'Ask an adult to add photos from their phone.'
+            : 'Add photos in More → Manage photos.'}
+        </p>
         {scenario === 'empty' ? (
           <button
             className="primary-action focusable"

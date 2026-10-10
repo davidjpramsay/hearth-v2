@@ -267,6 +267,7 @@ test('phone Family Planning edits future routines and manages weekly pocket mone
   await page.getByRole('button', { name: 'New chore' }).click();
   const addChore = page.locator('.routine-add-form');
   await addChore.getByLabel('Chore', { exact: true }).fill('Bring bins in');
+  await addChore.getByRole('checkbox', { name: /Ezra/ }).check();
   await addChore.getByLabel('Repeat').selectOption('once');
   await addChore.getByLabel('Time of day').selectOption('Anytime');
   await addChore.getByLabel('Due date').fill('2026-08-03');
@@ -497,8 +498,9 @@ test('phone routines assign one schedule to several people and TV expands separa
   const form = page.locator('.routine-add-form');
   const ezra = form.getByRole('checkbox', { name: /Ezra/ });
   const alex = form.getByRole('checkbox', { name: /Alex/ });
-  await expect(ezra).toBeChecked();
+  await expect(ezra).not.toBeChecked();
   await expect(alex).not.toBeChecked();
+  await ezra.check();
   await alex.check();
   await form.getByLabel('Chore', { exact: true }).fill('Put sports gear away');
   await form.getByLabel('Time of day').selectOption('After school');
@@ -572,6 +574,7 @@ test('one-off chore creation reports a failed save and retries the same safe com
   await page.getByRole('button', { name: 'New chore' }).click();
   const addChore = page.locator('.routine-add-form');
   await addChore.getByLabel('Chore', { exact: true }).fill('Clean football boots');
+  await addChore.getByRole('checkbox', { name: /Ezra/ }).check();
   await addChore.getByLabel('Repeat').selectOption('once');
   await addChore.getByLabel('Time of day').selectOption('Anytime');
   await addChore.getByRole('button', { name: 'Add chore' }).click();

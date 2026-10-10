@@ -2,6 +2,30 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-099 — Shared screens never acquire adult administration
+
+- Date: 2026-10-10
+- Status: locally verified; private release and physical-device verification remain separate
+- Context: Family screens expose Calendar Sources and other management links, including empty
+  setup states. A local reproduction returns 401 for display-only admin reads but 200 when the
+  same request also carries an adult cookie: read admission and adult actor resolution choose
+  different principals. A pending verified proof must also not finish as adult after pairing.
+- Choice: Give display context one consistent negative-capability boundary whenever companion
+  authority is accepted or issued. Deny adult paths for device-cookie/Bearer presence, including
+  broken proofs; TV user-agent hints can only restrict, never grant authority. Return a safe
+  `sharedScreen` flag to the common browser route boundary and remove all family-to-admin links.
+  Keep Appearance and scoped family commands. Use a bounded short-lived HttpOnly browser nonce
+  to bind ceremonies and cancel pending proofs when pairing completes; recheck at commit and
+  response. Revoke only the switching browser's supplied adult session, not any other phone/key;
+  also end retained legacy adult cookies when a private shared-screen request first presents them.
+  Accepted exchanges always refresh identity despite modal cancellation, and notify other open
+  documents in the same browser to clear private caches/streams and reload the family dashboard.
+- Consequence: Direct URLs, restored paths, aliases, history and mixed cookies cannot turn a paired
+  display into a controller. Personal phone/desktop flows retain existing passkey verification and
+  capabilities. Width is not identity; an unpaired generic browser is still a possible controller
+  only after verified adult sign-in. Permanent hardware attestation is not claimed. No APK, database
+  migration, credential reset, network change, public exposure or new persistent service is added.
+
 ## D-098 — Bounded rail focus and an unframed ambient photo
 
 - Date: 2026-10-09
@@ -79,8 +103,10 @@ Record durable choices here. New decisions should include date, status, context,
   left automatic, and page padding did not include the bar's home-indicator inset.
 - Choice: Keep authored text sizing at 100% without disabling zoom; wrap phone dates and event
   titles, allow heading reflow and keep the shell at its container width. Share one safe-area-aware
-  navigation-height token with page padding. Position the bar from `100dvh`, retaining a bottom
-  fallback. While a companion-width editing control is focused, hide the bar only when an unzoomed
+  navigation-height token with page padding. Use fixed `bottom: 0` with `top: auto`, giving the
+  browser one vertical anchor. This 2026-10-10 refinement replaces the original competing
+  `100dvh` top calculation after reported scrolling drift. While a companion-width editing control
+  is focused, hide the bar only when an unzoomed
   visual viewport is more than 150 pixels shorter than the layout viewport. Restore it on resize
   or focus change; coalesce event delivery and keep only a boolean React state.
 - Consequence: No household, authentication, storage, TV sizing or provider contract changes.
@@ -463,6 +489,13 @@ Record durable choices here. New decisions should include date, status, context,
   authentication through companion More and a TV-rail utility. The control changes only local
   browser/WebView storage and cannot mutate household data. Evening dimming is a separate rendered overlay that also covers
   photos and ambient mode; it does not call Home Assistant or claim panel-brightness control.
+- Refinement (2026-10-10): Render Appearance inside the same responsive family shell as the
+  dashboard. The former unconditional 680-pixel companion shell puts phone chrome on television.
+  Wide screens retain the rail/clock and use three large theme cards; narrow screens retain
+  stacked controls and their bottom dock. Theme changes update Appearance card backgrounds
+  immediately with their text, avoiding transient contrast failures during a background fade.
+  This is local presentation only, not a change to the
+  display/adult authority boundary or stored preference contract.
 - Consequence: Each television and companion can choose what suits its room, no server contract,
   credential, migration or household audit event is required, and a corrupted/unavailable storage
   value fails safely to Automatic. A future paired-device policy could remotely recommend a theme,
@@ -1453,13 +1486,15 @@ Official platform references:
   a generic household/settings path. Adults repeatedly entered the display gallery while looking for
   photo management. On Today settings, a narrow-width override appeared before the desktop grid rule,
   so the desktop two-column cards won in the cascade and squeezed descriptions against switches.
-- Choice: Name the gallery action **View family photos** and expose a prominent **Manage photos** row
-  directly under Manage Hearth. Group the settings root as Family content, Household & access,
+- Choice: Name the gallery action **View family photos** and expose a direct **Manage photos** row
+  under Manage Hearth. Group the settings root as Family content, Household & access,
   Connections & displays and System, using joined list rows and one continuous focus order. At phone
   widths, render all Today visibility options as full-width joined rows; keep the icon, copy and switch
   in distinct grid columns and apply focus inside the group boundary. Keep More and settings-root
   navigation bars slim, slightly squared and title-only; task-specific guidance starts after opening a
   destination rather than repeating under every self-explanatory title.
+- Refinement (2026-10-10): **Manage photos** uses the same row/text/icon palette as peer settings in
+  both themes. Discoverability comes from its explicit title and position, not one-off purple styling.
 - Consequence: Viewing and administering photos are discoverable as separate intents, upload no longer
   depends on finding the gallery or a generic household row, and Today controls remain legible at the
   390-pixel companion width. Routes, permissions and the underlying photo/Today contracts do not change.
@@ -1507,6 +1542,22 @@ Official platform references:
   the phone's 760-pixel scroll canvas. Missing samples remain gaps, stale prior-day data has no live
   dot, and geometry uses provider-local wall time rather than the browser timezone. No new provider,
   credential, persistence, background worker or networking change is introduced.
+
+- Refinement (2026-10-10): make the Weather reading path explicit without multiplying simultaneous
+  modes. Rain's previously same-colour overlaid amount curve had an unlabelled secondary scale;
+  replace it with two time-aligned lanes in the one active graph: purple probability line with
+  fixed 0–100% ticks, and blue hourly millimetre bars with a separately labelled zero-based 1/2/5
+  scale. Redundant units/shapes and a text alternative make colour non-essential. Selected expected
+  amount remains visible on narrow phones; wind speed/gusts also start at zero. Add low/high labels,
+  a visible Seven days heading and wide-row column labels, retain shared weekly temperature ranges,
+  and budget spacing for compact/short wide displays. Tap-to-inspect owns no drag or scroll gesture,
+  has button/D-pad alternatives and maps through the existing 4K CSS zoom. Mode changes measure the
+  new plot height before paint. Axis labels use exact, readable tick values, not rounded quarter
+  positions. Saved/offline status reuses the header freshness line and retains visible age near
+  the hour controls, keeping all seven days within a compact TV. The TV shell's single grid row
+  is explicitly viewport-bounded so a short-wide rail cannot grow it and scroll the whole shell
+  when a chart control receives focus. No DTO, provider request, saved preference, authority, background
+  behaviour or runtime-networking change is needed.
 
 ## D-078 — Retire Apple Reminders and make reminders Hearth-owned
 

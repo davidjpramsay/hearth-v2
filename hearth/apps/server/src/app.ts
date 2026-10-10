@@ -1,4 +1,5 @@
-import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
+import { BrowserAccess } from './browser-access.js';
 import { z } from 'zod';
 
 import {
@@ -10,6 +11,7 @@ import {
 } from '@hearth/core';
 
 import {
+  isTelevisionUserAgent,
   AddListItemRequestSchema,
   GameCatalogueSchema,
   WordGroupsPuzzleSchema,
@@ -320,6 +322,8 @@ export interface BuildServerOptions {
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
+  const browserAccess = new BrowserAccess();
+  const browserRequests = new WeakMap<FastifyRequest, ReturnType<BrowserAccess['begin']>>();
   const runtime =
     options.runtime ??
     (options.demoMode === false
@@ -447,6 +451,34 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   server.addHook('preHandler', async (request, reply) => {
     const routeUrl = request.routeOptions.url;
+    if (isPrivateMode(options) && isSharedScreenRequest(request.headers)) {
+      const retainedAdult = optionalCompanionCredential(request.headers);
+      if (retainedAdult !== null && options.companionAuth !== undefined) {
+        // Upgrade legacy mixed-cookie screens too: removing the display cookie
+        // later must not resurrect the adult authority retained on this browser.
+        options.companionAuth.signOut(retainedAdult);
+        reply.header('Set-Cookie', options.companionAuth.clearSessionCookie());
+      }
+    }
+    if (
+      routeUrl?.startsWith('/api/v1/auth/') &&
+      routeUrl !== '/api/v1/auth/status' &&
+      routeUrl !== '/api/v1/auth/sign-outs'
+    ) {
+      await run(reply, async () => {
+        assertControllerRequest(request.headers);
+        browserRequests.set(
+          request,
+          browserAccess.begin(
+            request.headers,
+            reply,
+            isPrivateMode(options),
+            routeUrl.endsWith('-verifications'),
+          ),
+        );
+      });
+      if (reply.sent) return reply;
+    }
     if (
       runtime.mode !== 'private' ||
       routeUrl === undefined ||
@@ -466,13 +498,37 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
+  const finishBrowserRequest = async (request: FastifyRequest) => {
+    browserRequests.get(request)?.finish();
+  };
+  server.addHook('onResponse', finishBrowserRequest);
+  server.addHook('onRequestAbort', finishBrowserRequest);
+  server.addHook('onTimeout', finishBrowserRequest);
+
+  function acceptAdultSession(
+    request: FastifyRequest,
+    auth: CompanionAuthRepository,
+    token: string,
+  ) {
+    try {
+      browserRequests.get(request)!.assertAllowed();
+    } catch (error) {
+      auth.signOut(token);
+      throw error;
+    }
+  }
+
   server.get('/api/v1/runtime', async (request, reply) => {
-    const context = RuntimeContextSchema.parse(
-      await resolveRuntimeContext(runtime, adminRepository),
-    );
+    if (runtime.mode === 'private') browserAccess.establish(request.headers, reply, true);
+    const context = RuntimeContextSchema.parse({
+      ...(await resolveRuntimeContext(runtime, adminRepository)),
+      sharedScreen: isSharedScreenRequest(request.headers),
+    });
+    reply
+      .header('Cache-Control', 'private, no-store')
+      .header('Vary', 'Cookie, Authorization, User-Agent');
     if (runtime.mode !== 'private' || context.household === null) return context;
 
-    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
     const authorized = await hasPrivateHouseholdReadAccess(
       request.headers,
       context.household.id,
@@ -486,9 +542,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   server.get('/api/v1/auth/status', async (request, reply) => {
     reply.header('Cache-Control', 'no-store');
+    const sharedScreen = isSharedScreenRequest(request.headers);
     if (options.companionAuth === undefined) {
       return PasskeyAuthStatusSchema.parse({
         mode: runtime.mode,
+        sharedScreen,
         configured: false,
         secureOrigin: false,
         requiresSetup: runtime.mode === 'private',
@@ -496,17 +554,26 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         actor: null,
       });
     }
-    return options.companionAuth.status(optionalCompanionCredential(request.headers));
+    const status = options.companionAuth.status(
+      sharedScreen ? null : optionalCompanionCredential(request.headers),
+    );
+    return PasskeyAuthStatusSchema.parse({
+      ...status,
+      sharedScreen,
+      ...(sharedScreen ? { authenticated: false, actor: null } : {}),
+    });
   });
 
   server.post('/api/v1/auth/first-use/registration-options', async (request, reply) => {
     const body = parse(FirstUsePasskeyOptionsRequestSchema, request.body, reply);
     if (body === null) return reply;
-    return run(reply, async () =>
-      PasskeyCeremonyOptionsSchema.parse(
-        await companionAuth(options).firstUseRegistrationOptions(body, request.ip),
-      ),
-    );
+    return run(reply, async () => {
+      const result = await companionAuth(options).firstUseRegistrationOptions(body, request.ip);
+      const access = browserRequests.get(request)!;
+      access.assertAllowed();
+      browserAccess.bind(access.id, result.ceremonyId);
+      return PasskeyCeremonyOptionsSchema.parse(result);
+    });
   });
 
   server.post('/api/v1/auth/first-use/registration-verifications', async (request, reply) => {
@@ -514,7 +581,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (body === null) return reply;
     return run(reply, async () => {
       const auth = companionAuth(options);
-      const result = await auth.verifyFirstUseRegistration(body.ceremonyId, body.response);
+      browserAccess.verify(request.headers, body.ceremonyId);
+      const result = await auth.verifyFirstUseRegistration(
+        body.ceremonyId,
+        body.response,
+        browserRequests.get(request)!.assertAllowed,
+      );
+      acceptAdultSession(request, auth, result.token);
       reply
         .header('Cache-Control', 'no-store')
         .header('Set-Cookie', auth.sessionCookie(result.token));
@@ -523,11 +596,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   server.post('/api/v1/auth/authentication-options', async (request, reply) =>
-    run(reply, async () =>
-      PasskeyCeremonyOptionsSchema.parse(
-        await companionAuth(options).authenticationOptions(request.ip),
-      ),
-    ),
+    run(reply, async () => {
+      const result = await companionAuth(options).authenticationOptions(request.ip);
+      const access = browserRequests.get(request)!;
+      access.assertAllowed();
+      browserAccess.bind(access.id, result.ceremonyId);
+      return PasskeyCeremonyOptionsSchema.parse(result);
+    }),
   );
 
   server.post('/api/v1/auth/authentication-verifications', async (request, reply) => {
@@ -535,7 +610,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (body === null) return reply;
     return run(reply, async () => {
       const auth = companionAuth(options);
-      const result = await auth.verifyAuthentication(body.ceremonyId, body.response);
+      browserAccess.verify(request.headers, body.ceremonyId);
+      const result = await auth.verifyAuthentication(
+        body.ceremonyId,
+        body.response,
+        browserRequests.get(request)!.assertAllowed,
+      );
+      acceptAdultSession(request, auth, result.token);
       reply
         .header('Cache-Control', 'no-store')
         .header('Set-Cookie', auth.sessionCookie(result.token));
@@ -563,11 +644,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.post('/api/v1/auth/recovery/registration-options', async (request, reply) => {
     const body = parse(RecoveryPasskeyOptionsRequestSchema, request.body, reply);
     if (body === null) return reply;
-    return run(reply, async () =>
-      PasskeyCeremonyOptionsSchema.parse(
-        await companionAuth(options).recoveryRegistrationOptions(body, request.ip),
-      ),
-    );
+    return run(reply, async () => {
+      const result = await companionAuth(options).recoveryRegistrationOptions(body, request.ip);
+      const access = browserRequests.get(request)!;
+      access.assertAllowed();
+      browserAccess.bind(access.id, result.ceremonyId);
+      return PasskeyCeremonyOptionsSchema.parse(result);
+    });
   });
 
   server.post('/api/v1/auth/recovery/registration-verifications', async (request, reply) => {
@@ -575,7 +658,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (body === null) return reply;
     return run(reply, async () => {
       const auth = companionAuth(options);
-      const result = await auth.verifyRecoveryRegistration(body.ceremonyId, body.response);
+      browserAccess.verify(request.headers, body.ceremonyId);
+      const result = await auth.verifyRecoveryRegistration(
+        body.ceremonyId,
+        body.response,
+        browserRequests.get(request)!.assertAllowed,
+      );
+      acceptAdultSession(request, auth, result.token);
       reply
         .header('Cache-Control', 'no-store')
         .header('Set-Cookie', auth.sessionCookie(result.token));
@@ -1285,9 +1374,21 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             body.requestId,
           ),
         );
+        browserAccess.pair(request.headers);
+        const previousAdult = optionalCompanionCredential(request.headers);
+        if (previousAdult !== null) options.companionAuth?.signOut(previousAdult);
         reply
           .header('Cache-Control', 'no-store')
-          .header('Set-Cookie', deviceSessionCookie(body.pairingSecret, isPrivateMode(options)));
+          .header(
+            'Set-Cookie',
+            optionalCompanionCredential(request.headers) !== null &&
+              options.companionAuth !== undefined
+              ? [
+                  deviceSessionCookie(body.pairingSecret, isPrivateMode(options)),
+                  options.companionAuth.clearSessionCookie(),
+                ]
+              : deviceSessionCookie(body.pairingSecret, isPrivateMode(options)),
+          );
         return session;
       });
     },
@@ -2692,6 +2793,9 @@ async function authorizePrivateHouseholdRead(
   }
 
   const companionCredential = optionalCompanionCredential(headers);
+  if (isSharedScreenRequest(headers)) {
+    throw new RepositoryError('UNAUTHENTICATED', 'Connect this shared screen from an adult phone.');
+  }
   if (companionCredential === null || options.companionAuth === undefined) {
     throw new RepositoryError('UNAUTHENTICATED', 'Sign in or pair this television to continue.');
   }
@@ -2733,6 +2837,7 @@ function actorId(
   headers: Record<string, string | string[] | undefined>,
   options: BuildServerOptions,
 ): string {
+  assertControllerRequest(headers);
   if (isPrivateMode(options)) {
     return companionActor(headers, options).id;
   }
@@ -2745,12 +2850,13 @@ function commandActor(
   options: BuildServerOptions,
   adminRepository: AdminRepository,
 ): CommandActor {
-  const credential = optionalDeviceCredential(headers);
-  if (credential !== null) return adminRepository.authenticateDeviceCredential(credential);
+  if (hasDeviceCredentialContext(headers)) {
+    return adminRepository.authenticateDeviceCredential(deviceCredential(headers));
+  }
   if (isPrivateMode(options)) {
     return companionActor(headers, options);
   }
-  return demoCommandActor(headers);
+  return isSharedScreenRequest(headers) ? DEMO_TV_ACTOR : demoCommandActor(headers);
 }
 
 function demoCommandActor(headers: Record<string, string | string[] | undefined>): CommandActor {
@@ -2800,8 +2906,8 @@ function optionalDeviceCredential(
   headers: Record<string, string | string[] | undefined>,
 ): string | null {
   const authorization = headers.authorization;
-  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
-    const credential = authorization.slice('Bearer '.length).trim();
+  if (typeof authorization === 'string' && /^\s*Bearer(?:\s|$)/i.test(authorization)) {
+    const credential = authorization.trimStart().slice('Bearer'.length).trim();
     return credential.length > 0 ? credential : null;
   }
   const cookie = headers.cookie;
@@ -2814,6 +2920,34 @@ function optionalDeviceCredential(
     }
   }
   return null;
+}
+
+function isSharedScreenRequest(headers: Record<string, string | string[] | undefined>): boolean {
+  const userAgent = headers['user-agent'];
+  return (
+    hasDeviceCredentialContext(headers) ||
+    (typeof userAgent === 'string' && isTelevisionUserAgent(userAgent))
+  );
+}
+
+function hasDeviceCredentialContext(
+  headers: Record<string, string | string[] | undefined>,
+): boolean {
+  const authorization = headers.authorization;
+  const cookie = headers.cookie;
+  // Presence matters even for expired, revoked, empty or malformed display proofs.
+  // A broken display credential must never fall back to a companion cookie.
+  return (
+    (typeof authorization === 'string' && /^\s*Bearer(?:\s|$)/i.test(authorization)) ||
+    (typeof cookie === 'string' &&
+      cookie.split(';').some((part) => part.trim().split('=')[0] === HEARTH_DEVICE_COOKIE))
+  );
+}
+
+function assertControllerRequest(headers: Record<string, string | string[] | undefined>): void {
+  if (isSharedScreenRequest(headers)) {
+    throw new RepositoryError('FORBIDDEN', 'Use an adult phone or computer to manage Hearth.');
+  }
 }
 
 function companionAuth(options: BuildServerOptions): CompanionAuthRepository {
@@ -2852,6 +2986,7 @@ function assertRecentUpdateConfirmation(
 }
 
 function companionCredential(headers: Record<string, string | string[] | undefined>): string {
+  assertControllerRequest(headers);
   const token = optionalCompanionCredential(headers);
   if (token === null) throw new RepositoryError('UNAUTHENTICATED', 'Sign in to continue.');
   return token;

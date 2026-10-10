@@ -7,6 +7,7 @@ import { pairingApi as hearthApi } from '../api/pairing';
 import { Icon } from '../components/Icon';
 import { ScreenConnectionSteps } from '../components/ScreenConnectionSteps';
 import { connectionNavigation } from './connectionNavigation';
+import { notifyScreenAccessChange } from './screenAccessChange';
 
 export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Promise<void> }) {
   const pairingSecret = useRef<string | null>(null);
@@ -59,8 +60,14 @@ export function BrowserTelevisionPairing({ onComplete }: { onComplete: () => Pro
         session.exchangeRequestId,
         secret,
       );
-      if (session.attempt !== generation.current) throw new Error('This connection was cancelled.');
+      // Successful exchange has changed the HttpOnly identity even if the dialog
+      // was cancelled/unmounted while awaiting it. Always refresh that identity.
       pairingSecret.current = null;
+      if (!completed.current) {
+        completed.current = true;
+        notifyScreenAccessChange();
+        await onComplete();
+      }
       return { pairing, device };
     },
     enabled: active && session !== undefined,

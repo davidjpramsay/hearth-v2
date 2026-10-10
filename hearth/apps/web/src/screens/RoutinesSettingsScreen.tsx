@@ -32,6 +32,7 @@ export function RoutinesSettingsScreen() {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [archiveConfirmation, setArchiveConfirmation] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [createAssigneeError, setCreateAssigneeError] = useState(false);
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.choreTemplates }),
@@ -131,9 +132,16 @@ export function RoutinesSettingsScreen() {
 
   function addRoutine(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const fields = templateFields(new FormData(event.currentTarget), runtime.localDate);
+    if (fields.assigneeIds.length === 0) {
+      setCreateAssigneeError(true);
+      focusRoutineAssignees(event.currentTarget);
+      return;
+    }
+    setCreateAssigneeError(false);
     create.mutate({
       requestId: createRequestId('routine_create'),
-      ...templateFields(new FormData(event.currentTarget), runtime.localDate),
+      ...fields,
     });
   }
 
@@ -208,7 +216,10 @@ export function RoutinesSettingsScreen() {
         </span>
         <button
           className="admin-secondary"
-          onClick={() => setShowCreate((visible) => !visible)}
+          onClick={() => {
+            setCreateAssigneeError(false);
+            setShowCreate((visible) => !visible);
+          }}
           type="button"
         >
           {showCreate ? 'Cancel' : 'New chore'}
@@ -217,7 +228,12 @@ export function RoutinesSettingsScreen() {
       {showCreate ? (
         <form className="admin-form routine-add-form" onSubmit={addRoutine}>
           <h2>Add a chore</h2>
-          <RoutineFields members={activeMembers} today={runtime.localDate} />
+          <RoutineFields
+            assigneeError={createAssigneeError}
+            members={activeMembers}
+            onAssigneesChange={() => setCreateAssigneeError(false)}
+            today={runtime.localDate}
+          />
           <button className="admin-submit" disabled={create.isPending} type="submit">
             {create.isPending ? 'Adding…' : 'Add chore'}
           </button>
@@ -325,9 +341,17 @@ function RoutineEditor({
   canMoveDown: boolean;
   canMoveUp: boolean;
 }) {
+  const [assigneeError, setAssigneeError] = useState(false);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSave(templateFields(new FormData(event.currentTarget), today, template.repeatDays));
+    const fields = templateFields(new FormData(event.currentTarget), today, template.repeatDays);
+    if (fields.assigneeIds.length === 0) {
+      setAssigneeError(true);
+      focusRoutineAssignees(event.currentTarget);
+      return;
+    }
+    setAssigneeError(false);
+    onSave(fields);
   }
 
   return (
@@ -365,7 +389,13 @@ function RoutineEditor({
           <Icon name="chevron-right" />
         </summary>
         <form onSubmit={submit}>
-          <RoutineFields members={members} template={template} today={today} />
+          <RoutineFields
+            assigneeError={assigneeError}
+            members={members}
+            onAssigneesChange={() => setAssigneeError(false)}
+            template={template}
+            today={today}
+          />
           <div className="routine-editor__actions">
             <button className="admin-secondary routine-save" disabled={pending} type="submit">
               {pending ? 'Saving…' : 'Save future schedule'}
@@ -391,11 +421,15 @@ function RoutineEditor({
 }
 
 function RoutineFields({
+  assigneeError,
   members,
+  onAssigneesChange,
   template,
   today,
 }: {
+  assigneeError: boolean;
   members: HearthMember[];
+  onAssigneesChange: () => void;
   template?: ChoreTemplate;
   today: string;
 }) {
@@ -403,11 +437,11 @@ function RoutineFields({
   const [repeat, setRepeat] = useState<ChoreTemplateInput['repeat']>(
     template?.repeat ?? 'weekdays',
   );
-  const defaultAssigneeId = members.find((member) => member.role === 'child')?.id ?? members[0]?.id;
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(
-    template?.assignees.map((member) => member.id) ??
-      (defaultAssigneeId === undefined ? [] : [defaultAssigneeId]),
+    () => template?.assignees.map((member) => member.id) ?? [],
   );
+  const assigneeHelpId = `routine-assignees-help-${template?.id ?? 'new'}`;
+  const assigneeErrorId = `routine-assignees-error-${template?.id ?? 'new'}`;
   return (
     <div className="routine-fields">
       <label>
@@ -431,26 +465,30 @@ function RoutineFields({
       </label>
       <fieldset className="routine-assignees">
         <legend>People</legend>
-        <p id={`routine-assignees-help-${template?.id ?? 'new'}`}>
-          Each selected person gets their own chore to complete.
-        </p>
+        <p id={assigneeHelpId}>Each selected person gets their own chore to complete.</p>
+        {assigneeError ? (
+          <p className="routine-assignees__error" id={assigneeErrorId} role="alert">
+            Choose at least one person.
+          </p>
+        ) : null}
         <div className="routine-assignees__options">
           {members.map((member) => {
             const checked = selectedAssigneeIds.includes(member.id);
             return (
               <label key={member.id}>
                 <input
-                  aria-describedby={`routine-assignees-help-${template?.id ?? 'new'}`}
+                  aria-describedby={`${assigneeHelpId}${assigneeError ? ` ${assigneeErrorId}` : ''}`}
+                  aria-invalid={assigneeError || undefined}
                   checked={checked}
                   name="assigneeIds"
                   onChange={(event) => {
                     const checkedNow = event.currentTarget.checked;
-                    setSelectedAssigneeIds((current) => {
-                      if (checkedNow) return [...current, member.id];
-                      return current.length === 1
-                        ? current
-                        : current.filter((memberId) => memberId !== member.id);
-                    });
+                    setSelectedAssigneeIds((current) =>
+                      checkedNow
+                        ? [...current, member.id]
+                        : current.filter((memberId) => memberId !== member.id),
+                    );
+                    onAssigneesChange();
                   }}
                   type="checkbox"
                   value={member.id}
@@ -532,6 +570,11 @@ function RoutineFields({
       </fieldset>
     </div>
   );
+}
+
+function focusRoutineAssignees(form: HTMLFormElement) {
+  form.querySelector('.routine-assignees')?.scrollIntoView({ block: 'center' });
+  form.querySelector<HTMLInputElement>('input[name="assigneeIds"]')?.focus({ preventScroll: true });
 }
 
 function templateFields(

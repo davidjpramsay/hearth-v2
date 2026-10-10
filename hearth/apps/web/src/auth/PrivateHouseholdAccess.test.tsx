@@ -23,6 +23,7 @@ vi.mock('../api/pairing', () => ({
 }));
 
 beforeEach(() => {
+  vi.stubGlobal('localStorage', { setItem: vi.fn(), removeItem: vi.fn() });
   vi.mocked(passkeysAvailable).mockReturnValue(false);
   // jsdom does not implement native dialog lifecycle; real modal/focus behavior is browser-tested.
   HTMLDialogElement.prototype.showModal = function () {
@@ -34,6 +35,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.resetAllMocks();
 });
 
@@ -132,6 +134,42 @@ describe('PrivateHouseholdAccess', () => {
       finish({ ...pairingFixture(), status: 'approved', approvedDeviceId: 'device_fixture' }),
     );
     expect(hearthApi.exchangeBrowserTelevisionCredential).not.toHaveBeenCalled();
+  });
+
+  it('refreshes identity when a successful exchange arrives after cancellation', async () => {
+    vi.mocked(hearthApi.createBrowserTelevisionSession).mockResolvedValue({
+      pairing: pairingFixture(),
+    });
+    vi.mocked(hearthApi.getPairing).mockResolvedValue({
+      ...pairingFixture(),
+      status: 'approved',
+      approvedDeviceId: 'device_fixture',
+    });
+    let finish = (
+      _value: Awaited<ReturnType<typeof hearthApi.exchangeBrowserTelevisionCredential>>,
+    ) => {};
+    vi.mocked(hearthApi.exchangeBrowserTelevisionCredential).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const onComplete = vi.fn(async () => {});
+    renderAccess(signedOut, onComplete);
+    fireEvent.click(screen.getByRole('button', { name: 'Connect shared screen' }));
+    await waitFor(() =>
+      expect(hearthApi.exchangeBrowserTelevisionCredential).toHaveBeenCalledOnce(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel connection' }));
+    await act(async () =>
+      finish({
+        deviceId: 'device_fixture',
+        householdId: 'household_fixture',
+        deviceName: 'Wall tablet',
+        scopes: ['household.read'],
+        pairedAt: '2026-08-16T14:30:00.000Z',
+      }),
+    );
+    await waitFor(() => expect(onComplete).toHaveBeenCalledOnce());
   });
 
   it('removes expired codes and offers a fresh connection attempt', async () => {

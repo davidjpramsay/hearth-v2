@@ -10,18 +10,24 @@ import { BrowserTelevisionPairing } from './BrowserTelevisionPairing';
 import { authenticateWithPasskey, passkeysAvailable, recoverWithCode } from './passkeys';
 import { connectionNavigation } from './connectionNavigation';
 import { Icon } from '../components/Icon';
+import { isTelevisionBrowser } from '../runtime/sharedScreen';
 
 export function PrivateHouseholdAccess({
   auth,
   onComplete,
+  onScreenComplete = onComplete,
+  sharedScreen: screenContext = false,
 }: {
   auth: PasskeyAuthStatus;
   onComplete: () => Promise<void>;
+  onScreenComplete?: () => Promise<void>;
+  sharedScreen?: boolean;
 }) {
   const queryClient = useQueryClient();
   const signIn = useMutation({ mutationFn: authenticateWithPasskey, onSuccess: onComplete });
   const signOut = useMutation({ mutationFn: () => signOutAndClear(queryClient) });
   const [showRecovery, setShowRecovery] = useState(false);
+  const sharedScreen = screenContext || auth.sharedScreen === true || isTelevisionBrowser();
 
   if (!auth.configured) {
     return (
@@ -29,6 +35,17 @@ export function PrivateHouseholdAccess({
         <p>
           Finish Hearth’s stable private HTTPS address and passkey settings on the server first.
         </p>
+      </AccessFrame>
+    );
+  }
+
+  if (sharedScreen) {
+    return (
+      <AccessFrame title="Connect this shared screen">
+        <p>
+          An adult connects this screen from their phone. Household settings stay on adult phones.
+        </p>
+        <BrowserTelevisionPairing onComplete={onScreenComplete} />
       </AccessFrame>
     );
   }
@@ -94,7 +111,7 @@ export function PrivateHouseholdAccess({
             {signIn.isPending ? 'Waiting for passkey…' : 'Sign in with a passkey'}
           </button>
         </section>
-        <BrowserTelevisionPairing onComplete={onComplete} />
+        <BrowserTelevisionPairing onComplete={onScreenComplete} />
       </div>
       <details className="connection-sign-in-help">
         <summary>Trouble signing in?</summary>

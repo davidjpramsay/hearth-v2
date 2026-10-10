@@ -1,10 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 
 import { configureHearthClient } from '../api/core';
 import { runtimeApi as hearthApi } from '../api/runtime';
 import { authStatusQueryKey } from '../auth/queryKeys';
 import { RuntimeContextValue } from './context';
+import { clearIdentityAndReload } from '../auth/signOut';
+import { subscribeScreenAccessChange } from '../auth/screenAccessChange';
 
 const FirstUseSetup = lazy(async () => ({
   default: (await import('../auth/FirstUseSetup')).FirstUseSetup,
@@ -22,13 +24,28 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
     gcTime: Number.POSITIVE_INFINITY,
     retry: false,
     networkMode: 'online',
+    refetchOnWindowFocus: 'always',
+    refetchOnReconnect: 'always',
   });
   const auth = useQuery({
     queryKey: authStatusQueryKey,
     queryFn: hearthApi.getAuthStatus,
-    enabled: runtime.data?.mode === 'private' && runtime.data.household === null,
+    enabled:
+      runtime.data?.mode === 'private' &&
+      (runtime.data.household === null || runtime.data.sharedScreen !== true),
     staleTime: 15_000,
+    refetchOnWindowFocus: 'always',
+    refetchOnReconnect: 'always',
   });
+
+  useEffect(() => {
+    let switching = false;
+    return subscribeScreenAccessChange(() => {
+      if (switching) return;
+      switching = true;
+      void clearIdentityAndReload(queryClient, '/today');
+    });
+  }, [queryClient]);
 
   if (runtime.isPending) {
     return (
@@ -90,7 +107,12 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
           {runtime.data.requiresSetup ? (
             <FirstUseSetup runtime={runtime.data} auth={auth.data} onComplete={refreshAccess} />
           ) : (
-            <PrivateHouseholdAccess auth={auth.data} onComplete={refreshAccess} />
+            <PrivateHouseholdAccess
+              auth={auth.data}
+              sharedScreen={runtime.data.sharedScreen === true}
+              onComplete={refreshAccess}
+              onScreenComplete={() => clearIdentityAndReload(queryClient, '/today')}
+            />
           )}
         </Suspense>
       );
@@ -107,10 +129,12 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
     );
   }
 
-  configureHearthClient(runtime.data);
-  return (
-    <RuntimeContextValue.Provider value={runtime.data}>{children}</RuntimeContextValue.Provider>
-  );
+  const context = {
+    ...runtime.data,
+    sharedScreen: runtime.data.sharedScreen === true || auth.data?.sharedScreen === true,
+  };
+  configureHearthClient(context);
+  return <RuntimeContextValue.Provider value={context}>{children}</RuntimeContextValue.Provider>;
 }
 
 function SecureSetupLoading() {

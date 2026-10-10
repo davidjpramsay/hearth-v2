@@ -11,6 +11,7 @@ import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { useMealPlanQuery } from '../hooks/useMealQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
+import { useSharedScreen } from '../runtime/sharedScreen';
 
 export function MealsScreen({
   scenario,
@@ -20,6 +21,7 @@ export function MealsScreen({
   preparing: boolean;
 }) {
   const { weekStart, localDate } = useHearthRuntime();
+  const sharedScreen = useSharedScreen();
   const [browsedWeek, setBrowsedWeek] = useState<string | null>(null);
   const startDate = browsedWeek ?? weekStart;
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -39,9 +41,11 @@ export function MealsScreen({
     <div className="screen meals-screen">
       <ScreenHeader
         actions={
-          <Link className="meals-manage-link" to="/admin/meals">
-            Manage meals
-          </Link>
+          sharedScreen ? undefined : (
+            <Link className="meals-manage-link" to="/admin/meals">
+              Manage meals
+            </Link>
+          )
         }
         title="Meals"
         meta={plan.data.displayRange}
@@ -65,7 +69,7 @@ export function MealsScreen({
               aria-current={day.localDate === selectedDay?.localDate ? 'date' : undefined}
               className={`meal-day focusable${day.localDate === selectedDay?.localDate ? ' meal-day--selected' : ''}`}
               data-focus-entry={day.isToday ? 'true' : undefined}
-              data-focus-down="meal-saved"
+              data-focus-down={sharedScreen ? 'meal-earlier' : 'meal-saved'}
               data-focus-id={`meal-day-${day.localDate}`}
               data-focus-left={
                 index === 0
@@ -83,34 +87,36 @@ export function MealsScreen({
           );
         })}
       </div>
-      <div className="meal-actions">
-        <Link
-          className="meal-action focusable"
-          data-focus-id="meal-saved"
-          data-focus-left="nav-meals"
-          data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
-          to="/admin/meals#saved-meals"
-        >
-          <Icon name="star" />
-          <span>
-            <strong>Saved family meals</strong>
-            <small>{favouriteCount} favourites</small>
-          </span>
-          <Icon name="chevron-right" />
-        </Link>
-        <Link
-          className="meal-action focusable"
-          data-focus-id="meal-plan-phone"
-          data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
-          to="/admin/meals"
-        >
-          <Icon name="calendar" />
-          <span>
-            <strong>Plan meals</strong>
-          </span>
-          <Icon name="chevron-right" />
-        </Link>
-      </div>
+      {sharedScreen ? null : (
+        <div className="meal-actions">
+          <Link
+            className="meal-action focusable"
+            data-focus-id="meal-saved"
+            data-focus-left="nav-meals"
+            data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
+            to="/admin/meals#saved-meals"
+          >
+            <Icon name="star" />
+            <span>
+              <strong>Saved family meals</strong>
+              <small>{favouriteCount} favourites</small>
+            </span>
+            <Icon name="chevron-right" />
+          </Link>
+          <Link
+            className="meal-action focusable"
+            data-focus-id="meal-plan-phone"
+            data-focus-up={`meal-day-${selectedDay?.localDate ?? weekStart}`}
+            to="/admin/meals"
+          >
+            <Icon name="calendar" />
+            <span>
+              <strong>Plan meals</strong>
+            </span>
+            <Icon name="chevron-right" />
+          </Link>
+        </div>
+      )}
       <div className="meal-week-controls">
         <button
           className="focusable"

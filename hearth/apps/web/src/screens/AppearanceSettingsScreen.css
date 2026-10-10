@@ -1,4 +1,26 @@
 /* Appearance — per-display theme and evening-comfort controls */
+.appearance-screen .focusable {
+  /* Keep text and its background in the same theme during preference changes. */
+  transition-property: transform, box-shadow, border-color;
+}
+.appearance-back {
+  min-height: 64px;
+  padding: 0 20px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 24px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.appearance-back svg {
+  width: 28px;
+  height: 28px;
+}
 .appearance-settings {
   padding: 20px;
   border: 1px solid var(--hairline);
@@ -144,7 +166,90 @@
   transform: translateX(21px);
 }
 
+@media (min-width: 1200px) {
+  .appearance-settings {
+    padding: 24px;
+  }
+  .appearance-section-heading {
+    margin-bottom: 20px;
+  }
+  .appearance-section-heading h2 {
+    font-size: 32px;
+  }
+  .appearance-section-heading p,
+  .appearance-option__copy small,
+  .appearance-help {
+    font-size: 24px;
+  }
+  .appearance-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .appearance-option {
+    min-height: 196px;
+    padding: 16px 20px;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    align-content: start;
+    gap: 14px;
+  }
+  .appearance-option > .appearance-option__copy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .appearance-option__icon {
+    width: 64px;
+    height: 64px;
+  }
+  .appearance-option__icon svg {
+    width: 34px;
+    height: 34px;
+  }
+  .appearance-option__copy strong {
+    font-size: 32px;
+  }
+  .appearance-option__check {
+    width: 40px;
+    height: 40px;
+  }
+  .appearance-option__check svg {
+    width: 26px;
+    height: 26px;
+  }
+  .appearance-dim-control {
+    min-height: 108px;
+    grid-template-columns: 64px minmax(0, 1fr) 68px;
+    gap: 20px;
+  }
+  .appearance-switch {
+    width: 66px;
+    height: 38px;
+    padding: 4px;
+  }
+  .appearance-switch span {
+    width: 28px;
+    height: 28px;
+  }
+  .appearance-dim-control[aria-checked='true'] .appearance-switch span {
+    transform: translateX(28px);
+  }
+}
+
 @media (max-width: 1199px) {
+  .appearance-back {
+    width: 48px;
+    min-height: 48px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .appearance-back span {
+    display: none;
+  }
+  .appearance-back svg {
+    width: 24px;
+    height: 24px;
+  }
   .appearance-settings {
     padding: 16px;
     border-radius: 18px;

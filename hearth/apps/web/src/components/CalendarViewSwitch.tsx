@@ -3,8 +3,10 @@ import { Link, NavLink } from 'react-router-dom';
 import './CalendarSurface.css';
 
 import { Icon } from './Icon';
+import { useSharedScreen } from '../runtime/sharedScreen';
 
 export function CalendarViewSwitch() {
+  const sharedScreen = useSharedScreen();
   return (
     <div className="calendar-toolbar">
       <nav aria-label="Calendar view" className="calendar-view-switch">
@@ -32,24 +34,26 @@ export function CalendarViewSwitch() {
           className={({ isActive }) => (isActive ? 'calendar-view-switch__active' : undefined)}
           data-focus-id="calendar-view-month"
           data-focus-left="calendar-view-week"
-          data-focus-right="calendar-manage"
+          data-focus-right={sharedScreen ? 'calendar-view-month' : 'calendar-manage'}
           data-focus-down="screen-entry"
           to="/calendar/month"
         >
           Month
         </NavLink>
       </nav>
-      <Link
-        className="calendar-manage-link focusable"
-        data-focus-id="calendar-manage"
-        data-focus-left="calendar-view-month"
-        data-focus-right="calendar-manage"
-        data-focus-down="screen-entry"
-        to="/admin/connections/calendar"
-      >
-        <Icon name="calendar" />
-        <span>Sources</span>
-      </Link>
+      {sharedScreen ? null : (
+        <Link
+          className="calendar-manage-link focusable"
+          data-focus-id="calendar-manage"
+          data-focus-left="calendar-view-month"
+          data-focus-right="calendar-manage"
+          data-focus-down="screen-entry"
+          to="/admin/connections/calendar"
+        >
+          <Icon name="calendar" />
+          <span>Sources</span>
+        </Link>
+      )}
     </div>
   );
 }

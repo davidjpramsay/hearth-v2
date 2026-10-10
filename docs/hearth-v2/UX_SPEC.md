@@ -43,7 +43,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
 - Phone dates and event titles wrap within the available width. Keep automatic mobile text
   inflation at the authored responsive size while retaining user zoom. The phone navigation and
   page's trailing space share the full home-indicator safe-area allowance, including landscape
-  side insets. Anchor the bar to the dynamic visible viewport as browser controls expand/collapse;
+  side insets. Use a single fixed bottom anchor, not a competing viewport-height top calculation,
+  so the bar stays at the browser's bottom edge as controls expand/collapse and the page scrolls;
   hide it only during focused editing with a keyboard-sized visual-viewport reduction, then restore
   it when that reduction ends. Native editing and pinch zoom remain available.
 - The television rail starts with the time and date in place of the Hearth logo/title; no duplicate clock appears in its footer.
@@ -171,8 +172,11 @@ lines or other cards through them. Agenda rows likewise use solid surfaces.
   a new observation. Left/Right inspects another hour with a distinct hollow marker; Up/Down changes
   mode. **Now** or remote Select returns to following time without removing the live dot. A new day's forecast resets
   old-day inspection; an old cached day never receives a misleading current-time dot.
-- Temperature plots actual and apparent temperature. Rain plots probability and reports expected
-  millimetres for the selected hour. Wind plots sustained speed and gusts with direction arrows.
+- Temperature plots temperature and apparent temperature. Rain uses two aligned lanes in the one
+  active daily graph: a purple probability line on a fixed 0–100% scale, and blue expected-rain
+  bars on a separately labelled, zero-based millimetres-per-hour scale. Colour is redundant with
+  line/bar shape, explicit lane labels and units. The selected probability and expected amount
+  remain visible on phones. Wind plots sustained speed and gusts from zero with direction arrows.
 - The next seven days use one shared temperature domain. Each row carries day, condition, rain
   probability, daily maximum wind speed with prevailing direction, low, range bar and high; Today
   also carries a current-temperature marker. Wind wraps to a second line on phones. Missing wind
@@ -181,9 +185,16 @@ lines or other cards through them. Agenda rows likewise use solid surfaces.
   Recompute geometry from the actual plot width and height rather than stretching a desktop SVG;
   labels, icons and round markers retain their proportions. Use fewer ticks/icons on a narrow phone,
   with explicit previous/next-hour controls. Missing samples leave gaps, never fabricated data.
+- A tap inspects the nearest available hour without capturing a pointer or taking over page scroll;
+  hour buttons and D-pad remain equivalent paths. **Now** restores following. Geometry is measured
+  before painting a mode-height change and pointer positions account for the 4K shell's CSS zoom.
+  Current low/high labels and the visible Seven days heading clarify the reading order; wide
+  weekly rows label rain chance, maximum wind and the shared low–high temperature comparison.
 - A stale or offline cached forecast remains visible with one quiet status cue. Provider
   attribution stays in the adult Weather location settings so household-facing Weather and Today
   remain clean.
+  Saved/offline status occupies the normal header freshness line, with the saved forecast age
+  beside the hour controls; it does not add a banner that pushes days off a compact television.
 
 The Calendar view switch is available on both television and phone in Agenda, Week, Month order.
 The Calendar navigation destination and `/calendar` open Agenda by default. Agenda, Week and
@@ -210,6 +221,11 @@ the phone More hub.
 - The phone schedule editor uses an explicit multi-person picker. Selecting several people creates
   one separately completable occurrence for each selected person; summaries name the full assignee
   set rather than implying that one shared completion satisfies everyone.
+  New chores start with nobody selected; editing starts with the saved assignee set. Every People
+  checkbox can be freely selected or deselected, including the last one. Saving with nobody selected
+  shows **Choose at least one person.** beside People, moves focus to the picker and sends no command.
+  Choosing a person clears that error without discarding the rest of the draft. Focus alone never
+  selects a person; there is no first-child or adult fallback assignment.
 - The phone schedule editor lets an adult move active schedules earlier or later with substantial,
   labelled controls. That explicit top-to-bottom order is the television order; drag, touch or
   hidden heuristics are never required. New schedules append to the end.
@@ -302,9 +318,10 @@ the phone More hub.
   filenames to the server. Each file is limited to 25 MB and uploads run sequentially so a partial
   failure does not discard successful additions.
 - Phone navigation names the two photo intents explicitly: **Photos** opens the gallery
-  and ambient display, while a prominent **Manage photos** row under Manage Hearth opens upload,
+  and ambient display, while a direct **Manage photos** row under Manage Hearth opens upload,
   curation and removal. Adults should not have to enter the display gallery to discover the upload
-  surface.
+  surface. Its row, text and icon use the same colours as peer settings in light and dark themes;
+  photo management has no special purple emphasis.
 - The same surface shows orientation-safe thumbnails, capture date when available and clear
   Favourite, Hide and Restore actions. Selection mode supports bulk hide, restore and managed-upload
   deletion without turning ordinary browsing into a destructive surface. Cards identify whether
@@ -349,6 +366,13 @@ the phone More hub.
   it. Keep explanations only when they affect a decision, explain state, or protect privacy,
   recovery or an irreversible action.
 - The TV may show connection status and pairing QR/code but should not expose secrets.
+- Paired displays and recognized television browsers expose no administration links, chrome,
+  sign-in prompts or recovery controls. This covers Calendar Sources, empty-calendar guidance,
+  Lists/Meals management, unconfigured Weather, More/System and the private pairing shortcut.
+  Empty calendar/weather/photo states ask an adult to finish setup from their phone. Direct,
+  restored, encoded, case-varied and history navigation to administration returns to Today before
+  admin chrome or child screens mount. `/admin/appearance` remains a compatible alias to the
+  harmless device-local Appearance screen. Phone/desktop controller navigation remains available.
 - Signed-out browsers clearly separate **Phone or computer** (adult passkey sign-in) from
   **Shared screen** (TV or wall tablet approved from an adult phone). Neither path starts
   automatically. **Connect shared screen** shows three short steps and a six-character code;
@@ -436,6 +460,11 @@ the phone More hub.
 - Provide Appearance as a device-local control in companion More and as a small remote-reachable
   television rail utility. It must not require administrator authentication because it changes only
   that browser or paired display and cannot mutate household data.
+- Appearance uses the normal responsive family-screen shell, not a capped phone/admin column.
+  Wide displays keep the television rail and one household clock, with large side-by-side theme
+  choices and readable evening-comfort controls; phone widths keep stacked choices and bottom
+  navigation. Width determines presentation only, never adult or screen authority. Preserve
+  D-pad movement, Back/focus restoration and the compatible `/admin/appearance` redirect.
 - Keep evening dimming independent of theme and Home Assistant's Evening scene. It reduces Hearth's
   overall rendered glare, including photos and ambient mode, but does not claim to change panel
   hardware brightness.
@@ -509,6 +538,9 @@ Do not substitute raw JSON, spinners without context or toast-only errors.
 - Colour is never the only person/calendar/status signal.
 - People setup offers a curated twelve-colour Hearth palette. Every swatch has a visible name,
   native radio semantics, and a checked/focus treatment so colour is never the only selection cue.
+  Each person's palette, including Add someone, starts collapsed behind a compact Colour row
+  showing the current named swatch. Open it only to change colour; collapsing retains the selected
+  form value. Native keyboard disclosure/radio interaction and form reset remain supported.
 - Each existing person has a clearly labelled profile-photo control. After choosing any
   browser-decodable portrait or landscape image, an accessible modal previews the square crop and
   lets the companion user drag to position and pinch or scroll to zoom. Do not expose three

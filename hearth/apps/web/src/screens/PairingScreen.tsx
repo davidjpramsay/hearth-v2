@@ -1,30 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 
 import { createRequestId } from '../api/core';
 import { pairingApi as hearthApi } from '../api/pairing';
 import { Icon } from '../components/Icon';
 import { ScreenConnectionSteps } from '../components/ScreenConnectionSteps';
 import { useHearthRuntime } from '../runtime/context';
+import { useSharedScreen } from '../runtime/sharedScreen';
 
 export function PairingScreen() {
   const runtime = useHearthRuntime();
+  const sharedScreen = useSharedScreen();
   const [requestId, setRequestId] = useState(() => createRequestId('tv_pair'));
   const request = useQuery({
     queryKey: ['pairing-create', requestId],
     queryFn: () => hearthApi.createPairing('Living room TV', requestId),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
-    enabled: runtime.mode === 'demo',
+    enabled: runtime.mode === 'demo' && !sharedScreen,
   });
   const status = useQuery({
     queryKey: ['pairing-status', request.data?.id],
     queryFn: () => hearthApi.getPairing(request.data?.id ?? 'pairing_missing'),
-    enabled: runtime.mode === 'demo' && request.data !== undefined,
+    enabled: runtime.mode === 'demo' && !sharedScreen && request.data !== undefined,
     refetchInterval: (query) => (query.state.data?.status === 'pending' ? 1_000 : false),
   });
   const pairing = status.data ?? request.data;
+  if (sharedScreen) return <Navigate replace to="/today" />;
 
   if (runtime.mode !== 'demo') {
     return (

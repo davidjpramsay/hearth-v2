@@ -7,9 +7,130 @@ import { captureEvidence } from './visualEvidence';
 
 const screenshotDirectory = '/tmp/hearth-appearance-evidence';
 
+const appearanceViewports = [
+  { name: 'compact TV', width: 1366, height: 768, television: true },
+  { name: '1080p TV', width: 1920, height: 1080, television: true },
+  { name: '4K TV', width: 3840, height: 2160, television: true },
+  { name: 'narrow phone', width: 320, height: 700, television: false },
+  { name: 'phone', width: 390, height: 844, television: false },
+  { name: 'landscape phone', width: 844, height: 390, television: false },
+  { name: 'tablet', width: 820, height: 1180, television: false },
+];
+
 test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
 });
+
+for (const viewport of appearanceViewports) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Appearance fills ${viewport.name} in ${theme} without phone chrome on TV`, async ({
+      page,
+    }, testInfo) => {
+      const issues: string[] = [];
+      page.on('pageerror', (error) => issues.push(error.message));
+      page.on('console', (message) => {
+        if (['warning', 'error'].includes(message.type())) issues.push(message.text());
+      });
+      await page.emulateMedia({ colorScheme: theme });
+      await page.setViewportSize(viewport);
+      await page.goto('/appearance');
+      await expect(page).toHaveURL(/\/appearance$/);
+      await expect(page).toHaveTitle('Hearth');
+      await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible();
+      await expect(page.getByRole('radio')).toHaveCount(3);
+      await expect(page.getByRole('switch', { name: /Evening dimming/ })).toBeVisible();
+      await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+      await expect(page.locator('.household-date-time:visible')).toHaveCount(1);
+      await expect(page.locator('.tv-rail')).toBeVisible({ visible: viewport.television });
+      await expect(page.locator('.phone-tabs')).toBeVisible({ visible: !viewport.television });
+
+      const geometry = await page.evaluate(() => {
+        const content = document.querySelector('#main-content')!.getBoundingClientRect();
+        const cards = [...document.querySelectorAll('.appearance-option')].map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            x: rect.x,
+            y: (element as HTMLElement).offsetTop,
+            width: rect.width,
+            height: rect.height,
+          };
+        });
+        return {
+          content: {
+            x: content.x,
+            width: content.width,
+            height: content.height,
+            right: content.right,
+          },
+          cards,
+          titleSize: parseFloat(
+            getComputedStyle(document.querySelector('.appearance-option__copy strong')!).fontSize,
+          ),
+          overflow: document.documentElement.scrollWidth > innerWidth,
+        };
+      });
+      expect(geometry.overflow).toBe(false);
+      expect(geometry.content.right).toBeLessThanOrEqual(viewport.width);
+      if (viewport.television) {
+        expect(geometry.content.width).toBeGreaterThan(viewport.width * 0.75);
+        expect(new Set(geometry.cards.map((card) => Math.round(card.y))).size).toBe(1);
+        expect(geometry.titleSize).toBeGreaterThanOrEqual(32);
+        expect(geometry.cards[1]!.x).toBeGreaterThan(
+          geometry.cards[0]!.x + geometry.cards[0]!.width,
+        );
+        expect(
+          await page
+            .locator('#main-content')
+            .evaluate((element) => element.scrollHeight <= element.clientHeight),
+        ).toBe(true);
+      } else {
+        expect(geometry.cards[1]!.y).toBeGreaterThan(geometry.cards[0]!.y);
+        expect(geometry.cards[2]!.y).toBeGreaterThan(geometry.cards[1]!.y);
+        expect(geometry.content.width).toBe(viewport.width);
+      }
+
+      await page.getByRole('radio', { name: /^Dark/ }).focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+      await expect(page.getByRole('radio', { name: /^Dark/ })).toBeFocused();
+      await page.reload();
+      await expect(page.getByRole('radio', { name: /^Dark/ })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+      await page.getByRole('radio', { name: /^Automatic/ }).click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      const dimming = page.getByRole('switch', { name: /Evening dimming/ });
+      await dimming.focus();
+      await page.keyboard.press('Enter');
+      await expect(dimming).toHaveAttribute('aria-checked', 'true');
+      await expect(dimming).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(dimming).toHaveAttribute('aria-checked', 'false');
+      if (viewport.television) {
+        await page.getByRole('radio', { name: /^Light/ }).focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(page.getByRole('radio', { name: /^Dark/ })).toBeFocused();
+        await page.keyboard.press('ArrowRight');
+        await expect(page.getByRole('radio', { name: /^Automatic/ })).toBeFocused();
+        await page.keyboard.press('ArrowDown');
+        await expect(dimming).toBeFocused();
+      }
+      const axe = await new AxeBuilder({ page }).analyze();
+      expect(
+        axe.violations.filter((violation) =>
+          ['serious', 'critical'].includes(violation.impact ?? ''),
+        ),
+      ).toEqual([]);
+      if (!viewport.television) await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: testInfo.outputPath(`appearance-${theme}.png`) });
+      await page.getByRole('link', { name: 'Back to More', exact: true }).focus();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/more$/);
+      expect(issues).toEqual([]);
+    });
+  }
+}
 
 test('theme choices persist and Automatic follows the device setting', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -44,6 +165,7 @@ test('a paired display changes its local appearance without administrator access
       contentType: 'application/json',
       body: JSON.stringify({
         mode: 'private',
+        sharedScreen: true,
         generatedAt: '2026-08-20T10:15:00.000Z',
         household: {
           id: 'household_hearth_demo',

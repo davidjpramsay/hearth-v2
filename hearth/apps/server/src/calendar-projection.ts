@@ -500,7 +500,7 @@ export class CalendarProjectionService {
         : state === 'authentication-required'
           ? 'Calendar needs attention · Showing saved plans.'
           : state === 'not-configured'
-            ? 'Choose calendars in Admin · Showing saved plans.'
+            ? 'Ask an adult to connect calendars from their phone · Showing saved plans.'
             : state === 'unavailable'
               ? 'Calendar is unavailable · Showing saved plans.'
               : null;

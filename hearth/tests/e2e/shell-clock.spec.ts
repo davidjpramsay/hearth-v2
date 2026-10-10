@@ -15,6 +15,7 @@ const householdRoutes = [
   '/photos',
   '/games',
   '/more',
+  '/appearance',
 ] as const;
 
 test.beforeEach(async ({ page, request }) => {

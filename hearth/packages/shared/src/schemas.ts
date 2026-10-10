@@ -80,6 +80,7 @@ export const RuntimeHouseholdSchema = HouseholdSummarySchema.pick({
 
 export const RuntimeContextSchema = z.object({
   mode: RuntimeModeSchema,
+  sharedScreen: z.boolean().optional(),
   generatedAt: TimestampSchema,
   household: RuntimeHouseholdSchema.nullable(),
   timezone: TimezoneSchema,
@@ -92,6 +93,7 @@ export const RuntimeContextSchema = z.object({
 
 export const PasskeyAuthStatusSchema = z.object({
   mode: RuntimeModeSchema,
+  sharedScreen: z.boolean().optional(),
   configured: z.boolean(),
   secureOrigin: z.boolean(),
   requiresSetup: z.boolean(),

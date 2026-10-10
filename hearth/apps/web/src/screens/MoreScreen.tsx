@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import './MoreScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
+import { useSharedScreen } from '../runtime/sharedScreen';
 
 interface MoreLink {
   title: string;
   icon: IconName;
   path: string;
-  emphasis?: boolean;
 }
 
 const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
@@ -34,7 +34,6 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
         title: 'Manage photos',
         icon: 'image',
         path: '/admin/photos',
-        emphasis: true,
       },
       {
         title: 'Household details',
@@ -96,7 +95,13 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
 ];
 
 export function MoreScreen() {
-  const groups = baseGroups;
+  const sharedScreen = useSharedScreen();
+  const groups = baseGroups
+    .map((group) => ({
+      ...group,
+      links: group.links.filter((link) => !sharedScreen || !link.path.startsWith('/admin')),
+    }))
+    .filter((group) => group.links.length > 0);
   const flattened = groups.flatMap((group) => group.links);
   return (
     <div className="screen more-screen">
@@ -114,7 +119,7 @@ export function MoreScreen() {
               const focusId = moreFocusId(link);
               return (
                 <Link
-                  className={`more-card focusable${link.emphasis === true ? ' more-card--emphasis' : ''}`}
+                  className="more-card focusable"
                   data-focus-entry={index === 0 ? 'true' : undefined}
                   data-focus-id={focusId}
                   data-focus-left="phone-tab-more"

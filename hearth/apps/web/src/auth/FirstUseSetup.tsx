@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode } from 'react';
 import type { PasskeyAuthStatus, RuntimeContext } from '@hearth/shared';
 
 import { createFirstUsePasskey, passkeysAvailable } from './passkeys';
+import { isTelevisionBrowser } from '../runtime/sharedScreen';
 
 export function FirstUseSetup({
   runtime,
@@ -40,7 +41,8 @@ export function FirstUseSetup({
     });
   };
   const unavailable = !auth.secureOrigin || !passkeysAvailable();
-  const television = /HearthTV\/|SMART-TV|Tizen/i.test(navigator.userAgent);
+  const television =
+    auth.sharedScreen === true || runtime.sharedScreen === true || isTelevisionBrowser();
   const useCompanion = unavailable || television;
 
   return (

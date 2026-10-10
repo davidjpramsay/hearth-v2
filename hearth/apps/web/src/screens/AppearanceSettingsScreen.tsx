@@ -1,8 +1,10 @@
 import './AppearanceSettingsScreen.css';
 
+import { Link } from 'react-router-dom';
+
 import { useAppearance, type ThemePreference } from '../appearance/appearance';
-import { AdminPage } from '../components/AdminPage';
 import { Icon, type IconName } from '../components/Icon';
+import { ScreenHeader } from '../components/ScreenHeader';
 
 const themeOptions: {
   value: ThemePreference;
@@ -33,7 +35,21 @@ const themeOptions: {
 export function AppearanceSettingsScreen() {
   const { preferences, setEveningDimming, setTheme } = useAppearance();
   return (
-    <AdminPage backLabel="Back to More" backTo="/more" title="Appearance">
+    <div className="screen appearance-screen">
+      <ScreenHeader
+        title="Appearance"
+        actions={
+          <Link
+            aria-label="Back to More"
+            className="appearance-back focusable"
+            data-focus-id="appearance-back"
+            to="/more"
+          >
+            <Icon name="chevron-left" />
+            <span>Back to More</span>
+          </Link>
+        }
+      />
       <section className="appearance-settings" aria-labelledby="theme-choice-heading">
         <div className="appearance-section-heading">
           <h2 id="theme-choice-heading">Theme</h2>
@@ -50,7 +66,7 @@ export function AppearanceSettingsScreen() {
                 className={`appearance-option focusable${checked ? ' appearance-option--selected' : ''}`}
                 data-focus-down={`appearance-${next}`}
                 data-focus-id={`appearance-${option.value}`}
-                data-focus-left="admin-back"
+                data-focus-left="appearance-back"
                 data-focus-right={`appearance-${option.value}`}
                 data-focus-up={`appearance-${prior}`}
                 key={option.value}
@@ -86,7 +102,7 @@ export function AppearanceSettingsScreen() {
           className="appearance-dim-control focusable"
           data-focus-down="appearance-dim"
           data-focus-id="appearance-dim"
-          data-focus-left="admin-back"
+          data-focus-left="appearance-back"
           data-focus-right="appearance-dim"
           data-focus-up="appearance-automatic"
           onClick={() => setEveningDimming(!preferences.eveningDimming)}
@@ -108,6 +124,6 @@ export function AppearanceSettingsScreen() {
           Dims Hearth only. It does not change TV brightness or run Home Assistant.
         </p>
       </section>
-    </AdminPage>
+    </div>
   );
 }

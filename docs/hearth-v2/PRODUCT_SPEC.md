@@ -28,6 +28,10 @@ It should then allow a family member to act with a remote, an iPhone or natural 
 
 Connects calendars, establishes people and permissions, creates recurring chores and routines, sets weekly pocket money and payday rules, records payments and configures Home Assistant actions.
 
+Administration belongs to a personal adult controller phone or computer, never a paired family
+screen. A shared screen keeps family interactions and device-local Appearance, but offers no
+administration, adult sign-in or recovery path. Screen identity must not be inferred from width.
+
 ### Adult household member
 
 Views and changes events, completes or reassigns tasks, manages meals and lists, and controls permitted home scenes.
@@ -175,6 +179,8 @@ Hearth data backup boundary.
 - The graph exposes temperature with apparent temperature, rain probability with expected amount,
   and sustained wind with gusts and direction. Television use requires only D-pad directions and
   Select; the phone uses the same information in a stacked touch-friendly layout.
+  Rain probability and expected amount use distinct colours and line/bar marks in aligned lanes,
+  with separately labelled percent and millimetre scales; neither selected value is hidden on phone.
 - Weather's seven-day temperature bars share a weekly scale and each day includes maximum wind
   speed and prevailing direction. Calendar Week keeps only the compact condition, rain and low/high
   temperatures, without range bars.

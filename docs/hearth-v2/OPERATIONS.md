@@ -135,6 +135,19 @@ origin stable after enrolment; changing the WebAuthn relying-party hostname requ
 
 ### Adult phones versus shared-screen pairing
 
+Shared-screen isolation (D-099) uses display-cookie/Bearer presence and recognized TV hints, not
+screen dimensions. A paired screen cannot open administration or use adult sign-in/recovery;
+direct/restored admin paths return to the family dashboard. Local Appearance and approved family
+commands still work. Empty calendar/weather setup is performed from a controller phone.
+Controller HTTP clients must keep the short-lived HttpOnly `hearth_browser_context` cookie returned
+by runtime or authentication options and send it with verification. It is a correlation nonce,
+not an admin credential, and must not be logged or placed in a URL. Pairing cancels pending proofs
+from that browser and ends only its retained adult session; it does not reset other phones/keys.
+Legacy screens retaining an adult cookie also lose only that browser session when they contact
+Hearth, preventing later display-cookie removal from restoring old adult access.
+A generic unpaired browser is not permanently classified as screen hardware: adult authority still
+requires a valid personal passkey and server role/capability checks.
+
 1. Open the same trusted private HTTPS Hearth address on each adult's phone. Choose **Sign in with
    a passkey**, not **Connect shared screen**. Each person uses their own Hearth passkey.
 2. A household controller checks **More → Phones & screens** for the signed-in name and controller

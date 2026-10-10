@@ -251,11 +251,13 @@ export interface CompanionAuthRepository {
   verifyFirstUseRegistration(
     ceremonyId: string,
     response: unknown,
+    assertBrowserAccess?: () => void,
   ): Promise<{ session: PasskeySession; token: string }>;
   authenticationOptions(remoteAddress: string): Promise<PasskeyCeremonyOptions>;
   verifyAuthentication(
     ceremonyId: string,
     response: unknown,
+    assertBrowserAccess?: () => void,
   ): Promise<{ session: PasskeySession; token: string }>;
   adultAccess(householdId: string, actor: CommandActor): AdultAccessSummary;
   additionalRegistrationOptions(
@@ -286,6 +288,7 @@ export interface CompanionAuthRepository {
   verifyRecoveryRegistration(
     ceremonyId: string,
     response: unknown,
+    assertBrowserAccess?: () => void,
   ): Promise<{ session: PasskeySession; token: string }>;
   revokePasskey(
     householdId: string,
@@ -382,6 +385,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
   async verifyFirstUseRegistration(
     ceremonyId: string,
     response: unknown,
+    assertBrowserAccess?: () => void,
   ): Promise<{ session: PasskeySession; token: string }> {
     this.assertSetupAvailable();
     const ceremony = this.takeRegistrationCeremony(ceremonyId);
@@ -405,6 +409,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     const credentialRowId = opaqueId('passkey');
     const webauthnUserId = Buffer.from(ceremony.userId).toString('base64url');
     const createHousehold = this.database.transaction(() => {
+      assertBrowserAccess?.();
       this.assertSetupAvailable();
       this.database
         .prepare(
@@ -503,9 +508,11 @@ export class CompanionAuthService implements CompanionAuthRepository {
   async verifyAuthentication(
     ceremonyId: string,
     response: unknown,
+    assertBrowserAccess?: () => void,
   ): Promise<{ session: PasskeySession; token: string }> {
     const ceremony = this.takeAuthenticationCeremony(ceremonyId);
     const credential = await this.verifyExistingCredential(ceremony.challenge, response);
+    assertBrowserAccess?.();
     return this.createSession(
       credential.household_id,
       credential.member_id,
@@ -791,6 +798,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
   async verifyRecoveryRegistration(
     ceremonyId: string,
     response: unknown,
+    assertBrowserAccess?: () => void,
   ): Promise<{ session: PasskeySession; token: string }> {
     const ceremony = this.takeRecoveryRegistrationCeremony(ceremonyId);
     const activeCode = this.database
@@ -808,6 +816,7 @@ export class CompanionAuthService implements CompanionAuthRepository {
     const now = this.now().toISOString();
     const credentialRowId = opaqueId('passkey');
     this.database.transaction(() => {
+      assertBrowserAccess?.();
       this.readAdultMember(ceremony.householdId, ceremony.memberId);
       const claimed = this.database
         .prepare(

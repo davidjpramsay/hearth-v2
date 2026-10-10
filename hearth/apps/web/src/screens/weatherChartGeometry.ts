@@ -47,29 +47,29 @@ export function chartGeometry(
         ? hour.precipitationMillimetres
         : hour.windGustKph,
   );
-  const minValue =
-    mode === 'rain' ? 0 : Math.floor(Math.min(...primaryValues, ...secondaryValues) / 5) * 5;
-  const maxValue =
-    mode === 'rain'
-      ? 100
-      : Math.max(minValue + 5, Math.ceil(Math.max(...primaryValues, ...secondaryValues) / 5) * 5);
-  const top = 16;
+  const dataMinimum = mode === 'temperature' ? Math.min(...primaryValues, ...secondaryValues) : 0;
+  const dataMaximum = Math.max(dataMinimum + 5, ...primaryValues, ...secondaryValues);
+  const tickStep = niceScaleCeiling((dataMaximum - dataMinimum) / 4);
+  const minValue = mode === 'temperature' ? Math.floor(dataMinimum / tickStep) * tickStep : 0;
+  const maxValue = mode === 'rain' ? 100 : Math.ceil(dataMaximum / tickStep) * tickStep;
+  const top = mode === 'rain' ? 28 : 16;
   const baseline = height - 34;
+  // Different rain units get separate, aligned lanes, never an unlabelled
+  // secondary scale over the probability curve. Both keep a truthful zero.
+  const primaryBaseline = mode === 'rain' ? top + (baseline - top - 38) / 2 : baseline;
+  const rainTop = primaryBaseline + 38;
   const left = width < 600 ? 42 : 58;
   const right = width - (width < 600 ? 24 : 30);
   const xMinute = (minute: number) => left + ((right - left) * minute) / 1440;
   const minutes = hours.map((hour) => weatherMinute(hour.time, day));
   const x = (index: number) => xMinute(minutes[index] ?? 0);
   const y = (value: number) =>
-    baseline - ((value - minValue) / (maxValue - minValue)) * (baseline - top);
+    primaryBaseline - ((value - minValue) / (maxValue - minValue)) * (primaryBaseline - top);
   const primaryCoordinates = primaryValues.map((value, index) => [x(index), y(value)] as const);
-  const secondaryScaleMaximum = Math.max(3, ...secondaryValues);
+  const rainMaximum = niceScaleCeiling(Math.max(0, ...secondaryValues));
+  const rainY = (value: number) => baseline - (value / rainMaximum) * (baseline - rainTop);
   const secondaryCoordinates = secondaryValues.map(
-    (value, index) =>
-      [
-        x(index),
-        mode === 'rain' ? baseline - (value / secondaryScaleMaximum) * (baseline - top) : y(value),
-      ] as const,
+    (value, index) => [x(index), mode === 'rain' ? rainY(value) : y(value)] as const,
   );
   const segments = (points: readonly Point[]) => {
     const result: Point[][] = [];
@@ -99,26 +99,38 @@ export function chartGeometry(
     areaPath: primarySegments
       .map(
         (points) =>
-          `${smoothPath(points)} L ${points.at(-1)![0]} ${baseline} L ${points[0]![0]} ${baseline} Z`,
+          `${smoothPath(points)} L ${points.at(-1)![0]} ${primaryBaseline} L ${points[0]![0]} ${primaryBaseline} Z`,
       )
       .join(' '),
     primaryPath: primarySegments.map(smoothPath).join(' '),
     secondaryPath: segments(secondaryCoordinates).map(smoothPath).join(' '),
     baseline,
+    primaryBaseline,
+    rainTop,
+    rainMaximum,
+    rainY,
     top,
     left,
     right,
     hourY: height - 8,
     barWidth: Math.max(2, Math.min(24, ((right - left) / 24) * 0.7)),
     primaryY: (index: number) => primaryCoordinates[index]?.[1] ?? baseline,
-    ticks: Array.from({ length: 5 }, (_, index) => {
-      const value = minValue + ((maxValue - minValue) * index) / 4;
-      return {
-        value,
-        y: y(value),
-        label: `${Math.round(value)}${mode === 'temperature' ? '°' : mode === 'rain' ? '%' : ''}`,
-      };
-    }),
+    ticks: Array.from(
+      { length: mode === 'rain' ? 3 : Math.round((maxValue - minValue) / tickStep) + 1 },
+      (_, index) => {
+        const value = mode === 'rain' ? index * 50 : minValue + index * tickStep;
+        return {
+          value,
+          y: y(value),
+          label: `${value}${mode === 'temperature' ? '°' : mode === 'rain' ? '%' : ''}`,
+        };
+      },
+    ),
+    rainTicks: [0, rainMaximum / 2, rainMaximum].map((value) => ({
+      value,
+      y: rainY(value),
+      label: `${Number(value.toFixed(2))}`,
+    })),
     hourTicks: Array.from(
       { length: width < 600 ? 5 : 7 },
       (_, index) => index * (width < 600 ? 360 : 240),
@@ -129,6 +141,13 @@ export function chartGeometry(
     xMinute,
     y,
   };
+}
+
+function niceScaleCeiling(maximum: number): number {
+  // Readable 1/2/5 steps; a dry day still shows 0–1 mm, not a collapsed scale.
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(1, maximum)));
+  const step = [1, 2, 5, 10].find((candidate) => candidate * magnitude >= maximum)!;
+  return step * magnitude;
 }
 
 function smoothPath(points: readonly Point[]): string {

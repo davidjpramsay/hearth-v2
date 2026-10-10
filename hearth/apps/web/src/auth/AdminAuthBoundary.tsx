@@ -1,18 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
 
 import { runtimeApi as hearthApi } from '../api/runtime';
 import { useHearthRuntime } from '../runtime/context';
+import { useSharedScreen } from '../runtime/sharedScreen';
 import { authenticateWithPasskey, passkeysAvailable } from './passkeys';
 import { authStatusQueryKey } from './queryKeys';
 
 export function AdminAuthBoundary({ children }: { children: ReactNode }) {
   const runtime = useHearthRuntime();
+  const sharedScreen = useSharedScreen();
   const queryClient = useQueryClient();
   const auth = useQuery({
     queryKey: authStatusQueryKey,
     queryFn: hearthApi.getAuthStatus,
-    enabled: runtime.mode === 'private',
+    enabled: runtime.mode === 'private' && !sharedScreen,
     staleTime: 15_000,
   });
   const signIn = useMutation({
@@ -22,6 +25,7 @@ export function AdminAuthBoundary({ children }: { children: ReactNode }) {
     },
   });
 
+  if (sharedScreen) return <Navigate replace to="/today" />;
   if (runtime.mode !== 'private') return children;
   if (auth.isPending) return <AdminAuthMessage title="Checking private access…" />;
   if (auth.isError) {

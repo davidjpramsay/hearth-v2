@@ -250,7 +250,7 @@ describe('provider-neutral calendar projection', () => {
       events: [],
       freshness: 'stale',
       integration: { status: 'not-configured' },
-      statusMessage: 'Choose calendars in Admin · Showing saved plans.',
+      statusMessage: 'Ask an adult to connect calendars from their phone · Showing saved plans.',
     });
     database.close();
   });

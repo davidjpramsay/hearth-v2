@@ -717,6 +717,84 @@ describe('Hearth v2 API', () => {
       headers: { cookie: `hearth_device=${pairingSecret}` },
     });
     expect(televisionReminders.statusCode).toBe(200);
+    const adminPaths = [
+      'admin',
+      'activity',
+      'system-status',
+      'appliance-update',
+      'today-configuration',
+      'calendar-connection',
+      'weather-location',
+      'adult-access',
+      'photo-source',
+    ];
+    for (const headers of [
+      { cookie: `hearth_device=${pairingSecret}; hearth_session=private-session` },
+      { cookie: `hearth_session=private-session; hearth_device=${pairingSecret}` },
+      { authorization: `Bearer ${pairingSecret}`, cookie: 'hearth_session=private-session' },
+      { authorization: `bEaReR ${pairingSecret}`, cookie: 'hearth_session=private-session' },
+    ]) {
+      const context = await app.inject({ url: '/api/v1/runtime', headers });
+      expect(context.json()).toMatchObject({
+        sharedScreen: true,
+        household: { id: 'household_hearth_demo' },
+      });
+      for (const path of adminPaths) {
+        expect((await app.inject({ url: `${base}/${path}`, headers })).statusCode, path).toBe(403);
+      }
+      expect((await app.inject({ url: '/api/v1/auth/status', headers })).json()).toMatchObject({
+        sharedScreen: true,
+        authenticated: false,
+        actor: null,
+      });
+      expect((await app.inject({ url: '/api/v1/auth/session', headers })).statusCode).toBe(403);
+      for (const path of [
+        'authentication-options',
+        'authentication-verifications',
+        'first-use/registration-options',
+        'first-use/registration-verifications',
+        'recovery/registration-options',
+        'recovery/registration-verifications',
+      ]) {
+        expect(
+          (await app.inject({ method: 'POST', url: `/api/v1/auth/${path}`, headers, payload: {} }))
+            .statusCode,
+          path,
+        ).toBe(403);
+      }
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: `${base}/pairing-approvals`,
+            headers,
+            payload: {
+              requestId: 'request_display_must_not_approve',
+              code: pairingBody.pairing.code,
+            },
+          })
+        ).statusCode,
+      ).toBe(403);
+    }
+    for (const headers of [
+      { cookie: 'hearth_device=; hearth_session=private-session' },
+      { cookie: 'hearth_device=%; hearth_session=private-session' },
+      { authorization: 'Bearer ', cookie: 'hearth_session=private-session' },
+      { 'user-agent': 'Mozilla HearthTV/0.1', cookie: 'hearth_session=private-session' },
+    ]) {
+      expect((await app.inject({ url: '/api/v1/runtime', headers })).json()).toMatchObject({
+        sharedScreen: true,
+        household: null,
+      });
+      expect((await app.inject({ url: `${base}/admin`, headers })).statusCode).not.toBe(200);
+      expect((await app.inject({ url: '/api/v1/auth/status', headers })).json()).toMatchObject({
+        authenticated: false,
+        actor: null,
+      });
+    }
+    expect((await app.inject({ url: `${base}/admin`, headers: companionCookie })).statusCode).toBe(
+      200,
+    );
   });
 
   it('returns schema-valid Today, Weather, Week, Month and Chores projections', async () => {

@@ -17,6 +17,7 @@ import { useListMutation } from '../hooks/useListMutation';
 import { useListsQuery } from '../hooks/useListQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
+import { useSharedScreen } from '../runtime/sharedScreen';
 
 export function ListsScreen({
   scenario,
@@ -27,6 +28,7 @@ export function ListsScreen({
 }) {
   const query = useListsQuery(!preparing);
   const runtime = useHearthRuntime();
+  const sharedScreen = useSharedScreen();
   const queryClient = useQueryClient();
   const itemMutation = useListMutation();
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
@@ -102,9 +104,11 @@ export function ListsScreen({
     <div className="screen lists-screen">
       <ScreenHeader
         actions={
-          <Link className="lists-manage-link" to="/admin/lists">
-            Manage lists
-          </Link>
+          sharedScreen ? undefined : (
+            <Link className="lists-manage-link" to="/admin/lists">
+              Manage lists
+            </Link>
+          )
         }
         title="Lists"
         meta={`${selected.remainingCount} left · ${selected.name}`}

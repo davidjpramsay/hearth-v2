@@ -1,5 +1,393 @@
 # Hearth v2 acceptance and definition of done
 
+## Combined release candidate — 2026-10-10
+
+The owner approves committing/pushing the pending shared-screen isolation, phone dock, compact
+People colours, responsive Appearance, Weather, photo-menu colour and explicit chore People-picker
+changes. The latest combined `pnpm verify:code` passes 351 unit, 143 API/integration and 24 migration
+tests plus formatting/lint/types/deployment checks and production builds. `pnpm verify:ci` inventories
+1015 browser cases; the complete hosted workflow, including all browser shards, Android and immutable
+image publication, must pass at the exact candidate before it becomes an installable release.
+
+The owner chooses to install through their phone's **System health → Hearth update** after that
+gate. Publishing is not deployment. Read-only preflight finds the old private release healthy, the
+fixed release helper installed and the root-owned update agent running. No NAS activation, staging,
+network/configuration change, credential reset or household write is performed while preparing this
+candidate. The phone updater uses the existing commissioned protected configuration and automatic
+backup/rollback/readiness path; no APK replacement is needed for this web/server-only update.
+Actual installed version, phone/TCL rendering and physical remote acceptance remain separate
+post-install evidence; earlier sections record the local preparation checks, not live completion.
+
+## Explicit chore People selection — 2026-10-10
+
+New chores start with no person selected, including households with only adults. Editing starts
+with the saved assignee set. Every checkbox can be unticked, including the last one; focusing a
+person never selects them. Creation and editing reject an empty selection locally with
+**Choose at least one person.**, retain the draft, mark/link the invalid People controls for
+assistive technology and bring the message/picker into view before focusing the first checkbox.
+Choosing a person clears the error. There is no automatic first-child or adult fallback.
+
+`pnpm verify:code` passes format, lint, workspace types, **351 unit tests** (35 shared, 35 core,
+71 server, 210 web), **143 API/integration tests**, 24 migration tests, deployment checks and
+production web/server builds. Seven new screen unit tests cover empty defaults, focus-only,
+last-person deselection, blocked empty create/update, draft preservation, corrected exact selections,
+cancel/reopen and adult-only fallback absence. The existing server/shared nonempty-assignee rule
+is unchanged. `pnpm verify:ci` passes five policy checks and inventories all **1015 browser tests**;
+it does not execute the full inventory. Scoped document Prettier and `git diff --check` pass.
+
+The final built-browser command passes **19 cases in 1.2 minutes**:
+
+```sh
+pnpm test:e2e:built tests/e2e/chore-assignees.spec.ts tests/e2e/planning.spec.ts \
+  tests/e2e/screen-admin-isolation.spec.ts tests/e2e/keyboard-layout.spec.ts \
+  -g 'chore People picker|phone Family Planning|phone routines assign|one-off chore creation|@a11y /admin/routines|paired .* has no administration links|all admin routes|admin text fields retain|admin screens retain visible' \
+  --max-failures=0 --output=/tmp/hearth-chore-people-GW6r6y/final-viewport --reporter=line
+```
+
+Eight new light/dark cases cover 320×700, 390×844, 844×390 and 1920×1080 adult browsers. They
+exercise New chore → empty save (zero POST/PATCH) → keyboard selection/deselection → save one
+explicit child → reload → clear the saved selection → empty save (zero additional command) →
+save two explicitly chosen people → reload and typed API readback. All unrelated templates remain
+identical to the baseline. Page identity, meaningful content, overlay absence, browser errors/warnings,
+horizontal containment and serious/critical accessibility pass. Feedback is fully within the
+viewport and outside fixed clock/dock bounds for both create/edit failures. Broader cases retain
+multi-person TV expansion, ordering, one-off/failed-save retry, pocket-money planning, native input
+keys/Tab, visible keyboard focus and paired-screen exclusion from all administration routes.
+
+Screenshots stay outside Git under the command's output directory. `view_image` inspects phone
+light validation, phone dark explicit selection and wide light validation. An earlier rendered
+check catches wide-screen feedback above the visible area despite passing DOM visibility assertions;
+centred picker scrolling and stricter viewport/clock/dock assertions repair that gap. Initial test
+fixture, type and import issues are corrected before the final gates; no failure is waived.
+Browser plugin not available; repository Playwright uses only the isolated fictional local demo at
+`http://127.0.0.1:4320`, never the private household origin.
+
+This fix is **local, uncommitted, unpushed and undeployed**. Actual iPhone Safari, physical TV/remote
+and the full hosted release suite are not run. Shared screens still cannot open the adult editor.
+No saved household assignments are repaired or removed automatically, and no production data,
+API/schema, recurrence/history, credential, pairing, background work, APK or NAS/networking
+configuration is changed. Earlier pending work remains intact.
+
+## Consistent photo-management menu colour — 2026-10-10 (D-075 refinement)
+
+**Manage photos** now uses the ordinary joined-row styling in More: neutral text/background and
+the same green icon treatment as peer settings in both themes. The one-off purple variant is
+removed, not replaced with another special accent. Gallery/management destinations, explicit title,
+row order, inset focus and the shared-screen administration guard remain unchanged.
+
+`pnpm verify:code` passes format, lint, workspace type checks, 344 unit tests, 143 API/integration
+tests, 24 migration tests, deployment checks and production web/server builds. `pnpm verify:ci`
+passes five policy tests and verifies the 1007-case browser inventory; this is not full execution.
+Scoped document Prettier and `git diff --check` pass.
+
+The final focused built-browser run passes **16 cases (49.7 seconds)**:
+
+```sh
+pnpm test:e2e:built tests/e2e/admin.spec.ts tests/e2e/screen-admin-isolation.spec.ts \
+  tests/e2e/photos.spec.ts \
+  -g 'Manage photos matches|phone admin keeps all five|phone More opens setup|Hearth settings groups|desktop admin uses|paired .* has no administration links|phone administration uploads and curates|photo curation remains calm' \
+  --max-failures=0 --output=/tmp/hearth-photos-colour-wkicDU/final-verified --reporter=line
+```
+
+Six new cases compare row text/background and icon colours at 320×700, 390×844 and 1920×1080 in
+light/dark. They check page identity/content, horizontal containment, console health, accessibility,
+visible focus and Photos → Games → Manage photos D-pad/Select navigation, then return from photo
+management. Existing cases retain phone docking/settings navigation, photo upload/curation and
+the exclusion of administration from paired screens, including 4K. Screenshots are outside Git at
+the command's output path; `view_image` inspects phone and wide light/dark captures. Browser plugin
+unavailable; repository Playwright targets only the isolated fictional local demo.
+
+The before-fix regression fails on the actual purple colour mismatch. The first post-fix run has
+two test-selector failures because the wide layout also has a Photos rail link; scoping those
+selectors to More fixes the harness before the final all-pass run. No product failure is waived.
+This change is **local, uncommitted, unpushed and undeployed**. Actual iPhone Safari/physical TCL and
+the full hosted release suite are not run. No photo, household data, API, credential, pairing,
+networking, NAS configuration or APK is changed; earlier pending work is preserved.
+
+## Weather graph clarity and responsive layout — 2026-10-10 (D-077 refinement)
+
+Rain now has two aligned lanes in one active daily graph: a purple probability line with fixed
+0–100% ticks, and blue millimetres-per-hour bars with a separate, labelled zero-based scale.
+Labels, units, line/bar shape and the slider's text alternative are redundant with colour.
+Both selected values remain visible on phone. Temperature/feels-like and wind/gusts retain their
+comparison styles, with explicit units and exact readable ticks; wind starts at zero. Current
+low/high labels, a visible Seven days heading, wide-row column labels and condition-aware weekly
+icons improve the reading order. All seven temperature ranges still share one domain.
+
+The fixed household-local midnight-to-midnight timeline, separate live/manual markers, shared
+minute clock, gap-safe data and Now/Select restoration remain. A tap inspects the nearest hour
+without pointer capture or drag ownership; buttons and D-pad remain alternatives. Tap mapping
+accounts for 4K CSS zoom. Measuring on mode change prevents a transient old-height viewBox.
+Compact and short-wide spacing remains one-screen. Saved/offline status now uses the normal
+header freshness line, retaining visible saved age beside the hour controls, so a tall banner no
+longer pushes the last day off a compact TV.
+
+The final `pnpm verify:code` passes format, lint, workspace types, **344 unit tests** (35 shared,
+35 core, 71 server, 203 web), **143 API/integration tests**, 24 migration tests, eight owner-tool
+tests, deployment checks and production web/server builds. `pnpm verify:ci` passes five policy
+checks and a complete, non-overlapping **1001-test browser inventory**, not full execution.
+Scoped authoritative-document Prettier and `git diff --check` pass. An initial new-test type error
+and format failure are repaired before repeating the full gate.
+
+The final built-browser command below passes all **106 cases in 4.1 minutes**. This includes
+Weather and the existing pending responsive/access-boundary regressions; it is not the full
+1001-case hosted release suite.
+
+```sh
+pnpm test:e2e:built tests/e2e/weather.spec.ts tests/e2e/appearance.spec.ts \
+  tests/e2e/shell-clock.spec.ts tests/e2e/phone-navigation.spec.ts \
+  tests/e2e/keyboard-layout.spec.ts tests/e2e/screen-admin-isolation.spec.ts \
+  tests/e2e/native-tv-viewport.spec.ts --max-failures=0 \
+  --output=/tmp/hearth-weather-42womg/final-viewport --reporter=line
+```
+
+Weather's 23 cases include a 16-case light/dark matrix at 320×700, 390×844, 844×390, 820×1180,
+1366×768, 1672×941, 1920×1080 and 3840×2160. They exercise all three modes, measured native-pixel
+SVG dimensions, whole-day endpoints, distinct rain colours/lanes, visible secondary readings,
+tap/step/Now, one-screen TV and horizontal containment. Additional cases cover keyboard/D-pad,
+weekly wind/calmed/missing values, cached heavy rain, missing-hour gaps and compact offline/reconnect
+behaviour. Page identity, meaningful content, overlay absence, browser errors/warnings and
+serious/critical accessibility are checked. Broader cases retain the pending Appearance,
+phone-dock and screen/admin boundary coverage. Browser plugin unavailable; repository Playwright
+uses the built fictional demo at `http://127.0.0.1:4320`, never the private production origin.
+
+Early rendered passes identify compact/short-wide overflow and a mode-height race; both are fixed,
+not waived. A final native-size screenshot also catches a short-wide grid row growing beyond the
+viewport: content-only overflow assertions passed while the outer shell scrolled its heading away.
+The shell row is explicitly constrained and the matrix now asserts a fully visible heading/rail
+clock and zero outer-shell scroll after inspection/Now, not just content dimensions.
+An additional temporary Playwright wind/phone inspection discovers compact offline
+overflow (830 versus 768 pixels); after the freshness change the readback is 768/768, with no
+browser errors or warnings. Its interaction path is Wind → chart Left/Right → Select/Now → Rain,
+then a compact offline check. Screenshots remain outside Git; the temporary runner is removed.
+
+Visual design/fidelity ledger: the generated TV/phone concepts are preview-only at
+`/Users/djpramsay@acc.edu.au/.codex/generated_images/01a03727-4977-7420-8e61-3c07dedae9e5/exec-be976ce2-1c7f-4987-bde8-0c66897e78d8.png`
+and `exec-009d90b2-454c-4630-afe7-7c79486c8647.png` in the same directory. `view_image` compares
+both with the latest rendered screenshots. The inspected points are the original warm Hearth
+palette/shell, heading/current-condition hierarchy, typography, purple-line/blue-bar encoding,
+explicit axes/units, restrained weekly rows, spacing and phone adaptation. The TV concept's
+1672×941 native size is checked; phone uses the requested 390-pixel logical viewport rather than
+the generated image's upscaled raster width. Intentional functional deviations retain Hearth's
+established shell metrics and real previous/Now/next controls rather than invented hour buttons,
+put lane labels above plots, and keep wind on a second phone row rather than reproducing an
+over-wide table. Selected readings name the forecast hour, while the separate dot follows the
+current minute; all forecast values/scales come from data, not the mockup. Above-the-fold copy
+adds only the specified units/low/high/rain labels and existing state copy. No raster UI, filler,
+new navigation or unresolved material visual mismatch is introduced. Final viewport screenshots
+include `/tmp/hearth-weather-42womg/weather-rain-tv-viewport.png`,
+`weather-rain-phone-viewport.png`, `weather-wind-tv.png` and `weather-compact-offline.png` in the
+same directory; phone viewport captures keep the dock at the physical bottom rather than making
+a full-page screenshot look like a mid-page floating menu.
+The final post-grid-fix TV/native-size images are in `final-viewport/` below the same evidence
+directory; full heading/clock visibility is confirmed in both themes after the hour/Now flow.
+
+Physical TCL/remote, actual iPhone Safari, commit/push, hosted full-suite release verification and
+private deployment are **not run**. No DTO, provider request, persistence, APK, NAS configuration,
+network, household data, credential, pairing or background behaviour is changed. This Weather
+refinement is part of the existing pending local UI/security update, not a live release.
+
+## Full-screen Appearance presentation — 2026-10-10 (D-026 refinement)
+
+Appearance previously always entered a 680-pixel companion shell, removing the TV rail and
+presenting the phone dock even on a wide screen. A built compact-TV reproduction fails its rail
+assertion and captures that narrow layout. Appearance now uses the normal responsive family
+shell and ScreenHeader rather than AdminPage: wide displays retain their rail and single clock,
+three large side-by-side theme cards and a readable evening-comfort control; narrow viewports
+retain stacked choices and the bottom dock. Layout follows available width, never adult authority.
+Preference storage, automatic theme, dimming, private access and the legacy alias are unchanged.
+
+`pnpm verify:code` passes formatting, lint, workspace types, **334 unit tests**, **143
+API/integration tests**, 24 migration tests, eight owner-tool tests, deployment checks and production
+web/server builds. Final test changes also pass scoped ESLint and `pnpm format:check`.
+`pnpm verify:ci` passes five policy tests and complete/non-overlapping **983-test inventory**, not
+full browser execution. `git diff --check` passes.
+
+The final built-browser command is
+`pnpm test:e2e:built tests/e2e/appearance.spec.ts tests/e2e/shell-clock.spec.ts
+tests/e2e/phone-navigation.spec.ts tests/e2e/keyboard-layout.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts tests/e2e/native-tv-viewport.spec.ts --max-failures=0`,
+with output outside Git. Final execution passes all **83 cases in 2.6 minutes**. The initial
+new-viewport run passes 12/14 cases and detects a real transient light-theme contrast failure:
+Appearance backgrounds fade while text changes immediately. The scoped card/background transition
+is removed before repeating the complete code/browser gates; focus and switch transitions remain.
+No accessibility assertion is suppressed or waived.
+
+Fourteen new layout/interaction cases cover 1366×768, 1920×1080, 3840×2160, 320×700, 390×844,
+844×390 and 820×1180 in light/dark at the built fictional demo `http://127.0.0.1:4320`. They check
+the real content width, three same-row TV choices, at least 32-pixel logical choice titles, no TV
+page scrolling, one visible clock and no phone dock on TV. Phone/tablet choices remain stacked
+without horizontal overflow. Dark selection, persistence/reload, Automatic, dimming, D-pad movement
+and Back to More are exercised alongside existing Back/focus restoration. Keyboard reachability
+and rail-clock coverage now explicitly include Appearance. The paired-display test retains zero
+adult-auth requests and no admin requirement; shared-screen exclusion/legacy alias tests remain.
+Page identity, meaningful content, framework-overlay absence, console health and serious/critical
+accessibility pass. Browser plugin unavailable; repository Playwright is used. Final compact-TV,
+1080p-TV and phone screenshots are visually inspected: the wide screen has its normal rail and
+large full-width choices, while the phone keeps its compact stacked controls. Screenshots use
+fictional data and remain outside Git.
+
+Physical TCL/remote and actual iPhone Safari confirmation, commit/push, hosted full-suite release
+checks and private activation are **not run**. No APK, NAS network/configuration, household data,
+credentials, pairings or provider integration changes are made. This is included in the same pending
+local update as the screen/admin, phone-navigation and compact People-colour changes.
+
+## Compact People colour disclosures — 2026-10-10
+
+Every existing person and Add someone starts with a collapsed, 52-pixel Colour row showing the
+current named swatch. Native `details`/`summary` reveals the existing twelve named radio choices
+only when opened. Each form owns its own disclosure and colour draft; closing preserves the
+selected value for Save. The preview and radios share one draft value, refreshed defaults do not
+overwrite an active edit, and native form reset restores the default value and its preview.
+No server/API contract, member capability, persistent preference or avatar behavior changes.
+
+`pnpm --filter @hearth/web exec vitest run src/components/MemberColourPicker.test.tsx` passes
+all **eight** tests, including closed form submission, independent people, legacy normalization,
+reset and refreshed-default/draft consistency. `pnpm verify:code` passes format, lint, workspace
+types, **334 unit tests** (35 shared, 35 core, 71 server, 193 web), **143 API/integration tests**,
+24 migration tests, eight owner-tool tests, deployment checks and production web/server builds.
+Final test changes also pass scoped ESLint and `pnpm format:check`. `pnpm verify:ci` passes five
+policy tests and complete/non-overlapping **968-test inventory**, not full browser execution.
+
+The built-browser final command is
+`pnpm test:e2e:built tests/e2e/admin.spec.ts tests/e2e/keyboard-layout.spec.ts
+tests/e2e/phone-navigation.spec.ts tests/e2e/screen-admin-isolation.spec.ts --max-failures=0`,
+with logs/screenshots outside Git. Final execution passes all **103 cases in 2.9 minutes**.
+An earlier People-focused run passes 13 of 14 cases; its remaining test waits for PUT instead of
+the existing PATCH member-update receipt. That observer is corrected before the final run, not
+hidden or waived. The initial format failure is likewise corrected and the full code gate repeated.
+
+New compact/disclosure checks cover 320×700, 390×844, 844×390 and 1280×720 in light/dark at the
+built fictional demo `http://127.0.0.1:4320`. They confirm closed palettes expose no radio controls,
+opening one exposes twelve and leaves the others closed, selection updates the named preview,
+closing restores the compact height, and there is no horizontal overflow. Native keyboard Enter,
+Tab, radio-arrow selection, close, Save/PATCH acceptance and reload prove retained values. Add
+someone retains its colour and starts collapsed when reloaded. Page identity, meaningful content,
+framework-overlay absence, console health and serious/critical phone accessibility pass in the
+final cases. Browser plugin unavailable; repository Playwright is used. Final phone light/dark
+previews are inspected outside Git using fictional members: the closed row is compact, its named
+swatch is clear, and profile-photo controls stay intact. `git diff --check` and scoped authoritative
+document Prettier checks pass.
+
+Commit/push, hosted full-suite release checks, private NAS activation and actual iPhone Safari
+confirmation are **not run**. This is part of the pending local update with the screen/admin and
+phone-navigation fixes; live household data, people, passkeys, pairings and networking are unchanged.
+
+## Phone navigation scroll correction — 2026-10-10 (D-095 refinement)
+
+The owner reports the bottom phone menu intermittently rising into the middle of the page while
+scrolling. Both family and companion shells specify fixed `bottom: 0`, a fixed safe-area-aware
+height and a competing `top: calc(100dvh - var(--phone-tabs-height))`. Replace that top calculation
+with `top: auto`, leaving the browser one bottom anchor. Keep safe-area padding, trailing content
+space, native zoom and the existing editing/keyboard-only visibility rule. No React scroll handler,
+polling, household API, authentication change or native APK is needed for this refinement.
+
+The new built-browser regression initially fails against the previous loaded stylesheet with
+expected `auto` / received `calc(100dvh - var(--phone-tabs-height))`. This proves the conflicting
+anchor, not reproduction of physical Safari's intermittent scrolling behavior. Test-harness
+failures from short-page fixtures, ambiguous page/list headings and toggling already-open meal
+details are corrected without hiding a test or lowering the scroll threshold. Real fictional
+reminder records and seven expanded meal-detail controls ensure substantial scrolling on long
+pages; Appearance covers the short-page shell too.
+
+`pnpm verify:code` passes format, lint, workspace types, **329 unit tests**, **143 API/integration
+tests**, 24 migration tests, eight owner-tool tests, deployment checks and production web/server
+builds. The final test is linted and formatted with that gate. `pnpm verify:ci` checks five policy
+tests and complete/non-overlapping **960-test inventory**, not full browser execution.
+
+The final built-browser command is
+`pnpm test:e2e:built tests/e2e/phone-navigation.spec.ts tests/e2e/appearance.spec.ts
+tests/e2e/photos.spec.ts tests/e2e/weather.spec.ts tests/e2e/remote.spec.ts
+tests/e2e/keyboard-layout.spec.ts tests/e2e/native-tv-viewport.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts --max-failures=0`, with temporary logs/screenshots outside
+Git. Final execution passes all **105 cases in 3.0 minutes**, including all nine new navigation
+cases with explicit mobile/touch emulation. The earlier viewport-only focused run separately
+passes nine cases; it is not physical-device evidence.
+
+The new tests use Chromium mobile/touch emulation against the built fictional demo at
+`http://127.0.0.1:4320`. Profiles are 320×700, 390×844, 844×390 and 820×1180, in light/dark. Each
+checks family Reminders, adult Meal planning and local Appearance at four heights and five scroll
+positions, including return to the top. The navigation stays at the viewport bottom, last content
+can scroll above it, and keyboard Enter on More opens the hub. A separate injected visual-viewport
+test keeps navigation for a toolbar-sized reduction, hides it for focused keyboard-sized editing
+and restores it without losing the draft. Page identity, meaningful content, no framework overlay,
+console health and serious/critical phone accessibility are checked. Browser plugin unavailable;
+repository Playwright is used. Desktop emulation and injected geometry are not real Safari toolbar
+or iOS keyboard evidence. Final scrolled family/admin screenshots in light/dark are visually
+inspected: navigation is docked at the bottom, content stays contained and the trailing records
+remain above the menu. `git diff --check` and scoped authoritative-document Prettier checks pass.
+
+Actual iPhone Safari/installed-web-app confirmation, commit/push, hosted release checks and live
+activation are **not run**. NAS networking, credentials, data and pairings are unchanged. The
+separate locally verified shared-screen/admin boundary remains preserved; both changes await
+explicit private release approval.
+
+## Shared-screen administration isolation — 2026-10-10 (D-099)
+
+This is a local security fix on `codex/shared-screen-admin-boundary`, not a live release. The
+separate unfinished draft in the primary checkout is reference-only and remains untouched.
+
+- An isolated reproduction of the original boundary returns 401 for a screen credential alone,
+  200 for an adult controller cookie, and **200** for mixed screen/adult cookies or Bearer+cookie.
+  The fixed boundary returns **403** for mixed display requests and preserves **200** for the
+  independent adult controller. Cases cover reversed cookie order, case-varied Bearer, empty and
+  malformed display proofs, TV hints and all six first-use/authentication/recovery endpoints.
+- A real migrated fixture confirms that private screen contact revokes only a retained legacy
+  adult session: removing the display cookie afterward cannot restore that old session (401).
+  A second phone session stays valid. Pairing still admits valid scoped family reads/commands;
+  existing phones, passkeys, device records and household content are not reset.
+- Deferred real-service authentication across pairing returns 403 before new session issuance.
+  Browser context bindings reject another browser without consuming the genuine ceremony. Bounds,
+  expiry and idempotent cleanup have deterministic regressions. Recovery/first-use commit guards
+  and existing verified browser/WebAuthn controls remain covered by the complete API gate.
+- All known admin routes, case/encoded/query/hash variants, restored URLs, reload and history are
+  excluded before admin chrome/children mount. Calendar Sources, Lists/Meals management, More/System,
+  private pairing shortcuts and missing Weather setup links are absent on paired screens. Empty
+  Agenda/Week/Month asks an adult to connect calendars from their phone. Device-local Appearance,
+  its legacy alias, keyboard/remote theme changes and chore completion/undo remain available.
+- Independent read-only review reproduces two additional UI-state gaps: another open admin
+  document retaining its old runtime after pairing, and cancelled in-flight exchange still setting
+  a device cookie without access refresh. Added browser regressions verify accepted normal/cancelled
+  exchange clears both documents to Today, with no admin chrome or passkey/recovery controls.
+  Runtime context also wins over stale adult status in signed-out generic-screen entry.
+
+`pnpm verify:code` passes format, lint, workspace types, **329 unit tests** (35 shared, 35 core,
+71 server, 188 web), **143 API/integration tests**, 24 migration tests, eight owner-tool tests,
+deployment checks and production builds. The focused API command
+`pnpm --filter @hearth/server exec vitest run src/companion-auth.integration.test.ts
+src/app.integration.test.ts src/companion-auth.browser.integration.test.ts
+src/browser-access.unit.test.ts src/calendar-projection.integration.test.ts` passes **84** tests.
+`pnpm verify:ci` passes five policy tests and complete/non-overlapping **951-test inventory**;
+that is not execution of the full browser suite. `git diff --check` and authoritative-document
+Prettier checks pass. No relevant test is hidden, skipped or waived in a passing final gate.
+
+The built-browser final command is
+`pnpm test:e2e:built tests/e2e/screen-admin-isolation.spec.ts tests/e2e/device-connection.spec.ts
+tests/e2e/runtime.spec.ts tests/e2e/planning.spec.ts tests/e2e/calendar.spec.ts
+tests/e2e/weather.spec.ts tests/e2e/remote.spec.ts tests/e2e/keyboard-layout.spec.ts
+tests/e2e/appearance.spec.ts tests/e2e/photos.spec.ts tests/e2e/admin.spec.ts --max-failures=0`,
+with temporary output outside Git. Final execution passes all **233 tests** in **5.6 minutes**,
+including all 11 isolation cases. Earlier broad failures from ambiguous status
+selectors and a stale Appearance fixture/extra status read are corrected and are not counted as
+passing final evidence. Type/Node-storage fixture failures are likewise corrected before repeating
+the full code gate.
+
+Browser plugin unavailable; repository Playwright is used against the built fictional demo at
+`127.0.0.1:4320`, with separate real-service API/WebAuthn fixtures. Screen profiles include 390×844,
+820×1180, 1920×1080 and 3840×2160. Loaded family surfaces, no admin links, meaningful content,
+correct Hearth identity, no framework overlay, console health, serious/critical accessibility and
+keyboard interactions are checked. Loading placeholders are not screenshot proof. Final loaded
+More screenshots are inspected at TV and narrow-tablet sizes outside Git; they show only Family
+and device-local Appearance destinations. Empty-calendar screenshots and assertions prove the
+adult-phone guidance and removed Sources shortcut, not unrelated Month overflow/layout acceptance.
+None contains private household data.
+
+Physical TCL/iPhone Safari proof, commit/push, hosted full-suite/image publication and live
+activation are **not run** for this change. The NAS and its private networking/data/secrets are
+unchanged. Release requires explicit approval and the existing exact-commit verified-image path.
+Generic unpaired browsers are not permanently hardware-attested: adult access still requires
+verified personal passkeys and server capabilities. Television hints can only restrict authority.
+
 ## Approved combined display release — 2026-10-09
 
 The owner explicitly approved commit, push and private deployment of D-098 and the D-077 weather

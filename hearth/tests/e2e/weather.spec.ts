@@ -14,13 +14,164 @@ test.beforeEach(async ({ page, request }) => {
   browserErrors.set(page, errors);
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text());
   });
 });
 
 test.afterEach(async ({ page }) => {
   expect(browserErrors.get(page)).toEqual([]);
 });
+
+test('compact television keeps every day visible offline and restores the normal freshness cue', async ({
+  context,
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/weather');
+  await expect(page.locator('.weather-day')).toHaveCount(7);
+  await context.setOffline(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await expect(page.getByRole('status')).toHaveText('Offline · Showing saved weather.');
+  await expect(page.locator('.weather-saved-age')).toHaveText('Updated now');
+  for (const mode of ['Temperature', 'Rain', 'Wind']) {
+    await page.getByRole('button', { name: mode, exact: true }).click();
+    const dimensions = await page.locator('.app-content').evaluate((content) => ({
+      height: content.clientHeight,
+      scrollHeight: content.scrollHeight,
+    }));
+    expect(dimensions.scrollHeight).toBeLessThanOrEqual(dimensions.height + 1);
+    await expect(page.locator('.weather-day').last()).toBeInViewport();
+  }
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.locator('.weather-updated')).toHaveText('Updated now');
+  await expect(page.locator('.weather-saved-age')).toHaveCount(0);
+  await expect(page.locator('.weather-day')).toHaveCount(7);
+});
+
+for (const viewport of [
+  { width: 320, height: 700 },
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+  { width: 820, height: 1180 },
+  { width: 1366, height: 768 },
+  { width: 1672, height: 941 },
+  { width: 1920, height: 1080 },
+  { width: 3840, height: 2160 },
+]) {
+  for (const theme of ['light', 'dark']) {
+    test(`@visual @a11y Weather graph units and layout at ${viewport.width}×${viewport.height} ${theme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.addInitScript((theme) => {
+        window.localStorage.setItem(
+          'hearth.appearance.v1',
+          JSON.stringify({ theme, eveningDimming: false }),
+        );
+      }, theme);
+      await page.goto('/weather');
+      await expect(page.locator('.weather-day')).toHaveCount(7);
+      await expect(page.getByRole('heading', { name: 'Seven days' })).toBeVisible();
+      const chart = page.getByRole('slider');
+      for (const mode of ['Temperature', 'Rain', 'Wind']) {
+        await page.getByRole('button', { name: mode, exact: true }).click();
+        await expect(chart).toHaveAccessibleName(new RegExp(`${mode} daily forecast`));
+        const geometry = await page.locator('.weather-chart__plot').evaluate((svg) => {
+          const element = svg as SVGSVGElement;
+          return {
+            width: element.clientWidth,
+            height: element.clientHeight,
+            boxWidth: element.viewBox.baseVal.width,
+            boxHeight: element.viewBox.baseVal.height,
+          };
+        });
+        expect(Math.abs(geometry.width - geometry.boxWidth)).toBeLessThanOrEqual(1);
+        expect(Math.abs(geometry.height - geometry.boxHeight)).toBeLessThanOrEqual(1);
+        const labels = await page.locator('.weather-chart__hour').allTextContents();
+        expect(labels[0]).toBe('12 am');
+        expect(labels.at(-1)).toBe('12 am');
+        await expect(page.locator('.weather-selected-hour span')).toBeVisible();
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+        ).toBe(true);
+        if (viewport.width >= 1200) {
+          const bounds = await page.locator('.app-content').evaluate((content) => ({
+            scrollHeight: content.scrollHeight,
+            clientHeight: content.clientHeight,
+            scrollWidth: content.scrollWidth,
+            clientWidth: content.clientWidth,
+          }));
+          expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.clientWidth + 1);
+          expect(bounds.scrollHeight).toBeLessThanOrEqual(bounds.clientHeight + 1);
+        }
+      }
+      await page.getByRole('button', { name: 'Rain', exact: true }).click();
+      await expect(page.locator('.weather-chart__lane-label--chance')).toHaveText(
+        'Rain chance (%)',
+      );
+      await expect(page.locator('.weather-chart__lane-label--amount')).toHaveText(
+        'Expected rain (mm per hour)',
+      );
+      const encoding = await page.evaluate(() => {
+        const chance = document.querySelector('.weather-chart__rain-chance')!;
+        const bar = document.querySelector('.weather-chart__rain-bars rect')!;
+        const chanceLabel = document.querySelector('.weather-chart__lane-label--chance')!;
+        const amountLabel = document.querySelector('.weather-chart__lane-label--amount')!;
+        return {
+          chance: getComputedStyle(chance).stroke,
+          amount: getComputedStyle(bar).fill,
+          chanceLabel: getComputedStyle(chanceLabel).fill,
+          amountLabel: getComputedStyle(amountLabel).fill,
+          chanceBottom: chance.getBoundingClientRect().bottom,
+          amountTop: document.querySelector('.weather-chart__rain-grid')!.getBoundingClientRect()
+            .top,
+        };
+      });
+      expect(encoding.chance).not.toBe(encoding.amount);
+      expect(encoding.chanceLabel).toBe(encoding.chance);
+      expect(encoding.amountLabel).toBe(encoding.amount);
+      // All expected-rain bars sit in the lower lane, not on the percent scale.
+      const separated = await page.locator('.weather-chart__rain-bars').evaluate((bars) => {
+        const line = document.querySelector('.weather-chart__rain-chance')!.getBoundingClientRect();
+        return [...bars.querySelectorAll('rect')].every(
+          (bar) => bar.getBoundingClientRect().top > line.bottom,
+        );
+      });
+      expect(separated).toBe(true);
+      await page.getByRole('button', { name: 'Return to current time' }).click();
+      await page.getByRole('button', { name: 'Next hour' }).click();
+      await expect(chart).toHaveAttribute('aria-valuenow', '8');
+      await expect(chart).toHaveAttribute('aria-valuetext', /% chance, .* mm expected/);
+      // A tap selects an hour; stepping and Now remain alternatives to precise tapping.
+      const plot = await page.locator('.weather-chart__plot').boundingBox();
+      await page
+        .locator('.weather-chart__plot')
+        .click({ position: { x: plot!.width / 2, y: plot!.height / 2 } });
+      await expect(page.locator('.weather-chart__selected-point')).toBeVisible();
+      await page.getByRole('button', { name: 'Return to current time' }).click();
+      await expect(page.locator('.weather-chart__selected-point')).toHaveCount(0);
+      if (viewport.width >= 1200) {
+        await expect(page.getByRole('heading', { name: 'Weather', exact: true })).toBeInViewport({
+          ratio: 1,
+        });
+        await expect(page.locator('.household-date-time--rail')).toBeInViewport({ ratio: 1 });
+        expect(await page.locator('.app-shell').evaluate((shell) => shell.scrollTop)).toBe(0);
+      }
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(
+        results.violations.filter((violation) =>
+          ['serious', 'critical'].includes(violation.impact ?? ''),
+        ),
+      ).toEqual([]);
+      await captureEvidence(page, {
+        path: resolve(evidence, `weather-rain-${viewport.width}-${theme}.png`),
+        animations: 'disabled',
+        fullPage: viewport.width < 1200,
+      });
+    });
+  }
+}
 
 test('@visual @a11y Weather is readable and remote-operable on television', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -251,4 +402,35 @@ test('daily wind distinguishes calm, missing direction and an older saved foreca
   await expect(page.locator('.weather-day__wind').nth(1)).toHaveText('Up to 20 km/h');
   await expect(page.locator('.weather-day__wind').nth(2)).toHaveText('Wind unavailable');
   await expect(page.locator('.weather-day')).toHaveCount(7);
+});
+
+test('rain keeps cached evidence and leaves a missing-hour gap without fabricating the live dot', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/\/api\/v1\/households\/[^/]+\/weather$/, async (route) => {
+    const response = await route.fetch();
+    const forecast = await response.json();
+    forecast.freshness = 'stale';
+    forecast.hourly = forecast.hourly.filter(
+      (hour: { time: string }) => !hour.time.endsWith('T07:00'),
+    );
+    forecast.hourly[8].precipitationMillimetres = 49;
+    await route.fulfill({ response, json: forecast });
+  });
+  await page.goto('/weather');
+  await page.getByRole('button', { name: 'Rain', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Showing the last saved forecast');
+  await expect(page.locator('.weather-day')).toHaveCount(7);
+  await expect(page.locator('.weather-chart__now')).toHaveCount(0);
+  const path = await page.locator('.weather-chart__rain-chance').getAttribute('d');
+  expect(path!.match(/M /g)).toHaveLength(2);
+  await expect(page.locator('.weather-chart__rain-grid text').last()).toHaveText('50');
+  await expect(
+    page.locator('.weather-chart__grid:not(.weather-chart__rain-grid) text').last(),
+  ).toHaveText('100%');
+  await expect(
+    page.locator('.weather-chart__rain-bars rect[data-millimetres="0"]').first(),
+  ).toHaveAttribute('height', '0');
+  await expect(page.locator('.weather-chart__rain-bars rect[data-millimetres="49"]')).toBeVisible();
 });

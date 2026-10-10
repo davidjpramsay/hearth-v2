@@ -18,6 +18,43 @@ const hours: HourlyWeatherForecast[] = Array.from({ length: 25 }, (_, index) => 
 }));
 
 describe('fixed weather day geometry', () => {
+  it.each([0, 0.1, 1, 1.5, 4.8, 12, 49])(
+    'gives %s mm a labelled zero-based rain lane separate from percent',
+    (maximum) => {
+      const samples = hours.map((hour) => ({ ...hour, precipitationMillimetres: maximum }));
+      const graph = chartGeometry(samples, 'rain', day, 390, 268);
+      expect(graph.ticks.map((tick) => tick.label)).toEqual(['0%', '50%', '100%']);
+      expect(graph.rainMaximum).toBeGreaterThanOrEqual(Math.max(1, maximum));
+      expect(graph.rainTicks[0]!.label).toBe('0');
+      expect(Number(graph.rainTicks.at(-1)!.label)).toBe(graph.rainMaximum);
+      expect(graph.rainY(0)).toBe(graph.baseline);
+      expect(graph.rainY(graph.rainMaximum)).toBe(graph.rainTop);
+      expect(graph.rainTop).toBeGreaterThan(graph.primaryBaseline);
+      expect(graph.y(0)).toBe(graph.primaryBaseline);
+      expect(graph.y(100)).toBe(graph.top);
+      expect(graph.rainY(maximum)).toBeGreaterThanOrEqual(graph.rainTop);
+      expect(graph.rainY(maximum)).toBeLessThanOrEqual(graph.baseline);
+    },
+  );
+
+  it('does not rescale probability when expected rain changes and shows wind from zero', () => {
+    const ordinary = chartGeometry(hours, 'rain', day, 1000, 238);
+    const heavy = chartGeometry(
+      hours.map((hour) => ({ ...hour, precipitationMillimetres: 50 })),
+      'rain',
+      day,
+      1000,
+      238,
+    );
+    expect(heavy.primaryPath).toBe(ordinary.primaryPath);
+    expect(heavy.nowPoint(510)).toEqual(ordinary.nowPoint(510));
+    const wind = chartGeometry(hours, 'wind', day, 1000, 238);
+    expect(wind.ticks[0]!.value).toBe(0);
+    expect(wind.y(0)).toBe(wind.baseline);
+    expect(wind.ticks.map((tick) => tick.value)).toEqual([0, 10, 20, 30]);
+    expect(wind.ticks.every((tick) => tick.label === String(tick.value))).toBe(true);
+  });
+
   it('uses provider-local wall time and includes the following midnight endpoint', () => {
     expect(weatherMinute(hours[0]!.time, day)).toBe(0);
     expect(weatherMinute(hours[12]!.time, day)).toBe(720);

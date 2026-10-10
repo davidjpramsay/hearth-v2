@@ -502,17 +502,22 @@ with sqlite3.connect(sys.argv[2]) as c:
     const verification = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/first-use/registration-verifications',
+      headers: { cookie: String(options.headers['set-cookie']).split(';')[0]! },
       payload: {
         ceremonyId: options.json().ceremonyId,
         response: { id: 'credential_private_adult' },
       },
     });
     expect(verification.statusCode).toBe(200);
-    expect(verification.headers['set-cookie']).toMatch(
+    expect(String(verification.headers['set-cookie'])).toMatch(
       /hearth_session=.*HttpOnly; SameSite=Strict.*Secure/,
     );
     const setCookie = verification.headers['set-cookie'];
-    const cookie = (Array.isArray(setCookie) ? setCookie[0] : setCookie)?.split(';')[0];
+    const cookie = (
+      Array.isArray(setCookie)
+        ? setCookie.find((value) => value.startsWith('hearth_session='))
+        : setCookie
+    )?.split(';')[0];
     const session = await app.inject({
       method: 'GET',
       url: '/api/v1/auth/session',
@@ -760,14 +765,210 @@ with sqlite3.connect(sys.argv[2]) as c:
     const recovered = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/recovery/registration-verifications',
+      headers: { cookie: String(recoveryOptions.headers['set-cookie']).split(';')[0]! },
       payload: {
         ceremonyId: recoveryOptions.json().ceremonyId,
         response: { id: 'credential_route_recovery' },
       },
     });
     expect(recovered.statusCode).toBe(200);
-    expect(recovered.headers['set-cookie']).toContain('HttpOnly');
+    expect(String(recovered.headers['set-cookie'])).toContain('HttpOnly');
     expect(recovered.json()).toMatchObject({ authenticated: true, displayName: 'David' });
+    harness.database.close();
+  });
+});
+
+describe('browser pairing and in-flight adult proofs', () => {
+  it('ends a legacy adult cookie on a shared screen, so removing its display cookie cannot restore adult access', async () => {
+    const harness = await authHarness();
+    const registration = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(registration.ceremonyId, {});
+    const options = await harness.auth.authenticationOptions('127.0.0.1');
+    const other = await harness.auth.verifyAuthentication(options.ceremonyId, {
+      id: 'credential_private_adult',
+    });
+    const app = buildServer({
+      logger: false,
+      demoMode: false,
+      companionAuth: harness.auth,
+      adminRepository: new SqliteAdminRepository(harness.database, { seedDemo: false }),
+      runtime: {
+        mode: 'private',
+        householdId: first.session.householdId,
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(app);
+    const cookie = harness.auth.sessionCookie(first.token).split(';')[0]!;
+    const secret = 'l'.repeat(43);
+    const pairing = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tv-pairing-sessions',
+      payload: {
+        requestId: 'request_legacy_pair',
+        deviceName: 'Fixture screen',
+        pairingSecret: secret,
+        applicationVersion: 'test',
+      },
+    });
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/api/v1/households/${first.session.householdId}/pairing-approvals`,
+          headers: { cookie },
+          payload: { requestId: 'request_legacy_approve', code: pairing.json().pairing.code },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/api/v1/tv-pairing-sessions/${pairing.json().pairing.id}/credential-exchanges`,
+          payload: { requestId: 'request_legacy_exchange', pairingSecret: secret },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const context = await app.inject({
+      url: '/api/v1/runtime',
+      headers: { cookie: `${cookie}; hearth_device=${secret}` },
+    });
+    expect(context.json()).toMatchObject({
+      sharedScreen: true,
+      household: { id: first.session.householdId },
+    });
+    const withoutDisplay = await app.inject({
+      url: `/api/v1/households/${first.session.householdId}/admin`,
+      headers: { cookie },
+    });
+    expect(withoutDisplay.statusCode).toBe(401);
+    expect(harness.auth.session(other.token).displayName).toBe('David');
+    harness.database.close();
+  });
+
+  it('cancels a deferred authentication before session issuance and preserves another phone', async () => {
+    const harness = await authHarness();
+    const firstOptions = await harness.auth.firstUseRegistrationOptions(setupInput(), '127.0.0.1');
+    const first = await harness.auth.verifyFirstUseRegistration(firstOptions.ceremonyId, {});
+    const otherOptions = await harness.auth.authenticationOptions('127.0.0.1');
+    const other = await harness.auth.verifyAuthentication(otherOptions.ceremonyId, {
+      id: 'credential_private_adult',
+    });
+    const app = buildServer({
+      logger: false,
+      demoMode: false,
+      companionAuth: harness.auth,
+      adminRepository: new SqliteAdminRepository(harness.database, { seedDemo: false }),
+      runtime: {
+        mode: 'private',
+        householdId: first.session.householdId,
+        clock: new FixedClock('2026-08-03T07:42:00+08:00'),
+      },
+    });
+    servers.push(app);
+    const adultCookie = harness.auth.sessionCookie(first.token).split(';')[0]!;
+    const secret = 's'.repeat(43);
+    const pairing = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tv-pairing-sessions',
+      payload: {
+        requestId: 'request_pair_race',
+        deviceName: 'Fixture screen',
+        pairingSecret: secret,
+        applicationVersion: 'test',
+      },
+    });
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/api/v1/households/${first.session.householdId}/pairing-approvals`,
+          headers: { cookie: adultCookie },
+          payload: { requestId: 'request_approve_race', code: pairing.json().pairing.code },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const options = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/authentication-options',
+    });
+    const contextCookie = String(options.headers['set-cookie']).split(';')[0]!;
+    let release = () => {};
+    let entered = () => {};
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const deferred = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    harness.engine.verifyAuthentication = async () => {
+      entered();
+      await deferred;
+      return 8;
+    };
+    const verification = app
+      .inject({
+        method: 'POST',
+        url: '/api/v1/auth/authentication-verifications',
+        headers: { cookie: `${contextCookie}; ${adultCookie}` },
+        payload: {
+          ceremonyId: options.json().ceremonyId,
+          response: { id: 'credential_private_adult' },
+        },
+      })
+      .then((response) => response);
+    await started;
+    const exchange = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tv-pairing-sessions/${pairing.json().pairing.id}/credential-exchanges`,
+      headers: { cookie: `${contextCookie}; ${adultCookie}` },
+      payload: { requestId: 'request_exchange_race', pairingSecret: secret },
+    });
+    expect(exchange.statusCode).toBe(200);
+    release();
+    const result = await verification;
+    expect(result.statusCode).toBe(403);
+    expect(String(result.headers['set-cookie'])).not.toContain('hearth_session=');
+    expect(() => harness.auth.session(first.token)).toThrow();
+    expect(harness.auth.session(other.token).displayName).toBe('David');
+    expect(
+      harness.database.prepare('SELECT COUNT(*) AS count FROM companion_sessions').get(),
+    ).toEqual({ count: 2 });
+    harness.database.close();
+  });
+
+  it('binds verification to the initiating browser, without consuming another browser ceremony', async () => {
+    const harness = await authHarness();
+    const app = buildServer({ logger: false, demoMode: false, companionAuth: harness.auth });
+    servers.push(app);
+    const options = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/first-use/registration-options',
+      payload: setupInput(),
+    });
+    const other = await app.inject({ url: '/api/v1/runtime' });
+    const payload = {
+      ceremonyId: options.json().ceremonyId,
+      response: { id: 'credential_private_adult' },
+    };
+    const denied = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/first-use/registration-verifications',
+      headers: { cookie: String(other.headers['set-cookie']).split(';')[0]! },
+      payload,
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/auth/first-use/registration-verifications',
+          headers: { cookie: String(options.headers['set-cookie']).split(';')[0]! },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(200);
     harness.database.close();
   });
 });

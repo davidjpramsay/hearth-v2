@@ -57,6 +57,80 @@ test.beforeEach(async ({ request }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
 });
 
+for (const viewport of [
+  { name: 'narrow phone', width: 320, height: 700 },
+  { name: 'phone', width: 390, height: 844 },
+  { name: 'TV-sized adult browser', width: 1920, height: 1080 },
+]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Manage photos matches other settings colours on ${viewport.name} in ${theme}`, async ({
+      page,
+    }, testInfo) => {
+      const issues: string[] = [];
+      page.on('pageerror', (error) => issues.push(error.message));
+      page.on('console', (message) => {
+        if (['warning', 'error'].includes(message.type())) issues.push(message.text());
+      });
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto('/more');
+      await expect(page).toHaveTitle('Hearth');
+      await expect(page.getByRole('heading', { name: 'More', exact: true })).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+      const menu = page.locator('.more-screen');
+      const photos = menu.getByRole('link', { name: 'Manage photos', exact: true });
+      await expect(photos).toHaveAttribute('href', '/admin/photos');
+      await expect(menu.getByRole('link', { name: 'Photos', exact: true })).toHaveAttribute(
+        'href',
+        '/photos',
+      );
+      await photos.scrollIntoViewIfNeeded();
+      await page.mouse.move(0, 0);
+      const colours = await page
+        .locator('[href="/admin/photos"], [href="/admin/household"]')
+        .evaluateAll((rows) =>
+          rows.map((row) => {
+            const style = getComputedStyle(row);
+            const icon = getComputedStyle(row.querySelector('.more-card__icon')!);
+            return {
+              text: style.color,
+              background: style.backgroundColor,
+              icon: icon.color,
+              iconBackground: icon.backgroundColor,
+            };
+          }),
+        );
+      expect(colours).toHaveLength(2);
+      expect(colours[0]).toEqual(colours[1]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await captureEvidence(page, { path: testInfo.outputPath(`more-photos-${theme}.png`) });
+
+      await menu.getByRole('link', { name: 'Photos', exact: true }).focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(menu.getByRole('link', { name: 'Games', exact: true })).toBeFocused();
+      await page.keyboard.press('ArrowDown');
+      await expect(photos).toBeFocused();
+      await expect(photos).not.toHaveCSS('box-shadow', 'none');
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/admin\/photos$/);
+      await expect(page.getByRole('heading', { name: 'Manage photos', exact: true })).toBeVisible();
+      await page.getByRole('link', { name: 'Back to More', exact: true }).focus();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/more$/);
+      const axe = await new AxeBuilder({ page }).analyze();
+      expect(
+        axe.violations.filter((violation) =>
+          ['serious', 'critical'].includes(violation.impact ?? ''),
+        ),
+      ).toEqual([]);
+      expect(issues).toEqual([]);
+    });
+  }
+}
+
 test('phone More opens setup and household/member changes survive reload', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/today');
@@ -82,16 +156,24 @@ test('phone More opens setup and household/member changes survive reload', async
   await page.getByRole('link', { name: 'Back to Hearth settings' }).click();
   await page.getByRole('link', { name: /People/ }).click();
   const add = page.locator('.admin-form--add-member');
+  await expect(add.getByRole('radio')).toHaveCount(0);
+  await add.locator('.member-colour-disclosure > summary').click();
   await expect(add.getByRole('radio')).toHaveCount(12);
   await add.getByLabel('Display name').fill('Alex');
   await add.getByRole('radio', { name: 'Berry' }).check();
   await add.getByRole('button', { name: 'Add person' }).click();
   const alex = page.locator('.member-editor').filter({ hasText: 'Alex' });
   await expect(alex).toBeVisible();
+  await expect(alex.locator('.member-colour-disclosure')).not.toHaveAttribute('open');
+  await expect(alex.locator('.member-colour-disclosure > summary')).toContainText('Berry');
+  await alex.locator('.member-colour-disclosure > summary').click();
   await expect(alex.getByRole('radio', { name: 'Berry' })).toBeChecked();
   await page.reload();
   const reloadedAlex = page.locator('.member-editor').filter({ hasText: 'Alex' });
   await expect(reloadedAlex).toBeVisible();
+  await expect(reloadedAlex.locator('.member-colour-disclosure')).not.toHaveAttribute('open');
+  await expect(reloadedAlex.locator('.member-colour-disclosure > summary')).toContainText('Berry');
+  await reloadedAlex.locator('.member-colour-disclosure > summary').click();
   await expect(reloadedAlex.getByRole('radio', { name: 'Berry' })).toBeChecked();
 });
 
@@ -625,12 +707,32 @@ test('People palette supports native keyboard selection', async ({ page }) => {
   await page.goto('/admin/people');
 
   const ezra = page.locator('.member-editor').filter({ hasText: 'Ezra' });
+  const summary = ezra.locator('.member-colour-disclosure > summary');
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  await expect(ezra.getByRole('radio')).toHaveCount(12);
+  await page.keyboard.press('Tab');
   const sky = ezra.getByRole('radio', { name: 'Sky' });
-  await sky.focus();
+  await expect(sky).toBeFocused();
   await page.keyboard.press('ArrowRight');
 
   await expect(ezra.getByRole('radio', { name: 'Ocean' })).toBeFocused();
   await expect(ezra.getByRole('radio', { name: 'Ocean' })).toBeChecked();
+  await expect(summary).toContainText('Ocean');
+  await page.keyboard.press('Shift+Tab');
+  await expect(summary).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(ezra.getByRole('radio')).toHaveCount(0);
+  await expect(summary).toContainText('Ocean');
+  const receipt = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH' && response.url().includes('/members/'),
+  );
+  await ezra.getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await receipt).ok()).toBe(true);
+  await page.reload();
+  const saved = page.locator('.member-editor').filter({ hasText: 'Ezra' });
+  await expect(saved.locator('.member-colour-disclosure')).not.toHaveAttribute('open');
+  await expect(saved.locator('.member-colour-disclosure > summary')).toContainText('Ocean');
 });
 
 test('People can crop, persist, replace and restore a local profile photo', async ({ page }) => {
@@ -793,6 +895,72 @@ for (const path of [
       ),
     ).toEqual([]);
   });
+}
+
+for (const viewport of [
+  { name: 'narrow-phone', width: 320, height: 700 },
+  { name: 'phone', width: 390, height: 844 },
+  { name: 'phone-landscape', width: 844, height: 390 },
+  { name: 'desktop-controller', width: 1280, height: 720 },
+] as const) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`People colours stay compact and independent at ${viewport.name} in ${theme}`, async ({
+      page,
+    }, testInfo) => {
+      const issues: string[] = [];
+      page.on('pageerror', (error) => issues.push(error.message));
+      page.on('console', (message) => {
+        if (['warning', 'error'].includes(message.type())) issues.push(message.text());
+      });
+      await page.emulateMedia({ colorScheme: theme });
+      await page.setViewportSize(viewport);
+      await page.goto('/admin/people');
+      await expect(page).toHaveTitle(/Hearth/);
+      await expect(page).toHaveURL(/\/admin\/people$/);
+      await expect(page.getByRole('heading', { name: 'People', exact: true })).toBeVisible();
+      await expect(page.getByText('Loading…', { exact: true })).toHaveCount(0);
+      await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+      const palettes = page.locator('.member-colour-disclosure');
+      expect(await palettes.count()).toBeGreaterThan(1);
+      await expect(page.locator('.member-colour-disclosure[open]')).toHaveCount(0);
+      await expect(page.getByRole('radio')).toHaveCount(0);
+      const first = palettes.first();
+      const closedHeight = (await first.boundingBox())!.height;
+      expect(closedHeight).toBe(52);
+      await page.screenshot({ path: testInfo.outputPath(`people-collapsed-${theme}.png`) });
+      await first.locator('summary').click();
+      await expect(first.getByRole('radio')).toHaveCount(12);
+      await expect(page.locator('.member-colour-disclosure[open]')).toHaveCount(1);
+      expect((await first.boundingBox())!.height).toBeGreaterThan(closedHeight * 2);
+      await first.getByRole('radio', { name: 'Ocean' }).check();
+      await expect(first.locator('summary')).toContainText('Ocean');
+      if (viewport.name === 'phone') {
+        const result = await new AxeBuilder({ page }).analyze();
+        expect(
+          result.violations.filter((violation) =>
+            ['serious', 'critical'].includes(violation.impact ?? ''),
+          ),
+        ).toEqual([]);
+        await page.screenshot({ path: testInfo.outputPath(`people-expanded-${theme}.png`) });
+      }
+      await first.locator('summary').click();
+      await expect(page.getByRole('radio')).toHaveCount(0);
+      await expect(first.locator('summary')).toContainText('Ocean');
+      expect((await first.boundingBox())!.height).toBe(closedHeight);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      if (viewport.name === 'phone') {
+        const result = await new AxeBuilder({ page }).analyze();
+        expect(
+          result.violations.filter((violation) =>
+            ['serious', 'critical'].includes(violation.impact ?? ''),
+          ),
+        ).toEqual([]);
+      }
+      expect(issues).toEqual([]);
+    });
+  }
 }
 
 for (const viewport of [
@@ -1038,7 +1206,14 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto('/admin/people');
     await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
-    await expect(page.locator('.member-editor').first().getByRole('radio')).toHaveCount(12);
+    const first = page.locator('.member-editor').first();
+    await expect(first.getByRole('radio')).toHaveCount(0);
+    await captureEvidence(page, {
+      path: resolve(peopleEvidence, `people-colours-collapsed-${viewport.name}.png`),
+      animations: 'disabled',
+    });
+    await first.locator('.member-colour-disclosure > summary').click();
+    await expect(first.getByRole('radio')).toHaveCount(12);
     await captureEvidence(page, {
       path: resolve(peopleEvidence, `people-colour-picker-${viewport.name}.png`),
       animations: 'disabled',

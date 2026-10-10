@@ -474,6 +474,38 @@ cryptographic randomness.
 
 ### Companion/admin
 
+Shared-display request context takes precedence over companion authority (D-099). Presence of a
+`hearth_device` cookie or Bearer credential, even empty/malformed/revoked, excludes adult authority;
+supported TV user-agent markers add a negative capability hint, not authentication or hardware
+attestation. Private family reads still require a valid scoped display credential. The same rule
+guards adult actor resolution, session reads and every first-use/authentication/recovery option
+and verification endpoint. Status suppresses adult identity on screens. Runtime and auth-status
+DTOs include a backward-compatible optional `sharedScreen` boolean; the browser uses it at the
+common admin boundary and link producers, never viewport width. Runtime is no-store and varies by
+Cookie, Authorization and User-Agent. Household role/capability checks remain authoritative.
+
+An HttpOnly, SameSite=Strict correlation cookie `hearth_browser_context` has no access authority.
+It is Secure in private mode, refreshed on runtime/options access and expires after ten minutes.
+First-use/authentication/recovery ceremonies bind to that browser context and expire after five
+minutes; verifications must return its cookie. The in-memory registry caps pending requests at 256
+and ceremony bindings at 512, prunes expired bindings and cleans guards on response, timeout or
+abort. Successful browser pairing invalidates that context's pending proofs/bindings and revokes
+only the adult session cookie supplied by the switching browser. Private shared-screen requests
+also revoke and clear a retained legacy adult cookie, so removing the display cookie later cannot
+resurrect that old session. Commit-time guards inside
+first-use/recovery transactions and before authentication session issuance reject a proof that
+finishes after pairing; the response boundary also rechecks and revokes a newly issued session on
+a late denial. Other adult phones, passkeys and paired devices are not reset. No new database,
+secret, pairing scope, background process, native bridge or network configuration is introduced.
+
+The browser's completed pairing exchange refreshes identity even if its dialog was cancelled or
+unmounted while awaiting the accepted response. It sends a same-origin, negative-only
+BroadcastChannel/storage notice so other open documents immediately hide private content, cancel
+queries/streams, clear private caches and replace their document with Today. The storage notice is
+removed immediately and contains no credential or role grant. Runtime and auth status revalidate
+on foreground/reconnect, and the provider treats either server `sharedScreen` flag as restrictive.
+Appearance and other approved family controls remain accessible; no new polling loop is added.
+
 The LAN-only release uses named adult household accounts with passkeys as the primary companion
 sign-in. Private first use reads a high-entropy one-time code from an external secret file, rate
 limits invalid attempts, requires user verification and a discoverable passkey, then issues a

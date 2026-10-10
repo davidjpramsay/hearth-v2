@@ -5,6 +5,7 @@ import { useAppearance } from '../appearance/appearance';
 import { HouseholdClockProvider } from '../hooks/useHouseholdClock';
 import { usePhoneKeyboardOpen } from '../hooks/usePhoneKeyboardOpen';
 import { useHearthRuntime } from '../runtime/context';
+import { useSharedScreen } from '../runtime/sharedScreen';
 import { HouseholdDateTime } from './HouseholdDateTime';
 import { Icon, type IconName } from './Icon';
 
@@ -105,6 +106,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { preferences } = useAppearance();
   const runtime = useHearthRuntime();
+  const sharedScreen = useSharedScreen();
   const navigation = baseNavigation;
   if (pathname === '/pair') {
     return (
@@ -113,7 +115,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
       </main>
     );
   }
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') && !sharedScreen) {
     return (
       <div className="companion-shell companion-shell--admin">
         <AdminDesktopNavigation pathname={pathname} />
@@ -123,17 +125,6 @@ function AppShellLayout({ children }: { children: ReactNode }) {
             {children}
           </main>
         </div>
-        <PhoneNavigation />
-      </div>
-    );
-  }
-  if (pathname === '/appearance') {
-    return (
-      <div className="companion-shell">
-        <HouseholdDateTime placement="companion" />
-        <main className="companion-content" id="main-content">
-          {children}
-        </main>
         <PhoneNavigation />
       </div>
     );

@@ -6,6 +6,7 @@
   overflow: hidden;
   display: grid;
   grid-template-columns: var(--rail) 1fr;
+  grid-template-rows: minmax(0, 1fr);
   background: var(--canvas);
 }
 
@@ -1411,7 +1412,8 @@
   position: fixed;
   z-index: 20;
   bottom: 0;
-  top: calc(100dvh - var(--phone-tabs-height));
+  /* A viewport-height top inset competes with bottom during Safari toolbar scrolling. */
+  top: auto;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid #e2d9d0;
@@ -3457,7 +3459,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    top: calc(100dvh - var(--phone-tabs-height));
+    top: auto;
     height: var(--phone-tabs-height);
     padding: 6px max(8px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px)
       max(8px, env(safe-area-inset-left, 0px));
@@ -3943,6 +3945,10 @@
   color: var(--muted);
   font-size: 14px;
   line-height: 1.35;
+}
+.routine-assignees > .routine-assignees__error {
+  color: var(--brick);
+  font-weight: 700;
 }
 .routine-assignees__options {
   display: grid;

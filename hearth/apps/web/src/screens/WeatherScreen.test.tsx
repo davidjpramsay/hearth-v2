@@ -10,6 +10,7 @@ vi.mock('../hooks/useHouseholdClock', () => ({
   useHouseholdDateTime: () => ({ instant: mocks.instant }),
 }));
 vi.mock('../hooks/useOnlineStatus', () => ({ useOnlineStatus: () => true }));
+vi.mock('../runtime/sharedScreen', () => ({ useSharedScreen: () => false }));
 vi.mock('../hooks/useWeatherForecastQuery', () => ({ useWeatherForecastQuery: mocks.query }));
 
 function forecast(day = '2026-08-03'): WeatherForecast {
@@ -48,6 +49,61 @@ const view = () => (
 );
 
 describe('weather clock and inspection', () => {
+  it('maps taps through CSS zoom and ignores scrolling or cancelled pointers', () => {
+    vi.stubGlobal('PointerEvent', MouseEvent);
+    const { container } = render(view());
+    const plot = container.querySelector('.weather-chart__plot')!;
+    vi.spyOn(plot, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      top: 0,
+      width: 2000,
+      height: 476,
+      right: 2100,
+      bottom: 476,
+      x: 100,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const chart = screen.getByRole('slider');
+    fireEvent.pointerDown(chart, { clientX: 1128, clientY: 120, button: 0 });
+    fireEvent.pointerUp(chart, { clientX: 1128, clientY: 120, button: 0 });
+    expect(chart).toHaveAttribute('aria-valuenow', '12');
+    fireEvent.click(screen.getByRole('button', { name: 'Return to current time' }));
+    fireEvent.pointerDown(chart, { clientX: 1128, clientY: 120, button: 0 });
+    fireEvent.pointerUp(chart, { clientX: 1128, clientY: 180, button: 0 });
+    expect(chart).toHaveAttribute('aria-valuenow', '8');
+    fireEvent.pointerDown(chart, { clientX: 1128, clientY: 120, button: 0 });
+    fireEvent.pointerCancel(chart);
+    fireEvent.pointerUp(chart, { clientX: 1128, clientY: 120, button: 0 });
+    expect(chart).toHaveAttribute('aria-valuenow', '8');
+  });
+
+  it('renders rainfall as amount bars in a separately labelled lane, with both selected values accessible', () => {
+    const data = forecast();
+    data.hourly[8]!.precipitationMillimetres = 1.5;
+    mocks.query.mockReturnValue({ data, isPending: false, refetch: vi.fn() });
+    const { container } = render(view());
+    fireEvent.click(screen.getByRole('button', { name: 'Rain' }));
+    expect(container.querySelector('.weather-chart__lane-label--chance')).toHaveTextContent(
+      'Rain chance (%)',
+    );
+    expect(container.querySelector('.weather-chart__lane-label--amount')).toHaveTextContent(
+      'Expected rain (mm per hour)',
+    );
+    expect(container.querySelectorAll('.weather-chart__rain-bars rect')).toHaveLength(25);
+    const bars = container.querySelectorAll('.weather-chart__rain-bars rect');
+    expect(bars[0]).toHaveAttribute('height', '0');
+    expect(Number(bars[8]!.getAttribute('height'))).toBeGreaterThan(0);
+    expect(container.querySelector('.weather-chart__rain-amount')).toBeNull();
+    expect(screen.getByRole('slider')).toHaveAttribute(
+      'aria-valuetext',
+      '8 am, 10% chance, 1.5 mm expected',
+    );
+    expect(container.querySelector('.weather-selected-hour')).toHaveTextContent(
+      '10% chance1.5 mm expected',
+    );
+  });
+
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();

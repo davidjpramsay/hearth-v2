@@ -52,6 +52,7 @@ for (const route of [
   'home',
   'photos',
   'more',
+  'appearance',
 ]) {
   test(`visible controls have an arrow path on ${route}`, async ({ page }) => {
     await page.goto(`/${route}`);
