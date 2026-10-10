@@ -24,6 +24,28 @@ function rectangle(element: HTMLElement, x: number, y: number) {
 }
 
 describe('focus graph', () => {
+  it('visits the last TV menu row before a geometrically closer fixed footer', () => {
+    document.body.innerHTML =
+      '<aside class="tv-rail"><nav><button>Photos</button><button>Games</button></nav><footer><button>Appearance</button></footer></aside>';
+    const [photos, games, appearance] = [...document.querySelectorAll('button')];
+    rectangle(photos!, 0, 500);
+    rectangle(games!, 0, 620);
+    rectangle(appearance!, 0, 550);
+    expect(nextSpatialTarget(photos!, 'down')).toBe(games);
+    expect(nextSpatialTarget(games!, 'down')).toBe(appearance);
+    expect(nextSpatialTarget(appearance!, 'up')).toBe(games);
+    expect(nextSpatialTarget(photos!, 'up')).toBeNull();
+  });
+  it('still skips unavailable TV rows and traps a modal inside the rail', () => {
+    document.body.innerHTML =
+      '<aside class="tv-rail"><button>Photos</button><button disabled>Unavailable</button><div aria-hidden="true"><button>Hidden</button></div><button>Games</button><div role="dialog" aria-modal="true"><button>Close</button></div></aside>';
+    const [photos, unavailable, hidden, games, close] = [...document.querySelectorAll('button')];
+    [photos, unavailable, hidden, games, close].forEach((button, index) =>
+      rectangle(button!, 0, index * 80),
+    );
+    expect(nextSpatialTarget(photos!, 'down')).toBe(games);
+    expect(nextSpatialTarget(close!, 'up')).toBeNull();
+  });
   it('preserves guarded busy rows without enabling unavailable or native-disabled controls', () => {
     document.body.innerHTML =
       '<main id="main-content"><button>A</button><button aria-disabled="true" aria-busy="true" data-focus-id="busy">Saving</button><button aria-disabled="true">Unavailable</button><button disabled aria-busy="true">Disabled</button></main>';

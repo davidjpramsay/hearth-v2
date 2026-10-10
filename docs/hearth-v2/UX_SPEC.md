@@ -51,6 +51,11 @@ Primary commands are Up, Down, Left, Right, Select and Back.
 - The focused destination and focused action are always visually obvious.
 - Television rail rows use a stable inset focus outline, without enlargement or an outer glow that
   the scrolling navigation clips. Apply the same bounded treatment to the rail's Appearance action.
+  On short displays, scroll only the rail's navigation region to reveal the current destination
+  without moving the clock, footer or page. On resize, a focused navigation row takes precedence
+  over the active destination so the remote user's focus never disappears.
+  Up/Down follows that single column's menu order through Games before the fixed Appearance footer;
+  clipped rows are not skipped merely because the footer is geometrically closer.
 - Moving between regions is deterministic; no focus trap or unpredictable jump is acceptable.
 - Arrow navigation follows rendered control positions, not fixed cross-screen links; responsive
   reflow therefore changes direction naturally. Hidden, disabled and inert controls are skipped.

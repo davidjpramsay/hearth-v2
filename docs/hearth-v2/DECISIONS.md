@@ -40,6 +40,11 @@ Record durable choices here. New decisions should include date, status, context,
   from assistive technology, outside Tab order and explicitly outline-free. Any remote key still
   exits and restores Start ambient focus; screen readers receive the clock/date as the control's
   description.
+- Refinement (2026-10-10): On shorter TVs, reveal the active/focused destination by scrolling only
+  the rail navigation region, leaving clock/footer/content stationary. Account for 4K CSS zoom and
+  prioritise a focused row during resize. Up/Down follows the single TV-menu column's order through
+  Games before Appearance, rather than jumping to a geometrically closer fixed footer past a clipped
+  row. Other spatial navigation, modal isolation and unavailable-control rules remain unchanged.
 - Consequence: Focus stays obvious without framing the whole photo. Native-ratio `contain` display,
   rotation, reduced motion and photo storage remain unchanged. No timer, provider, credential,
   API, household mutation, native APK or networking change is added.

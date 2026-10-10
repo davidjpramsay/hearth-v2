@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 
 import { useAppearance } from '../appearance/appearance';
@@ -107,6 +107,46 @@ function AppShellLayout({ children }: { children: ReactNode }) {
   const { preferences } = useAppearance();
   const runtime = useHearthRuntime();
   const sharedScreen = useSharedScreen();
+  const railNavigation = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = railNavigation.current;
+    if (nav === null) return;
+    const keepDestinationVisible = () => {
+      if (nav.clientHeight === 0) return;
+      const focused = document.activeElement;
+      const target =
+        focused instanceof HTMLElement && nav.contains(focused)
+          ? focused
+          : nav.querySelector<HTMLElement>('.rail-item--active');
+      if (target === null) return;
+      const bounds = nav.getBoundingClientRect();
+      const item = target.getBoundingClientRect();
+      const scale = bounds.height / nav.clientHeight;
+      const inset = 4 * scale;
+      // Scroll this region only, never the shell/content or household clock.
+      // Rectangles are physical pixels; scrollTop stays logical under 4K zoom.
+      if (item.top < bounds.top + inset) {
+        nav.scrollTop -= (bounds.top + inset - item.top) / scale;
+      } else if (item.bottom > bounds.bottom - inset) {
+        nav.scrollTop += (item.bottom - bounds.bottom + inset) / scale;
+      }
+    };
+    keepDestinationVisible();
+    nav.addEventListener('focusin', keepDestinationVisible);
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', keepDestinationVisible);
+      return () => {
+        nav.removeEventListener('focusin', keepDestinationVisible);
+        window.removeEventListener('resize', keepDestinationVisible);
+      };
+    }
+    const observer = new ResizeObserver(keepDestinationVisible);
+    observer.observe(nav);
+    return () => {
+      nav.removeEventListener('focusin', keepDestinationVisible);
+      observer.disconnect();
+    };
+  }, [pathname]);
   const navigation = baseNavigation;
   if (pathname === '/pair') {
     return (
@@ -133,7 +173,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <aside className="tv-rail" aria-label="Primary navigation">
         <HouseholdDateTime placement="rail" />
-        <nav className="tv-rail__nav">
+        <nav className="tv-rail__nav" ref={railNavigation}>
           {navigation.map((item, index) => (
             <RailItem
               item={item}

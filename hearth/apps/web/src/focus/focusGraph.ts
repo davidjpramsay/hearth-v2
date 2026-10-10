@@ -30,8 +30,23 @@ export function nextSpatialTarget(
   element: HTMLElement,
   direction: FocusDirection,
 ): HTMLElement | null {
+  const modal = element.closest('[aria-modal="true"], dialog[open]');
+  const tvRail =
+    modal === null && (direction === 'up' || direction === 'down')
+      ? element.closest('.tv-rail')
+      : null;
+  if (tvRail !== null) {
+    // This rail is one ordered column. Clipped navigation rows can overlap
+    // the fixed footer geometrically; they must not be skipped for Appearance.
+    const targets = [...tvRail.querySelectorAll<HTMLElement>(controls)].filter((target) => {
+      const rect = target.getBoundingClientRect();
+      return canFocus(target) && target.tabIndex >= 0 && rect.width > 0 && rect.height > 0;
+    });
+    const index = targets.indexOf(element);
+    return index < 0 ? null : (targets[index + (direction === 'up' ? -1 : 1)] ?? null);
+  }
   const rail = direction === 'up' || direction === 'down' ? element.closest('aside') : null;
-  const scope = element.closest('[aria-modal="true"], dialog[open]') ?? rail ?? document;
+  const scope = modal ?? rail ?? document;
   const origin = element.getBoundingClientRect();
   const horizontal = direction === 'left' || direction === 'right';
   const content = element.closest('main');

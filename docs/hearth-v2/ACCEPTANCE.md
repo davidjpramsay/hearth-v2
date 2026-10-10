@@ -4,9 +4,9 @@
 
 The owner approves committing/pushing the pending shared-screen isolation, phone dock, compact
 People colours, responsive Appearance, Weather, photo-menu colour and explicit chore People-picker
-changes. The latest combined `pnpm verify:code` passes 351 unit, 143 API/integration and 24 migration
+changes. The latest combined `pnpm verify:code` passes 353 unit, 143 API/integration and 24 migration
 tests plus formatting/lint/types/deployment checks and production builds. `pnpm verify:ci` inventories
-1015 browser cases; the complete hosted workflow, including all browser shards, Android and immutable
+1023 browser cases; the complete hosted workflow, including all browser shards, Android and immutable
 image publication, must pass at the exact candidate before it becomes an installable release.
 
 The owner chooses to install through their phone's **System health → Hearth update** after that
@@ -17,6 +17,44 @@ candidate. The phone updater uses the existing commissioned protected configurat
 backup/rollback/readiness path; no APK replacement is needed for this web/server-only update.
 Actual installed version, phone/TCL rendering and physical remote acceptance remain separate
 post-install evidence; earlier sections record the local preparation checks, not live completion.
+
+### Short-TV release regression and repair
+
+The first pushed candidate `a9a3bbdfd81a9756ae418bc925d213f5ad1639e8` fails the full hosted
+workflow [38045177238](https://github.com/davidjpramsay/hearth-v2/actions/runs/38045177238) on the
+existing 1366×768 light Games check: the active Games rail row has viewport ratio zero. Publication
+is skipped and the private NAS remains on its old release. A local rerun reproduces that failure.
+
+The constrained TV shell introduced for Weather is retained. A route/resize/focus-aware rail helper
+scrolls only the existing navigation region and prioritises a focused menu row over the active
+destination. It converts physical rectangle deltas to logical scroll pixels under 4K zoom. Clock,
+footer and main content never scroll with it. Up/Down traverses the one-column TV menu in DOM order
+before Appearance: a clipped Games row must not be skipped because the fixed footer is closer in
+screen coordinates. General content spatial navigation, modal isolation and unavailable-row checks
+remain intact. Target sizes and fonts are not reduced.
+
+`pnpm verify:code` passes 353 unit tests, including two additional focus-graph regressions, plus
+143 API/integration, 24 migration, deployment checks and production builds. `pnpm verify:ci`
+checks all 1023 browser cases without replacing execution. The final command passes **79 cases
+in 2.3 minutes**:
+
+```sh
+pnpm test:e2e:built tests/e2e/rail-visibility.spec.ts tests/e2e/games.spec.ts \
+  tests/e2e/games-remote.spec.ts tests/e2e/games-progression.spec.ts tests/e2e/weather.spec.ts \
+  tests/e2e/native-tv-viewport.spec.ts tests/e2e/keyboard-layout.spec.ts --max-failures=0 \
+  --output=/tmp/hearth-release-20261010-7ZYzaK/rail-verified --reporter=line
+```
+
+Eight new light/dark cases cover 1366×768, 1672×941, 1920×720 and 3840×1440. They require full
+active/focused-row visibility, preserve content focus at entry, visit every menu row through Games
+and Appearance, resize while navigating, keep the household clock visible and assert zero shell
+scroll. Page identity/content, overlay absence, console health and serious/critical accessibility
+pass. Earlier new-test failures expose the footer shortcut and fractional edge clipping; the fix
+handles focused-row reveal as well as entry/resize, rather than weakening assertions. `view_image`
+inspects the original hosted failure and corrected short-TV light/4K dark screenshots outside Git
+in the command's output directory. Browser plugin unavailable; Playwright uses isolated local demo
+data. Physical TV/remote, actual Safari and phone installation remain not run. No game progress,
+auth contract, APK, household data or NAS/networking configuration is changed by this follow-up.
 
 ## Explicit chore People selection — 2026-10-10
 
