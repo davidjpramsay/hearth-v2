@@ -103,6 +103,11 @@ for (const viewport of [
     await expect(page.getByRole('button', { name: /Until 6:00 am, Overnight trip/ })).toBeVisible();
     const more = page.getByRole('button', { name: /5 more events, Wed/ });
     await expect(more).toBeVisible();
+    expect(
+      await page.locator('.app-content').evaluate((main) => main.scrollHeight - main.clientHeight),
+    ).toBe(0);
+    const footer = (await page.locator('.week-footer-controls').boundingBox())!;
+    expect(footer.y + footer.height).toBeLessThanOrEqual(viewport.height);
     const geometryErrors = await page.locator('.week-column').evaluateAll((columns) =>
       columns.flatMap((column) => {
         const issues: string[] = [];
@@ -186,7 +191,7 @@ for (const viewport of [
     await expect(more).toBeFocused();
     await expect(page).toHaveURL(/\/calendar\/week$/);
 
-    await page.getByRole('button', { name: /1 more events, Mon/ }).click();
+    await page.getByRole('button', { name: /\d+ more events, Mon/ }).click();
     await dialog.getByRole('button', { name: /Late pickup/ }).click();
     await expect(dialog).toContainText('Monday 3 August · 11:45 pm – Tuesday 4 August · 12:00 am');
     await page.keyboard.press('Escape');
@@ -245,9 +250,51 @@ test('overflow works from saved plans offline and remote arrows cross days', asy
   await expect(early).toBeFocused();
   await context.setOffline(true);
   await expect(page.getByRole('status')).toContainText('Offline');
+  expect(
+    await page.locator('.app-content').evaluate((main) => main.scrollHeight - main.clientHeight),
+  ).toBe(0);
   const more = page.getByRole('button', { name: /5 more events, Wed/ });
   await more.click();
   await expect(page.getByRole('dialog').locator('.agenda-event')).toHaveCount(9);
   await page.keyboard.press('Escape');
   await expect(more).toBeFocused();
 });
+
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 1200, height: 620 },
+]) {
+  test(`crowded Week and an offline banner share the ${viewport.height}px TV height budget`, async ({
+    page,
+    context,
+  }, testInfo) => {
+    await page.setViewportSize(viewport);
+    await crowdedWeek(page);
+    await page.goto('/calendar/week');
+    await expect(page.getByRole('heading', { name: 'This week' })).toBeVisible();
+    await context.setOffline(true);
+    await expect(page.getByRole('status')).toContainText('Offline');
+    expect(
+      await page.locator('.app-content').evaluate((main) => main.scrollHeight - main.clientHeight),
+    ).toBe(0);
+    await expect(page.getByRole('button', { name: 'Later week' })).toBeInViewport();
+    const more = page.getByRole('button', { name: /\d+ more events, Wed/ });
+    await expect(more).toBeInViewport();
+    await page.screenshot({
+      path: testInfo.outputPath(`crowded-week-offline-${viewport.height}.png`),
+    });
+    await more.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog').locator('.agenda-event')).toHaveCount(9);
+    await page.keyboard.press('Escape');
+    await expect(more).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    // Spatial navigation lands on the nearby middle footer control, not its old metadata hint.
+    await expect(page.getByRole('button', { name: 'Go to this week' })).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByRole('button', { name: 'Earlier week' })).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('button', { name: 'Later week' })).toBeFocused();
+  });
+}

@@ -163,6 +163,44 @@ def issue_recovery(connection, household, member, directory, now):
         raise
 
 
+def issue_phone_key(connection, household, member, directory, now):
+    """One-use owner replacement grant; issuance does not revoke current access."""
+    created = timestamp(now)
+    expires = timestamp(now + datetime.timedelta(minutes=15))
+    raw = secrets.token_hex(32)
+    output = directory / "one-time-phone-key.txt"
+    private_file(output, raw + "\n")
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        if connection.execute(
+            """SELECT 1 FROM members WHERE id=? AND household_id=? AND role='adult'
+               AND archived_at IS NULL AND EXISTS
+               (SELECT 1 FROM json_each(capabilities_json) WHERE value='household.admin')""",
+            (member, household),
+        ).fetchone() is None:
+            raise ValueError("Choose an existing adult controller; nothing changed.")
+        connection.execute(
+            """UPDATE controller_phone_owner_grants SET revoked_at=? WHERE household_id=?
+               AND consumed_at IS NULL AND revoked_at IS NULL""",
+            (created, household),
+        )
+        grant_id = "phone_owner_" + uuid.uuid4().hex
+        connection.execute(
+            """INSERT INTO controller_phone_owner_grants
+               (id,household_id,member_id,key_hash,created_at,expires_at)
+               VALUES (?,?,?,?,?,?)""",
+            (grant_id, household, member, hashlib.sha256(raw.encode()).hexdigest(), created, expires),
+        )
+        audit(connection, household, "auth.phone.owner-key.issue", "phone_owner_grant", grant_id,
+              created, {"memberId": member, "expiresAt": expires})
+        connection.commit()
+        return output, expires
+    except Exception:
+        connection.rollback()
+        output.unlink()
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", required=True)
@@ -174,6 +212,8 @@ def main():
     screens.add_argument("--revoke", action="append", required=True)
     recovery = commands.add_parser("issue-recovery")
     recovery.add_argument("--member", required=True)
+    phone_key = commands.add_parser("issue-phone-key")
+    phone_key.add_argument("--member", required=True)
     args = parser.parse_args()
     require_owner()
     directory = private_directory(args.private_parent)
@@ -185,6 +225,9 @@ def main():
         if args.command == "revoke-screens":
             count = revoke_screens(connection, args.household, args.keep, args.revoke, timestamp(now))
             result = {"revokedScreens": count, "backup": str(saved)}
+        elif args.command == "issue-phone-key":
+            output, expires = issue_phone_key(connection, args.household, args.member, directory, now)
+            result = {"ownerKeyFile": str(output), "expiresAt": expires, "backup": str(saved)}
         else:
             output, expires = issue_recovery(connection, args.household, args.member, directory, now)
             result = {"recoveryFile": str(output), "expiresAt": expires, "backup": str(saved)}

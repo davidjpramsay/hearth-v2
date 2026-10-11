@@ -92,6 +92,8 @@ export const RuntimeContextSchema = z.object({
 });
 
 export const PasskeyAuthStatusSchema = z.object({
+  accessMethod: z.enum(['passkey', 'phone']).optional(),
+  ownerPhone: z.boolean().optional(),
   mode: RuntimeModeSchema,
   sharedScreen: z.boolean().optional(),
   configured: z.boolean(),
@@ -1226,6 +1228,14 @@ export const AuditSummarySchema = z.object({
     'auth.passkey.revoke',
     'auth.recovery-code.rotate',
     'auth.account.recover',
+    'auth.phone.connect',
+    'auth.phone.invite',
+    'auth.phone.approve',
+    'auth.phone.invitation.cancel',
+    'auth.phone.remove',
+    'auth.phone.confirm',
+    'auth.phone.owner-key.issue',
+    'auth.phone.owner.replace',
     'home.action.execute',
     'notice.create',
     'notice.update',

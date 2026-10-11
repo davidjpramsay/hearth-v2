@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { BrowserAccess } from './browser-access.js';
+import { PHONE_PENDING_COOKIE, type PhoneConnectionService } from './phone-connections.js';
 import { z } from 'zod';
 
 import {
@@ -12,6 +13,16 @@ import {
 
 import {
   isTelevisionUserAgent,
+  OwnerPhoneClaimSchema,
+  PhoneInvitationCreateSchema,
+  PhoneInvitationClaimSchema,
+  PhoneCommandSchema,
+  PhoneConnectionsSchema,
+  PhoneInvitationStateSchema,
+  PhoneInvitationRevealSchema,
+  PhonePendingSchema,
+  PhoneRemovalSchema,
+  PhoneConfirmationSchema,
   AddListItemRequestSchema,
   GameCatalogueSchema,
   WordGroupsPuzzleSchema,
@@ -290,6 +301,12 @@ export const LOGGER_REDACT_PATHS = [
   '*.setupCode',
   '*.recoveryCode',
   '*.pairingSecret',
+  '*.ownerKey',
+  '*.invitationSecret',
+  '*.pendingToken',
+  '*.qrUrl',
+  'req.body.ownerKey',
+  'req.body.invitationSecret',
 ] as const;
 
 export const HEARTH_DEVICE_COOKIE = 'hearth_device';
@@ -311,6 +328,7 @@ export interface BuildServerOptions {
   systemOperations?: SystemOperationsRepository;
   applianceUpdate?: ApplianceUpdateRepository;
   companionAuth?: CompanionAuthRepository;
+  phoneConnections?: PhoneConnectionService;
   todayContentRepository?: TodayContentRepository;
   dailyVerseProvider?: DailyVerseProvider;
   weatherLocationRepository?: WeatherLocationRepository;
@@ -451,12 +469,50 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   server.addHook('preHandler', async (request, reply) => {
     const routeUrl = request.routeOptions.url;
+    if (
+      options.phoneConnections &&
+      (routeUrl?.includes('/auth/phones/') || routeUrl === '/api/v1/auth/sign-outs') &&
+      request.method !== 'GET'
+    ) {
+      await run(reply, async () =>
+        options.phoneConnections!.assertOrigin(
+          request.headers.origin,
+          request.headers['sec-fetch-site'],
+        ),
+      );
+      if (reply.sent) return reply;
+    }
+    if (
+      options.phoneConnections &&
+      ((routeUrl?.startsWith('/api/v1/auth/') &&
+        !routeUrl.includes('/phones/') &&
+        !['/api/v1/auth/status', '/api/v1/auth/session', '/api/v1/auth/sign-outs'].includes(
+          routeUrl,
+        )) ||
+        routeUrl?.includes('/adult-access/'))
+    ) {
+      return run(reply, async () => {
+        throw new RepositoryError(
+          'FORBIDDEN',
+          'Passkey sign-in is retired. Connect this phone using an adult QR or the private owner key.',
+        );
+      });
+    }
+    if (options.phoneConnections && routeUrl?.includes('/phone-') && request.method !== 'GET') {
+      await run(reply, async () =>
+        options.phoneConnections!.assertOrigin(
+          request.headers.origin,
+          request.headers['sec-fetch-site'],
+        ),
+      );
+      if (reply.sent) return reply;
+    }
     if (isPrivateMode(options) && isSharedScreenRequest(request.headers)) {
       const retainedAdult = optionalCompanionCredential(request.headers);
       if (retainedAdult !== null && options.companionAuth !== undefined) {
         // Upgrade legacy mixed-cookie screens too: removing the display cookie
         // later must not resurrect the adult authority retained on this browser.
-        options.companionAuth.signOut(retainedAdult);
+        options.companionAuth.invalidateBrowserSession(retainedAdult);
         reply.header('Set-Cookie', options.companionAuth.clearSessionCookie());
       }
     }
@@ -513,7 +569,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     try {
       browserRequests.get(request)!.assertAllowed();
     } catch (error) {
-      auth.signOut(token);
+      auth.invalidateBrowserSession(token);
       throw error;
     }
   }
@@ -559,10 +615,174 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     );
     return PasskeyAuthStatusSchema.parse({
       ...status,
+      ...(options.phoneConnections ? { accessMethod: 'phone' } : {}),
       sharedScreen,
       ...(sharedScreen ? { authenticated: false, actor: null } : {}),
     });
   });
+
+  const phoneService = () => {
+    if (!options.phoneConnections)
+      throw new RepositoryError('INTEGRATION_UNAVAILABLE', 'Phone connections are not configured.');
+    return options.phoneConnections;
+  };
+  const pendingProof = (request: FastifyRequest): string | null => {
+    if (typeof request.headers.cookie !== 'string') return null;
+    const value = request.headers.cookie
+      .split(';')
+      .map((p) => p.trim())
+      .find((p) => p.startsWith(`${PHONE_PENDING_COOKIE}=`))
+      ?.slice(PHONE_PENDING_COOKIE.length + 1);
+    return value && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : null;
+  };
+  const phoneParams = z.object({ householdId: OpaqueIdSchema, id: OpaqueIdSchema });
+  server.post('/api/v1/auth/phones/owner-claims', async (request, reply) => {
+    const body = parse(OwnerPhoneClaimSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const result = await phoneService().ownerClaim(
+        body,
+        request.ip,
+        browserRequests.get(request)!.assertAllowed,
+      );
+      acceptAdultSession(request, companionAuth(options), result.token);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', phoneService().cookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    });
+  });
+  server.post('/api/v1/auth/phones/invitation-claims', async (request, reply) => {
+    const body = parse(PhoneInvitationClaimSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      if (options.companionAuth?.status(optionalCompanionCredential(request.headers)).authenticated)
+        throw new RepositoryError(
+          'CONFLICT',
+          'This phone is already connected. Remove its connection before changing accounts.',
+        );
+      browserRequests.get(request)!.assertAllowed();
+      const result = phoneService().claimInvitation(
+        body.invitationSecret,
+        body.phoneName,
+        request.ip,
+        pendingProof(request),
+      );
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', phoneService().cookie(result.pendingToken, true));
+      return PhoneInvitationStateSchema.parse(result.state);
+    });
+  });
+  server.get('/api/v1/auth/phones/pending', async (request, reply) =>
+    run(reply, async () => {
+      reply.header('Cache-Control', 'no-store');
+      return PhonePendingSchema.parse(phoneService().pending(pendingProof(request)));
+    }),
+  );
+  server.post('/api/v1/auth/phones/exchanges', async (request, reply) =>
+    run(reply, async () => {
+      const result = phoneService().exchange(
+        pendingProof(request),
+        browserRequests.get(request)!.assertAllowed,
+      );
+      acceptAdultSession(request, companionAuth(options), result.token);
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', phoneService().cookie(result.token));
+      return PasskeySessionSchema.parse(result.session);
+    }),
+  );
+  server.post('/api/v1/auth/phones/confirmations', async (request, reply) =>
+    run(reply, async () => {
+      reply.header('Cache-Control', 'no-store');
+      return PhoneConfirmationSchema.parse(
+        phoneService().confirm(companionCredential(request.headers)),
+      );
+    }),
+  );
+  server.get('/api/v1/households/:householdId/phone-connections', async (request, reply) =>
+    run(reply, async () => {
+      const params = HouseholdParamsSchema.parse(request.params);
+      reply.header('Cache-Control', 'no-store');
+      return PhoneConnectionsSchema.parse(
+        phoneService().list(params.householdId, companionCredential(request.headers)),
+      );
+    }),
+  );
+  server.post('/api/v1/households/:householdId/phone-invitations', async (request, reply) => {
+    const body = parse(PhoneInvitationCreateSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      reply.header('Cache-Control', 'no-store');
+      const params = HouseholdParamsSchema.parse(request.params);
+      return PhoneInvitationRevealSchema.parse(
+        phoneService().createInvitation(
+          params.householdId,
+          companionCredential(request.headers),
+          body.memberId,
+          body.requestId,
+        ),
+      );
+    });
+  });
+  server.get('/api/v1/households/:householdId/phone-invitations/:id', async (request, reply) =>
+    run(reply, async () => {
+      const params = phoneParams.parse(request.params);
+      reply.header('Cache-Control', 'no-store');
+      return PhoneInvitationStateSchema.parse(
+        phoneService().readInvitation(
+          params.householdId,
+          companionCredential(request.headers),
+          params.id,
+        ),
+      );
+    }),
+  );
+  for (const [action, cancel] of [
+    ['approvals', false],
+    ['cancellations', true],
+  ] as const) {
+    server.post(
+      `/api/v1/households/:householdId/phone-invitations/:id/${action}`,
+      async (request, reply) => {
+        const body = parse(PhoneCommandSchema, request.body, reply);
+        if (body === null) return reply;
+        return run(reply, async () => {
+          const params = phoneParams.parse(request.params);
+          reply.header('Cache-Control', 'no-store');
+          return PhoneInvitationStateSchema.parse(
+            phoneService().approve(
+              params.householdId,
+              companionCredential(request.headers),
+              params.id,
+              body.requestId,
+              cancel,
+            ),
+          );
+        });
+      },
+    );
+  }
+  server.post(
+    '/api/v1/households/:householdId/phone-connections/:id/revocations',
+    async (request, reply) => {
+      const body = parse(PhoneCommandSchema, request.body, reply);
+      if (body === null) return reply;
+      return run(reply, async () => {
+        const params = phoneParams.parse(request.params);
+        reply.header('Cache-Control', 'no-store');
+        const result = phoneService().remove(
+          params.householdId,
+          companionCredential(request.headers),
+          params.id,
+          body.requestId,
+        );
+        if (result.current) reply.header('Set-Cookie', companionAuth(options).clearSessionCookie());
+        return PhoneRemovalSchema.parse(result);
+      });
+    },
+  );
 
   server.post('/api/v1/auth/first-use/registration-options', async (request, reply) => {
     const body = parse(FirstUsePasskeyOptionsRequestSchema, request.body, reply);
@@ -634,11 +854,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   );
 
   server.post('/api/v1/auth/sign-outs', async (request, reply) => {
-    const auth = companionAuth(options);
-    const token = optionalCompanionCredential(request.headers);
-    if (token !== null) auth.signOut(token);
-    reply.header('Cache-Control', 'no-store').header('Set-Cookie', auth.clearSessionCookie());
-    return PasskeySignOutResultSchema.parse({ signedOut: true });
+    return run(reply, async () => {
+      const auth = companionAuth(options);
+      const token = optionalCompanionCredential(request.headers);
+      if (token !== null) auth.signOut(token);
+      reply.header('Cache-Control', 'no-store').header('Set-Cookie', auth.clearSessionCookie());
+      return PasskeySignOutResultSchema.parse({ signedOut: true });
+    });
   });
 
   server.post('/api/v1/auth/recovery/registration-options', async (request, reply) => {
@@ -1367,6 +1589,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const body = parse(ExchangeTvPairingRequestSchema, request.body, reply);
       if (params === null || body === null) return reply;
       return run(reply, async () => {
+        const previousAdult = optionalCompanionCredential(request.headers);
+        if (previousAdult !== null && options.companionAuth?.status(previousAdult).ownerPhone)
+          throw new RepositoryError(
+            'FORBIDDEN',
+            'The owner phone cannot become a shared screen. Use a different browser for the screen.',
+          );
         const session = TvDeviceSessionSchema.parse(
           await adminRepository.exchangeTvPairing(
             params.pairingId,
@@ -1375,8 +1603,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ),
         );
         browserAccess.pair(request.headers);
-        const previousAdult = optionalCompanionCredential(request.headers);
-        if (previousAdult !== null) options.companionAuth?.signOut(previousAdult);
+        if (previousAdult !== null) options.companionAuth?.invalidateBrowserSession(previousAdult);
         reply
           .header('Cache-Control', 'no-store')
           .header(

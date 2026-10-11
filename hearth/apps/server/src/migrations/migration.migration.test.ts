@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,6 +10,72 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
+
+describe('0028 independent controller phone migration', () => {
+  it('preserves two simultaneous sessions sharing one credential without merging their connections', () => {
+    const database = new Database(':memory:');
+    const folder = fileURLToPath(new URL('.', import.meta.url));
+    for (const file of readdirSync(folder)
+      .filter((file) => /^\d{4}_.*\.sql$/.test(file) && Number(file.slice(0, 4)) <= 27)
+      .sort())
+      database.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
+    const now = '2026-10-12T00:00:00.000Z';
+    const expires = '2026-11-12T00:00:00.000Z';
+    database
+      .prepare(
+        "INSERT INTO households VALUES ('household_upgrade','Upgrade','Australia/Perth','en-AU',1,?,?)",
+      )
+      .run(now, now);
+    database
+      .prepare(
+        "INSERT INTO members (id,household_id,display_name,colour,role,created_at,updated_at,capabilities_json) VALUES ('member_upgrade','household_upgrade','Adult','#2f766d','adult',?,?,'[\"household.admin\"]')",
+      )
+      .run(now, now);
+    database
+      .prepare(
+        "INSERT INTO passkey_credentials (id,credential_id,household_id,member_id,webauthn_user_id,public_key,counter,device_type,backed_up,transports_json,label,created_at) VALUES ('passkey_upgrade','credential_upgrade','household_upgrade','member_upgrade','fixture',?,0,'multiDevice',1,'[]','Synced key',?)",
+      )
+      .run(Buffer.from([1, 2]), now);
+    const insert = database.prepare(
+      "INSERT INTO companion_sessions (token_hash,household_id,member_id,created_at,last_seen_at,expires_at,credential_id) VALUES (?,'household_upgrade','member_upgrade',?,?,?,'credential_upgrade')",
+    );
+    insert.run('a'.repeat(64), now, now, expires);
+    insert.run('b'.repeat(64), now, now, expires);
+    database
+      .prepare(
+        "INSERT INTO paired_devices (id,household_id,name,device_type,credential_reference,scopes_json,paired_at,capabilities_json) VALUES ('device_kept','household_upgrade','Kept TV','television','fixture','[\"household.read\"]',?,'[\"dpad\"]')",
+      )
+      .run(now);
+    applyMigrations(database);
+    const rows = database
+      .prepare(
+        'SELECT phone_connection_id,credential_id,revoked_at FROM companion_sessions ORDER BY token_hash',
+      )
+      .all() as { phone_connection_id: string; credential_id: string; revoked_at: string | null }[];
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((row) => row.phone_connection_id)).size).toBe(2);
+    for (const row of rows) {
+      expect(row.phone_connection_id).toMatch(/^phone_legacy_/);
+      expect(row.credential_id).toBe('credential_upgrade');
+      expect(row.revoked_at).toBeNull();
+    }
+    expect(
+      database
+        .prepare("SELECT count(*) AS total FROM controller_phone_connections WHERE source='legacy'")
+        .get(),
+    ).toEqual({ total: 2 });
+    expect(
+      database.prepare("SELECT revoked_at,name FROM paired_devices WHERE id='device_kept'").get(),
+    ).toEqual({ revoked_at: null, name: 'Kept TV' });
+    expect(database.pragma('foreign_key_check')).toEqual([]);
+    expect(database.inTransaction).toBe(false);
+    applyMigrations(database);
+    expect(
+      database.prepare('SELECT count(*) AS total FROM controller_phone_connections').get(),
+    ).toEqual({ total: 2 });
+    database.close();
+  });
+});
 const PRE_PAYMENT_HISTORY_MIGRATIONS = [
   '0001_household_core.sql',
   '0002_admin_and_pairing.sql',

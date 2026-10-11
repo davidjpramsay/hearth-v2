@@ -10,7 +10,7 @@ export function CalendarDayDialog({
   timezone,
   onClose,
 }: {
-  day: WeekDay;
+  day: Pick<WeekDay, 'localDate' | 'dayLabel' | 'dateLabel'>;
   events: CalendarEvent[];
   timezone: string;
   onClose: () => void;
@@ -92,6 +92,7 @@ export function CalendarDayDialog({
             </button>
           </header>
           <div className="calendar-day-dialog__events">
+            {events.length === 0 ? <p>Nothing planned for this day.</p> : null}
             {events.map((event, index) => (
               <button
                 className="agenda-event focusable"

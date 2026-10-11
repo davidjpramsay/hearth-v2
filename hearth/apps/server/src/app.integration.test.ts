@@ -264,6 +264,7 @@ function privateCompanionAuth(): CompanionAuthRepository {
       session(token);
     },
     signOut: () => undefined,
+    invalidateBrowserSession: () => undefined,
     sessionCookie: (token) => `hearth_session=${token}; HttpOnly; SameSite=Strict`,
     clearSessionCookie: () => 'hearth_session=; Max-Age=0; HttpOnly; SameSite=Strict',
   };

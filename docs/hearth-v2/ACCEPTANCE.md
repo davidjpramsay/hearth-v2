@@ -1,5 +1,253 @@
 # Hearth v2 acceptance and definition of done
 
+## Approved phone/calendar release candidate — 2026-10-12
+
+The owner authorizes GitHub publication and will activate the update manually. The clean
+`codex/phone-access-release` checkout contains protected owner-key/QR phone access (D-102/D-103),
+the pending Week viewport fit and Month two-preview/full-day changes (D-101). The separately
+prepared firewall-helper implementation, installers, activator, helper tests and networking
+documentation are deliberately excluded. Production Compose/environment, native TV source,
+private runtime files, archive and workflow are unchanged. The original preparation worktree
+retains all excluded work; no live NAS or phone state is changed by this publication checkpoint.
+
+Checks passed in the clean release checkout, from `hearth/`:
+
+- `pnpm install --frozen-lockfile`: existing pinned lockfile installs successfully.
+- `pnpm verify:code`: formatting, zero lint errors, workspace types, **381 unit**, **166
+  API/integration**, **25 migration** tests, **10 owner-maintenance** fixtures, deployment scaffold
+  verification and production web/server builds. The separate 19 firewall-helper preparation
+  fixtures in earlier checkpoint notes are not part of this release. Two pre-existing non-failing
+  ESLint expression-resolution diagnostics remain.
+- `pnpm audit`: no known vulnerabilities in production or development dependencies.
+- `pnpm verify:ci`: **5 policy checks** and disjoint inventory of **1068** browser tests.
+- `pnpm test:e2e:built tests/e2e/device-connection.spec.ts tests/e2e/admin.spec.ts
+tests/e2e/remote.spec.ts tests/e2e/screen-admin-isolation.spec.ts tests/e2e/month-day-cards.spec.ts
+tests/e2e/week-viewport.spec.ts tests/e2e/calendar.spec.ts tests/e2e/calendar-density.spec.ts
+tests/e2e/calendar-header.spec.ts tests/e2e/keyboard-layout.spec.ts
+tests/e2e/native-tv-viewport.spec.ts tests/e2e/visual.spec.ts`: **237 passed** in 5.7 minutes.
+  Built localhost application, isolated in-memory demo, no reused private/development server.
+  TV/mobile calendar screenshots were inspected; keyboard/D-pad, offline, accessibility,
+  viewport/resize and shared-screen denial paths pass. Browser plugin was unavailable; existing
+  Playwright coverage was used. Earlier phone-flow fictional previews remain distinct from devices.
+- `git diff --check`: pass. Readback confirms no deployment/networking/runtime-source changes.
+
+Full hosted verification and verified image publication are required before the phone's Update
+button can offer this candidate. Physical Safari, real-camera QR enrollment, owner replacement and
+loss/recovery acceptance remain open. Existing valid legacy sessions are retained; do not sign out
+or remove the working phone before a backend-file key establishes the intended protected owner
+and both phones pass acceptance. No owner key is automatically issued or captured by publication.
+
+After image publication, use the existing phone update workflow; do not rerun a NAS networking
+installer for these application-only changes. Actual activation, live readiness and physical
+phone/TV acceptance are separate and must not be inferred from GitHub or local test success.
+
+## Protected main owner phone — 2026-10-12 (D-103)
+
+The key-connected main phone is now server-protected. No adult, including itself, may remove it
+through connection revocation, app sign-out, QR account switching, screen conversion or owner-adult
+archive/demotion in People. Its name/colour/photo remain editable. The menu labels it **owner phone**
+and **Protected · replace with server key**, without Remove. Owner settings have no Sign out.
+People waits for ownership metadata before displaying edit/remove controls.
+
+Only a fresh backend-issued one-use key replaces ownership. Its claim atomically revokes the
+previous owner's sessions/invitations, creates the new owner and consumes the grant. Bad/expired/
+reused keys, interrupted browser proof and a simulated database failure preserve the prior owner.
+Secondary/legacy phones, TV, household content and networking are preserved. Issuance alone
+disconnects nothing and rotates unused owner grants household-wide. Expired ownership remains
+protected; clearing/expiring a Safari cookie still needs backend-key recovery. Restrictive
+mixed-screen cleanup may invalidate browser sessions but does not delete the owner record.
+Migration 0028's existing provenance is sufficient; no additional migration is introduced.
+
+Passed, from `hearth/` in the `tv-fit-wordmark` checkout:
+
+- `pnpm verify:code` (rerun after final UI wording/loading guard): formatting, zero lint errors,
+  workspace type checks, **381 unit**, **166 API/integration**, **25 migration** tests, deployment
+  scaffold fixtures including **10 owner maintenance** and **19 firewall-helper** checks, and
+  production web/server builds. Two pre-existing non-failing ESLint `TSNonNullExpression`
+  resolution diagnostics remain. Twenty-eight migrations are copied to the server build.
+- `pnpm verify:ci`: **5 policy checks** and complete non-overlapping inventory of **1068 browser
+  tests**, not execution of all those cases.
+- `pnpm --filter @hearth/server exec vitest run src/phone-connections.integration.test.ts
+src/companion-auth.integration.test.ts src/companion-auth.browser.integration.test.ts
+src/admin-repository.integration.test.ts`: **56 passed**. One initial HTTP fixture used a
+  too-short TV secret and was corrected; the valid request proves owner conversion is forbidden
+  before the TV exchange repository runs. The new repository interface's test double was updated.
+- `pnpm --filter @hearth/web exec vitest run src/auth/PhoneAccess.test.tsx
+src/components/PhoneConnectionsPanel.test.tsx src/screens/PeopleSettingsScreen.owner.test.tsx`:
+  **11 passed**. `python3 deploy/synology/owner-access.test.py`: **10 passed**.
+- `pnpm test:e2e:built tests/e2e/device-connection.spec.ts tests/e2e/admin.spec.ts
+tests/e2e/remote.spec.ts tests/e2e/screen-admin-isolation.spec.ts`: **110 passed** in 3.2 minutes.
+  Final owner-help wording and People loading/error guard were additionally verified in the final
+  code gate and rebuilt local browser fixture. No live or development server was reused by that gate.
+- Playwright CLI named isolated session `hearth-owner-qa` at `http://127.0.0.1:4320`, serving the
+  final compiled web app with an in-memory demo server and explicitly fictional phone/API responses.
+  Browser plugin was unavailable. Identity/title/content, no framework overlay and zero application
+  errors/warnings pass. The owner has zero Remove buttons across 320×700, 390×844, 844×390,
+  1920×1080 and 3840×2160 in light/dark; no horizontal overflow. Screenshots were inspected.
+  D-pad arrows/Enter reach secondary removal/confirmation; Keep cancels, then confirmed removal
+  leaves the owner and TV visible. Rachael's People view locks the owner's role/admin/removal but
+  permits profile editing. Owner settings have zero Sign out buttons; an owner QR scan strips the
+  fragment and has zero Disconnect actions. WCAG 2 A/AA and 2.1 AA Axe checks report no violations.
+
+Changed surfaces: shared auth-status/audit metadata; `owner-phone.ts`, phone service, companion
+session invalidation and admin repository; HTTP and fixture tests; owner maintenance grant rotation;
+phone list, access gate, settings and People UI; Product/UX/Architecture/Data/Operations/Decision
+contracts. The prior calendar and firewall-helper work is preserved, not activated by this change.
+
+**Not run:** full 1068-browser execution, hosted release/publication, Android checks (unchanged
+native source), live NAS activation/key issuance/removal, actual David/Rachael Safari or real-camera
+QR setup, owner replacement on hardware and loss/recovery drill. No commit/push/deployment,
+production account mutation, household cleanup, credential collection or networking change occurred.
+
+Local fictional screenshot evidence (outside Git, not actual connected-phone proof):
+
+- [Protected owner and secondary phone](/tmp/hearth-owner-phone-qa.MSZEos/owner-protected-mobile.png)
+- [Owner permissions protected in People](/tmp/hearth-owner-phone-qa.MSZEos/owner-people-protected.png)
+- [Other adult's desktop view, dark](/tmp/hearth-owner-phone-qa.MSZEos/owner-protected-desktop-dark.png)
+
+## Independent owner-key / QR adult phones — 2026-10-12 (D-102)
+
+No passwords or passkeys in active private enrollment. The first phone proves the external
+one-time owner key; a second phone scans an inviter-generated QR and receives authority only
+after explicit approval and browser-bound exchange. Each connected phone shows the verified
+adult identity and is independently removable. TV scope is unchanged.
+
+Local verification passes:
+
+- `pnpm verify:code`: formatting, zero lint errors, workspace types, 377 unit tests, 159
+  API/integration tests, 25 migration tests (including two same-time legacy sessions sharing one
+  credential), deployment scaffold checks and production web/server builds.
+- `pnpm verify:ci`: five policy checks and complete non-overlapping inventory of 1068 browser tests.
+- `pnpm test:e2e:built tests/e2e/device-connection.spec.ts tests/e2e/admin.spec.ts
+tests/e2e/remote.spec.ts tests/e2e/screen-admin-isolation.spec.ts`: 110 passed. Initial runs
+  correctly refused occupied local dev ports and found a stale migration-27 expectation;
+  task-owned dev servers were stopped, the expectation updated to 28, and the exact set rerun.
+- `pnpm audit --prod`: no known vulnerabilities. Owner maintenance has nine Python checks;
+  existing 19 firewall-helper and eight recovery-safety checks also pass without activation.
+- Local CLI browser fixtures exercise QR create/request/approve/exchange, both named identities,
+  reload, confirmed independent removal (David and display remain), and already-connected QR
+  protection. 320×700, 390×844, 844×390, 1920×1080 and 3840×2160 have no horizontal overflow;
+  light/dark, Tab/Arrow navigation, title/content, no overlay and zero application console
+  errors/warnings were checked. QR scrolled fully above the dock; inputs use at least 16px.
+  Axe reports no serious/critical violations; the existing clock outside a landmark produces one
+  moderate `region` notice on the full administration page, while the new access gate reports none.
+
+Browser plugin was unavailable; regular Playwright CLI was used. These new-flow rendered sessions
+use fictional local responses, not production credentials or real-phone proof. The full 1068-case
+browser run, native APK checks and hosted publication are not run for this change. Physical
+David/Rachael Safari setup, QR scan,
+terminate/reopen, independent removal, lost-one/both-phone recovery, publication and live
+activation remain **not run**. Current production access and networking are untouched. No commit,
+push, automatic owner-key issuance, legacy cleanup or live pairing has occurred in this checkpoint.
+
+## Month two-event previews and full-day opening — local verification 2026-10-11 (D-101)
+
+Month now reserves two event-title rows and one count row in every day area. The count is exactly
+`events.length - 2`, displayed only when positive; phone uses `+N`, TV `+N more`. Compact layouts
+no longer hide the second title or switch to dots. Minimum row heights preserve date, titles and
+count without clipping. Compact Month chrome retains the source key and the Week-sized navigation
+bar; ordinary tested TV viewports fit without main scrolling. Extremely short/message-heavy
+layouts may scroll to retain readable cells, as specified in D-101.
+
+OK/Enter/click/tap on any date opens the complete shared read-only day list from the existing
+indexed Month response. Focus alone never opens it. The list handles empty dates and all twelve
+events in the dense fixture; event details and Back/Close restore the exact event and date.
+The old automatic phone agenda and duplicate compact/wide counters are removed. No extra API
+request, provider access, permission, write, schema, credential or migration is added.
+
+Passed commands from `hearth/` in the `tv-fit-wordmark` checkout:
+
+- `pnpm verify:code`: formatting, lint, all workspace type checks, **365 unit**, **143 integration**,
+  **24 migration** tests, deployment scaffold checks (**8 existing + 19 pending helper fixtures**)
+  and production web/server builds. The two existing non-failing ESLint `TSNonNullExpression`
+  resolution diagnostics remain. Deployment scaffold verification is not NAS activation.
+- `pnpm verify:ci`: **5 policy checks** and disjoint inventory of **1068** browser tests, not
+  execution of that complete browser suite.
+- `pnpm exec playwright test --config playwright.ci.config.ts tests/e2e/month-day-cards.spec.ts tests/e2e/week-viewport.spec.ts tests/e2e/calendar.spec.ts tests/e2e/calendar-density.spec.ts tests/e2e/calendar-header.spec.ts tests/e2e/keyboard-layout.spec.ts tests/e2e/native-tv-viewport.spec.ts tests/e2e/remote.spec.ts tests/e2e/visual.spec.ts --max-failures=0 --reporter=line --output=/tmp/hearth-month-regression`:
+  **141/141 passed** in 2.5 minutes. The initial eight Month regressions reproduced the old hidden
+  second title/duplicate counter/no-dialog failures against the unchanged build.
+- `pnpm exec playwright test --config playwright.ci.config.ts tests/e2e/month-day-cards.spec.ts --max-failures=0 --reporter=line --output=/tmp/hearth-month-final`:
+  **8/8 passed** after adding explicit URL and initial-popup screenshot evidence; runtime code
+  is unchanged from the 141-case run. Zero/one/two/three/twelve-event days, long titles, count bounds,
+  no overlap/clipping, TV canvas fit, phone clicks, remote OK, full list scrolling, nested Back,
+  empty dates and dark-mode dialog accessibility are covered.
+- Targeted `pnpm exec eslint ... --max-warnings=0`, final `pnpm format:check` and
+  `git diff --check` pass. Built localhost demo at `http://127.0.0.1:4320/calendar/month`, in-memory
+  isolated server, Chromium, en-AU/Perth. Identity, meaningful content, absent framework overlays,
+  console health and interaction assertions pass. Viewports include 1280×720, 1366×768,
+  1536×864, 1920×1080, 3840×2160, 390×844 and 844×390. Rendered TV, 4K, phone and popup
+  screenshots were inspected. Browser plugin was unavailable; enabling it would add interactive
+  in-app QA alongside these existing Playwright checks. Evidence uses fictional data only.
+
+Changed surfaces: `MonthScreen.tsx`, shared `CalendarDayDialog.tsx`, Month rules in
+`CalendarSurface.css`, the new `month-day-cards.spec.ts`, updated `remote.spec.ts`/`visual.spec.ts`
+and corresponding Product/UX/Architecture/Roadmap/Decision/Acceptance text. The pending Week fit
+and NAS-helper preparation are preserved; no helper/deployment script is changed in this slice.
+
+**Not run:** all 1068 browser cases, physical TCL remote and iPhone Safari acceptance, native
+Android build/install (native code is unchanged), commit/push/deployment. No production calendars,
+household data, pairings, NAS services or networking were changed. Publication remains separate.
+
+Screenshot gallery (outside Git):
+
+- [Month on TV](/tmp/hearth-month-regression/visual--visual-Month-at-tv-1366/month-tv-1366.png)
+- [Month on phone](/tmp/hearth-month-regression/visual--visual-Month-at-phone-portrait/month-phone-portrait.png)
+- [Full selected-day list](/tmp/hearth-month-final/month-day-cards-Month-show-4097e-a-bounded-count-at-1366x768/month-day-open.png)
+
+## Calendar Week viewport fit — local verification 2026-10-11
+
+The original fixed-height timeline reproduced the reported small vertical scroll: at 1366×768,
+the main canvas had `scrollHeight=777` and `clientHeight=768` (9px overflow). The initial regression
+matrix intentionally failed 14/18 normal/empty/stale viewport cases against the unchanged build.
+
+Week now reserves its header, view switch, messages, all-day and overflow bands and navigation,
+then fills the remaining television height. A cleaned-up resize observer measures logical CSS
+pixels (including doubled 4K), deduplicates unchanged measurements and has a resize-event
+fallback. Readable timed cards retain their minimum size; zero, one or two all-day rows fit the
+available budget. Every omitted card remains counted and accessible in the full-day dialog.
+Clock labels use exact divisions when space is short. Phone/tablet Week remains a complete,
+naturally scrolling agenda, not a squeezed television grid.
+
+Passed, from `hearth/` in the `tv-fit-wordmark` checkout:
+
+- `pnpm verify:code`: formatting, lint, workspace type checks, **365 unit**, **143 integration**,
+  **24 migration** tests, deployment scaffold fixtures (**8 existing + 19 pending helper cases**)
+  and production web/server builds. The two existing ESLint `TSNonNullExpression` resolution
+  diagnostics remain non-failing. This local gate does not activate either deployment helper.
+- `pnpm verify:ci`: **5 policy checks** and disjoint inventory of **1060 browser tests**; this is
+  an inventory check, not execution of all 1060 cases.
+- `pnpm exec playwright test --config playwright.ci.config.ts tests/e2e/week-viewport.spec.ts tests/e2e/calendar.spec.ts tests/e2e/calendar-density.spec.ts tests/e2e/calendar-header.spec.ts tests/e2e/keyboard-layout.spec.ts tests/e2e/native-tv-viewport.spec.ts --max-failures=0 --reporter=line --output=/tmp/hearth-week-fit-complete`:
+  **92/92 passed** in 1.7 minutes. Built localhost demo with isolated in-memory data, Chromium,
+  en-AU/Perth. Normal/empty/stale checks span 1200×620, 1280×720, 1366×768, 1536×864,
+  1672×941, 1920×1080 and 3840×2160. Assertions cover zero main/page vertical overflow, no
+  clipped timed cards, wheel stability, week navigation, responsive remount/resize, observer
+  fallback, dense all-day/off-hours, offline messages at 620/720px, all nine crowded-day events,
+  dialog/Back focus restoration, light/dark accessibility and the exact native viewport template.
+  One earlier new test incorrectly expected Down from Wednesday to choose Earlier week;
+  Hearth's existing spatial navigation correctly chooses the nearer This week. The corrected
+  test proves Left/Right reaches both other controls; no focus-engine behavior was changed.
+- Targeted `pnpm exec eslint ... --max-warnings=0`, final `pnpm format:check` and
+  `git diff --check` pass. Rendered screenshots were inspected at compact/wide/4K television
+  sizes, crowded short/offline sizes, and phone portrait. All evidence contains fictional data.
+
+Files in this fix: `CalendarSurface.css`, `WeekScreen.tsx`, `utils/weekLayout.ts`,
+`utils/calendar.test.ts`, `tests/e2e/week-viewport.spec.ts`, `calendar-density.spec.ts`,
+`native-tv-viewport.spec.ts`, this acceptance section and the Calendar section of `UX_SPEC.md`.
+Existing uncommitted NAS-helper preparation is preserved separately. Browser-plugin tooling was
+unavailable; enabling that plugin would allow interactive in-app QA alongside these Playwright checks.
+
+**Not run:** the complete 1060-case browser suite, physical TCL TV/remote and actual iPhone Safari
+acceptance, native Android build/install (native code is unchanged), commit/push or deployment.
+No production household/calendar data, device pairings, credentials, NAS services or networking
+were changed. Live installation remains a separate approved release step.
+
+Screenshot gallery (outside Git):
+
+- [Compact Week, 1366×768](/tmp/hearth-week-fit-complete/week-viewport-Week-fits-13-4751b-al-without-canvas-scrolling/week-viewport.png)
+- [Wide Week, 1920×1080](/tmp/hearth-week-fit-complete/week-viewport-Week-fits-19-ea054-al-without-canvas-scrolling/week-viewport.png)
+- [4K Week](/tmp/hearth-week-fit-complete/week-viewport-Week-fits-38-842a8-al-without-canvas-scrolling/week-viewport.png)
+- [Crowded offline Week, 1200×620](/tmp/hearth-week-fit-complete/calendar-density-crowded-W-61261--the-620px-TV-height-budget/crowded-week-offline-620.png)
+
 ## People cards and Weather controls — release candidate 2026-10-10
 
 The owner authorizes committing and pushing both follow-ups and will install manually through
@@ -956,7 +1204,11 @@ A change is complete only when:
 ### Calendar
 
 - Events from multiple enabled calendars retain correct owner/source cues.
-- Month fits one television viewport, shows readable colour-coded event titles plus deterministic overflow inside date cells, and identifies each colour through a separate avatar/label key. On phone, focusing or selecting a date exposes every title in a companion agenda beneath the compact grid.
+- Month reserves up to two readable colour-coded event previews and one exact remaining-events
+  count inside each date cell, with no clipping or overlap. The ordinary TV grid fits a viewport;
+  unusually short/message-heavy screens may scroll rather than shrink or hide cell contents.
+  A separate avatar/label key identifies each colour. TV OK and phone tap open a complete day
+  dialog; focus alone never opens it. Event details and Back/Close restore the exact event/date.
 - Month is reachable below Week with D-pad navigation; Back restores Week and the prior rail focus, while the phone exposes a Week/Month switch.
 - Calendar opens Agenda by default, with Agenda, Week and Month tabs in that order on TV and phone.
 - Week, Month and Agenda are views beneath one Calendar primary destination on
@@ -1391,7 +1643,8 @@ theme reporting remain untested until the physical-TV pilot.
 - Television pairing can be revoked.
 - Adult-controller clarity (D-096): Phones & screens identifies the signed-in adult, distinguishes
   existing controller permissions from passkey enrolment and puts phone guidance before TV code
-  approval. No phone is claimed ready until its owner signs in with their own passkey. Disconnected
+  approval. Under D-102 no phone is claimed ready until its owner verifies the named connection
+  on that actual browser. Disconnected
   screens are retained in collapsed history, not mixed into authorized screens; contact timestamps
   do not imply online status. Confirmed screen revocation restores focus and leaves adult passkeys
   unchanged. Local regression and rendered checks are recorded separately from live cleanup.
@@ -1404,22 +1657,22 @@ theme reporting remain untested until the physical-TV pilot.
   scope.
 - Server-side secrets are absent from built JS and APK artefacts.
 - Child/guest roles cannot access admin configuration.
-- In private mode, an adult can create the first household only with the external one-time setup
-  code and a user-verified passkey; Admin then requires a valid revocable `HttpOnly` companion
-  session. The database stores public-key material and session hashes, never the setup code or raw
-  session token.
-- A signed-in administrator can enrol additional independently named passkeys for any active adult
-  and revoke a lost credential. Hearth blocks removal of an adult's final passkey until recovery is
-  configured. Recovery-code creation re-verifies the current passkey, displays a 128-bit code once,
-  stores only its digest and expires it after 180 days. Successful one-time recovery creates a
-  replacement passkey, consumes the code and revokes that adult's earlier credentials and sessions.
+- In private mode, the external one-time owner key creates the first adult controller connection;
+  Admin requires a valid revocable HttpOnly session linked to an active named connection (D-102).
+  No password/passkey is required. Only session/key/invitation digests persist, never raw secrets.
+- A connected controller creates a one-use, five-minute QR for an existing adult controller,
+  confirms the scanned phone and approves without changing the inviter's identity. Only the
+  requesting browser exchanges. Removal ends only the selected connection and linked sessions.
+  Loss of all phones uses a private owner-issued grant, not a household/TV reset. New enrollment
+  does not confer recent sensitive-action consent. Cross-household, child/display, wrong-browser,
+  expired/cancelled, removed inviter/target and one-use replay abuse must fail closed.
 - After private first use, an unauthenticated browser cannot discover the household identifier or
   name through runtime bootstrap and receives `UNAUTHENTICATED` from household JSON, photo and
   event-stream routes. A same-household companion with `household.view` and a paired television
   with `household.read` can load the same routes; cross-household credentials fail closed.
 - Television pairing still creates unique schema-valid six-character codes after more than 99
-  retained requests. Passkey authentication options enforce per-client and global pending limits,
-  and expired attempts are pruned so unauthenticated requests cannot grow memory without bound.
+  retained requests. Phone connection claims enforce bounded per-client attempt state, live and
+  retained invitation limits, with expiry/pruning. Retired passkey ceremonies reject in production.
 - Signed-out personal-device sign-in and shared-screen connection are separate, explicit choices.
   More, desktop settings and Android pairing use the same **Phones & screens** menu name. No code
   is created before a user selects the shared-screen action, and no private household data is
@@ -1429,9 +1682,9 @@ theme reporting remain untested until the physical-TV pilot.
   background. Phone approval tolerates grouped pasted codes but never approves automatically.
   Disconnecting requires confirmation and a lost command reply retains its original request ID.
   Production settings never offer the demo-only pairing preview. Adult settings remain protected
-  by the existing server-authenticated passkey session, not by a display code.
-  First-use setup remains available on a wide passkey-capable desktop computer; only actual TV
-  browsers or unavailable passkey contexts direct the user to a companion device.
+  by the server-authenticated named phone connection, not by a display code.
+  First-use setup remains available on a wide private-HTTPS desktop browser; only actual TV
+  browsers direct the user to a companion device.
 - Mutation audit records include actor, channel, target, time and result.
 - A household administrator can review the latest family, planning, connection and system changes
   in a family-readable Recent activity screen. A child receives `FORBIDDEN`; the screen does not
@@ -1484,7 +1737,7 @@ not yet complete.
 
 - Hearth server restarts automatically after Synology restart.
 - Only an authenticated household administrator can read appliance-update state. Starting an update
-  requires a passkey-authenticated companion session created within the previous five minutes;
+  requires recent explicit connected-adult-phone consent within the previous five minutes;
   television, child, expired, revoked and cross-household credentials fail closed.
 - The browser can request only the exact full commit returned by the fixed successful-release
   provider. It cannot send a repository, image, Compose file or shell command, and neither

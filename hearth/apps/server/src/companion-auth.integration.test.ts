@@ -421,7 +421,7 @@ with sqlite3.connect(sys.argv[2]) as c:
 
     harness.advance(5 * 60 * 1000 + 1);
     expect(() => harness.auth.assertRecentAuthentication(signedIn.token, 5 * 60 * 1000)).toThrow(
-      /Confirm this update with an adult passkey/,
+      /Confirm this update from your connected adult phone/,
     );
 
     harness.auth.signOut(signedIn.token);

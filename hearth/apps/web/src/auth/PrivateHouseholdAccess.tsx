@@ -11,6 +11,7 @@ import { authenticateWithPasskey, passkeysAvailable, recoverWithCode } from './p
 import { connectionNavigation } from './connectionNavigation';
 import { Icon } from '../components/Icon';
 import { isTelevisionBrowser } from '../runtime/sharedScreen';
+import { PhoneAccess } from './PhoneAccess';
 
 export function PrivateHouseholdAccess({
   auth,
@@ -27,19 +28,21 @@ export function PrivateHouseholdAccess({
   const signIn = useMutation({ mutationFn: authenticateWithPasskey, onSuccess: onComplete });
   const signOut = useMutation({ mutationFn: () => signOutAndClear(queryClient) });
   const [showRecovery, setShowRecovery] = useState(false);
+  const [showScreen, setShowScreen] = useState(false);
   const sharedScreen = screenContext || auth.sharedScreen === true || isTelevisionBrowser();
 
   if (!auth.configured) {
     return (
       <AccessFrame title="Private access is not configured">
         <p>
-          Finish Hearth’s stable private HTTPS address and passkey settings on the server first.
+          Finish Hearth’s stable private HTTPS address and phone access settings on the server
+          first.
         </p>
       </AccessFrame>
     );
   }
 
-  if (sharedScreen) {
+  if (sharedScreen || showScreen) {
     return (
       <AccessFrame title="Connect this shared screen">
         <p>
@@ -54,22 +57,39 @@ export function PrivateHouseholdAccess({
     return (
       <AccessFrame title="This account cannot open this Hearth">
         <p>This household member does not have access.</p>
+        {auth.ownerPhone ? (
+          <p>
+            The owner phone is protected. Use a fresh key from the protected server file to repair
+            access.
+          </p>
+        ) : null}
         {signOut.isError ? (
           <p className="form-message form-message--error" role="alert">
             {signOut.error.message}
           </p>
         ) : null}
-        <button
-          className="button button--primary"
-          type="button"
-          disabled={signOut.isPending}
-          onClick={() => signOut.mutate()}
-        >
-          {signOut.isPending ? 'Signing out…' : 'Sign out and use another passkey'}
-        </button>
+        {auth.ownerPhone ? null : (
+          <button
+            className="button button--primary"
+            type="button"
+            disabled={signOut.isPending}
+            onClick={() => signOut.mutate()}
+          >
+            {signOut.isPending
+              ? 'Signing out…'
+              : auth.accessMethod === 'phone'
+                ? 'Disconnect this phone'
+                : 'Sign out and use another passkey'}
+          </button>
+        )}
       </AccessFrame>
     );
   }
+
+  if (auth.accessMethod === 'phone')
+    return (
+      <PhoneAccess auth={auth} onComplete={onComplete} onSharedScreen={() => setShowScreen(true)} />
+    );
 
   const available = auth.secureOrigin && passkeysAvailable();
   if (showRecovery) {

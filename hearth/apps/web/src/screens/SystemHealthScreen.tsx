@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom';
 
 import './SystemHealthScreen.css';
 
-import type { SystemBackupStatus } from '@hearth/shared';
+import type { SystemBackupStatus, PasskeyAuthStatus } from '@hearth/shared';
 
 import { adminApi as hearthApi } from '../api/admin';
 import { HearthApiError } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { authenticateWithPasskey } from '../auth/passkeys';
+import { phoneApi } from '../api/phoneConnections';
+import { authStatusQueryKey } from '../auth/queryKeys';
 import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { ApplianceUpdateCard } from '../components/ApplianceUpdateCard';
 import { Icon, type IconName } from '../components/Icon';
@@ -51,7 +53,9 @@ export function SystemHealthScreen() {
     mutationFn: async (targetVersion: string) => {
       setUpdateError(null);
       updateCommandSent.current = false;
-      await authenticateWithPasskey();
+      if (queryClient.getQueryData<PasskeyAuthStatus>(authStatusQueryKey)?.accessMethod === 'phone')
+        await phoneApi.confirm();
+      else await authenticateWithPasskey();
       if (pendingUpdateVersion.current !== targetVersion) pendingUpdateRequestId.current = null;
       pendingUpdateVersion.current = targetVersion;
       pendingUpdateRequestId.current ??= `request_appliance_update_${crypto.randomUUID()}`;
@@ -70,7 +74,13 @@ export function SystemHealthScreen() {
       // Only a lost command response can mean the appliance is restarting.
       // A cancelled passkey or a rejected command must remain immediately retryable.
       setWaitingForRestart(updateCommandSent.current && !(error instanceof HearthApiError));
-      setUpdateError(updateErrorMessage(error, updateCommandSent.current));
+      setUpdateError(
+        updateErrorMessage(
+          error,
+          updateCommandSent.current,
+          queryClient.getQueryData<PasskeyAuthStatus>(authStatusQueryKey)?.accessMethod === 'phone',
+        ),
+      );
       if (error instanceof HearthApiError) pendingUpdateRequestId.current = null;
       if (updateCommandSent.current) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.applianceUpdate });
@@ -481,7 +491,13 @@ function backupDetail(backup: SystemBackupStatus): string {
   return `Last backup ${formatDateTime(backup.lastSuccessfulAt)}${size}`;
 }
 
-function updateErrorMessage(error: Error, commandSent: boolean): string {
+function updateErrorMessage(error: Error, commandSent: boolean, phoneAccess = false): string {
+  if (phoneAccess)
+    return error instanceof HearthApiError
+      ? error.message
+      : commandSent
+        ? 'Could not confirm the update. Try again.'
+        : 'Could not confirm this phone. Try again.';
   if (error instanceof HearthApiError) {
     if (error.payload.error.code === 'CONFIRMATION_REQUIRED') {
       return 'Confirm again with an adult passkey.';

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, RotateCcw } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
@@ -15,6 +15,9 @@ import { MemberAvatarDialog } from '../components/MemberAvatarDialog';
 import { MemberColourPicker } from '../components/MemberColourPicker';
 import { DEFAULT_MEMBER_COLOUR } from '../components/memberColours';
 import { useAdminQuery } from '../hooks/useAdminQueries';
+import { phoneApi } from '../api/phoneConnections';
+import { authStatusQueryKey } from '../auth/queryKeys';
+import type { PasskeyAuthStatus } from '@hearth/shared';
 
 interface MemberFields {
   displayName: string;
@@ -26,6 +29,13 @@ interface MemberFields {
 export function PeopleSettingsScreen() {
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
+  const phoneAccess =
+    queryClient.getQueryData<PasskeyAuthStatus>(authStatusQueryKey)?.accessMethod === 'phone';
+  const phones = useQuery({
+    queryKey: ['phone-connections'],
+    queryFn: phoneApi.list,
+    enabled: phoneAccess,
+  });
   const [selectedPhoto, setSelectedPhoto] = useState<{
     member: HearthMember;
     file: File;
@@ -56,6 +66,10 @@ export function PeopleSettingsScreen() {
     onSuccess: refreshHousehold,
   });
   if (admin.isPending) return <AdminQueryState title="People" />;
+  if (phoneAccess && (phones.isPending || phones.isError))
+    return (
+      <AdminQueryState title="People" error={phones.error} onRetry={() => void phones.refetch()} />
+    );
   if (admin.data === undefined)
     return (
       <AdminQueryState
@@ -80,6 +94,11 @@ export function PeopleSettingsScreen() {
             actorId={admin.data.actor.id}
             archivePending={archive.isPending}
             member={member}
+            ownerMember={
+              phones.data?.connections.some(
+                (phone) => phone.source === 'owner' && phone.memberId === member.id,
+              ) ?? false
+            }
             avatarPending={updateAvatar.isPending || resetAvatar.isPending}
             onArchive={() => archive.mutate(member.id)}
             onChoosePhoto={(file) => {
@@ -161,6 +180,7 @@ function MemberEditor({
   savePending,
   archivePending,
   avatarPending,
+  ownerMember,
 }: {
   member: HearthMember;
   actorId: string;
@@ -171,13 +191,15 @@ function MemberEditor({
   savePending: boolean;
   archivePending: boolean;
   avatarPending: boolean;
+  ownerMember: boolean;
 }) {
+  const protectedMember = member.id === actorId || ownerMember;
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSave(
       memberFields(
         new FormData(event.currentTarget),
-        member.id === actorId && member.capabilities.includes('household.admin'),
+        protectedMember && member.capabilities.includes('household.admin'),
       ),
     );
   }
@@ -223,11 +245,11 @@ function MemberEditor({
       </label>
       <label>
         Role
-        {member.id === actorId ? <input name="role" type="hidden" value="adult" /> : null}
+        {protectedMember ? <input name="role" type="hidden" value="adult" /> : null}
         <select
           defaultValue={member.role}
-          disabled={member.id === actorId}
-          name={member.id === actorId ? undefined : 'role'}
+          disabled={protectedMember}
+          name={protectedMember ? undefined : 'role'}
         >
           <option value="child">Child</option>
           <option value="adult">Adult</option>
@@ -235,11 +257,11 @@ function MemberEditor({
       </label>
       <MemberColourPicker defaultValue={member.color} />
       <label className="checkbox-field">
-        {member.id === actorId ? <input name="administrator" type="hidden" value="on" /> : null}
+        {protectedMember ? <input name="administrator" type="hidden" value="on" /> : null}
         <input
           defaultChecked={member.capabilities.includes('household.admin')}
-          disabled={member.id === actorId}
-          name={member.id === actorId ? undefined : 'administrator'}
+          disabled={protectedMember}
+          name={protectedMember ? undefined : 'administrator'}
           type="checkbox"
         />
         Household administrator
@@ -248,7 +270,7 @@ function MemberEditor({
         <button className="admin-secondary" disabled={savePending} type="submit">
           Save
         </button>
-        {member.id === actorId ? null : (
+        {protectedMember ? null : (
           <button
             className="admin-danger"
             disabled={archivePending}
@@ -259,6 +281,7 @@ function MemberEditor({
           </button>
         )}
       </div>
+      {ownerMember ? <small>Owner phone administrator · protected by the server key</small> : null}
     </form>
   );
 }

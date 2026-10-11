@@ -1,5 +1,18 @@
 # Hearth v2 product specification
 
+## Adult phone access (D-102)
+
+Adult controller access uses independent named browser connections, not passwords or passkeys.
+The owner connects the first phone with a protected one-time key file. A connected adult creates
+a short-lived QR for another existing adult controller and explicitly approves the requesting
+phone. The first key-connected phone is the protected owner phone: only a fresh backend file key
+may replace it (D-103), not another phone, self sign-out, QR or People permissions. Removing a
+secondary connection never removes another adult, the household or the TV. A private
+owner-key recovery route remains available if the owner or every phone is lost. Keep current access until
+replacement connections pass physical acceptance; no automatic bulk cleanup. See
+[the v1 phone contract](PHONE_CONNECTIONS_CONTRACT.md). Historical passkey decisions/evidence are
+not current enrollment requirements.
+
 ## Vision
 
 Hearth should make the state of family life understandable at a glance and easy to change without finding a laptop or navigating an administrative system. From across the room it answers:
@@ -58,6 +71,7 @@ Can understand the current household state and use clearly exposed room controls
 
 - Merge multiple household calendars into one view while retaining source and owner identity.
 - Today, week, month and agenda views. Month remains television-legible by pairing compact colour-coded event titles and deterministic overflow counts with one avatar/colour source key rather than repeating faces in every date cell.
+- Month shows up to two event titles per date, then the exact remaining count. Selecting a date opens its complete read-only day list on television and phone; focus alone never opens it.
 - Person/source colour coding with accessible text/icon reinforcement.
 - All-day and timed events, locations, notes and recurrence.
 - Read-only cached display during provider outages.

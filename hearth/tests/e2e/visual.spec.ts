@@ -87,13 +87,9 @@ for (const viewport of viewports) {
     await expect(page.getByRole('heading', { name: 'August', exact: true })).toBeVisible();
     await expect(page.locator('.month-grid .avatar')).toHaveCount(0);
     await expect(page.locator('.month-legend .avatar')).toHaveCount(2);
-    if (viewport.name.startsWith('phone')) {
-      await expect(page.locator('.month-day-details')).toContainText('School drop-off');
-    } else {
-      await expect(
-        page.locator('.month-event-label').filter({ hasText: 'School drop-off' }).first(),
-      ).toBeVisible();
-    }
+    await expect(
+      page.locator('.month-event-label').filter({ hasText: 'School drop-off' }).first(),
+    ).toBeVisible();
     await captureEvidence(page, {
       path: resolve(monthEvidence, `month-${viewport.name}.png`),
       animations: 'disabled',

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { lazy, Suspense, useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 
 import { configureHearthClient } from '../api/core';
 import { runtimeApi as hearthApi } from '../api/runtime';
@@ -7,6 +7,7 @@ import { authStatusQueryKey } from '../auth/queryKeys';
 import { RuntimeContextValue } from './context';
 import { clearIdentityAndReload } from '../auth/signOut';
 import { subscribeScreenAccessChange } from '../auth/screenAccessChange';
+import { phoneInvitationFromHash } from '../auth/phoneInvitation';
 
 const FirstUseSetup = lazy(async () => ({
   default: (await import('../auth/FirstUseSetup')).FirstUseSetup,
@@ -14,9 +15,19 @@ const FirstUseSetup = lazy(async () => ({
 const PrivateHouseholdAccess = lazy(async () => ({
   default: (await import('../auth/PrivateHouseholdAccess')).PrivateHouseholdAccess,
 }));
+const PhoneAccess = lazy(async () => ({
+  default: (await import('../auth/PhoneAccess')).PhoneAccess,
+}));
 
 export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const [phoneIntent, setPhoneIntent] = useState(() =>
+    phoneInvitationFromHash(window.location.hash),
+  );
+  useLayoutEffect(() => {
+    if (window.location.hash.startsWith('#connect-phone='))
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
   const runtime = useQuery({
     queryKey: ['hearth-runtime'],
     queryFn: hearthApi.getRuntime,
@@ -73,6 +84,26 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
     );
   }
 
+  if (phoneIntent && runtime.data.mode === 'private' && runtime.data.sharedScreen !== true) {
+    if (auth.isPending) return <SecureSetupLoading />;
+    if (auth.data?.accessMethod === 'phone' && auth.data.sharedScreen !== true)
+      return (
+        <Suspense fallback={<SecureSetupLoading />}>
+          <PhoneAccess
+            auth={auth.data}
+            invitationSecret={phoneIntent}
+            timezone={runtime.data.timezone}
+            onComplete={async () => {
+              setPhoneIntent(null);
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] }),
+                queryClient.invalidateQueries({ queryKey: authStatusQueryKey }),
+              ]);
+            }}
+          />
+        </Suspense>
+      );
+  }
   if (runtime.data.requiresSetup || runtime.data.household === null) {
     if (runtime.data.mode === 'private') {
       if (auth.isPending) {
@@ -80,7 +111,7 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
           <main className="runtime-gate" aria-busy="true" aria-live="polite">
             <img alt="" src="/brand/hearth-mark.png" />
             <h1>Preparing secure setup</h1>
-            <p>Checking this Hearth’s private passkey settings…</p>
+            <p>Checking this Hearth’s private access settings…</p>
           </main>
         );
       }

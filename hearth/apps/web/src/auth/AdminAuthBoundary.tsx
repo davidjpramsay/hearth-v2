@@ -7,6 +7,7 @@ import { useHearthRuntime } from '../runtime/context';
 import { useSharedScreen } from '../runtime/sharedScreen';
 import { authenticateWithPasskey, passkeysAvailable } from './passkeys';
 import { authStatusQueryKey } from './queryKeys';
+import { PhoneAccess } from './PhoneAccess';
 
 export function AdminAuthBoundary({ children }: { children: ReactNode }) {
   const runtime = useHearthRuntime();
@@ -37,11 +38,21 @@ export function AdminAuthBoundary({ children }: { children: ReactNode }) {
     return (
       <AdminAuthMessage
         title="Private access is not configured"
-        detail="Finish Hearth’s stable private HTTPS address and passkey settings on the server first."
+        detail="Finish Hearth’s stable private HTTPS address and phone access settings on the server first."
       />
     );
   }
   if (!auth.data.authenticated) {
+    if (auth.data.accessMethod === 'phone')
+      return (
+        <PhoneAccess
+          auth={auth.data}
+          onComplete={async () => {
+            await queryClient.invalidateQueries({ queryKey: authStatusQueryKey });
+            await queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] });
+          }}
+        />
+      );
     const available = auth.data.secureOrigin && passkeysAvailable();
     return (
       <section className="admin-auth-gate" aria-labelledby="admin-sign-in-title">
@@ -72,7 +83,16 @@ export function AdminAuthBoundary({ children }: { children: ReactNode }) {
       </section>
     );
   }
-  return children;
+  return (
+    <>
+      {auth.data.accessMethod === 'phone' ? (
+        <p className="device-access-summary">
+          Connected as <strong>{auth.data.actor?.displayName}</strong>
+        </p>
+      ) : null}
+      {children}
+    </>
+  );
 }
 
 function AdminAuthMessage({ title, detail }: { title: string; detail?: string }) {

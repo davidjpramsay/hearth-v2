@@ -81,7 +81,7 @@ export class BrowserAccess {
   private reject(): never {
     throw new RepositoryError(
       'FORBIDDEN',
-      'Start passkey sign-in again on your own phone or computer.',
+      'Start this connection again on your own phone or computer.',
     );
   }
 

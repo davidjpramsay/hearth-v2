@@ -28,23 +28,27 @@
   color: var(--muted);
 }
 .week-grid {
+  --week-card-min-height: 78px;
   --timeline-steps: 6;
-  --timeline-two-hours: calc(var(--timeline-span) / var(--timeline-steps, 6));
-  --timeline-span: 612px;
+  --timeline-step: calc(100% / var(--timeline-steps, 6));
   --week-all-day-height: 0px;
+  --week-more-height: 0px;
   display: grid;
   grid-template-columns: 76px repeat(7, minmax(0, 1fr));
-  min-height: calc(96px + var(--week-all-day-height) + var(--timeline-span));
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
   border-bottom: 1px solid var(--hairline);
   overflow: visible;
   background: transparent;
 }
 .week-time-axis {
-  padding-top: calc(96px + var(--week-all-day-height));
-  height: calc(96px + var(--week-all-day-height) + var(--timeline-span));
+  display: grid;
+  grid-template-rows: 96px var(--week-all-day-height) minmax(0, 1fr) var(--week-more-height);
+  min-height: 0;
 }
 .week-time-axis__labels {
-  height: var(--timeline-span);
+  grid-row: 3;
+  min-height: 0;
   position: relative;
 }
 .week-time-axis span {
@@ -58,6 +62,9 @@
 }
 .week-column {
   min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 96px var(--week-all-day-height) minmax(0, 1fr) var(--week-more-height);
   padding: 0 7px;
   border-left: 1px solid rgb(218 211 202 / 52%);
 }
@@ -143,14 +150,14 @@
   color: var(--sky);
 }
 .week-column__events {
-  height: var(--timeline-span);
+  min-height: 0;
   position: relative;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
-    transparent calc(var(--timeline-two-hours) - 1px),
-    var(--hairline) calc(var(--timeline-two-hours) - 1px),
-    var(--hairline) var(--timeline-two-hours)
+    transparent calc(var(--timeline-step) - 1px),
+    var(--hairline) calc(var(--timeline-step) - 1px),
+    var(--hairline) var(--timeline-step)
   );
 }
 .week-column__all-day-events {
@@ -166,7 +173,7 @@
   --event-background-dark: var(--sky-soft);
   --event-border: var(--sky);
   min-height: 0;
-  height: max(78px, var(--event-height));
+  height: max(var(--week-card-min-height), var(--event-height));
   padding: 8px 10px;
   position: absolute;
   z-index: 1;
@@ -451,7 +458,11 @@
   display: none;
 }
 .month-grid {
-  height: clamp(600px, 61vh, 720px);
+  --month-cell-min-height: 100px;
+  --month-date-height: 24px;
+  --month-event-height: 22px;
+  --month-more-height: 16px;
+  min-height: calc(6 * var(--month-cell-min-height) + 1px);
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   grid-template-rows: repeat(6, minmax(0, 1fr));
@@ -460,15 +471,16 @@
 }
 .month-cell {
   min-width: 0;
-  padding: 6px 12px;
+  min-height: var(--month-cell-min-height);
+  padding: 4px 8px;
   border: 0;
   border-right: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
   color: var(--ink);
   background: transparent;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-rows: var(--month-date-height) minmax(0, 1fr);
+  gap: 2px;
   position: relative;
   overflow: hidden;
   text-align: left;
@@ -480,7 +492,7 @@
 }
 .month-cell > strong {
   width: 32px;
-  height: 30px;
+  height: var(--month-date-height);
   display: grid;
   place-items: center;
   font-size: 25px;
@@ -501,8 +513,9 @@
 .month-events {
   min-width: 0;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: repeat(2, var(--month-event-height)) var(--month-more-height);
+  align-content: start;
   gap: 2px;
   overflow: hidden;
 }
@@ -511,8 +524,8 @@
   --event-background-dark: var(--sky-soft);
   --event-border: var(--sky);
   min-width: 0;
-  min-height: 24px;
-  padding: 1px 7px;
+  min-height: 0;
+  padding: 0 6px;
   border: 1px solid var(--event-border);
   border-radius: 7px;
   color: var(--ink);
@@ -529,7 +542,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.month-event-compact-marks i,
 .month-legend__item > i {
   --event-color: var(--sky);
   width: 9px;
@@ -540,15 +552,12 @@
   flex: none;
 }
 .month-event-more {
+  grid-row: 3;
   color: var(--muted);
   font-size: 15px;
   font-weight: 620;
-  line-height: 16px;
-}
-.month-event-more--compact,
-.month-event-compact-marks,
-.month-day-details {
-  display: none;
+  line-height: var(--month-more-height);
+  white-space: nowrap;
 }
 .month-legend {
   min-height: 76px;
@@ -725,6 +734,17 @@
 }
 
 @media (min-width: 1200px) {
+  .week-screen {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .week-screen > :not(.week-grid) {
+    flex: none;
+  }
+  .week-grid {
+    flex: 1 1 0;
+  }
   .agenda-screen {
     height: 100%;
     display: flex;
@@ -740,8 +760,10 @@
   }
   .month-grid {
     height: auto;
-    min-height: 600px;
-    flex: 1 1 auto;
+    flex: 1 1 0;
+  }
+  .month-screen > :not(.month-grid) {
+    flex: none;
   }
   .month-legend,
   .month-footer-controls {
@@ -751,10 +773,9 @@
 
 @media (max-width: 1500px) and (min-width: 1200px) {
   .week-grid {
-    --timeline-span: 408px;
+    --week-card-min-height: 68px;
   }
   .week-event {
-    height: max(68px, var(--event-height));
     padding: 6px 7px 7px 10px;
   }
   .week-event.week-event--all-day {
@@ -809,10 +830,6 @@
     height: 35px;
     font-size: 17px;
   }
-  .month-grid {
-    height: auto;
-    min-height: 344px;
-  }
   .month-cell {
     padding: 4px 9px;
     gap: 2px;
@@ -828,15 +845,6 @@
     border-radius: 5px;
     font-size: 15px;
     line-height: 17px;
-  }
-  .month-event-label--secondary,
-  .month-event-more--wide {
-    display: none;
-  }
-  .month-event-more--compact {
-    display: block;
-    font-size: 13px;
-    line-height: 14px;
   }
   .month-legend__item > i {
     width: 7px;
@@ -877,9 +885,8 @@
     font-size: 14px;
     line-height: 15px;
   }
-  .month-event-more--compact {
+  .month-event-more {
     font-size: 12px;
-    line-height: 12px;
   }
 }
 
@@ -977,15 +984,19 @@
     display: inline;
   }
   .month-grid {
-    height: 330px;
+    --month-cell-min-height: 86px;
+    --month-date-height: 24px;
+    --month-event-height: 16px;
+    --month-more-height: 14px;
+    height: auto;
   }
   .month-cell {
-    padding: 5px 6px;
-    gap: 5px;
+    padding: 4px 3px;
+    gap: 2px;
   }
   .month-cell > strong {
     width: 26px;
-    height: 26px;
+    height: var(--month-date-height);
     font-size: 17px;
   }
   .month-cell:focus-visible {
@@ -995,75 +1006,21 @@
     background: var(--surface);
     box-shadow: inset 0 0 0 2px var(--eucalyptus);
   }
-  .month-event-label,
-  .month-event-more {
+  .month-event-more__label {
     display: none;
   }
-  .month-event-compact-marks {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
+  .month-event-label {
+    padding: 0 2px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 14px;
   }
-  .month-event-compact-marks i,
+  .month-event-more {
+    font-size: 12px;
+  }
   .month-legend__item > i {
     width: 7px;
     height: 7px;
-  }
-  .month-day-details {
-    margin-top: 10px;
-    padding: 12px 14px;
-    border: 1px solid var(--hairline);
-    border-radius: 14px;
-    background: var(--surface);
-    display: block;
-  }
-  .month-day-details header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .month-day-details h2,
-  .month-day-details p {
-    margin: 0;
-  }
-  .month-day-details h2 {
-    font-size: 19px;
-  }
-  .month-day-details header > span,
-  .month-day-details p,
-  .month-day-details li > span {
-    color: var(--muted);
-    font-size: 14px;
-  }
-  .month-day-details ul {
-    margin: 9px 0 0;
-    padding: 0;
-    display: grid;
-    gap: 7px;
-    list-style: none;
-  }
-  .month-day-details li {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: 8px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px;
-  }
-  .month-day-details li > i {
-    --event-color: var(--sky);
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--event-color);
-  }
-  .month-day-details li > strong {
-    min-width: 0;
-    overflow: hidden;
-    font-size: 16px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .month-legend {
     min-height: 68px;
@@ -1200,5 +1157,108 @@
 @media (max-width: 599px) {
   :is(.week-screen, .month-screen, .agenda-screen) > .screen-header > div:first-child {
     column-gap: 12px;
+  }
+}
+
+/* Reserve two readable titles and the overflow line before sizing six TV rows. */
+@media (min-width: 1200px) and (max-width: 1500px), (min-width: 1200px) and (max-height: 1000px) {
+  .month-screen {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .month-screen > .screen-header {
+    margin-bottom: 8px;
+  }
+  .month-screen .screen-header h1 {
+    font-size: 38px;
+  }
+  .month-screen .week-glance > div {
+    min-height: 40px;
+    font-size: 20px;
+  }
+  .month-screen .week-glance svg {
+    width: 28px;
+    height: 28px;
+  }
+  .month-screen .calendar-toolbar {
+    margin: 0 0 8px;
+  }
+  .month-screen .calendar-view-switch a {
+    min-height: 38px;
+  }
+  .month-weekdays {
+    height: 26px;
+    font-size: 16px;
+  }
+  .month-grid {
+    --month-cell-min-height: 82px;
+    --month-date-height: 20px;
+    --month-event-height: 18px;
+    --month-more-height: 14px;
+  }
+  .month-cell {
+    padding: 2px 6px;
+    gap: 2px;
+  }
+  .month-cell > strong {
+    height: var(--month-date-height);
+    font-size: 20px;
+  }
+  .month-event-label {
+    min-height: 0;
+    padding: 0 4px;
+    font-size: 15px;
+    line-height: 16px;
+  }
+  .month-event-more {
+    font-size: 13px;
+  }
+  .month-legend {
+    min-height: 32px;
+    margin-top: 6px;
+    padding: 2px 12px;
+    grid-template-columns: 110px 1fr;
+    gap: 10px;
+  }
+  .month-legend h2,
+  .month-legend__item {
+    font-size: 15px;
+  }
+  .month-legend > div {
+    gap: 18px;
+  }
+  .month-legend__item .avatar--small,
+  .month-legend__family {
+    width: 25px;
+    height: 25px;
+    font-size: 14px;
+  }
+  .month-footer-controls {
+    margin-top: 12px;
+  }
+}
+
+@media (min-width: 1200px) and (max-height: 740px) {
+  .month-grid {
+    --month-cell-min-height: 76px;
+    --month-date-height: 18px;
+    --month-event-height: 17px;
+    --month-more-height: 12px;
+  }
+  .month-weekdays {
+    height: 22px;
+  }
+  .month-cell > strong {
+    font-size: 18px;
+  }
+  .month-event-label {
+    font-size: 14px;
+    line-height: 15px;
+  }
+  .month-event-more {
+    font-size: 12px;
+  }
+  .month-footer-controls {
+    margin-top: 8px;
   }
 }

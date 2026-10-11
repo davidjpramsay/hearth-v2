@@ -111,6 +111,14 @@ for (const scenario of [
       await page.keyboard.press('Enter');
       await expect(page).toHaveURL(/\/games$/);
       await expect(page.locator('.games-word')).toHaveCount(16);
+      await page.goto('/calendar/week');
+      await expect(page.getByRole('heading', { name: 'This week' })).toBeVisible();
+      expect(
+        await page
+          .locator('.app-content')
+          .evaluate((main) => main.scrollHeight - main.clientHeight),
+      ).toBe(0);
+      await expect(page.getByRole('button', { name: 'Later week' })).toBeInViewport();
       expect(errors).toEqual([]);
     });
   });

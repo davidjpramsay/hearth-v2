@@ -15,6 +15,7 @@ import {
   type CalendarCredentialStore,
 } from './calendar-connection-repository.js';
 import { CompanionAuthService, type CompanionAuthConfiguration } from './companion-auth.js';
+import { PhoneConnectionService } from './phone-connections.js';
 import { LATEST_MIGRATION_VERSION, openHearthDatabase } from './database.js';
 import {
   FakeHomeAssistantConnectionVerifier,
@@ -298,7 +299,16 @@ const server = buildServer({
   homeAssistantConnectionRepository,
   systemOperations,
   applianceUpdate,
-  ...(companionAuth === undefined ? {} : { companionAuth }),
+  ...(companionAuth === undefined || companionAuthConfiguration === null
+    ? {}
+    : {
+        companionAuth,
+        phoneConnections: new PhoneConnectionService(
+          database,
+          companionAuth,
+          companionAuthConfiguration,
+        ),
+      }),
   trustedProxyAddresses,
   readiness: () => {
     database.prepare('SELECT 1').get();

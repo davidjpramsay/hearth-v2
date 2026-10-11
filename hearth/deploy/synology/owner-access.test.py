@@ -92,6 +92,49 @@ class OwnerAccessTests(unittest.TestCase):
             owner.issue_recovery(self.connection, "home", "adult", self.directory, self.now)
         self.assertEqual(path.read_text(), "keep")
 
+    def test_phone_key_is_controller_bound_digest_only_and_preserves_existing_access(self):
+        self.connection.executescript("""
+        ALTER TABLE members ADD COLUMN capabilities_json TEXT NOT NULL DEFAULT '[]';
+        UPDATE members SET capabilities_json='["household.admin"]' WHERE id='adult';
+        CREATE TABLE controller_phone_owner_grants
+          (id TEXT PRIMARY KEY,household_id TEXT,member_id TEXT,key_hash TEXT UNIQUE,
+           created_at TEXT,expires_at TEXT,consumed_at TEXT,revoked_at TEXT);
+        """)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            path, expires = owner.issue_phone_key(self.connection, "home", "adult", self.directory, self.now)
+        key = path.read_text().strip()
+        self.assertRegex(key, r"^[a-f0-9]{64}$")
+        self.assertEqual(expires, "2026-10-09T00:15:00.000Z")
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(self.connection.execute("SELECT key_hash FROM controller_phone_owner_grants").fetchone()[0], owner.hashlib.sha256(key.encode()).hexdigest())
+        self.assertIsNone(self.connection.execute("SELECT revoked_at FROM companion_sessions").fetchone()[0])
+        self.assertEqual(self.connection.execute("SELECT count(*) FROM paired_devices WHERE revoked_at IS NULL").fetchone()[0], 4)
+        self.assertNotIn(key, self.connection.execute("SELECT safe_summary_json FROM audit_events").fetchone()[0])
+        path.unlink()
+        with self.assertRaises(ValueError):
+            owner.issue_phone_key(self.connection, "home", "child", self.directory, self.now)
+        self.assertFalse(path.exists())
+
+    def test_new_phone_key_rotates_unused_grants_across_the_household_not_just_one_member(self):
+        self.connection.executescript("""
+        ALTER TABLE members ADD COLUMN capabilities_json TEXT NOT NULL DEFAULT '[]';
+        UPDATE members SET capabilities_json='["household.admin"]' WHERE id='adult';
+        INSERT INTO members VALUES ('second-adult','home','adult',NULL,'["household.admin"]');
+        CREATE TABLE controller_phone_owner_grants
+          (id TEXT PRIMARY KEY,household_id TEXT,member_id TEXT,key_hash TEXT UNIQUE,
+           created_at TEXT,expires_at TEXT,consumed_at TEXT,revoked_at TEXT);
+        """)
+        first, _ = owner.issue_phone_key(self.connection, "home", "adult", self.directory, self.now)
+        first.unlink()
+        second, _ = owner.issue_phone_key(self.connection, "home", "second-adult", self.directory, self.now)
+        self.assertTrue(second.exists())
+        self.assertIsNotNone(self.connection.execute("SELECT revoked_at FROM controller_phone_owner_grants WHERE member_id='adult'").fetchone()[0])
+        self.assertEqual(self.connection.execute("SELECT count(*) FROM controller_phone_owner_grants WHERE revoked_at IS NULL").fetchone()[0], 1)
+        self.assertIsNone(self.connection.execute("SELECT revoked_at FROM companion_sessions").fetchone()[0])
+        self.assertEqual(self.connection.execute("SELECT count(*) FROM paired_devices WHERE revoked_at IS NULL").fetchone()[0], 4)
+
     def test_consistent_online_backup_covers_wal_without_mutating_source(self):
         self.connection.execute("PRAGMA journal_mode=WAL")
         directory = owner.private_directory(self.directory)

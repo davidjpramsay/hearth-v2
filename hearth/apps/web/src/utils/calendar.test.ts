@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CalendarEvent } from '@hearth/shared';
 
 import { eventColorVariables, eventsForDay, indexMonthEvents } from './calendar';
-import { layoutWeekDay, weekTimeline } from './weekLayout';
+import { layoutWeekDay, weekAxisStep, weekTimeline } from './weekLayout';
 import { formatEventDateRange, formatEventDayTime } from './date';
 
 describe('calendar event presentation', () => {
@@ -173,6 +173,54 @@ describe('bounded Week layout', () => {
       for (const other of layout.timed.slice(index + 1)) {
         if (item.laneIndex === other.laneIndex) expect(item.end).toBeLessThanOrEqual(other.start);
       }
+    }
+  });
+
+  it('reserves measured readable card space on a shorter timeline without losing events', () => {
+    const events = [
+      event('first', `${date}T14:00:00+08:00`, `${date}T14:30:00+08:00`),
+      event('second', `${date}T14:15:00+08:00`, `${date}T14:45:00+08:00`),
+      event('third', `${date}T14:30:00+08:00`, `${date}T15:00:00+08:00`),
+      event('late', `${date}T23:00:00+08:00`, `${date}T23:30:00+08:00`),
+    ];
+    const timeline = { start: 0, end: 1440 };
+    const height = 190;
+    const minimumCardFraction = 72 / height;
+    const layout = layoutWeekDay(events, date, timezone, timeline, minimumCardFraction);
+    expect(layout.timed.map((item) => item.event.id)).toEqual(['first', 'second']);
+    expect(layout.hiddenCount).toBe(2);
+    expect(layout.events).toHaveLength(4);
+    for (const item of layout.timed) {
+      expect(((item.end - item.start) / 1440) * height).toBeGreaterThanOrEqual(72);
+      expect(item.end).toBeLessThanOrEqual(timeline.end);
+    }
+  });
+
+  it('retains all timed events in the full-day dialog when even one readable card will not fit', () => {
+    const events = [event('first', `${date}T08:00:00+08:00`, `${date}T08:30:00+08:00`)];
+    const layout = layoutWeekDay(events, date, timezone, { start: 480, end: 1200 }, 72 / 50);
+    expect(layout.timed).toEqual([]);
+    expect(layout.hiddenCount).toBe(1);
+    expect(layout.events).toEqual(events);
+  });
+
+  it('spaces short-screen clock labels uniformly while preserving both endpoints', () => {
+    expect(weekAxisStep({ start: 0, end: 1440 }, 612)).toBe(120);
+    expect(weekAxisStep({ start: 0, end: 1440 }, 190)).toBe(240);
+    expect(weekAxisStep({ start: 480, end: 1320 }, 100)).toBe(840);
+    expect(weekAxisStep({ start: 0, end: 1440 }, 1)).toBe(1440);
+  });
+
+  it('counts every all-day event when fewer rows fit the short-screen budget', () => {
+    const events = Array.from({ length: 4 }, (_, index) => ({
+      ...event(`all-day-${index}`, `${date}T00:00:00+08:00`, `${date}T23:59:00+08:00`),
+      allDay: true,
+    }));
+    for (const rows of [0, 1, 2]) {
+      const layout = layoutWeekDay(events, date, timezone, { start: 480, end: 1200 }, 1 / 6, rows);
+      expect(layout.allDay).toHaveLength(rows);
+      expect(layout.hiddenCount).toBe(4 - rows);
+      expect(layout.events).toEqual(events);
     }
   });
 });

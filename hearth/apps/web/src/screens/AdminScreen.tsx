@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { IconName } from '../components/Icon';
 import { Link } from 'react-router-dom';
 
@@ -7,6 +7,8 @@ import { AdminError, AdminLoading } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useHearthRuntime } from '../runtime/context';
+import { runtimeApi } from '../api/runtime';
+import { authStatusQueryKey } from '../auth/queryKeys';
 
 interface Setting {
   title: string;
@@ -102,6 +104,12 @@ export function AdminScreen() {
   const runtime = useHearthRuntime();
   const queryClient = useQueryClient();
   const admin = useAdminQuery();
+  const auth = useQuery({
+    queryKey: authStatusQueryKey,
+    queryFn: runtimeApi.getAuthStatus,
+    enabled: runtime.mode === 'private',
+    staleTime: 15_000,
+  });
   const signOut = useMutation({
     mutationFn: () => signOutAndClear(queryClient),
   });
@@ -121,7 +129,9 @@ export function AdminScreen() {
             <strong>{admin.data.actor.displayName}</strong>
             <small>Administrator</small>
           </div>
-          {runtime.mode === 'private' ? (
+          {auth.data?.ownerPhone ? (
+            <small>Protected owner phone</small>
+          ) : runtime.mode === 'private' && auth.data ? (
             <button
               className="button button--quiet"
               type="button"

@@ -47,11 +47,15 @@ export function layoutWeekDay(
   date: string,
   timezone: string,
   timeline: WeekTimeline,
+  minimumCardFraction = 1 / 6,
+  maximumAllDayRows = 2,
 ): WeekDayLayout {
   const dayEvents = eventsForDay(events, date, timezone);
-  const allDay = dayEvents.filter((event) => event.allDay).slice(0, 2);
-  // Six readable card heights fit even on the compact television timeline.
-  const minimumSpan = (timeline.end - timeline.start) / 6;
+  const allDay = dayEvents
+    .filter((event) => event.allDay)
+    .slice(0, Math.max(0, Math.min(2, maximumAllDayRows)));
+  // Keep readable cards inside the actual viewport budget, not a fixed-height grid.
+  const minimumSpan = (timeline.end - timeline.start) * Math.max(1 / 6, minimumCardFraction);
   const timed: TimedWeekEventLayout[] = [];
   let cluster: TimedWeekEventLayout[] = [];
   let laneEnds: number[] = [];
@@ -120,4 +124,13 @@ function clockMinutes(timestamp: string, timezone: string): number {
 export function timelineHourLabel(minutes: number): string {
   const hour = (minutes / 60) % 24;
   return `${hour % 12 || 12} ${hour < 12 ? 'am' : 'pm'}`;
+}
+
+export function weekAxisStep(timeline: WeekTimeline, height: number): number {
+  const steps = (timeline.end - timeline.start) / 120;
+  // Use an exact divisor so both endpoints remain labelled without crowded final ticks.
+  for (let multiplier = 1; multiplier <= steps; multiplier += 1) {
+    if (steps % multiplier === 0 && height / (steps / multiplier) >= 24) return 120 * multiplier;
+  }
+  return timeline.end - timeline.start;
 }

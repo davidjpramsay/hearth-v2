@@ -2,6 +2,72 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-103 — Main owner phone is replaceable only with the private backend key
+
+- Date: 2026-10-12
+- Status: accepted user request; local implementation and verification, no publication/live activation
+- Context: The owner explicitly rejects removal of the main administrator phone from any connected
+  phone and requires the protected backend key file for that operation.
+- Choice: `source=owner` is protected, server-verified ownership. Owner bootstrap/key recovery
+  establishes or atomically replaces the main phone; QR connects ordinary adult controllers only.
+  Removal, self sign-out, QR account switching, shared-screen conversion, owner-adult archive and
+  demotion are rejected by the server. The menu marks the owner and offers no Remove/Sign out.
+  Other adults may still manage secondary phones and screens. Owner profile edits remain allowed.
+- Recovery: NAS-owner issuance creates a digest-only one-use grant in a protected private file
+  and supersedes earlier unused household grants without revoking access. Successful claim alone
+  retires the prior owner and its sessions/invitations, creates the new owner and consumes the
+  grant in one transaction. Invalid proofs/storage errors preserve the old owner. No QR phone,
+  television, content, role, private configuration or networking is reset.
+- Limits: This is a protected browser connection, not hardware attestation or an unexpiring cookie.
+  Cleared/expired browser authority needs a fresh owner key. Restrictive screen safety checks may
+  end a mixed browser session without deleting ownership; screen isolation takes precedence.
+  Legacy sessions are not silently designated the owner; a deliberate owner key establishes it.
+- Consequences: Refines D-102's all-connections-removable rule. Reuses migration 0028's owner
+  provenance; no new migration or password/passkey. Physical setup/replacement and live activation
+  remain acceptance gates. See [the phone contract](PHONE_CONNECTIONS_CONTRACT.md).
+
+## D-102 — Owner-key bootstrap and independently QR-approved adult phones
+
+- Date: 2026-10-12
+- Status: implemented and locally verified; physical checks, publication and live migration pending
+- Context: The owner cannot reliably distinguish whose saved passkey a phone uses and requests
+  no passwords/passkeys, a protected file key for the first phone, then QR from a connected phone.
+- Choice: Separate named adult identities, browser connections and display grants. Bootstrap or
+  recover using an owner-issued short-lived one-time key file. A connected adult controller
+  creates a QR for the intended adult; scanning creates a browser-bound pending request, and the
+  inviting phone must explicitly approve before one-use exchange. D-103 protects the owner phone;
+  keep secondary connections removable without switching the inviter or changing the TV.
+- Security: This is possession-based connected-browser authority, not user-verified biometrics.
+  No shared PIN, password or new passkey ceremony. Protect phones with locks. Private HTTPS,
+  origin/browser checks, bounded secrets/expiry, hash-only storage, HttpOnly cookies, server
+  revocation and adult capabilities remain mandatory. Sensitive updates require recent explicit
+  connected-phone consent; issuance/refresh alone cannot create consent. See
+  [the v1 contract](PHONE_CONNECTIONS_CONTRACT.md).
+- Migration: Additive only; keep established legacy sessions, accurately labeled as earlier
+  browsers. Correct identity only with an authorized owner grant, never by guessing from a
+  label. No live reset, owner grant issuance, deployment or legacy cleanup in this change.
+- Supersedes: Active adult passkey requirements in D-014/D-032/D-044/D-091/D-096/D-097;
+  historical evidence remains historical. Shared-screen isolation in D-099 is unchanged.
+
+## D-101 — Month keeps two event previews and opens the complete day explicitly
+
+- Date: 2026-10-11
+- Status: accepted user request; local implementation, not publication/deployment approval
+- Context: The compact one-title rule and hidden overflow lines made some dates misleading or
+  clipped. TV selection did not expose the full day; phone used a separate automatic inline agenda.
+  The owner requests two events with a clean remaining count and selection to show all events.
+- Choice: Reserve two title rows and a separate `+N more` line in every date cell (`+N` on phone).
+  Count only events after the two previews; do not show a count for zero/one/two-event dates.
+  Compact chrome may tighten while preserving cell/target readability, the source key and the
+  week-style navigation bar. Retain a minimum cell height on unusually short/message-heavy
+  screens instead of clipping the previews/count. OK/Enter/tap opens the shared, read-only
+  full-day dialog. Focus alone only highlights the date. Every event remains available; details,
+  Back and Close restore the exact event and date. Remove the duplicate inline phone agenda.
+- Consequences: Supersedes D-024's one-title compact layout and automatic phone agenda, not its
+  identity key or bounded provider-neutral projection. The existing Month response/index and Week
+  day dialog are sufficient; no API, migration, integration permission or calendar write changes.
+  Browser/device acceptance and actual deployment remain distinct from local source verification.
+
 ## D-099 — Shared screens never acquire adult administration
 
 - Date: 2026-10-10
@@ -448,7 +514,7 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-024 — Month names events without repeating member faces
 
 - Date: 2026-08-05
-- Status: accepted
+- Status: amended by D-101 for preview count and explicit full-day opening
 - Context: Rendered household review showed that colour-only marks answer whose
   calendar an event belongs to but not what the family needs to remember. Full
   miniature event cards or repeated faces would make the six-week television

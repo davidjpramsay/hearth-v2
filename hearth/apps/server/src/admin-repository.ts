@@ -25,6 +25,7 @@ import {
 
 import { createDemoSeed, DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import { RepositoryError, type CommandActor } from './repository.js';
+import { hasOwnerPhone, OWNER_PHONE_PROTECTED } from './owner-phone.js';
 
 export const DEMO_ADMIN_ACTOR_ID = 'member_maya';
 export const DEMO_CHILD_ACTOR_ID = 'member_ezra';
@@ -609,6 +610,11 @@ export class SqliteAdminRepository implements AdminRepository {
   ): Promise<Member> {
     this.assertAdmin(householdId, actorId);
     const current = this.readMember(householdId, memberId);
+    if (
+      (input.role !== 'adult' || !input.administrator) &&
+      hasOwnerPhone(this.database, householdId, memberId)
+    )
+      throw new RepositoryError('FORBIDDEN', OWNER_PHONE_PROTECTED);
     if (memberId === actorId && !input.administrator) {
       throw new RepositoryError('CONFLICT', 'Hearth needs at least one household administrator.');
     }
@@ -639,6 +645,8 @@ export class SqliteAdminRepository implements AdminRepository {
     _requestId: string,
   ): Promise<Member> {
     this.assertAdmin(householdId, actorId);
+    if (hasOwnerPhone(this.database, householdId, memberId))
+      throw new RepositoryError('FORBIDDEN', OWNER_PHONE_PROTECTED);
     if (memberId === actorId) {
       throw new RepositoryError('CONFLICT', 'You cannot remove the administrator you are using.');
     }

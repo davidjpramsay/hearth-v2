@@ -215,8 +215,8 @@ summaries and stable family-safe API errors. The implemented routes are:
   conflict instead of allowing Hearth to mutate the read-only source
 - `GET /api/v1/households/:id/photo-assets/:assetId/:variant` for immutable, opaque WebP display
   and thumbnail derivatives; source paths and originals never cross this boundary
-- `GET /api/v1/auth/status`, first-use registration options/verification, discoverable-passkey
-  authentication options/verification, session and sign-out routes for the private companion
+- `GET /api/v1/auth/status`, session and sign-out plus owner-key/QR phone connection routes;
+  [D-102 contract](PHONE_CONNECTIONS_CONTRACT.md) replaces active passkey ceremonies.
 
 Member-avatar commands use the adult Admin session, strict request-size and JPEG checks,
 idempotency receipts and explicit audit actions. The browser normalizes the selected original to a
@@ -268,8 +268,10 @@ saved-location outage distinct from missing setup, including when no forecast ha
 source descriptors and the normalized events overlapping that window. The
 browser derives colour-coded title rows, deterministic overflow summaries and
 accessible per-day summaries from that single typed response; it does not issue
-five or six sequential Week requests. On narrow companions, the same response
-also supplies the selected-date agenda beneath the compact grid.
+five or six sequential Week requests. The same indexed response supplies two-title date previews,
+exact remaining counts and the selected-date full-day dialog on TV and companion (D-101).
+Month reuses Week's focused day/event-detail surface through a minimal date-label prop; no extra
+network request, duplicate inline phone agenda, provider access or calendar write is introduced.
 
 Today composition reads durable `today_section_preferences` and
 `announcements` through an injected content repository. Adult companion writes
@@ -378,12 +380,12 @@ planning defaults and real-time event paths are derived only after that
 response succeeds. `demo` and `test` inject the fixed Perth clock used by
 retained evidence; `private` injects the system clock. A private database with
 no household returns `requiresSetup: true` and a null household, so the browser
-renders first use without issuing household queries. After the one-time local setup code and
-WebAuthn registration are verified, household/member/default-list creation and credential storage
+renders first use without issuing household queries. After the one-time local owner setup key is
+verified, household/member/default-list and independent phone-connection creation
 commit in one transaction; the runtime resolver observes the new household without a restart.
 Once a private household exists, an unauthenticated runtime response remains bootstrap-safe but
 redacts the household identifier and name (`household: null`, `requiresSetup: false`). The browser
-then offers passkey sign-in. A valid companion session or paired-TV credential reveals the runtime
+then offers QR-approved phone connection or private owner-key recovery. A valid companion session or paired-TV credential reveals the runtime
 household and allows normal route construction.
 
 Browser JSON requests bound both response headers and body parsing to ten seconds and preserve
@@ -506,7 +508,31 @@ removed immediately and contains no credential or role grant. Runtime and auth s
 on foreground/reconnect, and the provider treats either server `sharedScreen` flag as restrictive.
 Appearance and other approved family controls remain accessible; no new polling loop is added.
 
-The LAN-only release uses named adult household accounts with passkeys as the primary companion
+### Current adult phone authority (D-102)
+
+The private release uses named adult controller connections. Initial/recovery connection proves
+possession of an external one-time owner key; another phone scans a connected controller's
+short-lived QR, binds a separate HttpOnly pending proof, waits for that inviter's explicit adult
+approval, then exchanges once. The inviter's identity/session is unchanged. Role/capability,
+household, current inviter and target state are rechecked at exchange. Only hashes persist;
+raw session/pending secrets are protected cookies. QR secrets are fragment-only, stripped on the
+recipient and never stored in browser storage or logs. D-103 protects owner-key provenance from
+browser removal, self sign-out, QR switching, screen conversion and owner-member demotion/archive.
+Only a fresh backend file key atomically replaces the owner and its linked sessions/invitations;
+QR phones and TVs are preserved. Restrictive screen cleanup can invalidate browser sessions but
+cannot remove ownership. Secondary connections have independent revocation,
+180-day absolute and 90-day idle session bounds. This is connected-browser possession, not
+hardware attestation or user-verified biometrics. Lock connected phones.
+
+Migration 0028 preserves verified legacy sessions with accurately named earlier-browser grants.
+Production disables new passkey ceremonies. Legacy mechanisms below remain only for old-release
+compatibility, migration tests and historical evidence; they are not active enrollment paths.
+See [the typed v1 contract](PHONE_CONNECTIONS_CONTRACT.md). No network or live access mutation is
+authorized by local implementation.
+
+### Historical passkey mechanism (superseded for enrollment by D-102)
+
+The earlier LAN-only release used named adult household accounts with passkeys as the primary companion
 sign-in. Private first use reads a high-entropy one-time code from an external secret file, rate
 limits invalid attempts, requires user verification and a discoverable passkey, then issues a
 30-day `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Only its SHA-256 digest is stored; sign-out
@@ -532,7 +558,9 @@ or network. A changed release causes one full page reload; credentials and paire
 untouched. Registered unsaved drafts defer that reload until a later safe check without consuming
 the new release identifier. Hidden pages do not run the interval check.
 
-Adult access supports several named adult accounts and several independently revocable passkeys per
+### Historical credential recovery (superseded by owner phone keys)
+
+Earlier adult access supported several named adult accounts and several independently revocable passkeys per
 adult. Adding a passkey or issuing a replacement recovery code requires a current administrator
 session; issuing the code additionally re-verifies the current passkey. The 128-bit recovery code
 is displayed once, expires after 180 days, and is stored only as a SHA-256 digest. Successful
@@ -557,8 +585,12 @@ by the tool or persisted in source/logs. Issuance changes no keys, sessions, rol
 the existing user-verified recovery ceremony later consumes it and replaces only that adult's access.
 Every operator mutation has a truthful system/NAS-owner audit in the same transaction.
 
+### Current appliance update authority
+
 Appliance update status is an administrator-only service, not a browser privilege. Starting an
-update requires a new passkey-authenticated session no more than five minutes old. The server accepts
+update requires explicit connected-adult-phone consent no more than five minutes old. Enrollment
+and refresh do not manufacture that timestamp; this is not biometric reauthentication. Legacy
+passkey-authenticated sessions retain their earlier verification checks during transition. The server accepts
 only the exact release exposed by its fixed verified-workflow provider, creates an online recovery
 copy and sends a two-field request through a mode-restricted local FIFO. It has no Docker socket,
 root credential or general command endpoint. A separately installed platform agent performs the
@@ -678,7 +710,7 @@ only as an explicit recovery fallback. Image publication is an outbound package 
 not give GitHub Actions network or credential access to the private household deployment.
 `GET /api/v1/health` reports process liveness; `GET /api/v1/readiness` verifies SQLite and the latest
 migration. The stable private hostname and trusted certificate remain commissioning inputs because
-adult passkeys bind to that origin. See D-031.
+adult phone enrollment is constrained to that origin. See D-031 and D-102.
 
 The server creates routine database recovery copies. The explicitly authorized local NAS-owner
 maintenance tool may also create a checked private online backup before access repair (D-097).

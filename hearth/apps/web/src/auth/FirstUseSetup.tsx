@@ -5,6 +5,7 @@ import type { PasskeyAuthStatus, RuntimeContext } from '@hearth/shared';
 
 import { createFirstUsePasskey, passkeysAvailable } from './passkeys';
 import { isTelevisionBrowser } from '../runtime/sharedScreen';
+import { PhoneAccess } from './PhoneAccess';
 
 export function FirstUseSetup({
   runtime,
@@ -24,7 +25,9 @@ export function FirstUseSetup({
     return (
       <SetupFrame title="Finish private access first">
         <p>Configure Hearth’s permanent private HTTPS address and first-use code on the server.</p>
-        <p className="runtime-gate__detail">No household or passkey has been created yet.</p>
+        <p className="runtime-gate__detail">
+          No household or phone connection has been created yet.
+        </p>
       </SetupFrame>
     );
   }
@@ -44,6 +47,8 @@ export function FirstUseSetup({
   const television =
     auth.sharedScreen === true || runtime.sharedScreen === true || isTelevisionBrowser();
   const useCompanion = unavailable || television;
+  if (auth.accessMethod === 'phone' && !television)
+    return <PhoneAccess auth={auth} onComplete={onComplete} timezone={runtime.timezone} />;
 
   return (
     <SetupFrame title="Set up this Hearth">

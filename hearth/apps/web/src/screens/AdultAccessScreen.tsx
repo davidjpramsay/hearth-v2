@@ -19,8 +19,30 @@ import {
   passkeysAvailable,
 } from '../auth/passkeys';
 import { clearIdentityAndReload } from '../auth/signOut';
+import { PhoneConnectionsPanel } from '../components/PhoneConnectionsPanel';
+import { authStatusQueryKey } from '../auth/queryKeys';
+import { runtimeApi } from '../api/runtime';
 
 export function AdultAccessScreen() {
+  const auth = useQuery({
+    queryKey: authStatusQueryKey,
+    queryFn: runtimeApi.getAuthStatus,
+    enabled: false,
+  });
+  if (auth.data?.accessMethod === 'phone')
+    return (
+      <AdminPage
+        title="Adult phones"
+        backTo="/admin/televisions"
+        backLabel="Back to Phones & screens"
+      >
+        <PhoneConnectionsPanel />
+      </AdminPage>
+    );
+  return <LegacyAdultAccessScreen />;
+}
+
+function LegacyAdultAccessScreen() {
   const runtime = useHearthRuntime();
   const admin = useAdminQuery();
   const queryClient = useQueryClient();

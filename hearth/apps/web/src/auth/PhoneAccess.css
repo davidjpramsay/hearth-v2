@@ -1,0 +1,35 @@
+.phone-access {
+  overflow-wrap: anywhere;
+}
+.phone-access form {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 26rem);
+  text-align: left;
+}
+.phone-access label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 650;
+}
+.phone-access input {
+  font: inherit;
+  font-size: max(1rem, 16px);
+  width: 100%;
+  min-height: 3rem;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  padding: 0.7rem;
+  color: var(--ink);
+  background: var(--surface);
+}
+.phone-access details {
+  max-width: 26rem;
+  text-align: left;
+}
+.phone-access section {
+  max-width: 26rem;
+  display: grid;
+  gap: 1rem;
+}

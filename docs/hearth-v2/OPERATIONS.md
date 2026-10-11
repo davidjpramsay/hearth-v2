@@ -121,7 +121,7 @@ Use reserved DHCP addresses and stable local DNS names where available. Suggeste
 
 Do not hard-code LAN IPs in application bundles. Production configuration enters the TV through pairing or a controlled environment/build setting.
 
-Companion passkeys require a stable private hostname with HTTPS before real household data is entered.
+Phone connections require a stable private hostname with HTTPS before real household data is entered.
 Set `HEARTH_AUTH_RP_ID` to that exact hostname, `HEARTH_AUTH_ORIGIN` to its exact HTTPS origin and
 `HEARTH_FIRST_USE_CODE_PATH` to an external access-restricted secret file. All three values are
 required together. The exact Synology/Tailscale hostname and certificate mechanism are deployment
@@ -130,8 +130,9 @@ inputs, not values to hard-code in application bundles.
 Before the first start, generate a high-entropy code into the configured first-use file with mode
 `0600` or stricter and read it only on the local trusted administration path. Do not put it in an
 environment variable, Compose, source, chat, logs, SQLite or a URL. Hearth rate limits invalid
-attempts and consumes the file after the first adult passkey and household are committed. Keep the
-origin stable after enrolment; changing the WebAuthn relying-party hostname requires new credentials.
+attempts and consumes the file after the first adult phone connection and household are committed.
+Use at least 32 random bytes; no password or passkey is needed. The historically named
+`HEARTH_AUTH_RP_ID` remains the exact hostname validation setting, not an active WebAuthn requirement.
 
 ### Adult phones versus shared-screen pairing
 
@@ -146,7 +147,33 @@ from that browser and ends only its retained adult session; it does not reset ot
 Legacy screens retaining an adult cookie also lose only that browser session when they contact
 Hearth, preventing later display-cookie removal from restoring old adult access.
 A generic unpaired browser is not permanently classified as screen hardware: adult authority still
-requires a valid personal passkey and server role/capability checks.
+requires a valid approved phone connection and server role/capability checks (D-102).
+
+### Current phone setup (D-102)
+
+After an approved release upgrade, reload Hearth once on each phone so the new connection UI is
+loaded. The D-102 local implementation has passed its code/API/migration/rendered checks, but
+publication and live activation have not occurred at this checkpoint. Do not issue a live key
+against a pre-0028 database or remove working legacy access before actual-phone acceptance.
+
+1. Connect the first phone with the private one-time owner key. Check **Connected as David** and
+   **owner phone · Protected**. No app Remove/Sign out is available for this main phone (D-103).
+2. On David's connected phone, open **Phones & screens → Add phone**, choose **Rachael**, and
+   show the QR. Rachael scans with her phone camera, names her phone and requests connection.
+3. David confirms **Rachael · Rachael's iPhone** and approves. Rachael taps **Connect as Rachael**.
+   Check both identities independently; David is not signed out or switched to Rachael.
+4. **Remove** affects only a selected secondary connection; the owner, other phone and TV remain.
+   If a secondary phone is lost, a remaining adult controller approves its QR replacement.
+   If the owner phone is lost/replaced, use a fresh protected backend key even when another adult
+   phone still works. That key retires only the previous owner. If all phones are lost, recover
+   the owner with that key, then remove lost secondary connections. No household reset.
+
+QRs expire in five minutes and require final approval; a QR alone is not an administrator sign-in.
+Use one consistent Safari/Home Screen browser path on each iPhone; separate browser profiles may
+be separate connections. Keep phones locked. Do not remove earlier-browser connections until
+both replacement phones have passed physical acceptance. Screen pairing stays separate.
+
+### Historical passkey setup (D-097; not the active enrollment procedure)
 
 1. Open the same trusted private HTTPS Hearth address on each adult's phone. Choose **Sign in with
    a passkey**, not **Connect shared screen**. Each person uses their own Hearth passkey.
@@ -186,17 +213,21 @@ Use the verified release's local tool from an authorized NAS shell:
 ```sh
 python3 -I hearth/deploy/synology/owner-access.py \
   --database /absolute/private/hearth.sqlite \
-  --household household_example issue-recovery --member member_example
+  --household household_example issue-phone-key --member member_example
 ```
 
 Resolve exact paths and the named active adult from safe metadata first. This requires root or DSM
 administrators-group membership plus existing private database access, not a web session. The tool
 rejects missing/linked database paths, creates a checked private SQLite online backup and issues a
-128-bit one-time code valid for 15 minutes. Output contains only private file locations and expiry.
-Read the code privately in the owner's terminal; never capture it in chat, tool output or logs.
-On the intended adult's phone use **Trouble signing in? → Use a recovery code**, give the new key a
-meaningful name and complete the device passkey prompt. Issuance alone changes no key/session;
-successful user-verified recovery replaces only that adult's prior access. No privileges are added.
+256-bit one-time key valid for 15 minutes and bound to an existing adult controller. Output contains
+only private file locations and expiry. Read the key privately; never capture it in chat, tool
+output or logs. On the intended phone choose **Owner phone setup or replacement → Use owner setup
+key**, enter a phone name and the key. No password/passkey prompt. Issuance does not disconnect
+anything. Successful claim atomically replaces the prior protected
+owner phone and invalidates its sessions/invitations; secondary phones, permissions, content and
+the TV are unchanged. A newer issued key supersedes earlier unused owner grants household-wide.
+There is no app-only owner removal, self sign-out or QR promotion. Cookie loss/expiry needs a fresh
+owner key; Hearth cannot prevent a user clearing Safari data. A failed claim keeps the prior owner.
 Delete the exact private code file after consumption/expiry and retain the checked backup under the
 commissioned private retention policy. Stop rather than relaxing file/DSM ACL checks.
 
@@ -594,7 +625,7 @@ combine `compose.yaml` with `compose.build.yaml`; never silently fall back to co
 
 After the updated fixed helper has been installed once, an authenticated adult can use **System
 health > Hearth update**. The card compares the installed commit with the newest successful push of
-the repository's fixed `verify.yml` workflow. Installing requires a fresh passkey confirmation,
+the repository's fixed `verify.yml` workflow. Installing requires recent explicit connected-phone consent (D-102),
 creates and checks an online SQLite backup, downloads immutable images, creates a stopped-database
 rollback copy, activates the release and waits for readiness. Failure restores the old database and
 image tags automatically. Start and terminal result are separate audit entries.

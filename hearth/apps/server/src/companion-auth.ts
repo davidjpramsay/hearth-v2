@@ -40,6 +40,8 @@ import {
 } from '@hearth/shared';
 
 import { RepositoryError, type CommandActor } from './repository.js';
+import { PHONE_IDLE_MS } from './phone-connections.js';
+import { OWNER_PHONE_PROTECTED } from './owner-phone.js';
 
 const CEREMONY_LIFETIME_MS = 5 * 60 * 1000;
 const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
@@ -300,6 +302,7 @@ export interface CompanionAuthRepository {
   authenticate(token: string): CommandActor;
   assertRecentAuthentication?(token: string, maximumAgeMs: number): void;
   signOut(token: string): void;
+  invalidateBrowserSession(token: string): void;
   sessionCookie(token: string): string;
   clearSessionCookie(): string;
 }
@@ -336,6 +339,15 @@ export class CompanionAuthService implements CompanionAuthRepository {
       secureOrigin: this.configuration.origin.startsWith('https://'),
       requiresSetup: this.householdId() === null,
       authenticated: member !== null,
+      ownerPhone:
+        member !== null &&
+        Boolean(
+          this.database
+            .prepare(
+              "SELECT 1 FROM companion_sessions s JOIN controller_phone_connections c ON c.id=s.phone_connection_id WHERE s.token_hash=? AND c.source='owner' AND c.revoked_at IS NULL",
+            )
+            .get(tokenDigest(token!)),
+        ),
       actor:
         member === null
           ? null
@@ -963,25 +975,86 @@ export class CompanionAuthService implements CompanionAuthRepository {
     this.session(token);
     const row = this.database
       .prepare(
-        `SELECT created_at FROM companion_sessions
+        `SELECT created_at, credential_id, phone_confirmed_at FROM companion_sessions
          WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > ?`,
       )
-      .get(tokenDigest(token), this.now().toISOString()) as { created_at: string } | undefined;
-    const createdAt = row === undefined ? Number.NaN : Date.parse(row.created_at);
+      .get(tokenDigest(token), this.now().toISOString()) as
+      | { created_at: string; credential_id: string | null; phone_confirmed_at: string | null }
+      | undefined;
+    const verifiedAt = row?.phone_confirmed_at ?? (row?.credential_id ? row.created_at : null);
+    const createdAt = verifiedAt === null ? Number.NaN : Date.parse(verifiedAt);
     if (!Number.isFinite(createdAt) || this.now().getTime() - createdAt > maximumAgeMs) {
       throw new RepositoryError(
         'CONFIRMATION_REQUIRED',
-        'Confirm this update with an adult passkey.',
+        'Confirm this update from your connected adult phone.',
       );
     }
   }
 
   signOut(token: string): void {
-    this.database
-      .prepare(
-        'UPDATE companion_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL',
-      )
-      .run(this.now().toISOString(), tokenDigest(token));
+    this.endBrowserSession(token, false);
+  }
+
+  // A negative-only screen/race boundary may invalidate browser authority without deleting
+  // the protected owner connection. This is not exposed as a removal endpoint or client flag.
+  invalidateBrowserSession(token: string): void {
+    this.endBrowserSession(token, true);
+  }
+
+  private endBrowserSession(token: string, restrictiveScreen: boolean): void {
+    this.database.transaction(() => {
+      const linked = this.database
+        .prepare(
+          'SELECT s.phone_connection_id,s.household_id,s.member_id,c.source FROM companion_sessions s LEFT JOIN controller_phone_connections c ON c.id=s.phone_connection_id WHERE s.token_hash=?',
+        )
+        .get(tokenDigest(token)) as
+        | {
+            phone_connection_id: string | null;
+            household_id: string;
+            member_id: string;
+            source: string | null;
+          }
+        | undefined;
+      if (linked?.source === 'owner' && !restrictiveScreen)
+        throw new RepositoryError('FORBIDDEN', OWNER_PHONE_PROTECTED);
+      if (linked?.phone_connection_id) {
+        const removed =
+          linked.source === 'owner'
+            ? { changes: 0 }
+            : this.database
+                .prepare(
+                  'UPDATE controller_phone_connections SET revoked_at=? WHERE id=? AND revoked_at IS NULL',
+                )
+                .run(this.now().toISOString(), linked.phone_connection_id);
+        if (removed.changes > 0)
+          this.database
+            .prepare(
+              "INSERT INTO audit_events (id,occurred_at,household_id,actor_type,actor_id,source_channel,action_type,target_type,target_id,request_id,result,safe_summary_json) VALUES (?,?,?,'member',?,'companion','auth.phone.remove','phone_connection',?,NULL,'succeeded','{}')",
+            )
+            .run(
+              opaqueId('audit_auth'),
+              this.now().toISOString(),
+              linked.household_id,
+              linked.member_id,
+              linked.phone_connection_id,
+            );
+        this.database
+          .prepare(
+            'UPDATE companion_sessions SET revoked_at=? WHERE phone_connection_id=? AND revoked_at IS NULL',
+          )
+          .run(this.now().toISOString(), linked.phone_connection_id);
+        this.database
+          .prepare(
+            'UPDATE controller_phone_invitations SET cancelled_at=? WHERE creator_connection_id=? AND cancelled_at IS NULL',
+          )
+          .run(this.now().toISOString(), linked.phone_connection_id);
+      }
+      this.database
+        .prepare(
+          'UPDATE companion_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL',
+        )
+        .run(this.now().toISOString(), tokenDigest(token));
+    })();
   }
 
   sessionCookie(token: string): string {
@@ -1383,16 +1456,28 @@ export class CompanionAuthService implements CompanionAuthRepository {
         `SELECT s.household_id, s.member_id, s.expires_at, m.display_name, m.role
          FROM companion_sessions s
          JOIN members m ON m.id = s.member_id AND m.household_id = s.household_id
-         JOIN passkey_credentials p ON p.credential_id = s.credential_id
+         LEFT JOIN passkey_credentials p ON p.credential_id = s.credential_id
            AND p.household_id = s.household_id AND p.member_id = s.member_id
+         LEFT JOIN controller_phone_connections c ON c.id=s.phone_connection_id
+           AND c.household_id=s.household_id AND c.member_id=s.member_id
          WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?
-           AND m.archived_at IS NULL AND p.revoked_at IS NULL`,
+           AND m.archived_at IS NULL
+           AND ((s.credential_id IS NOT NULL AND p.credential_id IS NOT NULL AND p.revoked_at IS NULL)
+             OR (s.credential_id IS NULL AND c.id IS NOT NULL))
+           AND (s.phone_connection_id IS NULL OR (c.id IS NOT NULL AND c.revoked_at IS NULL
+             AND c.expires_at > ? AND s.last_seen_at > ?))`,
       )
-      .get(hash, now) as SessionMemberRow | undefined;
+      .get(hash, now, now, new Date(this.now().getTime() - PHONE_IDLE_MS).toISOString()) as
+      SessionMemberRow | undefined;
     if (row === undefined) return null;
     if (touch) {
       this.database
         .prepare('UPDATE companion_sessions SET last_seen_at = ? WHERE token_hash = ?')
+        .run(now, hash);
+      this.database
+        .prepare(
+          'UPDATE controller_phone_connections SET last_seen_at=? WHERE id=(SELECT phone_connection_id FROM companion_sessions WHERE token_hash=?)',
+        )
         .run(now, hash);
     }
     return {

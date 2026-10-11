@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import type { CalendarEvent, CalendarSource, DemoScenario, MonthDay } from '@hearth/shared';
 
 import { Avatar } from '../components/Avatar';
+import { CalendarDayDialog } from '../components/CalendarDayDialog';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -11,7 +12,6 @@ import { useMonthQuery } from '../hooks/useCalendarQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useHearthRuntime } from '../runtime/context';
 import { eventColorVariables, indexMonthEvents } from '../utils/calendar';
-import { formatEventTime } from '../utils/date';
 
 const WEEKDAYS = [
   ['Monday', 'Mon'],
@@ -23,7 +23,6 @@ const WEEKDAYS = [
   ['Sunday', 'Sun'],
 ] as const;
 const MAX_VISIBLE_EVENTS = 2;
-const MAX_COMPACT_MARKS = 6;
 
 export function MonthScreen({
   scenario,
@@ -42,6 +41,7 @@ export function MonthScreen({
   const query = useMonthQuery(monthKey, !preparing);
   const online = useOnlineStatus(scenario === 'offline');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [openDate, setOpenDate] = useState<string | null>(null);
   const eventsByDate = useMemo(
     () =>
       indexMonthEvents(
@@ -57,8 +57,7 @@ export function MonthScreen({
   const defaultDay =
     month.days.find((day) => day.isToday) ?? month.days.find((day) => day.inMonth) ?? month.days[0];
   const selectedDay = month.days.find((day) => day.localDate === selectedDate) ?? defaultDay;
-  const selectedEvents =
-    selectedDay === undefined ? [] : (eventsByDate.get(selectedDay.localDate) ?? []);
+  const openDay = month.days.find((day) => day.localDate === openDate);
 
   return (
     <div className="screen month-screen">
@@ -113,12 +112,18 @@ export function MonthScreen({
             index={index}
             key={day.localDate}
             onSelect={setSelectedDate}
+            onOpen={setOpenDate}
             selected={selectedDay?.localDate === day.localDate}
           />
         ))}
       </div>
-      {selectedDay === undefined ? null : (
-        <MonthDayDetails day={selectedDay} events={selectedEvents} timezone={runtime.timezone} />
+      {openDay === undefined ? null : (
+        <CalendarDayDialog
+          day={dialogDay(openDay.localDate)}
+          events={eventsByDate.get(openDay.localDate) ?? []}
+          timezone={runtime.timezone}
+          onClose={() => setOpenDate(null)}
+        />
       )}
       <MonthLegend calendars={month.calendars} />
       <div className="month-footer-controls">
@@ -186,6 +191,7 @@ function MonthCell({
   events,
   index,
   onSelect,
+  onOpen,
   selected,
 }: {
   day: MonthDay;
@@ -193,6 +199,7 @@ function MonthCell({
   events: CalendarEvent[];
   index: number;
   onSelect: (localDate: string) => void;
+  onOpen: (localDate: string) => void;
   selected: boolean;
 }) {
   const previous = index > 0 ? index - 1 : index;
@@ -202,6 +209,7 @@ function MonthCell({
   return (
     <button
       aria-label={dayLabel(day.localDate, events)}
+      aria-haspopup="dialog"
       aria-pressed={selected}
       className={`month-cell focusable${day.inMonth ? '' : ' month-cell--outside'}${day.isToday ? ' month-cell--today' : ''}`}
       data-focus-entry={day.isToday ? 'true' : undefined}
@@ -226,15 +234,19 @@ function MonthCell({
               ? 'month-today'
               : 'month-later'
       }
-      onClick={() => onSelect(day.localDate)}
+      onClick={(event) => {
+        event.currentTarget.focus({ preventScroll: true });
+        onSelect(day.localDate);
+        onOpen(day.localDate);
+      }}
       onFocus={() => onSelect(day.localDate)}
       type="button"
     >
       <strong>{day.dayNumber}</strong>
       <span aria-hidden="true" className="month-events">
-        {events.slice(0, MAX_VISIBLE_EVENTS).map((event, eventIndex) => (
+        {events.slice(0, MAX_VISIBLE_EVENTS).map((event) => (
           <span
-            className={`month-event-label${eventIndex === 1 ? ' month-event-label--secondary' : ''}`}
+            className="month-event-label"
             key={event.id}
             style={eventColorVariables(event.color) as CSSProperties}
             title={event.title}
@@ -243,58 +255,13 @@ function MonthCell({
           </span>
         ))}
         {events.length > MAX_VISIBLE_EVENTS ? (
-          <span className="month-event-more month-event-more--wide">
-            +{events.length - MAX_VISIBLE_EVENTS} more
+          <span className="month-event-more">
+            +{events.length - MAX_VISIBLE_EVENTS}
+            <span className="month-event-more__label"> more</span>
           </span>
         ) : null}
-        {events.length > 1 ? (
-          <span className="month-event-more month-event-more--compact">
-            +{events.length - 1} more
-          </span>
-        ) : null}
-        <span className="month-event-compact-marks">
-          {events.slice(0, MAX_COMPACT_MARKS).map((event) => (
-            <i key={event.id} style={{ '--event-color': event.color } as CSSProperties} />
-          ))}
-        </span>
       </span>
     </button>
-  );
-}
-
-function MonthDayDetails({
-  day,
-  events,
-  timezone,
-}: {
-  day: MonthDay;
-  events: CalendarEvent[];
-  timezone: string;
-}) {
-  return (
-    <section aria-live="polite" className="month-day-details">
-      <header>
-        <h2>{detailDateLabel(day.localDate)}</h2>
-        <span>
-          {events.length === 0
-            ? 'Nothing planned'
-            : `${events.length} ${events.length === 1 ? 'plan' : 'plans'}`}
-        </span>
-      </header>
-      {events.length === 0 ? (
-        <p>Nothing planned for this day.</p>
-      ) : (
-        <ul>
-          {events.map((event) => (
-            <li key={event.id}>
-              <i style={{ '--event-color': event.color } as CSSProperties} />
-              <strong>{event.title}</strong>
-              <span>{formatEventTime(event, timezone)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
 
@@ -335,11 +302,15 @@ function dayLabel(localDate: string, events: CalendarEvent[]): string {
   return `${date}, ${events.length} ${events.length === 1 ? 'plan' : 'plans'}: ${events.map((event) => event.title).join(', ')}`;
 }
 
-function detailDateLabel(localDate: string): string {
-  return new Intl.DateTimeFormat('en-AU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  }).format(new Date(`${localDate}T12:00:00.000Z`));
+function dialogDay(localDate: string) {
+  const date = new Date(`${localDate}T12:00:00.000Z`);
+  return {
+    localDate,
+    dayLabel: new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'UTC' }).format(date),
+    dateLabel: new Intl.DateTimeFormat('en-AU', {
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    }).format(date),
+  };
 }

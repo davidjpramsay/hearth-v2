@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -11,11 +11,20 @@ import { Icon } from '../components/Icon';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useCommandMutation } from '../hooks/useCommandMutation';
 import { useHearthRuntime } from '../runtime/context';
+import { authStatusQueryKey } from '../auth/queryKeys';
+import { runtimeApi } from '../api/runtime';
+import { PhoneConnectionsPanel } from '../components/PhoneConnectionsPanel';
 
 export function TelevisionsSettingsScreen() {
   const runtime = useHearthRuntime();
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
+  const auth = useQuery({
+    queryKey: authStatusQueryKey,
+    queryFn: runtimeApi.getAuthStatus,
+    enabled: false,
+  });
+  const phoneAccess = auth.data?.accessMethod === 'phone';
   const [code, setCode] = useState('');
   const [confirmRemoval, setConfirmRemoval] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -59,64 +68,70 @@ export function TelevisionsSettingsScreen() {
 
   return (
     <AdminPage title="Phones & screens">
-      <p className="device-access-summary">
-        Signed in as <strong>{admin.data.actor.displayName}</strong>.
-      </p>
-      <div className="device-setup-options">
-        <section className="device-setup-card" aria-labelledby="phone-setup-title">
-          <header>
-            <Icon name="shield" />
-            <h2 id="phone-setup-title">Adult phones</h2>
-          </header>
-          <p>Phones sign in with a passkey. No TV code needed.</p>
-          <ul className="device-adult-list" aria-label="Adult control permissions">
-            {adults.map((adult) => (
-              <li key={adult.id}>
-                <strong>{adult.displayName}</strong>
-                <span>
-                  {adult.capabilities.includes('household.admin')
-                    ? 'Household controller'
-                    : 'Family access · no household settings'}
-                </span>
-                <Link
+      {phoneAccess ? null : (
+        <p className="device-access-summary">
+          Signed in as <strong>{admin.data.actor.displayName}</strong>.
+        </p>
+      )}
+      {phoneAccess ? (
+        <PhoneConnectionsPanel />
+      ) : (
+        <div className="device-setup-options">
+          <section className="device-setup-card" aria-labelledby="phone-setup-title">
+            <header>
+              <Icon name="shield" />
+              <h2 id="phone-setup-title">Adult phones</h2>
+            </header>
+            <p>Phones sign in with a passkey. No TV code needed.</p>
+            <ul className="device-adult-list" aria-label="Adult control permissions">
+              {adults.map((adult) => (
+                <li key={adult.id}>
+                  <strong>{adult.displayName}</strong>
+                  <span>
+                    {adult.capabilities.includes('household.admin')
+                      ? 'Household controller'
+                      : 'Family access · no household settings'}
+                  </span>
+                  <Link
+                    className="admin-secondary"
+                    to={`/admin/access?adult=${encodeURIComponent(adult.id)}`}
+                    aria-label={`Set up ${adult.displayName}’s phone`}
+                  >
+                    Set up phone
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link className="admin-secondary device-setup-link" to="/admin/access">
+              Manage adult sign-in <Icon name="chevron-right" />
+            </Link>
+            <details className="device-setup-help">
+              <summary>Use Hearth on another phone</summary>
+              <p>Open this address on that phone and sign in as its owner.</p>
+              <div className="device-home-address">
+                <input aria-label="Hearth address" readOnly value={window.location.origin} />
+                <button
                   className="admin-secondary"
-                  to={`/admin/access?adult=${encodeURIComponent(adult.id)}`}
-                  aria-label={`Set up ${adult.displayName}’s phone`}
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(window.location.origin);
+                      setCopyState('copied');
+                    } catch {
+                      setCopyState('failed');
+                    }
+                  }}
                 >
-                  Set up phone
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <Link className="admin-secondary device-setup-link" to="/admin/access">
-            Manage adult sign-in <Icon name="chevron-right" />
-          </Link>
-          <details className="device-setup-help">
-            <summary>Use Hearth on another phone</summary>
-            <p>Open this address on that phone and sign in as its owner.</p>
-            <div className="device-home-address">
-              <input aria-label="Hearth address" readOnly value={window.location.origin} />
-              <button
-                className="admin-secondary"
-                type="button"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(window.location.origin);
-                    setCopyState('copied');
-                  } catch {
-                    setCopyState('failed');
-                  }
-                }}
-              >
-                {copyState === 'copied' ? 'Copied' : 'Copy address'}
-              </button>
-            </div>
-            {copyState === 'failed' ? (
-              <p role="status">Select and copy the address above.</p>
-            ) : null}
-          </details>
-        </section>
-      </div>
+                  {copyState === 'copied' ? 'Copied' : 'Copy address'}
+                </button>
+              </div>
+              {copyState === 'failed' ? (
+                <p role="status">Select and copy the address above.</p>
+              ) : null}
+            </details>
+          </section>
+        </div>
+      )}
       <section className="device-list" aria-labelledby="connected-tvs">
         <h2 ref={connectedHeading} id="connected-tvs" tabIndex={-1}>
           Connected screens
@@ -136,7 +151,10 @@ export function TelevisionsSettingsScreen() {
             </span>
             <div>
               <strong>{device.name}</strong>
-              <span>Connected · paired {formatDeviceTime(device.pairedAt)}</span>
+              <span>
+                {phoneAccess ? 'Display only' : 'Connected'} · paired{' '}
+                {formatDeviceTime(device.pairedAt)}
+              </span>
               <small>
                 {device.lastSeenAt === null
                   ? 'No screen contact recorded yet'

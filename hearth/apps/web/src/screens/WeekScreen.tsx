@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useCallback, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { addLocalDays } from '@hearth/core';
@@ -21,6 +21,7 @@ import { formatEventDayTime } from '../utils/date';
 import {
   layoutWeekDay,
   timelineHourLabel,
+  weekAxisStep,
   weekTimeline,
   type WeekDayLayout,
   type WeekTimeline,
@@ -46,6 +47,44 @@ export function WeekScreen({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const companion = useSyncExternalStore(subscribeCompanion, companionSnapshot);
+  const [timelineSize, setTimelineSize] = useState({ height: 612, cardHeight: 78, allDayRows: 2 });
+  const observeTimeline = useCallback((node: HTMLDivElement | null) => {
+    if (node === null) return;
+    const grid = node.closest<HTMLElement>('.week-grid');
+    const measure = () => {
+      // clientHeight stays in logical CSS pixels, including the doubled 4K canvas.
+      const height = Math.max(1, node.clientHeight);
+      const cardHeight = Number.parseFloat(
+        getComputedStyle(node).getPropertyValue('--week-card-min-height'),
+      );
+      // Reserve a readable timed card plus the overflow band before adding 68px all-day rows.
+      const headerHeight =
+        grid?.querySelector<HTMLElement>('.week-column > header')?.offsetHeight ?? 96;
+      const allDayRows = Math.max(
+        0,
+        Math.min(
+          2,
+          Math.floor(((grid?.clientHeight ?? 708) - headerHeight - 74 - cardHeight - 4) / 68),
+        ),
+      );
+      setTimelineSize((previous) =>
+        previous.height === height &&
+        previous.cardHeight === cardHeight &&
+        previous.allDayRows === allDayRows
+          ? previous
+          : { height, cardHeight, allDayRows },
+      );
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    if (grid !== null) observer.observe(grid);
+    return () => observer.disconnect();
+  }, []);
   const presentation = useMemo(() => {
     if (query.data === undefined) return null;
     const timeline = weekTimeline(
@@ -54,10 +93,17 @@ export function WeekScreen({
       runtime.timezone,
     );
     const layouts = query.data.days.map((day) =>
-      layoutWeekDay(query.data.events, day.localDate, runtime.timezone, timeline),
+      layoutWeekDay(
+        query.data.events,
+        day.localDate,
+        runtime.timezone,
+        timeline,
+        (timelineSize.cardHeight + 4) / timelineSize.height,
+        timelineSize.allDayRows,
+      ),
     );
     return { timeline, layouts };
-  }, [query.data, runtime.timezone]);
+  }, [query.data, runtime.timezone, timelineSize]);
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined || presentation === null)
     return <FailureState onRetry={() => void query.refetch()} />;
@@ -71,6 +117,7 @@ export function WeekScreen({
   const lastFocusId = focusColumns.flat().at(-1);
   const openDayIndex = week.days.findIndex((day) => day.localDate === selectedDay);
   const allDayRowCount = Math.max(0, ...layouts.map((layout) => layout.allDay.length));
+  const axisStep = weekAxisStep(timeline, timelineSize.height);
   return (
     <div className="screen week-screen">
       <ScreenHeader
@@ -111,15 +158,18 @@ export function WeekScreen({
           style={
             {
               '--week-all-day-height': `${allDayRowCount * 68}px`,
-              '--timeline-steps': (timeline.end - timeline.start) / 120,
+              '--week-more-height': layouts.some((layout) => layout.hiddenCount > 0)
+                ? '74px'
+                : '0px',
+              '--timeline-steps': (timeline.end - timeline.start) / axisStep,
             } as CSSProperties
           }
         >
           <div className="week-time-axis" aria-hidden="true">
-            <div className="week-time-axis__labels">
+            <div className="week-time-axis__labels" ref={observeTimeline}>
               {Array.from(
-                { length: (timeline.end - timeline.start) / 120 + 1 },
-                (_, index) => timeline.start + index * 120,
+                { length: (timeline.end - timeline.start) / axisStep + 1 },
+                (_, index) => timeline.start + index * axisStep,
               ).map((minutes) => (
                 <span
                   key={minutes}

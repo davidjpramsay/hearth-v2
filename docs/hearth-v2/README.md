@@ -34,3 +34,8 @@ and voice. Native television media apps remain separate.
 
 Open acceptance work is tracked only in [`ACCEPTANCE.md`](ACCEPTANCE.md) and
 [`ROADMAP.md`](ROADMAP.md); this index intentionally avoids duplicating it.
+
+Adult phone setup and recovery follow the versioned
+[`PHONE_CONNECTIONS_CONTRACT.md`](PHONE_CONNECTIONS_CONTRACT.md) (D-102): protected owner key
+for the protected owner phone, QR approval for additional phones, no passwords or passkeys.
+Only a fresh backend file key replaces the owner phone (D-103).

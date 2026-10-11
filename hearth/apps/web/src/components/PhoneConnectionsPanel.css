@@ -1,0 +1,108 @@
+.phone-connections {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.phone-connections h2,
+.phone-connections h3,
+.phone-connections p {
+  margin: 0;
+}
+.phone-connections button {
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 650;
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--surface);
+}
+.phone-connections .admin-primary:not(:disabled) {
+  background: var(--eucalyptus);
+  border-color: var(--eucalyptus);
+  color: var(--canvas);
+}
+.phone-connections button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.phone-connections > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.phone-connections__list {
+  display: grid;
+  gap: 0.75rem;
+}
+.phone-connection {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: 1rem;
+  background: var(--surface);
+  min-width: 0;
+}
+.phone-connection > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.phone-connection small {
+  color: var(--muted);
+}
+.phone-connection__protected {
+  max-width: 12rem;
+  font-weight: 650;
+}
+.phone-add,
+.phone-qr {
+  border: 1px solid var(--hairline);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  display: grid;
+  gap: 1rem;
+}
+.phone-add label {
+  display: grid;
+  gap: 0.4rem;
+}
+.phone-add select {
+  font: inherit;
+  font-size: max(1rem, 16px);
+  width: 100%;
+  min-height: 3rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+}
+.phone-qr img {
+  width: min(232px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 0.5rem;
+}
+.phone-qr {
+  scroll-margin-block: 1rem calc(var(--phone-tabs-height) + 1rem);
+}
+.phone-connection__confirm {
+  max-width: 24rem;
+}
+@media (max-width: 480px) {
+  .phone-connection {
+    flex-wrap: wrap;
+  }
+  .phone-connection__confirm {
+    width: 100%;
+  }
+}

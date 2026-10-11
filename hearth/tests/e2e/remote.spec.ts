@@ -90,7 +90,7 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
   await expect(page.locator('.month-event-label')).toHaveCount(19);
   const busyDay = page.locator('[data-focus-id="month-day-2026-08-03"]');
   await expect(busyDay.locator('.month-event-label')).toHaveText(['School drop-off', 'Dentist']);
-  await expect(busyDay.locator('.month-event-more--wide')).toHaveText('+2 more');
+  await expect(busyDay.locator('.month-event-more')).toHaveText('+2 more');
   await expect(page.locator('.month-legend .avatar')).toHaveCount(2);
   await expect(page.locator('.month-legend__family')).toHaveText('H');
   await expect(page.getByLabel(/Monday 3 August, 4 plans/)).toBeVisible();
@@ -118,10 +118,14 @@ test('Month keeps faces in its key and names events in date cells', async ({ pag
     /phone-tab--active/,
   );
   await expect(page.locator('.month-grid')).toBeVisible();
-  await expect(page.locator('.month-day-details')).toContainText('School drop-off');
-  await expect(page.locator('.month-day-details')).toContainText('4 plans');
-  await page.locator('[data-focus-id="month-day-2026-08-03"]').focus();
-  await expect(page.locator('.month-day-details')).toContainText('School drop-off');
+  const phoneDay = page.locator('[data-focus-id="month-day-2026-08-03"]');
+  await phoneDay.focus();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('School drop-off');
+  await expect(page.getByRole('dialog')).toContainText('4 events');
+  await page.keyboard.press('Escape');
+  await expect(phoneDay).toBeFocused();
 });
 
 test('cached Month remains readable through a real browser offline event', async ({

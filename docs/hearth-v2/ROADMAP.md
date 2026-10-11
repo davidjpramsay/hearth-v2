@@ -1,6 +1,17 @@
 # Hearth v2 implementation roadmap
 
-Adult-access repair (2026-10-09, D-097): simplify named-phone setup, keep optional recovery secondary
+Adult phone connections (2026-10-12, D-102): implement protected owner-key first-phone setup and
+independent QR-approved adult connections, with no passwords/passkeys. Keep current access and
+TV grants while verifying local contracts, migration, authorization, browser interactions and
+recovery. Publication/live activation, owner key issuance, David/Rachael physical Safari checks
+and deliberate legacy cleanup remain separate open gates; no bulk reset or networking changes.
+
+Protected main phone (2026-10-12, D-103): prevent all app removal/sign-out and owner-adult
+archive/demotion. A fresh backend file key atomically replaces ownership while preserving
+secondary phones/screens. Test forbidden paths, rollback and expiry; physical owner-key
+replacement and loss/recovery acceptance remain open with the D-102 live release gates.
+
+Historical adult-access repair (2026-10-09, D-097; superseded for enrollment by D-102): simplify named-phone setup, keep optional recovery secondary
 and support backed-up local NAS-owner lost-access recovery without resetting the household or TV.
 Exact obsolete-screen cleanup is verified separately from UI release and both physical phone
 sign-ins. Never close device acceptance from passkey counts.
@@ -148,7 +159,8 @@ Implementation extension (2026-08-04): the owner approved Month after rendered
 television evaluation. Month now uses the existing provider-neutral projection
 through one typed 42-day query, compact colour-coded event titles with bounded
 overflow, an avatar/colour source key, deterministic D-pad navigation and a
-responsive Week/Month phone switch with a selected-date agenda. No calendar
+responsive Week/Month phone switch with a selected-date agenda (replaced by the explicit shared
+full-day dialog in D-101, 2026-10-11). No calendar
 credential, write scope or migration was added.
 
 Implementation extension (2026-08-08): the missing companion calendar setup

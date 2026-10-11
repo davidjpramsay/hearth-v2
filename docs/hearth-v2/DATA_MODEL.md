@@ -29,8 +29,8 @@ Hearth data directory is backed up, not by a SQLite-only recovery copy.
 - created/updated timestamps
 
 The first deployment serves one household, but household IDs remain explicit so test data and future separation are safe.
-First-use setup rechecks this singleton inside its write transaction after asynchronous passkey
-verification. Local-date wire values must represent real Gregorian dates, including leap-year rules.
+First-use setup rechecks this singleton inside its write transaction after reading the external
+one-time owner key (D-102). Local-date wire values must represent real Gregorian dates, including leap-year rules.
 Timezone settings must be supported by the platform formatter before they can be persisted.
 
 ### Member
@@ -440,12 +440,28 @@ browser storage, response body, audit row or log; clearing site data requires re
 
 ### Session
 
-The private companion stores a random-session SHA-256 hash, household/member/passkey references,
-created/last-seen/expiry timestamps and revocation state. The passkey reference permits narrowly
-revoking sessions from a lost credential. The raw 30-day token exists only in the
+The private companion stores a random-session SHA-256 hash, household/member/phone-connection
+references, created/last-seen/expiry, recent explicit-consent and revocation timestamps. New
+phone sessions have 180-day absolute and 90-day idle bounds. Legacy credential references and
+their 30-day expiry remain for transition; no unverified actor/handset identity is invented.
+Raw session tokens exist only in the
 `HttpOnly`, `Secure`, `SameSite=Strict` browser cookie and never enters logs, audit rows or SQLite.
 
-### Passkey credential
+### Phone connection, invitation and owner grant (D-102)
+
+Migration `0028_controller_phone_connections.sql` adds independent controller connections,
+short-lived digest-only QR invitation/browser-claim records, and one-time owner grants bound to
+an existing adult controller. `source=owner` also marks protected main-phone ownership (D-103),
+including after session expiry. Only a fresh backend grant claim transaction retires prior owner
+connections, sessions and invitations and issues the replacement; secondary connections remain.
+QR never sets this provenance. Owner-member admin/archive protection is server enforced.
+No additional migration is required. Public connection IDs are random, never session hashes. Each
+established legacy session gets its own earlier-browser connection; synced credentials are not
+treated as phones. Invitation rows are capped and expired rows pruned; short-lived exact exchange
+retry cookies exist only in process memory, never SQLite. See
+[the contract](PHONE_CONNECTIONS_CONTRACT.md) for state and retention bounds.
+
+### Historical passkey credential (no new production enrollment)
 
 - opaque credential row ID and WebAuthn credential ID
 - household/member and WebAuthn user references
@@ -457,7 +473,7 @@ Registration challenges and the one-time first-use code are ephemeral and never 
 table. Migration `0012_passkey_authentication.sql` implements both credential and companion-session
 records.
 
-### Companion recovery code
+### Historical companion recovery code (superseded by owner phone grants)
 
 - opaque recovery-code row ID and household/member references
 - SHA-256 code hash; never the displayed code
@@ -562,7 +578,7 @@ provider secrets and entity IDs remain outside the database.
 Migration `0020_adult_access_recovery.sql` links companion sessions to passkey credentials and adds
 one-active-per-adult, digest-only recovery records. The forward migration links older sessions when
 the pre-upgrade adult has exactly one active credential; ambiguous rows remain unlinked rather than
-guessing. New sessions always carry their credential reference so a single lost passkey can be
+guessing. Legacy credential-based sessions carry their credential reference so a lost passkey can be
 revoked narrowly.
 
 The Phase 2 demo runtime injects the SQLite implementation of the same

@@ -142,12 +142,19 @@ or summary band.
 ### Calendar
 
 - **Week:** primary television planning surface; columns/days must remain legible.
+- Week fills the television viewport without page/main scrolling. Header, view switch, status or
+  empty messages, shared all-day rows, overflow controls and week navigation reserve their space;
+  the timed grid takes the remaining height. Readable card bounds use that measured logical CSS
+  height, including the doubled 4K canvas. Cards that cannot fit remain counted in the full-day
+  overflow dialog, rather than being clipped or shrinking their text. Short timelines may use
+  coarser, evenly divided clock labels while retaining both endpoints. The phone's complete Week
+  agenda continues to scroll naturally; it is not compressed into one viewport.
 - Week places all-day events in one shared-height band above the aligned hourly timeline. Timed
   cards whose readable rendered bounds would collide use deterministic side-by-side lanes; no card
   may paint over another. The shared clock axis starts with 8 am–8 pm and expands in two-hour steps
   for early/late plans, up to midnight-to-midnight. Overnight plans are clipped to each household-local
   day, with continuation labels and their full start/end range in details; a midnight end is exclusive.
-- Week shows at most two all-day rows and two timed lanes per day. Extra events, including short
+- Week shows at most two all-day rows (fewer when the height budget requires it) and two timed lanes per day. Extra events, including short
   late events that cannot fit a readable card before the axis ends, count towards `+N more` beneath
   that day. It opens the full day list with every event and source, not just the hidden events.
   The list scrolls within a focus-contained dialog; Select opens details, Back returns to the same
@@ -161,7 +168,22 @@ or summary band.
   days. It never includes past dates or days beyond that window and therefore has no earlier/later
   period controls.
 - **Today:** expanded day with person lanes where useful.
-- **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Television date cells show compact event titles on substantial, readable calendar-colour tinted backgrounds and a deterministic `+N more` summary when the day is dense; faces and solid source colours appear once in a persistent Calendar key. Week event cards use the same deeper tinted-surface language rather than relying on a narrow edge stripe, while text and focus contrast remain accessible in both themes. The six Month rows grow to use the available television height, and the Earlier/current/Later month bar stays at the bottom with the same geometry as Week navigation. Today and keyboard/D-pad focus remain distinct, and each focusable date exposes every event title to assistive technology. The phone retains the grid and key through a Week/Month view switch, and focusing or selecting a date reveals its full titled agenda beneath the narrow grid.
+- **Month:** a Monday-first six-week grid beneath Week in the calendar hierarchy. Every date cell
+  reserves two compact, calendar-colour title rows and a separate overflow row. Display up to two
+  titles and exactly `+N more` when further events exist (`+N` on the narrow phone grid); zero, one
+  and two-event days have no overflow count. Do not replace the second title with a count or dots.
+  Faces and solid source colours appear once in the persistent Calendar key, not in every cell.
+  The six rows grow into the available television height. Compact TV chrome may tighten, but the
+  day number, both previews and count must never overlap or clip. Very short/message-heavy
+  layouts retain a readable minimum cell height and permit D-pad scrolling rather than hiding
+  cell contents. The Earlier/current/Later bar retains Week navigation's geometry. Today and
+  focus remain distinct; date buttons expose every title to assistive technology.
+- Selecting any Month date (remote OK, keyboard Enter or phone tap) opens the shared full-day
+  dialog with all events, their times and owner/source, including empty-day copy when applicable.
+  Focus alone only highlights the date. The full list scrolls within the dialog; selecting an
+  event opens details, Back returns to the same event, and a second Back/Close restores the exact
+  originating date. Phone retains the grid, key and view switch; the old automatic inline agenda
+  beneath the grid is replaced by this explicit day-opening interaction (D-101).
 
 Event cards must express start time, title, owner/source and conflicts. Location and notes appear in a focused detail surface.
 Calendar event fills are opaque in both themes, retaining source-colour tints without showing grid
@@ -387,15 +409,16 @@ the phone More hub.
   restored, encoded, case-varied and history navigation to administration returns to Today before
   admin chrome or child screens mount. `/admin/appearance` remains a compatible alias to the
   harmless device-local Appearance screen. Phone/desktop controller navigation remains available.
-- Signed-out browsers clearly separate **Phone or computer** (adult passkey sign-in) from
+- Signed-out browsers clearly separate **Phone or computer** (QR-approved adult connection or
+  private owner-key setup, no password/passkey) from
   **Shared screen** (TV or wall tablet approved from an adult phone). Neither path starts
   automatically. **Connect shared screen** shows three short steps and a six-character code;
   phone More → **Phones & screens** contains the matching **Connect screen** action. Approval
   exchanges only the display's private local proof and opens the family dashboard without adult
   settings access. Expired codes disappear, retry is explicit, and Cancel/Back restores the opener
-  without resuming a late request. Recovery stays under **Trouble signing in?**, with its replacement
-  consequences stated; it is never a screen sign-in mechanism.
-  First household setup is available on passkey-capable phones and desktop computers; a wide
+  without resuming a late request. **First phone or all phones lost?** offers the protected owner
+  setup key; it never resets household or TV data and is never a screen sign-in mechanism.
+  First household setup is available on private-HTTPS phones and desktop computers; a wide
   window alone never hides it. Actual television browsers are directed to that companion setup.
 - Connections > Calendar offers an adult-only, phone-first setup sequence: enter
   an HTTPS CalDAV address/account/app-specific password, test, review the
@@ -422,7 +445,7 @@ the phone More hub.
   **Manage photos**. Navigation rows use their self-explanatory titles without repeated descriptive
   subtitles, keeping each bar slim and scannable. The administration root is named Hearth settings
   so it cannot be confused with the Home Assistant action surface. **Phones & screens** is one
-  connection hub: personal-device address/sign-in and adult passkey management are separate from
+  connection hub: QR-approved adult phone connections and private owner-key recovery are separate from
   shared-screen code approval and confirmed disconnection. Show compact adult rows first, with
   one named-phone setup action per adult. Keep address help, key details and recovery collapsed;
   optional recovery must not show a "Recovery needed" warning on ordinary controller rows.
@@ -440,27 +463,23 @@ the phone More hub.
   button, and uses short release identifiers. Update and scheduled backups are automatic; the
   uncommon manual copy action stays collapsed under **Advanced recovery**.
   Progress appears only during an active update. Completion shows a concise installed state;
-  a newer release remains installable after that. Cancelling passkey confirmation or rejecting a
+  a newer release remains installable after that. Cancelling connected-phone confirmation or rejecting a
   command leaves retry available; only a lost installation response starts reconnecting.
 - Today & notices lets an adult publish, edit and remove concise notices, choose
   Standard or Important priority, choose a bounded expiry or keep-until-removed,
   and see which eligible notice currently wins. It also owns the six optional
   Today summary switches; on a phone these are full-width joined rows with a compact icon, title and
   trailing switch. It is not a general layout editor.
-- Adult access shows each named adult's sign-in setup, with key details and optional recovery under
-  **Advanced sign-in & recovery**. Never render a dead Remove button for the final protected key;
-  explain visibly how to add another key or configure recovery instead. An administrator
-  can enrol another passkey on that adult's phone, revoke a lost credential and, after confirming
-  their current passkey, rotate a one-time recovery code that is displayed only once. The signed-out
-  recovery surface explains that recovery replaces the passkey and signs out that adult's older
-  sessions; no shared password or invitation URL is exposed.
-- Phones & screens leads with **Adult phones**, the signed-in adult and the existing controller
-  permissions for each adult. Phone access is personal passkey sign-in; only a TV/wall display uses
-  a six-character connection code. Synced passkeys are not a connected-phone inventory. Enrol a
-  new adult's key on that adult's own phone/password manager. **Set up this phone** explicitly
-  signs this browser in as the chosen adult after verified registration, replacing only the helper's
-  current browser session and clearing its private caches. Existing permissions remain unchanged.
-  Keep recovery distinct from normal phone setup. List authorized screens with paired and
+- Adult pages show **Connected as David/Rachael**, derived from the verified server actor, not a
+  key label. **Adult phones** lists independent connection names and owners; **this phone** marks
+  the current browser. **Remove** opens a working confirmation and removes only that connection.
+  Legacy entries say **Earlier browser**, not an invented handset identity.
+- **Phones & screens → Add phone → Choose adult → Show connection QR** creates a short-lived QR.
+  The other adult scans with their camera, enters a phone label and requests connection. The
+  inviting phone confirms the adult/phone and explicitly approves; the other phone then chooses
+  **Connect as Rachael**. The inviter remains David throughout. No password/passkey prompts.
+  Screens stay separate, display-only, with the existing six-character approval code.
+  List authorized screens with paired and
   last-contact times, without calling them online. Collapse disconnected screen history, preserve
   its records and require explicit confirmation for a currently authorized screen's revocation.
 
@@ -494,7 +513,14 @@ The same web application may present a phone-oriented shell for:
 - uploading/approving photos
 - reviewing connection problems
 - configuring Home Assistant actions
-- managing named adult passkeys and one-time local recovery
+- managing independent adult phone connections and private owner-key recovery (D-102/D-103)
+
+Phones & screens labels the main connection **owner phone**, with **Protected · replace with
+server key**, and never offers Remove for it. Owner settings and an owner-phone QR scan have no
+Sign out/Disconnect action. People keeps that owner's adult/admin status protected while leaving
+name, colour and photo editing available. Secondary phones retain explicit Remove confirmation;
+screens retain Disconnect. The private key form explains that connecting replaces the owner phone
+while preserving other phones/screens. No browser can promote itself by changing its label.
 
 The companion is responsive, not a shrunken TV canvas. Phone, tablet and television use the same
 components and data, with deliberate responsive compositions rather than duplicated screens. Tablet
