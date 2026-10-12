@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAppearance } from '../appearance/appearance';
 import { HouseholdClockProvider } from '../hooks/useHouseholdClock';
@@ -8,6 +8,7 @@ import { useHearthRuntime } from '../runtime/context';
 import { useSharedScreen } from '../runtime/sharedScreen';
 import { HouseholdDateTime } from './HouseholdDateTime';
 import { Icon, type IconName } from './Icon';
+import { SettingsLink } from './SettingsNavigation';
 
 interface NavigationItem {
   label: string;
@@ -229,7 +230,7 @@ function AdminDesktopNavigation({ pathname }: { pathname: string }) {
             {group.items.map((item) => {
               const active = isAdminNavigationActive(pathname, item);
               return (
-                <Link
+                <SettingsLink
                   aria-current={active ? 'page' : undefined}
                   className={`admin-desktop-link${active ? ' admin-desktop-link--active' : ''}`}
                   key={item.path}
@@ -237,7 +238,7 @@ function AdminDesktopNavigation({ pathname }: { pathname: string }) {
                 >
                   <Icon name={item.icon} />
                   <span>{item.label}</span>
-                </Link>
+                </SettingsLink>
               );
             })}
           </section>

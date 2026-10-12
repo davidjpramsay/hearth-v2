@@ -1,8 +1,7 @@
-import { Link } from 'react-router-dom';
-
 import './MoreScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
+import { SettingsLink } from '../components/SettingsNavigation';
 import { useSharedScreen } from '../runtime/sharedScreen';
 
 interface MoreLink {
@@ -118,7 +117,7 @@ export function MoreScreen() {
               const next = flattened[index + 1];
               const focusId = moreFocusId(link);
               return (
-                <Link
+                <SettingsLink
                   className="more-card focusable"
                   data-focus-entry={index === 0 ? 'true' : undefined}
                   data-focus-id={focusId}
@@ -133,7 +132,7 @@ export function MoreScreen() {
                   </span>
                   <strong>{link.title}</strong>
                   <Icon name="chevron-right" />
-                </Link>
+                </SettingsLink>
               );
             })}
           </div>

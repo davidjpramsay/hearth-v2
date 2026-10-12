@@ -93,8 +93,13 @@ const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> 
   'auth.phone.remove': connections('Adult phone removed', 'shield'),
   'auth.phone.confirm': system('Adult phone confirmed an action', 'shield'),
   'auth.phone.owner-key.issue': system('Private owner phone key issued', 'shield'),
-  'auth.phone.owner.replace': connections(
-    'Owner phone replaced using private server key',
+  'auth.phone.owner.replace': connections('Owner phone replaced', 'shield'),
+  'auth.phone.recovery.policy': connections('Trusted recovery phones updated', 'shield'),
+  'auth.phone.recovery.card.prepare': system('Private recovery card prepared', 'shield'),
+  'auth.phone.recovery.card.activate': system('Saved recovery card activated', 'shield'),
+  'auth.phone.owner.recovery.card': connections('Owner phone recovered with saved card', 'shield'),
+  'auth.phone.owner.recovery.invite': connections(
+    'Lost owner-phone replacement requested',
     'shield',
   ),
   'home.action.execute': connections('Household action run', 'home'),

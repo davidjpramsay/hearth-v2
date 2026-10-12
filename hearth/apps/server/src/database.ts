@@ -82,6 +82,10 @@ const migrations = [
     version: 28,
     url: new URL('./migrations/0028_controller_phone_connections.sql', import.meta.url),
   },
+  {
+    version: 29,
+    url: new URL('./migrations/0029_phone_recovery.sql', import.meta.url),
+  },
 ] as const;
 
 const latestMigration = migrations.at(-1);

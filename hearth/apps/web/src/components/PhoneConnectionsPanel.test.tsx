@@ -52,7 +52,7 @@ describe('protected owner phone menu', () => {
   it('marks the owner clearly and never offers a remove button for it', async () => {
     show();
     expect(await screen.findByText('David · owner phone')).toBeVisible();
-    expect(screen.getByText('Protected · replace with server key')).toBeVisible();
+    expect(screen.getByText('Protected owner phone')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Remove David’s iPhone' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove Rachael’s iPhone' })).toBeEnabled();
   });

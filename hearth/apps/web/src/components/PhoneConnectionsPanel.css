@@ -98,6 +98,66 @@
 .phone-connection__confirm {
   max-width: 24rem;
 }
+.phone-recovery {
+  border: 1px solid var(--hairline);
+  border-radius: 1rem;
+  background: var(--surface);
+  padding: 1rem;
+}
+.phone-recovery summary {
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 44px;
+  align-content: center;
+}
+.phone-recovery__body,
+.phone-recovery__trust,
+.phone-recovery__replace {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.phone-recovery__body {
+  margin-top: 1rem;
+}
+.phone-recovery__trust fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.phone-recovery__trust legend {
+  font-weight: 650;
+  padding: 0;
+  margin-bottom: 0.75rem;
+}
+.phone-recovery__choice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 48px;
+}
+.phone-recovery__choice input {
+  flex: 0 0 auto;
+  width: 1.3rem;
+  height: 1.3rem;
+  accent-color: var(--eucalyptus);
+}
+.phone-recovery__choice small {
+  display: block;
+  color: var(--muted);
+}
+.phone-recovery__card a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  text-decoration: none;
+  width: fit-content;
+}
 @media (max-width: 480px) {
   .phone-connection {
     flex-wrap: wrap;

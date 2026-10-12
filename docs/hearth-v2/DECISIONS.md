@@ -2,7 +2,51 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-104 — Phone-only appliance commissioning and phone-independent recovery
+
+- Date: 2026-10-12
+- Status: implemented browser/NAS setup-card and recovery release candidate; commit/push authorized
+  after full local verification, with hosted publication and deployment separately gated;
+  native authenticated network commissioning and physical acceptance remain open
+- Context: The future plug-in appliance must not require a NAS console or copied owner key, and
+  loss of the original phone must not require server administration while another trusted adult
+  or independently saved recovery proof survives.
+- Choice: A private per-appliance setup QR authorizes a reviewed authenticated local commissioning
+  session. Prefer Bluetooth LE for Wi-Fi provisioning, offer Ethernet, and use the LAN afterward.
+  A temporary setup network is a fallback transport, not proof of ownership. Trusted local HDMI
+  can deliver the QR only on supported hardware; an anonymous server page/TV web shell cannot.
+- Ownership: Separate the household owner/recovery adults from individual phone credentials.
+  Explicitly designated exact adult phone connections may approve an existing owner's replacement; a separate offline
+  QR covers all-phone loss. Ordinary invitations do not promote recovery authority. Keep casual
+  owner removal forbidden, independent TV credentials and atomic, audited replacement.
+- Security: Initial setup proof is permanently disabled after claim. Claimed appliances never
+  reopen setup because sessions expire. Setup/recovery scope and generations are disjoint;
+  discovery and metadata validation alone grant nothing. No mandatory cloud account or vendor
+  recovery backdoor. Loss of every proof still needs physical recovery/reset plus verified backup.
+- Browser compatibility: On an already reachable trusted HTTPS server, a privately supplied
+  first-use QR replaces copying the operator key into the phone form. A provisioning-workstation
+  helper creates that private PNG; anonymous browsers never fetch/mint it. Existing first-use
+  verification, irreversible household setup and backend fallback remain.
+- Recovery implementation: Migration 0029 adds digest-only independent cards, generations,
+  exact-connection trust and request fingerprints without assigning trust/revoking access.
+  Prepare/save/acknowledge/activate preserves the prior card until activation. A trusted phone
+  uses a bound explicitly approved replacement invitation. Commit-time checks and one transaction
+  retire the old owner/linked authorities, issue one replacement and preserve other devices/data.
+  No automatic expiry of activated cards; bounded raw retry receipts exist only in memory.
+  Ordinary same-member invitations cannot clone recovery authority. Recovery audits are typed.
+- Transition: Extends D-102/D-103 locally, retaining casual owner-removal and screen protections.
+  Future native JSON QR/metadata schemas/readiness are validation only, distinct from the active
+  browser fragment-link format. No native/radio/network service, live pairing or deployment is
+  introduced. The retired Apple proof stays excluded.
+- Consequences: Follow [the contract](APPLIANCE_ONBOARDING_CONTRACT.md); select/prove hardware and
+  local identity/transport before native/network implementation. Existing households adopt recovery
+  only with verified owner consent and physical acceptance, preserving current access and data.
+
 ## D-103 — Main owner phone is replaceable only with the private backend key
+
+Current refinement: D-104 adds deliberate saved-card and explicitly trusted exact-phone recovery
+in the browser release candidate. The backend-only choice below records the earlier request;
+casual removal/sign-out, owner People protection and ordinary-QR restrictions remain in force.
 
 - Date: 2026-10-12
 - Status: accepted user request; local implementation and verification, no publication/live activation
@@ -223,6 +267,12 @@ Record durable choices here. New decisions should include date, status, context,
   no system font or borrowed app branding is used. Supply xhdpi 320×180 banner and 160×160 icon
   PNG renditions generated from those same native resources for bitmap-oriented launchers.
   The original mark and web branding remain unchanged.
+- Companion Home Screen refinement (2026-10-12): declare a 180×180 opaque warm-cream PNG Apple
+  touch icon composed deterministically from the original green fern. The web build generates it
+  with the already-installed image tooling; the shared transparent mark and TV resources stay
+  unchanged. This fixes the missing Home Screen icon declaration without adding a manifest,
+  standalone-mode switch, service worker, new app identity or phone/session migration. Physical
+  installed-icon refresh is separate evidence; never remove a working owner connection for artwork.
 - Consequence: Cold loads, reloads and restored routes do not depend solely on the server startup
   script for TV identity/size. Phone/browser sizing is untouched. Install with the existing signing
   identity and `adb install -r`; do not uninstall or clear pairing/launcher preferences to refresh
@@ -1277,6 +1327,12 @@ Official platform references:
   deletion removes the private master and derivatives, while historical receipts and audits remain.
   Backups may retain an earlier copy according to their normal retention policy; the active library
   no longer serves the deleted asset.
+- 2026-10-12 discoverability refinement: expose **Delete** directly on each deletable managed-upload
+  card, including hidden uploads, and retain **Select photos → Delete selected (n)** for batches.
+  The focused confirmation freezes the selected targets and defaults to **Keep photos**. Cancel
+  performs no write; a failed/partially failed deletion leaves the affected photo available to retry.
+  This is an adult-only UI refinement of the existing command, not new source-folder write access,
+  a server/API/schema change or an administration path for shared screens.
 
 ## D-062 — Calendar refresh combines realtime invalidation with a five-minute safety cycle
 
@@ -1566,6 +1622,12 @@ Official platform references:
   destination rather than repeating under every self-explanatory title.
 - Refinement (2026-10-10): **Manage photos** uses the same row/text/icon palette as peer settings in
   both themes. Discoverability comes from its explicit title and position, not one-off purple styling.
+- Refinement (2026-10-12): Settings links remember only an allowlisted local opener pathname in
+  router history. Header Back pops that entry, restoring its menu, query and existing focus memory;
+  nested settings retain their actual parent through reload and Back/Forward. More no longer
+  unexpectedly becomes the separate settings overview. The overview remains available for desktop
+  use and existing links; directly opened settings retain their safe hierarchical fallback. No
+  account, permission, authentication, storage or networking boundary changes.
 - Consequence: Viewing and administering photos are discoverable as separate intents, upload no longer
   depends on finding the gallery or a generic household row, and Today controls remain legible at the
   390-pixel companion width. Routes, permissions and the underlying photo/Today contracts do not change.

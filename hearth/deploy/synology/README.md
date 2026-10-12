@@ -76,8 +76,9 @@ runs the fixed helper, waits for readiness and preserves the previous image vers
 The Synology does not compile ordinary releases.
 
 After this helper version is installed, adults can also use **System health > Hearth update**. A
-fresh passkey is required; Hearth backs up first, installs only the newest verified full commit and
-rolls back automatically if readiness fails. No inbound internet exposure is added.
+connected administrator phone must recently confirm the action; no password or passkey ceremony
+is required. Hearth backs up first, installs only the newest verified full commit and rolls back
+automatically if readiness fails. No inbound internet exposure is added.
 
 Verify both internal state and the private origin:
 

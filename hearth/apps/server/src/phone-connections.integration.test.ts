@@ -17,6 +17,20 @@ afterEach(async () => {
 const key = 'fixture_owner_key_0123456789abcdef0123456789abcdef';
 const origin = 'https://hearth.example.test';
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+function currentPhone(h: Awaited<ReturnType<typeof harness>>, token: string) {
+  return h.phones.list(h.home, token).connections.find((phone) => phone.current)!.id;
+}
+
+async function savedCard(
+  h: Awaited<ReturnType<typeof harness>>,
+  requestId = 'request_card_fixture',
+) {
+  h.phones.confirm(h.first.token);
+  const card = h.phones.createRecoveryCard(h.home, h.first.token, requestId);
+  const secret = new URL(card.qrUrl).hash.slice('#recover-phone='.length);
+  h.phones.activateRecoveryCard(h.home, h.first.token, card.id, `${requestId}_activate`);
+  return { card, secret };
+}
 async function harness() {
   const db = new Database(':memory:');
   databases.push(db);
@@ -642,4 +656,502 @@ describe('owner-key and QR-approved adult phones', () => {
         .recentAudit.some((entry: { action: string }) => entry.action === 'auth.phone.connect'),
     ).toBe(true);
   });
+});
+
+describe('private recovery cards and deliberately trusted adults', () => {
+  it('recovery audits remain readable through the typed admin and activity APIs', async () => {
+    const h = await harness();
+    const other = await secondary(h);
+    const { secret } = await savedCard(h);
+    h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_audit_trust', [
+      currentPhone(h, other.token),
+    ]);
+    h.phones.confirm(other.token);
+    const invitation = h.phones.createOwnerRecoveryInvitation(
+      h.home,
+      other.token,
+      'request_audit_invite',
+    );
+    h.phones.approve(h.home, other.token, invitation.id, 'request_audit_cancel', true);
+    const recovered = h.phones.recoverWithCard(
+      { requestId: 'request_audit_recover', recoverySecret: secret, phoneName: 'Recovered phone' },
+      'replacement',
+      'fixture_browser_context',
+      () => undefined,
+    );
+    const app = buildServer({
+      logger: false,
+      demoMode: false,
+      companionAuth: h.auth,
+      phoneConnections: h.phones,
+      adminRepository: new SqliteAdminRepository(h.db, { seedDemo: false }),
+      runtime: {
+        mode: 'private',
+        householdId: h.home,
+        clock: new FixedClock(h.now().toISOString()),
+      },
+    });
+    servers.push(app);
+    for (const path of ['admin', 'activity']) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/households/${h.home}/${path}`,
+        headers: { cookie: h.phones.cookie(recovered.token).split(';')[0]! },
+      });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      const entries = path === 'admin' ? body.recentAudit : body.entries;
+      expect(entries.map((entry: { action: string }) => entry.action)).toEqual(
+        expect.arrayContaining([
+          'auth.phone.recovery.card.prepare',
+          'auth.phone.recovery.card.activate',
+          'auth.phone.recovery.policy',
+          'auth.phone.owner.recovery.card',
+          'auth.phone.owner.recovery.invite',
+        ]),
+      );
+      expect(response.body).not.toContain(secret);
+      expect(response.body).not.toContain(recovered.token);
+    }
+  });
+
+  it('ordinary invitations cannot clone owner or trusted-phone recovery authority', async () => {
+    const h = await harness();
+    const other = await secondary(h);
+    h.phones.confirm(h.first.token);
+    h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_trust_original', [
+      currentPhone(h, other.token),
+    ]);
+    for (const member of [h.first.session.memberId, 'member_rachael']) {
+      const invite = h.phones.createInvitation(
+        h.home,
+        other.token,
+        member,
+        `request_clone_${member}`,
+      );
+      const claim = h.phones.claimInvitation(
+        new URL(invite.qrUrl).hash.slice('#connect-phone='.length),
+        'Another browser',
+        'clone',
+        null,
+      );
+      h.phones.approve(h.home, other.token, invite.id, `request_approve_${member}`);
+      const cloned = h.phones.exchange(claim.pendingToken, () => undefined);
+      h.phones.confirm(cloned.token);
+      expect(h.auth.status(cloned.token).ownerPhone).not.toBe(true);
+      expect(h.phones.recoverySummary(h.home, cloned.token).canRecoverOwner).toBe(false);
+      expect(() =>
+        h.phones.createOwnerRecoveryInvitation(h.home, cloned.token, 'request_clone_recovery'),
+      ).toThrow(/not trusted/);
+      expect(() => h.phones.createRecoveryCard(h.home, cloned.token, 'request_clone_card')).toThrow(
+        /Only the owner/,
+      );
+    }
+    expect(h.phones.recoverySummary(h.home, other.token).canRecoverOwner).toBe(true);
+    expect(h.auth.session(h.first.token).displayName).toBe('David');
+  });
+
+  it('HTTP recovery requires origin, owner consent and browser-only authority; receipt retries bind the context', async () => {
+    const h = await harness();
+    const other = await secondary(h);
+    const app = buildServer({
+      logger: false,
+      demoMode: false,
+      companionAuth: h.auth,
+      phoneConnections: h.phones,
+      adminRepository: new SqliteAdminRepository(h.db, { seedDemo: false }),
+      runtime: {
+        mode: 'private',
+        householdId: h.home,
+        clock: new FixedClock(h.now().toISOString()),
+      },
+    });
+    servers.push(app);
+    const root = `/api/v1/households/${h.home}/phone-recovery`;
+    const ownerHeaders = { origin, cookie: h.phones.cookie(h.first.token).split(';')[0]! };
+    const otherHeaders = { origin, cookie: h.phones.cookie(other.token).split(';')[0]! };
+    for (const [url, headers, payload, code] of [
+      [`${root}/cards`, {}, { requestId: 'request_none' }, 403],
+      [
+        `${root}/cards`,
+        { ...ownerHeaders, origin: 'https://wrong.example.test' },
+        { requestId: 'request_cross_origin' },
+        403,
+      ],
+      [`${root}/cards`, ownerHeaders, { requestId: 'request_no_consent' }, 409],
+      [`${root}/cards`, otherHeaders, { requestId: 'request_secondary' }, 403],
+      [
+        `${root}/policies`,
+        ownerHeaders,
+        { requestId: 'request_bad_fields', trustedAdultIds: ['member_rachael'] },
+        400,
+      ],
+    ] as const) {
+      const response = await app.inject({ method: 'POST', url, headers, payload });
+      expect(response.statusCode, url).toBe(code);
+    }
+    await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/phones/confirmations',
+      headers: ownerHeaders,
+    });
+    const prepare = await app.inject({
+      method: 'POST',
+      url: `${root}/cards`,
+      headers: ownerHeaders,
+      payload: { requestId: 'request_http_card' },
+    });
+    expect(prepare.statusCode).toBe(200);
+    expect(prepare.headers['cache-control']).toBe('no-store');
+    const card = prepare.json<{ id: string; qrUrl: string }>();
+    const recoverySecret = new URL(card.qrUrl).hash.slice('#recover-phone='.length);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `${root}/cards/${card.id}/activations`,
+          headers: ownerHeaders,
+          payload: { requestId: 'request_http_save' },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const summary = await app.inject({ method: 'GET', url: root, headers: ownerHeaders });
+    expect(summary.body).not.toContain(recoverySecret);
+    const nonce = 'fixture_unused_context';
+    // An invalid context cookie is replaced by the server, not accepted as a binding.
+    const runtime = await app.inject({ method: 'GET', url: '/api/v1/runtime' });
+    const context = String(runtime.headers['set-cookie']).split(';')[0]!;
+    expect(context).not.toContain(nonce);
+    const payload = {
+      requestId: 'request_http_recover',
+      recoverySecret,
+      phoneName: 'Replacement phone',
+    };
+    for (const headers of [
+      { origin, 'user-agent': 'Android TV' },
+      { origin, authorization: 'Bearer display_fixture' },
+    ]) {
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/api/v1/auth/phones/recovery-claims',
+            headers,
+            payload,
+          })
+        ).statusCode,
+      ).toBe(403);
+    }
+    const recovered = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/phones/recovery-claims',
+      headers: { origin, cookie: context },
+      payload,
+    });
+    expect(recovered.statusCode).toBe(200);
+    const retried = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/phones/recovery-claims',
+      headers: { origin, cookie: context },
+      payload,
+    });
+    expect(retried.statusCode).toBe(200);
+    expect(retried.json()).toEqual(recovered.json());
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/auth/phones/recovery-claims',
+          headers: { origin },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(h.auth.session(other.token).displayName).toBe('Rachael');
+  });
+  it('requires the live owner and recent confirmation to manage recovery', async () => {
+    const h = await harness();
+    const other = await secondary(h);
+    expect(() => h.phones.createRecoveryCard(h.home, h.first.token, 'request_no_consent')).toThrow(
+      /Confirm/,
+    );
+    h.phones.confirm(other.token);
+    expect(() => h.phones.createRecoveryCard(h.home, other.token, 'request_not_owner')).toThrow(
+      /Only the owner/,
+    );
+    expect(() =>
+      h.phones.updateRecoveryPolicy(h.home, other.token, 'request_not_owner', []),
+    ).toThrow(/Only the owner/);
+    h.phones.confirm(h.first.token);
+    h.advance(300_001);
+    expect(() =>
+      h.phones.createRecoveryCard(h.home, h.first.token, 'request_stale_consent'),
+    ).toThrow(/Confirm/);
+    expect(h.phones.recoverySummary(h.home, h.first.token).hasRecoveryCard).toBe(false);
+  });
+
+  it('keeps an unsaved card powerless and exposes no proof in status or SQLite', async () => {
+    const h = await harness();
+    h.phones.confirm(h.first.token);
+    const card = h.phones.createRecoveryCard(h.home, h.first.token, 'request_new_card');
+    const secret = new URL(card.qrUrl).hash.slice('#recover-phone='.length);
+    expect(h.phones.recoverySummary(h.home, h.first.token).hasRecoveryCard).toBe(false);
+    expect(() =>
+      h.phones.recoverWithCard(
+        { requestId: 'request_use', recoverySecret: secret, phoneName: 'Replacement' },
+        'new',
+        'context_new',
+        () => undefined,
+      ),
+    ).toThrow(/not accepted/);
+    h.phones.activateRecoveryCard(h.home, h.first.token, card.id, 'request_saved');
+    expect(h.phones.recoverySummary(h.home, h.first.token).hasRecoveryCard).toBe(true);
+    const persisted = JSON.stringify(
+      h.db.prepare('SELECT * FROM controller_phone_recovery_cards').all(),
+    );
+    expect(persisted).not.toContain(secret);
+    expect(persisted).not.toContain(card.qrUrl);
+    expect(JSON.stringify(h.phones.recoverySummary(h.home, h.first.token))).not.toContain(secret);
+  });
+
+  it('exact prepare/activate retries have one effect and changed request reuse fails', async () => {
+    const h = await harness();
+    h.phones.confirm(h.first.token);
+    const card = h.phones.createRecoveryCard(h.home, h.first.token, 'request_retry_card');
+    expect(h.phones.createRecoveryCard(h.home, h.first.token, 'request_retry_card')).toEqual(card);
+    h.phones.activateRecoveryCard(h.home, h.first.token, card.id, 'request_retry_activate');
+    h.phones.activateRecoveryCard(h.home, h.first.token, card.id, 'request_retry_activate');
+    expect(() =>
+      h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_retry_activate', []),
+    ).toThrow(/different recovery/);
+    expect(
+      h.db
+        .prepare(
+          "SELECT count(*) AS total FROM audit_events WHERE action_type='auth.phone.recovery.card.activate'",
+        )
+        .get(),
+    ).toEqual({ total: 1 });
+    expect(
+      h.db.prepare('SELECT count(*) AS total FROM controller_phone_recovery_cards').get(),
+    ).toEqual({ total: 1 });
+  });
+
+  it('an expired or lost unsaved preview leaves the previous saved card valid', async () => {
+    const h = await harness();
+    const old = await savedCard(h);
+    const newer = h.phones.createRecoveryCard(h.home, h.first.token, 'request_unsaved');
+    h.advance(300_001);
+    expect(() =>
+      h.phones.activateRecoveryCard(h.home, h.first.token, newer.id, 'request_expired'),
+    ).toThrow(/expired/);
+    expect(h.phones.recoverySummary(h.home, h.first.token).hasRecoveryCard).toBe(true);
+    const freshProcess = new PhoneConnectionService(h.db, h.auth, h.config);
+    h.phones.confirm(h.first.token);
+    expect(() => freshProcess.createRecoveryCard(h.home, h.first.token, 'request_unsaved')).toThrow(
+      /reply is no longer/,
+    );
+    const result = freshProcess.recoverWithCard(
+      { requestId: 'request_recover', recoverySecret: old.secret, phoneName: 'New David phone' },
+      'new',
+      'context_new',
+      () => undefined,
+    );
+    expect(h.auth.session(result.token).displayName).toBe('David');
+  });
+
+  it('card recovery preserves other phones, screens, people and content and rejects the lost phone', async () => {
+    const h = await harness();
+    const other = await secondary(h);
+    h.db
+      .prepare(
+        "INSERT INTO paired_devices (id,household_id,name,device_type,credential_reference,scopes_json,paired_at,capabilities_json) VALUES ('device_kept',?,'Kept TV','television','fixture','[\"household.read\"]',?,'[\"dpad\"]')",
+      )
+      .run(h.home, h.now().toISOString());
+    const before = JSON.stringify(h.db.prepare('SELECT * FROM household_lists ORDER BY id').all());
+    const { secret } = await savedCard(h);
+    const input = {
+      requestId: 'request_recover_card',
+      recoverySecret: secret,
+      phoneName: 'Replacement David phone',
+    };
+    const result = h.phones.recoverWithCard(input, 'new', 'context_new', () => undefined);
+    expect(h.auth.status(result.token).ownerPhone).toBe(true);
+    expect(() => h.auth.session(h.first.token)).toThrow();
+    expect(h.auth.session(other.token).displayName).toBe('Rachael');
+    expect(
+      h.db.prepare("SELECT revoked_at FROM paired_devices WHERE id='device_kept'").get(),
+    ).toEqual({ revoked_at: null });
+    expect(JSON.stringify(h.db.prepare('SELECT * FROM household_lists ORDER BY id').all())).toBe(
+      before,
+    );
+    expect(h.db.prepare('SELECT count(*) AS total FROM members').get()).toEqual({ total: 2 });
+    expect(h.phones.recoverySummary(h.home, result.token).hasRecoveryCard).toBe(false);
+    const receipt = h.phones.recoverWithCard(
+      input,
+      'new',
+      'context_new',
+      () => undefined,
+      result.token,
+    );
+    expect(receipt.token).toBe(result.token);
+    for (const [context, change] of [
+      ['context_other', {}],
+      ['context_new', { requestId: 'request_changed' }],
+      ['context_new', { phoneName: 'Changed name' }],
+    ] as const)
+      expect(() =>
+        h.phones.recoverWithCard({ ...input, ...change }, 'new', context, () => undefined),
+      ).toThrow(/already been used/);
+    expect(
+      h.db
+        .prepare(
+          "SELECT count(*) AS total FROM controller_phone_connections WHERE source='owner' AND revoked_at IS NULL",
+        )
+        .get(),
+    ).toEqual({ total: 1 });
+  });
+
+  it('does not switch an already connected phone into the recovered owner', async () => {
+    const h = await harness();
+    const other = await secondary(h);
+    const { secret } = await savedCard(h);
+    expect(() =>
+      h.phones.recoverWithCard(
+        { requestId: 'request_wrong_phone', recoverySecret: secret, phoneName: 'Wrong browser' },
+        'new',
+        'context_new',
+        () => undefined,
+        other.token,
+      ),
+    ).toThrow(/already connected/);
+    expect(h.auth.session(h.first.token).displayName).toBe('David');
+    expect(h.auth.session(other.token).displayName).toBe('Rachael');
+    expect(h.phones.recoverySummary(h.home, h.first.token).hasRecoveryCard).toBe(true);
+  });
+
+  it('an activated card does not expire just because every phone has expired', async () => {
+    const h = await harness();
+    const { secret } = await savedCard(h);
+    h.advance(400 * 24 * 60 * 60_000);
+    const result = h.phones.recoverWithCard(
+      { requestId: 'request_year_later', recoverySecret: secret, phoneName: 'Later replacement' },
+      'new',
+      'context_new',
+      () => undefined,
+    );
+    expect(h.auth.status(result.token).ownerPhone).toBe(true);
+    expect(h.auth.session(result.token).displayName).toBe('David');
+  });
+
+  it('a failed replacement or browser guard rolls back consumption and revocation', async () => {
+    const h = await harness();
+    const { secret } = await savedCard(h);
+    const input = {
+      requestId: 'request_rollback',
+      recoverySecret: secret,
+      phoneName: 'Replacement',
+    };
+    expect(() =>
+      h.phones.recoverWithCard(input, 'new', 'context_new', () => {
+        throw new Error('paired screen');
+      }),
+    ).toThrow(/paired screen/);
+    h.db.exec(
+      "CREATE TRIGGER fixture_reject_recovery BEFORE INSERT ON controller_phone_connections WHEN NEW.source='owner' BEGIN SELECT RAISE(ABORT,'fixture storage failure'); END;",
+    );
+    expect(() => h.phones.recoverWithCard(input, 'new', 'context_new', () => undefined)).toThrow(
+      /fixture storage failure/,
+    );
+    expect(h.auth.session(h.first.token).displayName).toBe('David');
+    expect(
+      h.db.prepare('SELECT consumed_at,revoked_at FROM controller_phone_recovery_cards').get(),
+    ).toEqual({ consumed_at: null, revoked_at: null });
+    expect(
+      h.db
+        .prepare(
+          "SELECT count(*) AS total FROM audit_events WHERE action_type='auth.phone.owner.replace'",
+        )
+        .get(),
+    ).toEqual({ total: 0 });
+  });
+
+  it('only a connected, explicitly trusted adult can approve owner replacement', async () => {
+    const h = await harness();
+    h.phones.confirm(h.first.token);
+    expect(() =>
+      h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_unconnected', [
+        'phone_not_connected',
+      ]),
+    ).toThrow(/Connect that adult/);
+    const other = await secondary(h);
+    h.phones.confirm(other.token);
+    expect(() =>
+      h.phones.createOwnerRecoveryInvitation(h.home, other.token, 'request_untrusted'),
+    ).toThrow(/not trusted/);
+    h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_trust', [
+      currentPhone(h, other.token),
+    ]);
+    h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_trust', [
+      currentPhone(h, other.token),
+    ]);
+    expect(() => h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_trust', [])).toThrow(
+      /different recovery/,
+    );
+    const invite = h.phones.createOwnerRecoveryInvitation(
+      h.home,
+      other.token,
+      'request_owner_invite',
+    );
+    expect(invite.purpose).toBe('recover-owner');
+    expect(invite.adultName).toBe('David');
+    const claim = h.phones.claimInvitation(
+      new URL(invite.qrUrl).hash.slice('#connect-phone='.length),
+      'David replacement',
+      'new',
+      null,
+    );
+    h.phones.approve(h.home, other.token, invite.id, 'request_approve_recovery');
+    const replacement = h.phones.exchange(claim.pendingToken, () => undefined);
+    expect(h.auth.status(replacement.token).ownerPhone).toBe(true);
+    expect(h.auth.session(replacement.token).displayName).toBe('David');
+    expect(h.auth.session(other.token).displayName).toBe('Rachael');
+    expect(() => h.auth.session(h.first.token)).toThrow();
+    expect(h.phones.exchange(claim.pendingToken, () => undefined).token).toBe(replacement.token);
+  });
+
+  it.each(['untrust', 'remove', 'demote'] as const)(
+    'rejects recovery if the approving adult changes: %s',
+    async (change) => {
+      const h = await harness();
+      const other = await secondary(h);
+      h.phones.confirm(h.first.token);
+      h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_trust', [
+        currentPhone(h, other.token),
+      ]);
+      h.phones.confirm(other.token);
+      const invite = h.phones.createOwnerRecoveryInvitation(h.home, other.token, 'request_recover');
+      const claim = h.phones.claimInvitation(
+        new URL(invite.qrUrl).hash.slice('#connect-phone='.length),
+        'New phone',
+        'new',
+        null,
+      );
+      h.phones.approve(h.home, other.token, invite.id, 'request_approve');
+      if (change === 'untrust')
+        h.phones.updateRecoveryPolicy(h.home, h.first.token, 'request_untrust', []);
+      if (change === 'remove')
+        h.phones.remove(
+          h.home,
+          h.first.token,
+          h.phones
+            .list(h.home, h.first.token)
+            .connections.find((p) => p.memberId === 'member_rachael')!.id,
+          'request_remove',
+        );
+      if (change === 'demote')
+        h.db.prepare("UPDATE members SET role='child' WHERE id='member_rachael'").run();
+      expect(() => h.phones.exchange(claim.pendingToken, () => undefined)).toThrow();
+      expect(h.auth.session(h.first.token).displayName).toBe('David');
+    },
+  );
 });

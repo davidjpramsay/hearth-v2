@@ -1,5 +1,25 @@
 # Hearth v2 architecture
 
+## Appliance commissioning boundary (D-104)
+
+Future native phone onboarding uses private per-device QR proof and authenticated Bluetooth LE
+to configure a local appliance network adapter, then normal authenticated LAN control. Ethernet
+skips Wi-Fi provisioning. Neither discovery nor an empty household read grants ownership. A
+trusted local HDMI renderer is an optional physical proof channel, not the current TV WebView.
+Wi-Fi credentials never enter ordinary Hearth HTTP/SQLite/browser contracts. The responsive web
+administration and TV display-only scopes remain separate from the native provisioning seam.
+
+`packages/shared/src/appliance-onboarding.ts` defines future native QR/metadata shape validation;
+the core readiness helper is advisory, not authentication. Neither authenticates a radio/network
+channel. Separately, the current trusted-HTTPS/browser compatibility path extends the existing
+phone service with private fragment setup-card handling and migration 0029 recovery. Shared
+`phone-connections.ts` owns the typed HTTP DTOs; `PhoneConnectionService` owns commit-time checks,
+exact connection trust, digest-only cards, atomic replacement and bounded process-memory retry.
+Views use the typed API, never persist proof or derive owner authority from member names. All
+owner removal/screen isolation protections remain; operator file recovery is retained. No public
+QR endpoint, network provisioning daemon, native app or live configuration change is added.
+See [the contract and staged gates](APPLIANCE_ONBOARDING_CONTRACT.md).
+
 ## Local Games boundary
 
 Games serves only the household-supplied archive through authenticated, no-store household GETs:
@@ -518,13 +538,14 @@ household, current inviter and target state are rechecked at exchange. Only hash
 raw session/pending secrets are protected cookies. QR secrets are fragment-only, stripped on the
 recipient and never stored in browser storage or logs. D-103 protects owner-key provenance from
 browser removal, self sign-out, QR switching, screen conversion and owner-member demotion/archive.
-Only a fresh backend file key atomically replaces the owner and its linked sessions/invitations;
+Deliberate D-104 saved-card/trusted-phone recovery or a fresh backend key atomically replaces the owner and its linked sessions/invitations;
 QR phones and TVs are preserved. Restrictive screen cleanup can invalidate browser sessions but
 cannot remove ownership. Secondary connections have independent revocation,
 180-day absolute and 90-day idle session bounds. This is connected-browser possession, not
 hardware attestation or user-verified biometrics. Lock connected phones.
 
 Migration 0028 preserves verified legacy sessions with accurately named earlier-browser grants.
+Migration 0029 adds owner-consented exact-phone recovery/card state without changing existing grants.
 Production disables new passkey ceremonies. Legacy mechanisms below remain only for old-release
 compatibility, migration tests and historical evidence; they are not active enrollment paths.
 See [the typed v1 contract](PHONE_CONNECTIONS_CONTRACT.md). No network or live access mutation is

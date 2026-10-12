@@ -4,3 +4,4 @@ export * from './planning.js';
 export * from './games.js';
 export * from './home.js';
 export * from './pocket-money.js';
+export * from './appliance-recovery.js';

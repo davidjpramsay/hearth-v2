@@ -23,6 +23,11 @@ import {
   PhonePendingSchema,
   PhoneRemovalSchema,
   PhoneConfirmationSchema,
+  PhoneRecoverySummarySchema,
+  PhoneRecoveryPolicyCommandSchema,
+  PhoneRecoveryCardRevealSchema,
+  PhoneRecoveryCommandResultSchema,
+  PhoneRecoveryClaimSchema,
   AddListItemRequestSchema,
   GameCatalogueSchema,
   WordGroupsPuzzleSchema,
@@ -307,6 +312,8 @@ export const LOGGER_REDACT_PATHS = [
   '*.qrUrl',
   'req.body.ownerKey',
   'req.body.invitationSecret',
+  '*.recoverySecret',
+  'req.body.recoverySecret',
 ] as const;
 
 export const HEARTH_DEVICE_COOKIE = 'hearth_device';
@@ -674,6 +681,30 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return PhoneInvitationStateSchema.parse(result.state);
     });
   });
+  server.post('/api/v1/auth/phones/recovery-claims', async (request, reply) => {
+    const body = parse(PhoneRecoveryClaimSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const access = browserRequests.get(request)!;
+      const current = optionalCompanionCredential(request.headers);
+      const result = phoneService().recoverWithCard(
+        body,
+        request.ip,
+        access.id,
+        access.assertAllowed,
+        options.companionAuth?.status(current).authenticated ? current : null,
+      );
+      acceptAdultSession(request, companionAuth(options), result.token);
+      const correlation = reply.getHeader('Set-Cookie');
+      reply
+        .header('Cache-Control', 'no-store')
+        .header('Set-Cookie', [
+          ...(typeof correlation === 'string' ? [correlation] : []),
+          phoneService().cookie(result.token),
+        ]);
+      return PasskeySessionSchema.parse(result.session);
+    });
+  });
   server.get('/api/v1/auth/phones/pending', async (request, reply) =>
     run(reply, async () => {
       reply.header('Cache-Control', 'no-store');
@@ -726,6 +757,83 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       );
     });
   });
+  server.get('/api/v1/households/:householdId/phone-recovery', async (request, reply) =>
+    run(reply, async () => {
+      const params = HouseholdParamsSchema.parse(request.params);
+      reply.header('Cache-Control', 'no-store');
+      return PhoneRecoverySummarySchema.parse(
+        phoneService().recoverySummary(params.householdId, companionCredential(request.headers)),
+      );
+    }),
+  );
+  server.post('/api/v1/households/:householdId/phone-recovery/policies', async (request, reply) => {
+    const body = parse(PhoneRecoveryPolicyCommandSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const params = HouseholdParamsSchema.parse(request.params);
+      reply.header('Cache-Control', 'no-store');
+      return PhoneRecoveryCommandResultSchema.parse(
+        phoneService().updateRecoveryPolicy(
+          params.householdId,
+          companionCredential(request.headers),
+          body.requestId,
+          body.trustedConnectionIds,
+        ),
+      );
+    });
+  });
+  server.post('/api/v1/households/:householdId/phone-recovery/cards', async (request, reply) => {
+    const body = parse(PhoneCommandSchema, request.body, reply);
+    if (body === null) return reply;
+    return run(reply, async () => {
+      const params = HouseholdParamsSchema.parse(request.params);
+      reply.header('Cache-Control', 'no-store');
+      return PhoneRecoveryCardRevealSchema.parse(
+        phoneService().createRecoveryCard(
+          params.householdId,
+          companionCredential(request.headers),
+          body.requestId,
+        ),
+      );
+    });
+  });
+  server.post(
+    '/api/v1/households/:householdId/phone-recovery/cards/:id/activations',
+    async (request, reply) => {
+      const body = parse(PhoneCommandSchema, request.body, reply);
+      if (body === null) return reply;
+      return run(reply, async () => {
+        const params = phoneParams.parse(request.params);
+        reply.header('Cache-Control', 'no-store');
+        return PhoneRecoveryCommandResultSchema.parse(
+          phoneService().activateRecoveryCard(
+            params.householdId,
+            companionCredential(request.headers),
+            params.id,
+            body.requestId,
+          ),
+        );
+      });
+    },
+  );
+  server.post(
+    '/api/v1/households/:householdId/phone-recovery/invitations',
+    async (request, reply) => {
+      const body = parse(PhoneCommandSchema, request.body, reply);
+      if (body === null) return reply;
+      return run(reply, async () => {
+        const params = HouseholdParamsSchema.parse(request.params);
+        reply.header('Cache-Control', 'no-store');
+        return PhoneInvitationRevealSchema.parse(
+          phoneService().createOwnerRecoveryInvitation(
+            params.householdId,
+            companionCredential(request.headers),
+            body.requestId,
+          ),
+        );
+      });
+    },
+  );
   server.get('/api/v1/households/:householdId/phone-invitations/:id', async (request, reply) =>
     run(reply, async () => {
       const params = phoneParams.parse(request.params);

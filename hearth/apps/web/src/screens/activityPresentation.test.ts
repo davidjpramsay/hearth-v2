@@ -66,6 +66,20 @@ function activity(overrides: Partial<AuditSummary> = {}): AuditSummary {
 }
 
 describe('activity presentation', () => {
+  it('labels recovery records without leaking private proof or implying a backend key was used', () => {
+    expect(presentationForActivity('auth.phone.owner.replace').title).toBe('Owner phone replaced');
+    for (const action of [
+      'auth.phone.recovery.policy',
+      'auth.phone.recovery.card.prepare',
+      'auth.phone.recovery.card.activate',
+      'auth.phone.owner.recovery.card',
+      'auth.phone.owner.recovery.invite',
+    ] as const) {
+      expect(presentationForActivity(action)).toMatchObject({ icon: 'shield' });
+      expect(presentationForActivity(action).title).not.toContain('#recover-phone=');
+    }
+  });
+
   it('turns technical audit actions into family-readable labels and filters', () => {
     expect(presentationForActivity('pocket-money.payment.void')).toEqual({
       title: 'Pocket money payment corrected',

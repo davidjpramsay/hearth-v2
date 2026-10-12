@@ -1,14 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { PhoneInvitationReveal } from '@hearth/shared';
 import { phoneApi } from '../api/phoneConnections';
 import { createRequestId, HearthApiError } from '../api/core';
 import { clearIdentityAndReload } from '../auth/signOut';
 import { AdminError, AdminLoading } from './AdminPage';
 import './PhoneConnectionsPanel.css';
+import { PhoneRecoveryPanel } from './PhoneRecoveryPanel';
 
 export function PhoneConnectionsPanel() {
   const qrPanel = useRef<HTMLElement>(null);
+  const recoveryView = useRef(0);
+  useEffect(
+    () => () => {
+      recoveryView.current++;
+    },
+    [],
+  );
   const client = useQueryClient();
   const phones = useQuery({ queryKey: ['phone-connections'], queryFn: phoneApi.list });
   const [invite, setInvite] = useState<PhoneInvitationReveal | null>(null);
@@ -49,6 +57,29 @@ export function PhoneConnectionsPanel() {
       }
     },
   });
+  async function recoverOwner() {
+    const view = ++recoveryView.current;
+    await phoneApi.confirm();
+    const result = await phoneApi.createRecoveryInvitation(createRequestId('phone_owner_recover'));
+    if (view !== recoveryView.current) {
+      await phoneApi.cancel(result.id);
+      return;
+    }
+    setInvite(result);
+    setQrError(null);
+    setQr(null);
+    const encoder = await import('qrcode');
+    const image = await encoder.toDataURL(result.qrUrl, {
+      width: 280,
+      margin: 3,
+      errorCorrectionLevel: 'M',
+    });
+    if (view !== recoveryView.current) return;
+    setQr(image);
+    requestAnimationFrame(() =>
+      qrPanel.current?.scrollIntoView({ block: 'center', behavior: 'auto' }),
+    );
+  }
   const approve = useMutation({
     mutationFn: () => phoneApi.approve(invite!.id),
     onSuccess: async (result) => {
@@ -115,9 +146,7 @@ export function PhoneConnectionsPanel() {
               </small>
             </div>
             {phone.source === 'owner' ? (
-              <small className="phone-connection__protected">
-                Protected · replace with server key
-              </small>
+              <small className="phone-connection__protected">Protected owner phone</small>
             ) : removing === phone.id ? (
               <div className="phone-connection__confirm">
                 <p>Remove {phone.phoneName}? Other phones and screens stay connected.</p>
@@ -145,6 +174,18 @@ export function PhoneConnectionsPanel() {
           </article>
         ))}
       </div>
+      <PhoneRecoveryPanel
+        initiallyOpen={new URLSearchParams(window.location.search).get('recovery') === '1'}
+        onRecoverOwner={recoverOwner}
+        onDismiss={() => {
+          recoveryView.current++;
+          if (invite?.purpose === 'recover-owner') {
+            void phoneApi.cancel(invite.id).catch(() => undefined);
+            setInvite(null);
+            setQr(null);
+          }
+        }}
+      />
       {adding && !invite ? (
         <form className="phone-add" onSubmit={submit}>
           <label>
@@ -172,6 +213,12 @@ export function PhoneConnectionsPanel() {
       {invite && state ? (
         <section ref={qrPanel} className="phone-qr" aria-live="polite">
           <h3>{state.adultName}’s phone</h3>
+          {state.purpose === 'recover-owner' ? (
+            <p>
+              Owner-phone replacement: the old owner phone will be disconnected after the new phone
+              connects.
+            </p>
+          ) : null}
           {state.state === 'waiting' ? (
             <>
               <p>Scan with {state.adultName}’s phone camera.</p>

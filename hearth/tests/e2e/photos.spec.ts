@@ -582,6 +582,10 @@ test('@visual phone administration uploads and curates the private photo collect
   await page.keyboard.press('Enter');
   await expect(firstRestore).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(
+    page.locator('[data-focus-id="photo-curation-delete-photo_coastal_picnic"]'),
+  ).toBeFocused();
+  await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('link', { name: 'View family photos' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
@@ -637,13 +641,13 @@ test('@visual phone administration bulk-selects and permanently removes managed 
   await first.click();
   await second.click();
   await expect(page.getByText('2 selected', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Delete uploads (2)' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Delete selected (2)' })).toBeEnabled();
   await captureEvidence(page, {
     path: resolve(evidence, 'photos-bulk-selection-phone.png'),
     animations: 'disabled',
   });
 
-  await page.getByRole('button', { name: 'Delete uploads (2)' }).click();
+  await page.getByRole('button', { name: 'Delete selected (2)' }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete 2 Hearth photos?' });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keep photos' })).toBeFocused();
@@ -695,7 +699,7 @@ test('folder-imported photos can be hidden but not permanently deleted in Hearth
   await expect(
     page.getByText(/from the NAS folder can be hidden but not deleted here/),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Delete uploads (0)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Delete selected (0)' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Hide (1)' })).toBeEnabled();
 });
 

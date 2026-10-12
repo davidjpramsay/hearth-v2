@@ -449,13 +449,23 @@ Raw session tokens exist only in the
 
 ### Phone connection, invitation and owner grant (D-102)
 
+D-104's future native appliance identity/commissioning metadata remains validation-only. The
+browser recovery extension is migration `0029_phone_recovery.sql`: a household owner-member
+policy with explicit **trusted connection IDs**, monotonic card generation, digest-only pending/
+active/consumed/revoked cards, hashed claim context/exact request/name receipt binding and bounded
+idempotent command fingerprints. A partial index permits one non-revoked owner and one active
+card per household. Invitations distinguish normal connection from frozen-owner replacement.
+No raw QR proof/session secret persists, and migration assigns no trust or revocation. Normal
+invitees cannot inherit trust through member identity. See
+[the staged contract](APPLIANCE_ONBOARDING_CONTRACT.md).
+
 Migration `0028_controller_phone_connections.sql` adds independent controller connections,
 short-lived digest-only QR invitation/browser-claim records, and one-time owner grants bound to
 an existing adult controller. `source=owner` also marks protected main-phone ownership (D-103),
-including after session expiry. Only a fresh backend grant claim transaction retires prior owner
+including after session expiry. Only a deliberate saved-card/trusted-phone or backend grant transaction retires prior owner
 connections, sessions and invitations and issues the replacement; secondary connections remain.
-QR never sets this provenance. Owner-member admin/archive protection is server enforced.
-No additional migration is required. Public connection IDs are random, never session hashes. Each
+Ordinary QR never sets this provenance. Owner-member admin/archive protection is server enforced.
+Public connection IDs are random, never session hashes. Each
 established legacy session gets its own earlier-browser connection; synced credentials are not
 treated as phones. Invitation rows are capped and expired rows pruned; short-lived exact exchange
 retry cookies exist only in process memory, never SQLite. See

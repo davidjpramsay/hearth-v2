@@ -11,7 +11,7 @@ export async function signOutAndClear(queryClient: QueryClient): Promise<void> {
 // Do not call signOut here: that would revoke the newly established adult session.
 export async function clearIdentityAndReload(
   queryClient: QueryClient,
-  path: '/' | '/admin/televisions' | '/today',
+  path: '/' | '/admin/televisions' | '/admin/televisions?recovery=1' | '/today',
 ): Promise<void> {
   document.documentElement.style.visibility = 'hidden';
   window.dispatchEvent(new Event('hearth:sign-out'));

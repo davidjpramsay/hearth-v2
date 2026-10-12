@@ -1,5 +1,371 @@
 # Hearth v2 acceptance and definition of done
 
+## Complete local release gate and publication authorization — 2026-10-12
+
+The user authorized committing and pushing all prepared changes on `codex/phone-access-release`
+after a full check. This includes settings-return navigation, discoverable managed-photo removal,
+the fern Home Screen icon, and D-104 private setup-card/phone-independent recovery. This checkpoint
+does **not** deploy to the NAS, change networking, create live cards, or pair/revoke household
+devices. The user intends to install from the phone's Update button after the exact commit's
+hosted verification and server/web image publication pass.
+
+Passed commands from `hearth/`, with logs outside Git in
+`/tmp/hearth-complete-release.XU3sHa/`:
+
+- `pnpm verify`: formatting, lint, workspace typecheck, **458 unit tests** (58 shared, 40 core,
+  71 server, 289 web), **181 integration tests**, **26 migration tests**, **10 deployment/maintenance
+  fixtures**, deployment scaffold, production web/server builds, **5 CI-policy checks**, and
+  **all 1,068 Playwright tests passed in 21.3 minutes**. The complete browser run includes TV/mobile
+  layout, accessibility, settings/photos, screen isolation, Weather/D-pad and calendar fit checks.
+  Production outputs were unchanged during the browser run. The two existing non-failing JSX
+  expression-resolution lint diagnostics remain.
+- `env ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home pnpm verify:tv`:
+  Android TV debug/release lint and builds passed. Initial SDK-not-configured failure was resolved
+  with command-scoped installed SDK/JDK paths, without changing system or repository settings.
+- With those same command-scoped variables,
+  `./apps/tv/gradlew -p apps/tv --no-daemon testDebugUnitTest --rerun-tasks`:
+  **14 freshly executed TV unit tests**, zero failures/errors; cached tasks alone are not the proof.
+- `pnpm audit:dependencies`: **no known vulnerabilities found**.
+- `pnpm exec prettier --check ../docs/hearth-v2/*.md` and `git diff --check`: passed.
+
+The sealed security diff review against `ab33fb926d6a2fc3838293e35455c52070c4927d` completed with
+**no findings**: 53 source inventory items, supplementary changed docs/assets/E2E files, disjoint
+source review and an independent architecture review. Scan ID
+`2ce4a231-e3d1-46d4-8be2-a0a1f76f9043`; source snapshot SHA-256
+`90f961420b81a6e24fe22d67f18d365717fa78f58327fc785ea33cc8815284fd`.
+This is bounded diff coverage, not a repository-wide vulnerability audit or a guarantee against
+all vulnerabilities. Review found two obsolete passkey references in secondary READMEs; these
+were aligned with the existing phone-confirmation contract afterward. Only documentation changed
+after the reviewed source snapshot; no runtime/configuration/deployment template changed.
+
+Rendered screenshots inspected from this complete run: `admin-phone-portrait.png`, the 3840×2160
+Appearance screen (`appearance-light.png`), and the opaque 180×180 fern Home Screen asset. The
+earlier isolated private HTTPS recovery-flow evidence below remains separate from these demo
+browser checks. Actual iPhone Safari/camera/PNG-save and physical loss/recovery remain **not run**;
+native Bluetooth/Wi-Fi/authenticated hardware/trusted HDMI remain future work. No physical TV
+upgrade is inferred from local Gradle/browser checks. Existing NAS networking and household
+access/data are unchanged.
+
+Hosted Linux/container verification and image publication are a subsequent gate for the exact
+pushed commit. Local success does not by itself make the phone Update available or establish
+live migration/deployment/physical acceptance. Keep those gates open until independently checked.
+
+## Private setup cards and phone-independent recovery — 2026-10-12 (D-104)
+
+Historical focused local checkpoint on `codex/phone-access-release`, based on `ab33fb9`, before
+the complete release gate above. It was not committed, published or deployed at that checkpoint.
+The earlier schema-only checkpoint below is also historical. This adds a real browser/server
+compatibility path to an already reachable
+trusted HTTPS Hearth; it does not build a native phone app or physical network appliance.
+
+- Scanned private first-use card names the household/adult/phone without a copied-key field.
+  Existing first-use verification remains; used setup cards cannot authorize owner recovery.
+  The provisioning-workstation helper creates private mode-0600 PNG output from an existing
+  protected first-use file, rejects unsafe paths/overwrites, and never prints proof/URL.
+- Owner-only card preparation/download/acknowledgment/activation; a pending/expired/discarded
+  preview never invalidates an older active card. Activated cards work independently of phone
+  expiry and are invalidated on rotation/use/owner replacement. Private proof lives only in the
+  fragment/temporary memory; SQLite contains verifiers, generations and receipt fingerprints.
+- Explicitly trusted **exact connected phone IDs**, not adult-name trust. A normal invitation
+  under the owner's/trusted adult's name cannot inherit recovery powers. Approved replacement
+  preserves the approving adult and replaces only the lost owner/linked authorities. A separately
+  saved card supports all-phone loss. Ordinary Remove/sign-out and People owner protections remain.
+- Migration 0029 is additive and does not designate trust, issue cards or revoke existing access.
+  Strict private same-origin/controller checks, approval/capability rechecks, exact retry/conflict,
+  browser binding, rollback and secret redaction remain enforced. Settings/activity can decode
+  every new recovery audit action. Other phones, TV grants, people and lists are preserved in
+  regression tests; no Apple/EventKit bridge or calendar reconnection is added.
+- Compact collapsed recovery UI, guided recovery step after owner connection, private save preview,
+  Cancel/back exits, keyboard controls and automatic-dark-mode Back-button contrast.
+
+Passed commands from `hearth/` (logs outside Git under `/tmp/hearth-onboarding-qa.ne068K/`):
+
+- `pnpm verify:code`: format, lint, typecheck, **458 unit tests** (58 shared, 40 core, 71 server,
+  289 web), **181 integration tests**, **26 migration tests**, ten deployment/maintenance
+  fixtures, deployment scaffold and production web/server builds (29 migration files).
+  Lint retains two existing non-failing JSX expression-resolution diagnostics.
+- `pnpm verify:ci`: five policy tests and disjoint inventory of 1,068 browser tests; inventory
+  does not execute the full browser suite.
+- `pnpm test:e2e:built tests/e2e/admin.spec.ts tests/e2e/phone-navigation.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts tests/e2e/photos.spec.ts --max-failures=1`:
+  **109 passed in 3.5 minutes**, including mobile/desktop layout, keyboard/D-pad, photos and
+  accessibility checks plus paired-screen admin isolation. This is the focused suite, not all
+  1,068 tests. No production app build was changed during the run.
+- `pnpm --filter @hearth/server exec vitest run src/phone-connections.integration.test.ts`:
+  **38 passed**, including typed admin/activity readback after recovery.
+- `git diff --check`: passed; authoritative root docs additionally checked with Prettier.
+
+Browser plugin not available: Playwright CLI used installed Chrome, a disposable in-memory
+private-mode SQLite household and the real compiled handlers at loopback HTTPS `14431`. Only
+the fixture certificate was ignored in that isolated browser; no system trust changed. Successful
+browser flow: first owner, saved-card download/activation, second-adult invitation/approval,
+exact trusted-phone designation, approved owner replacement, fresh saved-card recovery, old
+owner-session rejection and unchanged approving/secondary adult. All private fragments were
+removed; no app page errors. Keyboard Space expands/collapses recovery and Enter creates/discards
+a card preview. The intentionally replaced original owner produces an expected HTTP 401 on its
+next admin read; that is rejection evidence, not an unexplained app failure.
+Viewports 320×700 light, 390×844 dark, 844×390 light and 1920×1080 light have no
+horizontal overflow. Screenshots inspected outside Git: `01-private-setup.png`,
+`03-card-preview-masked.png` (QR deliberately obscured), `04-recovered-owner.png` and
+`recovery-*-*.png`. Full-page captures place fixed phone chrome at the capture scroll position;
+viewport captures establish the actual docked layout. Back colours in automatic dark are
+`rgb(241,238,231)` on `rgb(50,55,53)`.
+
+Verification repairs: rendered readback found omitted recovery audit enum/presentation entries;
+these were added and the phone audit writer made type-safe. Test setup used the real cookie helper
+and rebuilt shared packages before validation. The first browser regression attempt stopped after
+19 passes on a stale **Migration 28** assertion; the real new version is 29. The exact expectation
+was updated, not broadened. Initial local assertions also required TanStack's actual call shape,
+QR module-aligned 511px output rather than a distorted forced 512px image, and existing consent
+`409 CONFIRMATION_REQUIRED`. No production boundary was weakened for these repairs.
+
+Not run/not implemented: actual iPhone Safari/camera/PNG-save/recovery drill; signed native app;
+Bluetooth/local-network permission or Wi-Fi join; authenticated appliance identity transport;
+trusted HDMI output; Android/physical TV gates; full 1,068-test browser run; hosted images/release;
+live migration, owner-card creation, phone/TV pairing/revocation, networking changes or deployment.
+Your commissioned household/NAS is untouched. Retain the operator fallback and physical gates;
+release/backup review and explicit deployment approval precede live adoption.
+The owned test server/browser were shut down; fixture-only private cards and temporary TLS keys
+were removed. Non-secret screenshots/logs remain outside Git for review.
+
+## Appliance QR/recovery foundation — 2026-10-12 (D-104)
+
+Historical Stage A record; the local compatibility implementation above supersedes its
+schema-only status. Physical commissioning and publication remain open.
+
+The user selected phone-only appliance setup and recoverable loss of the original handset.
+This first slice implements strict v1 setup/recovery QR and metadata schemas, deterministic
+language-neutral fixtures, and a pure **advisory** recovery-readiness classifier. It does not
+implement proof verification or grant authority. The contract rejects short/noncanonical proof,
+unsupported version/purpose/generation, arbitrary URL destinations, extra owner/verified/role
+flags, credentials in public discovery and duplicate/missing owner recovery authorities.
+
+`APPLIANCE_ONBOARDING_CONTRACT.md` freezes the selected envelope and staged boundaries. D-104
+records Bluetooth LE commissioning, Ethernet alternative, private device proof and independent
+recovery authority as future product direction. The current D-102/D-103 phone service remains
+byte-identical (SHA-256 `c3e5d10f95b9652fa5c7358827b3df9c4b2353742dfe7f058a0a14bb9d93fd4f`).
+No active route, cookie, migration, owner/TV grant, native app, network service, Synology setting
+or UI changes in this slice. Earlier settings/photo/icon edits remain preserved and unpublished.
+
+Passed local commands from `hearth/`:
+
+- `pnpm --filter @hearth/shared test:unit src/appliance-onboarding.test.ts`: 17 tests.
+- `pnpm build:packages`: shared/core compile.
+- `pnpm --filter @hearth/core test:unit src/appliance-recovery.test.ts`: 5 tests.
+- `pnpm verify:code`: format, lint, workspace typecheck, 431 unit tests
+  (56 shared + 40 core + 71 server + 264 web), 166 server integration tests, 25 migration
+  tests, 10 maintenance/deployment fixtures, deployment scaffold verification and production
+  web/server builds.
+- `pnpm verify:ci`: 5 policy checks and complete non-overlapping inventory of 1,068 browser
+  tests; this inventories the tests and does not execute them.
+- `git diff --check` from the workspace root: passed.
+
+The initial full gate stopped at test typechecking because a Node filesystem fixture loader was
+introduced into the browser-safe shared test environment. It was repaired with static JSON
+imports and a test-only `rootDir`; no production compiler types or dependencies were broadened.
+The full gate then passed. Shape/fixture tests do not establish QR entropy, authenticated device
+identity, cryptographic protocol correctness, server state transitions or physical recovery.
+
+Not run/not implemented: Bluetooth/local-network permissions or Wi-Fi joining on iPhone,
+authenticated hardware commissioning, a native setup UI, new server persistence/routes,
+trusted-adult/offline-card replacement, actual lost-phone/all-phone-loss drill, trusted HDMI
+output, full browser/Android gates, hosted release, publication or deployment. No rendered
+surface changed here, so no new screenshots or D-pad proof are claimed. Hardware and reviewed
+transport must be selected/proved before the next stage; current access is not weakened in the
+meantime. Keep the actual recovery and onboarding gates open.
+
+## iPhone Home Screen fern icon — 2026-10-12 (D-093 companion refinement)
+
+The shared HTML had only the browser favicon, not a Home Screen icon declaration. It now declares
+the same-origin opaque 180×180 `/apple-touch-icon.png`, composed from the existing green fern on
+Hearth's warm-cream background. `apps/web/scripts/build-home-icon.mjs` regenerates that public asset
+before the normal production web build and can verify it with `--check`. It lives within the
+existing Docker `COPY apps/web` boundary. No dependency, Docker/network configuration, manifest,
+standalone-mode switch, service worker, background behavior or phone/session identity changes.
+The transparent shared mark remains byte-identical (SHA-256
+`1b78850e1611703bc77d842b425e5eb3a522570b17d8e664bd2033e0b5302a00`); TV artwork is untouched.
+
+Checks passed from `codex/phone-access-release` (`hearth/`):
+
+- `pnpm --filter @hearth/web exec vitest run src/styles/homeScreenIcon.test.ts`: **four passed**
+  for Apple touch metadata, opaque PNG dimensions/cream corners/green artwork, deterministic
+  original-fern composition and preservation of favicon/bootstrap/viewport/browser mode.
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: passed. Lint retains the same two pre-existing
+  non-failing expression-resolution diagnostics. `pnpm -r --workspace-concurrency=1 --if-present
+test:unit --maxWorkers=2`: **409 passed** (39 shared, 35 core, 71 server, 264 web); worker limits
+  bound local load without changing any test time limit or product behavior.
+- `pnpm verify:deploy`: scaffold checks and **10 owner-maintenance fixtures** passed.
+  `pnpm build`: production web/server builds passed; the web build generates the icon.
+  `cmp apps/web/public/apple-touch-icon.png apps/web/dist/apple-touch-icon.png` and
+  `node apps/web/scripts/build-home-icon.mjs --check`: passed.
+- `pnpm verify:ci`: **five policy checks** and complete disjoint inventory of **1068** browser
+  tests passed; inventory is not full browser execution.
+- `pnpm test:e2e:built tests/e2e/phone-navigation.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts`: **20 passed in 1.2 minutes**, preserving docked navigation,
+  responsive phone behavior and screen/adult isolation.
+- Browser plugin not available: Playwright CLI used built localhost demo only (`4320`, loopback API
+  `4310`, in-memory database). More at 390×844 light/dark and Today at 1920×1080 light pass page
+  identity/content, absent framework overlay, zero app warnings/errors, unchanged favicon/mode,
+  Apple metadata and direct icon GET `200 image/png` with PNG signature and decoded 180×180 size.
+  More → Manage photos → Back and keyboard activation of Today remain usable; the icon declaration
+  survives the nested route. Browser-decoded icon and phone/desktop screenshots are inspected and
+  retained outside Git under `/tmp/hearth-home-icon-qa.9pdJ1I/`. The browser's separate raw-image
+  viewer requested a missing `/favicon.ico`; that isolated viewer 404 is not a Hearth UI/PNG failure.
+- `git diff --check`: passed. Initial new DOMParser tests used a matcher requiring a window-owned
+  DOM node; switching those assertions to direct attribute values fixes the fixture without changing
+  production code. No final check failed.
+
+Source behavior follows [Apple's icon configuration guide](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html)
+and [WebKit's Home Screen icon/fallback documentation](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
+**Actual iPhone Add to Home Screen and installed-icon cache refresh are not run.** Do not remove a
+working owner web app, clear site data or change its controller connection just to refresh artwork.
+No commit, push, published image or live deployment is part of this checkpoint. API/integration,
+migration, Android/container builds and full hosted/browser release gates are not rerun for this
+static-icon-only refinement; the preceding photo checkpoint records the last local API/migration
+results. Existing photo-removal/menu-return work and private Synology configuration are preserved.
+
+## Discoverable adult photo removal — 2026-10-12 (D-061 refinement)
+
+Permanent removal already existed behind bulk selection. **More → Manage photos** now exposes
+**Delete** directly on each Hearth-managed upload, including hidden uploads. **Select photos →
+Delete selected (n)** retains batch removal. Confirmation freezes the exact target set, defaults
+to **Keep photos**, describes irreversible removal and disables repeat submission while pending.
+Cancellation makes no deletion request. Success refreshes the source, gallery, Today and activity;
+focus returns to a surviving card or the selection control, including when a refresh removed the
+intended neighbour. Failure/partial failure retains the affected photos and reports another try.
+The dialog has an accessible description, readable sentence-case copy, aligned controls and bounded
+scrolling on short displays. NAS imports never gain a Delete control or source-folder write access.
+
+The existing authenticated, validated, idempotent and audited deletion command is unchanged.
+No server/API/schema, native shell, phone authentication, private runtime, networking, import mount
+or live photo changes are made. The earlier uncommitted settings-return fix is preserved.
+
+Implementation files: `PhotosSettingsScreen.tsx`, its CSS and new unit test, existing
+`tests/e2e/photos.spec.ts` assertions, plus UX_SPEC, DECISIONS, OPERATIONS and this acceptance record.
+Checks run from the `codex/phone-access-release` checkout's `hearth/` directory:
+
+- `pnpm --filter @hearth/web exec vitest run src/screens/PhotosSettingsScreen.test.tsx`:
+  **10 passed** covering visible/hidden uploads, import protection, safe default/cancel/opener focus,
+  exact single target across refresh, mixed-source batches, disappearing-neighbour fallback, pending
+  repeat submission, failure/retry, partial failure and last-photo empty state.
+- `pnpm verify:code`: final unchanged-command rerun **passed** formatting, lint, workspace types,
+  **405 unit**, **166 API/integration**, **25 migration** tests, **10 owner-maintenance fixtures**,
+  deployment scaffold validation and production web/server builds. Two preceding attempts hit an
+  existing five-second WebAuthn fixture timeout and a lazy QR-bootstrap test timeout respectively;
+  both passed isolated rechecks and the final complete run without changing source or time limits.
+- `pnpm verify:ci`: **five policy checks** and disjoint inventory of **1068** browser tests passed.
+  The inventory check is not full-suite execution.
+- `pnpm test:e2e:built tests/e2e/photos.spec.ts tests/e2e/today-photo-rotation.spec.ts
+tests/e2e/admin.spec.ts tests/e2e/phone-navigation.spec.ts tests/e2e/screen-admin-isolation.spec.ts`:
+  **113 passed in 4.5 minutes**. This includes bulk deletion, managed/import boundaries, curation,
+  photo rotation, responsive phone administration, axe accessibility, remote controls, docked phone
+  navigation and shared-screen denial. The first run passed 85 then stopped on the old assertion
+  that Restore skipped straight to the gallery; the updated existing test asserts Delete and then
+  the gallery remain reachable. No final browser check failed.
+- Browser plugin not available: Playwright CLI against built localhost demo only (`4320`, loopback
+  API `4310`, in-memory database), with no private household credentials or photos. Six viewport/theme
+  cases—320×700 light, 390×844 light/dark, 844×390 dark, 1280×720 light, 1920×1080 dark—verify page
+  identity/content, absent framework overlay, containment, touch target sizes, safe confirmation,
+  cancel without a request, D-pad escape to the next grid row, one accepted deletion, surviving-card
+  focus and gallery absence. Additional simulated-import and valid 503-error cases confirm protected
+  originals and failure retention. Successful flows have zero application warnings/errors; the
+  deliberate 503 is the only expected browser resource error. Screenshots and the temporary runner
+  remain outside Git under `/tmp/hearth-photo-removal-qa.RQROHN/`.
+- `git diff --check`: passed.
+
+This is **local web/server evidence**, not a live deletion or physical-device acceptance. Actual
+iPhone Safari, physical TV, Android build/install, full 1068-case browser execution, hosted release
+checks, commit, push and deployment remain **not run** for this change. No live photos are deleted.
+Existing backups may retain earlier managed originals under their normal retention policy.
+
+## Physical owner-phone setup and legacy cleanup — 2026-10-12
+
+The owner requests that his currently Rachael-signed-in iPhone become David's protected controller,
+with all earlier sign-ins retired and Rachael's phone added afresh later. Live health confirms the
+already manually activated exact `ab33fb9` release and database migration 28. Safe metadata initially
+shows four legacy browsers, two active legacy passkeys, no protected owner and one retained native
+TV. No credential/token/key, credential hash or household content is printed or copied into
+development databases or source.
+
+- The canonical NAS-owner `issue-phone-key` command uses the resolved private database, intended
+  existing adult and checked private SQLite online backup. It issues a 256-bit one-use 15-minute
+  key without removing any current access. The key goes privately to the Mac clipboard, never
+  into chat, source, a URL, tool output or a log.
+- David enters the key on his actual iPhone and confirms **David's iPhone · this phone / David ·
+  owner phone**. Server metadata independently confirms the intended adult, protected `owner`
+  source, one active non-passkey session and consumed grant. This is physical first-owner evidence,
+  not proof of lost-phone replacement, a second phone or a simulator result.
+- Four old browser connections are removed through authenticated companion actions. A guarded
+  one-time NAS-owner transaction, with a second checked private backup, retires the two remaining
+  passkeys with two same-transaction system audits. At execution the browser targets are already
+  revoked, so it changes zero phone/session/invitation rows; it never revives or reassigns a session.
+  Profile rows and existing screen authorization remain unchanged.
+- `python3 /tmp/hearth-phone-cleanup.IJuDyA/test_cleanup.py`: **seven fixtures pass** for exact
+  scope/preservation, foreign/missing/duplicate/protected targets, recent valid ownership,
+  unreviewed phones/grants/credential counts, audit rollback and inert repetition.
+  `python3 hearth/deploy/synology/owner-access.test.py`: **ten existing fixtures pass**.
+  Temporary operation source is staged in a NAS-owned mode-0700 directory and matches its locally
+  tested SHA-256. Initial SFTP-based `scp` fails closed; legacy `scp -O` succeeds without changing
+  SSH, networking or live services. No temporary test script or private database enters Git.
+- Post-cleanup readback: **one David owner phone, one active session, zero active legacy passkeys,
+  four revoked historical browsers, zero pending invitations/unused owner grants, two retained
+  adult profiles, one active native living-room TV**. `PRAGMA quick_check`, the transaction's
+  foreign-key/integrity checks, private readiness and health pass; release remains exactly
+  `ab33fb926d6a2fc3838293e35455c52070c4927d`.
+- The consumed code file is removed only after its consumed, intended-adult grant is verified;
+  the matching Mac clipboard value is cleared. Both checked NAS-only backups retain mode 0600.
+
+No live deployment, container/networking/provider change, member/profile deletion, new owner
+promotion endpoint or permanent application-code change is performed. The preceding local menu
+Back fix remains unpublished. Rachael's new physical QR connection, lost-owner recovery and actual
+owner replacement remain **not run**; do not mark the two-adult-phone acceptance complete yet.
+
+## Consistent settings return menu — 2026-10-12 (D-075 refinement)
+
+Reproduced in the built local phone UI: More → Household → header Back opened `/admin`,
+which is a separate menu with different destinations and typography; Photos returned to More.
+Settings links now remember an allowlisted opener pathname in router history, and header Back
+pops the actual prior entry. More remains More; desktop-overview entries return to the overview;
+nested settings restore their actual parent. Safe direct-link fallbacks, draft confirmation and
+the existing focus memory remain in use. No CSS, server/API/schema, phone authentication,
+shared-screen authorization, private runtime or networking configuration changed.
+
+Checks passed from the clean `codex/phone-access-release` checkout (`hearth/`):
+
+- `pnpm verify:code`: formatting, lint (the same two pre-existing non-failing expression-resolution
+  diagnostics), workspace types, **395 unit**, **166 API/integration**, **25 migration** tests,
+  **10 owner-maintenance** fixtures, deployment scaffold and production web/server builds.
+- `pnpm --filter @hearth/web exec vitest run src/components/SettingsNavigation.test.tsx`:
+  **14 navigation regressions** passed, including original-menu history, nested parents,
+  Back/Forward without duplicate entries, overview/photos origin, safe direct-link fallback,
+  rejected external/unknown/self opener values, native modified links and loading/error Back.
+- Browser plugin unavailable; the Playwright CLI fallback used only built localhost demo data
+  (`127.0.0.1:4320`, loopback server on `4310`, in-memory database). A corrected temporary runner
+  completed **200 flows** at 390×844 light/dark, 320×700 light, 1280×720 light and 1920×1080 dark.
+  Each of the ten More settings returned using header, browser and keyboard Back with identical
+  menu destinations, row heights and text sizes. Eight nested destinations per viewport retained
+  their parents through reload. Overview/photos and header Back/browser Forward did not loop.
+  Page identity/content, absent framework overlay, zero application console warnings/errors and
+  horizontal containment passed. Returned-menu screenshots were inspected in phone light/dark
+  and desktop; artifacts stay outside Git under `/tmp/hearth-settings-back-qa.kH8l0z/`.
+- A separate CLI check passed keyboard parent/nested focus restoration and draft Cancel/Discard
+  protection (**four flows**); no household changes were saved.
+- `pnpm verify:ci`: **five policy checks** and complete disjoint inventory of **1068** browser
+  tests passed; this inventory check is not execution of the full browser suite.
+- `pnpm test:e2e:built tests/e2e/admin.spec.ts tests/e2e/remote.spec.ts
+tests/e2e/appearance.spec.ts tests/e2e/phone-navigation.spec.ts tests/e2e/keyboard-layout.spec.ts
+tests/e2e/reliability.spec.ts tests/e2e/screen-admin-isolation.spec.ts
+tests/e2e/device-connection.spec.ts`: **198 passed in 5.7 minutes**, including admin/mobile layout,
+  keyboard/D-pad focus, theme/Appearance, docked navigation, draft/history reliability, adult-phone
+  fixtures and the shared-screen administration boundary. The existing household/member test now
+  asserts return to More after reloading a setting opened from More.
+- `git diff --check`: passed.
+
+No final check failed. No commit, push, published images or live deployment is part of this
+checkpoint. Actual iPhone Safari, physical TV and the full 1068-case browser execution are
+**not run** for this patch; the targeted built checks above are local evidence only.
+
 ## Approved phone/calendar release candidate — 2026-10-12
 
 The owner authorizes GitHub publication and will activate the update manually. The clean
@@ -1192,6 +1558,10 @@ A change is complete only when:
   and admin forms retain ordinary keyboard focus.
 - At desktop widths, administration presents a persistent settings rail and a wider content canvas;
   at phone widths the rail is absent and the existing bottom navigation remains available.
+- Opening any setting from More and returning with header/browser/remote Back restores More with
+  the same destinations and row sizes, not the separate settings overview. Nested settings return
+  through their actual opener; reload retains the route history. Header Back creates no duplicate
+  menu/history loop, focus returns to the opener and directly opened settings keep a safe parent.
 - At 820×1180 and 1180×820, household routes use companion navigation instead of the television rail;
   portrait Admin keeps the compact flow and landscape Admin uses the persistent settings rail.
 - Resuming Hearth after normal Google TV app switching restores the previous Hearth screen or a documented safe default.
@@ -1589,14 +1959,20 @@ live-system commissioning tasks requiring owner approval.
   in adult administration with a safe derivative preview, while private filesystem paths never
   reach any response or log. Synology metadata and recycle directories such as `@eaDir` and
   `#recycle` are ignored rather than making the approved-folder check fail.
-- Adult administration identifies managed uploads and optional-folder imports, supports bulk
-  selection for hide/restore and permanently deletes one or more managed uploads only after an
+- Adult administration identifies managed uploads and optional-folder imports. Visible and hidden
+  managed-upload cards expose **Delete** directly; **Select photos → Delete selected (n)** supports
+  batches alongside bulk hide/restore. It permanently deletes managed uploads only after an
   explicit confirmation. The managed master, display and thumbnail files disappear, the command is
   idempotent and one path-free audit event remains. Imported originals cannot be deleted through
   Hearth and the UI explains the source-folder plus **Check folder** workflow.
+- Confirmation retains the exact requested photos across source refreshes, defaults to **Keep
+  photos**, and blocks repeated submission while pending. Cancel performs no command and restores
+  the opener. Success refreshes the library, gallery, Today and activity, restoring a surviving card
+  or selection control. Failed/partial deletion retains affected photos and reports a retryable result.
 - Phone More exposes **Photos** at `/photos` and a separately labelled, visually prominent
   **Manage photos** action at `/admin/photos`. The latter opens the phone upload/curation surface,
-  including **Add photos**, and its Back control returns to More. Hearth settings also
+  including **Add photos**, and its Back control returns to More when opened there (or to the
+  settings overview when opened from that overview). Hearth settings also
   places Manage photos first under Family content rather than hiding it behind a generic household row.
 - More and the Hearth settings root use compact title-only navigation rows with slightly squared joined
   group corners. Repeated row subtitles are absent; destination screens retain the explanatory copy

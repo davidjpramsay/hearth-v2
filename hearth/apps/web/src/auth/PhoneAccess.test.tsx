@@ -6,7 +6,13 @@ import { phoneApi } from '../api/phoneConnections';
 import type { PasskeyAuthStatus } from '@hearth/shared';
 
 vi.mock('../api/phoneConnections', () => ({
-  phoneApi: { pending: vi.fn(), ownerClaim: vi.fn(), claim: vi.fn(), exchange: vi.fn() },
+  phoneApi: {
+    pending: vi.fn(),
+    ownerClaim: vi.fn(),
+    claim: vi.fn(),
+    exchange: vi.fn(),
+    recoverWithCard: vi.fn(),
+  },
 }));
 const auth: PasskeyAuthStatus = {
   mode: 'private',
@@ -46,6 +52,73 @@ function show(props: Partial<Parameters<typeof PhoneAccess>[0]> = {}) {
   return onComplete;
 }
 describe('no-passkey phone access', () => {
+  it('can leave a scanned recovery without submitting it or disconnecting a phone', async () => {
+    window.history.replaceState(null, '', `/#recover-phone=${'A'.repeat(43)}`);
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to connection options' }));
+    expect(screen.queryByLabelText('Replacement phone name')).not.toBeInTheDocument();
+    expect(phoneApi.recoverWithCard).not.toHaveBeenCalled();
+    await waitFor(() => expect(phoneApi.pending).toHaveBeenCalled());
+  });
+
+  it('uses a scanned setup card without rendering a copied-key field', async () => {
+    const key = 'a'.repeat(64);
+    window.history.replaceState(null, '', `/#setup-phone=${key}`);
+    vi.mocked(phoneApi.ownerClaim).mockResolvedValue({
+      authenticated: true,
+      householdId: 'household_fixture',
+      memberId: 'member_david',
+      displayName: 'David',
+      expiresAt: '2027-01-01T00:00:00Z',
+    });
+    const complete = show({ auth: { ...auth, requiresSetup: true } });
+    expect(window.location.hash).toBe('');
+    expect(screen.queryByLabelText('Owner setup key')).not.toBeInTheDocument();
+    expect(screen.getByText(/Setup card recognised/)).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'David' } });
+    fireEvent.change(screen.getByLabelText('Phone name'), { target: { value: 'David’s iPhone' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create household and connect' }));
+    await waitFor(() =>
+      expect(vi.mocked(phoneApi.ownerClaim).mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({ ownerKey: key, adultName: 'David', phoneName: 'David’s iPhone' }),
+      ),
+    );
+    await waitFor(() => expect(complete).toHaveBeenCalledOnce());
+  });
+  it('cannot repurpose a first-setup QR as existing owner recovery', async () => {
+    window.history.replaceState(null, '', `/#setup-phone=${'a'.repeat(64)}`);
+    show();
+    expect(screen.getByText('This Hearth is already set up')).toBeVisible();
+    expect(phoneApi.ownerClaim).not.toHaveBeenCalled();
+    expect(phoneApi.recoverWithCard).not.toHaveBeenCalled();
+  });
+  it('binds a scanned recovery to an exact retry without exposing the private card', async () => {
+    const secret = 'A'.repeat(43);
+    window.history.replaceState(null, '', `/#recover-phone=${secret}`);
+    vi.mocked(phoneApi.recoverWithCard)
+      .mockRejectedValueOnce(new Error('Temporary interruption'))
+      .mockResolvedValueOnce({
+        authenticated: true,
+        householdId: 'household_fixture',
+        memberId: 'member_david',
+        displayName: 'David',
+        expiresAt: '2027-01-01T00:00:00Z',
+      });
+    const complete = show();
+    expect(window.location.hash).toBe('');
+    expect(screen.queryByDisplayValue(secret)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Replacement phone name'), {
+      target: { value: 'David’s new phone' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Replace lost owner phone' }));
+    await screen.findByText('Temporary interruption');
+    const first = vi.mocked(phoneApi.recoverWithCard).mock.calls[0]![0];
+    expect(first.recoverySecret).toBe(secret);
+    expect(screen.getByLabelText('Replacement phone name')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry this recovery' }));
+    await waitFor(() => expect(complete).toHaveBeenCalledOnce());
+    expect(vi.mocked(phoneApi.recoverWithCard).mock.calls[1]![0]).toEqual(first);
+  });
   it('offers no disconnect route when an owner phone scans an invitation', async () => {
     show({
       auth: {

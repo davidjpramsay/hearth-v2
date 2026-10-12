@@ -11,7 +11,7 @@ Hearth is a private family dashboard built for a wall-mounted Google TV and a ph
 - lists, meals, notices and daily verse
 - managed family photos and ambient display
 - three allowlisted Home Assistant actions
-- passkey-protected adult administration
+- QR-approved adult phones, protected owner access and independent recovery
 - a minimal paired Android/Google TV shell
 
 Apple Reminders is not part of the active product. Its retired proof is preserved under

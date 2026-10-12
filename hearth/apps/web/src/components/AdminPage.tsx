@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 
 import { Icon } from './Icon';
+import { SettingsBackLink } from './SettingsNavigation';
 
 export function AdminPage({
   title,
@@ -25,14 +25,14 @@ export function AdminPage({
       data-focus-loading={loading ? 'true' : undefined}
     >
       <header className="admin-page__header">
-        <Link
-          aria-label={backLabel}
+        <SettingsBackLink
+          fallbackLabel={backLabel}
+          fallbackTo={backTo}
           className="admin-back focusable"
           data-focus-id="admin-back"
-          to={backTo}
         >
           <Icon name="chevron-left" />
-        </Link>
+        </SettingsBackLink>
         <div>
           <h1>{title}</h1>
           {subtitle === undefined ? null : <p>{subtitle}</p>}

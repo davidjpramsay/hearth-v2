@@ -1,5 +1,65 @@
 # Hearth v2 local environment and operations plan
 
+## Appliance access — D-104 (local browser implementation, hardware pending)
+
+The selected product uses a private supplied QR, phone-assisted authenticated network setup,
+explicit recovery phones and a separate offline recovery QR. Local browser recovery routes and
+migration 0029 are implemented, but not deployed. No radio/network service runs; protected
+D-102/D-103 operator-file fallback remains. Current live access is unchanged.
+Do not serve the existing private owner key/QR to anonymous browsers, add an empty-server bypass,
+open ports, change Synology networking, or auto-promote a secondary adult to implement this plan.
+No live key issuance, pairing, migration or deployment is authorized by local implementation.
+
+Future appliance setup cards are private, unit-specific and initial-use only. Recovery cards are
+separate, saved off the phone, and never submitted to external QR/image services. Existing
+households require verified owner consent and a checked backup before recovery policy migration;
+restore/rollback must retain revocations and consumed-proof generations. Actual Bluetooth/HTTPS
+identity, Wi-Fi join and lost-phone drills remain not run. See
+[the contract](APPLIANCE_ONBOARDING_CONTRACT.md) for proof and rollback requirements.
+
+### Private first-phone card on the current server path
+
+On a provisioning workstation, convert an existing **first-use** private file to a PNG with:
+
+```sh
+node hearth/apps/web/scripts/build-first-phone-card.mjs \
+  --key-file /PRIVATE/FIRST-USE-FILE \
+  --origin https://TRUSTED-PRIVATE-HEARTH-ORIGIN \
+  --output /PRIVATE/Hearth-first-phone-card.png
+```
+
+The paths/origin above are placeholders, not live instructions to issue a key. Input must be a
+single-link regular owner-only file; output is exclusive mode 0600 outside Git/workspace, never
+overwritten. The helper rejects unsafe files/destinations, prints no proof/URL and uses no remote
+QR generator. It runs before installation/in packaging, not inside nginx. Keep the PNG private,
+show it only to the intended first owner, scan using that phone and destroy the installation copy
+after verified setup. Hearth must already be reachable over its trusted HTTPS origin. There is no
+anonymous first-QR endpoint or phone network-join command. Existing households use separate recovery,
+not a retained first-use QR. A private owner **replacement grant** is not a first-setup card.
+
+### Owner-consented recovery setup
+
+After approved migration/release, use the current owner browser's **Phones & screens → Recovery
+& lost phones**. Create/download a card, save somewhere other than that phone, acknowledge and
+activate within five minutes. Preparing/discarding/expiry leaves an older active card valid.
+Activated cards do not expire routinely; a successful owner replacement/rotation invalidates them.
+Save and physically verify a new card after replacement. Never attach cards to chat, public
+screenshots, tickets, source, ordinary exports or external QR scanners.
+
+Connect the second adult normally, then explicitly select their **exact phone** as trusted for
+recovery. An invitation under the same adult name does not inherit trust. On that trusted phone,
+Replace lost phone creates a private QR; the new phone requests, the trusted phone approves, then
+the new phone connects as the existing owner. The approving adult stays signed in as themselves.
+A separately saved card also handles all-phone loss without resetting content. Other phones and
+screens are not mass-revoked; remove confirmed lost secondary phones deliberately afterward.
+
+Before live migration, back up and recovery-test, verify no duplicate non-revoked owners, preserve
+network/runtime identities and obtain deployment approval. Migration assigns no trust/cards or
+revocations. Do not downgrade to a release unaware of consumed/revoked recovery state; restore
+procedures must not resurrect a lost phone. Browser-only acceptance is not actual iPhone scanning,
+private PNG saving/restoration or lost-phone evidence. Bluetooth/Wi-Fi/trusted HDMI requires a
+separate disposable hardware proof, not changes to the current Synology network.
+
 ## Verified environment snapshot
 
 Local verification uses `pnpm verify` and `pnpm verify:tv` from `hearth/`. `pnpm verify` builds once
@@ -151,10 +211,15 @@ requires a valid approved phone connection and server role/capability checks (D-
 
 ### Current phone setup (D-102)
 
+This subsection describes the installed `ab33fb9` release. D-104's locally implemented private
+setup-card/trusted-phone/saved-card paths at the top of this document are **not deployed** yet;
+use them only after an approved release. No new live card/trust policy was created during development.
+
 After an approved release upgrade, reload Hearth once on each phone so the new connection UI is
-loaded. The D-102 local implementation has passed its code/API/migration/rendered checks, but
-publication and live activation have not occurred at this checkpoint. Do not issue a live key
-against a pre-0028 database or remove working legacy access before actual-phone acceptance.
+loaded. The exact `ab33fb9` release is live with migration 0028 as of 2026-10-12; David's protected
+owner phone is physically connected and verified. Rachael's fresh QR connection remains not run.
+Do not issue a live key against a pre-0028 database or remove working legacy access before
+actual-phone acceptance.
 
 1. Connect the first phone with the private one-time owner key. Check **Connected as David** and
    **owner phone · Protected**. No app Remove/Sign out is available for this main phone (D-103).
@@ -171,7 +236,43 @@ against a pre-0028 database or remove working legacy access before actual-phone 
 QRs expire in five minutes and require final approval; a QR alone is not an administrator sign-in.
 Use one consistent Safari/Home Screen browser path on each iPhone; separate browser profiles may
 be separate connections. Keep phones locked. Do not remove earlier-browser connections until
-both replacement phones have passed physical acceptance. Screen pairing stays separate.
+both replacement phones have passed physical acceptance, unless the NAS owner explicitly requests
+cleanup to one confirmed, working protected owner while other phones remain intentionally
+unconnected. In that case preserve those adults' profiles/permissions, retire only approved old
+sign-ins after the owner phone works, and record the other phone's QR acceptance as not run.
+Screen pairing stays separate.
+
+The web build runs `apps/web/scripts/build-home-icon.mjs` to compose the existing fern into the
+opaque 180×180 `apps/web/public/apple-touch-icon.png`. The shared HTML declares that same-origin
+Apple touch icon and Vite copies it into the web image's document root. The generator lives inside
+the existing Docker `COPY apps/web` boundary; no new dependency, runtime permission, cache-policy
+or networking change is required. `node apps/web/scripts/build-home-icon.mjs --check` verifies the
+committed rendition against its canonical source. The transparent favicon/brand mark is unchanged.
+New Home Screen additions can read this icon after the release is deployed. An existing installed
+icon may be cached; its refresh needs physical verification. Do not delete/re-add a working owner
+web app, clear Safari/site data or make a new phone connection merely to update artwork. Preserve
+the current browser path and session, and check the installed icon after ordinary release reload.
+
+Live cleanup checkpoint 2026-10-12: safe metadata initially shows four legacy browser connections
+(two for each adult), two active legacy passkeys, no protected owner, and the one retained native
+living-room TV. The verified NAS-owner tool issues a David-bound one-use key after a checked private
+online backup; issuance disconnects nothing. David completes the owner claim on his actual iPhone
+and confirms **David's iPhone · this phone / David · owner phone**. The old browser connections are
+removed by authenticated companion actions before final cleanup. A narrowly guarded, locally tested
+system transaction then retires the two remaining legacy passkeys, retaining the exact new owner,
+its working session, both adults' profiles and TV authorization. Seven safety fixtures and the ten
+existing maintenance fixtures pass. Its preflight rejects an unaccepted/stale/wrong-adult owner,
+unreviewed phones/sessions/grants, changed credential counts and foreign/missing/duplicate targets;
+audit failure rolls back the complete operation. It is a one-time operator action, not an HTTP
+endpoint, installed daemon or new production CLI command.
+
+Readback: one protected David owner phone and one active session, four revoked historical browsers,
+zero active legacy passkeys, zero pending phone invitations/unused owner keys, two retained adult
+profiles, and the same one active native TV. Integrity/readiness/health pass at unchanged `ab33fb9`.
+The consumed private key file is removed and its matching Mac clipboard value is cleared; checked
+NAS-only mode-0600 backups are retained. No data, networking, container or provider configuration
+change or deployment is performed. Rachael's physical QR enrollment remains **not run** until she
+uses her own phone; old passkeys cannot reconnect either account.
 
 ### Historical passkey setup (D-097; not the active enrollment procedure)
 
@@ -226,8 +327,10 @@ key**, enter a phone name and the key. No password/passkey prompt. Issuance does
 anything. Successful claim atomically replaces the prior protected
 owner phone and invalidates its sessions/invitations; secondary phones, permissions, content and
 the TV are unchanged. A newer issued key supersedes earlier unused owner grants household-wide.
-There is no app-only owner removal, self sign-out or QR promotion. Cookie loss/expiry needs a fresh
-owner key; Hearth cannot prevent a user clearing Safari data. A failed claim keeps the prior owner.
+There is no casual owner removal, self sign-out or ordinary-QR promotion. On the installed D-103
+release, cookie loss/expiry needs a fresh owner key. After approved D-104 adoption, an active saved
+card or exact trusted-phone approval is also available. Hearth cannot prevent Safari data deletion.
+A failed claim keeps the prior owner.
 Delete the exact private code file after consumption/expiry and retain the checked backup under the
 commissioned private retention policy. Stop rather than relaxing file/DSM ACL checks.
 
@@ -241,7 +344,8 @@ owner-confirmed obsolete browser connections. Readback retains only the native G
 2026-10-08 as active and three matching system audits. Adult keys/sessions/permissions, content and
 networking are unchanged. New UI publication and both physical phone sign-ins remain separate gates.
 
-The exact `7a20a2e` application release subsequently passes complete hosted verification and is
+Historical passkey-reset checkpoint (2026-10-09; superseded for new phone setup by D-102/D-103):
+the exact `7a20a2e` application release subsequently passes complete hosted verification and is
 activated with commissioned Compose/networking preserved. After the owner explicitly requests an
 all-phone sign-in reset, a backed-up, tested, exact-household system transaction revokes the remaining
 phone keys/sessions and unused recovery grant, without deleting people, content or TV authorization.
@@ -756,9 +860,11 @@ provider is deliberately unreachable.
   bulk import. Leave `HEARTH_PHOTO_SOURCE_DIR` blank when it is not useful; never mount the Synology
   photo-library root. Admin **Check folder** rebuilds imported derivatives without affecting managed
   uploads.
-- Admin Photos identifies **Added in Hearth** and **NAS folder** assets. Selection mode can hide or
-  restore either source in bulk. **Delete uploads** permanently removes only Hearth-managed masters
-  and derivatives after confirmation. To remove an imported asset, delete its original from the
+- **More → Manage photos** identifies **Added in Hearth** and **NAS folder** assets. Each Hearth
+  upload has a **Delete** action, including hidden uploads; **Select photos → Delete selected (n)**
+  removes batches. **Keep photos** cancels without deleting. Confirmed deletion permanently removes
+  only Hearth-managed masters and derivatives. Selection mode can hide or restore either source in
+  bulk. To remove an imported asset, delete its original from the
   approved Synology folder and run **Check folder**; Hearth must not receive write access to that
   source. Existing backup snapshots can retain deleted managed photos until their configured
   retention expires, even though the active library no longer serves them.

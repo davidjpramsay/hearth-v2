@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { SettingsLink } from '../components/SettingsNavigation';
 
 import './TelevisionsSettingsScreen.css';
 
@@ -92,19 +93,19 @@ export function TelevisionsSettingsScreen() {
                       ? 'Household controller'
                       : 'Family access · no household settings'}
                   </span>
-                  <Link
+                  <SettingsLink
                     className="admin-secondary"
                     to={`/admin/access?adult=${encodeURIComponent(adult.id)}`}
                     aria-label={`Set up ${adult.displayName}’s phone`}
                   >
                     Set up phone
-                  </Link>
+                  </SettingsLink>
                 </li>
               ))}
             </ul>
-            <Link className="admin-secondary device-setup-link" to="/admin/access">
+            <SettingsLink className="admin-secondary device-setup-link" to="/admin/access">
               Manage adult sign-in <Icon name="chevron-right" />
-            </Link>
+            </SettingsLink>
             <details className="device-setup-help">
               <summary>Use Hearth on another phone</summary>
               <p>Open this address on that phone and sign in as its owner.</p>

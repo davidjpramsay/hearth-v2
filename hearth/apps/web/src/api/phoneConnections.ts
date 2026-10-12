@@ -7,6 +7,10 @@ import {
   PhoneConfirmationSchema,
   PasskeySessionSchema,
   type OwnerPhoneClaim,
+  PhoneRecoverySummarySchema,
+  PhoneRecoveryCardRevealSchema,
+  PhoneRecoveryCommandResultSchema,
+  type PhoneRecoveryClaim,
 } from '@hearth/shared';
 import { API_BASE, householdApiBase, request, createRequestId } from './core';
 
@@ -51,4 +55,31 @@ export const phoneApi = {
   exchange: () => request(`${API_BASE}/auth/phones/exchanges`, PasskeySessionSchema, post({})),
   confirm: () =>
     request(`${API_BASE}/auth/phones/confirmations`, PhoneConfirmationSchema, post({})),
+  recovery: () => request(`${householdApiBase()}/phone-recovery`, PhoneRecoverySummarySchema),
+  updateRecovery: (trustedConnectionIds: string[], requestId: string) =>
+    request(
+      `${householdApiBase()}/phone-recovery/policies`,
+      PhoneRecoveryCommandResultSchema,
+      post({ trustedConnectionIds, requestId }),
+    ),
+  createRecoveryCard: (requestId: string) =>
+    request(
+      `${householdApiBase()}/phone-recovery/cards`,
+      PhoneRecoveryCardRevealSchema,
+      post({ requestId }),
+    ),
+  activateRecoveryCard: (id: string, requestId: string) =>
+    request(
+      `${householdApiBase()}/phone-recovery/cards/${id}/activations`,
+      PhoneRecoveryCommandResultSchema,
+      post({ requestId }),
+    ),
+  createRecoveryInvitation: (requestId: string) =>
+    request(
+      `${householdApiBase()}/phone-recovery/invitations`,
+      PhoneInvitationRevealSchema,
+      post({ requestId }),
+    ),
+  recoverWithCard: (input: PhoneRecoveryClaim) =>
+    request(`${API_BASE}/auth/phones/recovery-claims`, PasskeySessionSchema, post(input)),
 };

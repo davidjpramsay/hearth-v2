@@ -1816,12 +1816,12 @@
   width: 46px;
   height: 46px;
   flex: 0 0 auto;
-  border: 1px solid #ded6cc;
+  border: 1px solid var(--hairline);
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: var(--plum);
-  background: #fffdfa;
+  color: var(--ink);
+  background: var(--input-surface);
 }
 .admin-feedback {
   margin: 32px;

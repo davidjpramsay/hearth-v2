@@ -1,5 +1,28 @@
 # Hearth v2 television and companion UX specification
 
+## Appliance setup UX (D-104; browser path local, hardware path future)
+
+The consumer flow is **Scan setup QR → Join home Wi-Fi → Name your household → Save recovery**.
+Ethernet skips Wi-Fi configuration. Additional devices stay in **Phones & screens** with distinct
+**Add adult phone**, **Connect screen** and deliberate **Replace lost phone** actions. A private
+recovery QR or explicitly trusted recovery adult preserves access after phone loss; accidental
+main-phone removal remains forbidden. No ordinary NAS console or typed Hearth key/password.
+The implemented browser compatibility flow is **Scan private setup card → Name household and
+phone → Save recovery**, using the existing trusted HTTPS connection. No typed key field appears
+on a valid first-card scan. First-use/recovery fragments are stripped immediately, never echoed
+or stored. A used setup card cannot become a recovery card. Native Wi-Fi setup is not simulated.
+
+After owner setup/replacement, open **Recovery & lost phones** in Phones & screens. Elsewhere it
+is collapsed by default. Clearly distinguish the protected owner, ordinary Add phone, Connect
+screen and deliberate Replace lost phone. Show only exact connected phones eligible for trust;
+an adult name alone is not recovery authority. Trusted recovery keeps the approving phone's
+identity and explicitly warns that the previous owner will disconnect. Saved-card preparation
+offers a private PNG download, acknowledgment and activation; preparing/discarding/closing a
+preview never retires an older saved card. No claim that acknowledgment proves a backup exists.
+No lost-phone recovery or adult account controls appear on shared screens. Browser-rendered
+checks do not establish actual iPhone camera/download or physical commissioning acceptance.
+See [the contract](APPLIANCE_ONBOARDING_CONTRACT.md).
+
 ## Design target
 
 Hearth is viewed on a 65-inch landscape television from roughly two to four metres away. It is not a tablet interface enlarged onto a wall. The initial logical canvas is 1920×1080 and must scale cleanly to a 3840×2160 panel and to ordinary laptop/mobile browsers.
@@ -359,13 +382,18 @@ the phone More hub.
   surface. Its row, text and icon use the same colours as peer settings in light and dark themes;
   photo management has no special purple emphasis.
 - The same surface shows orientation-safe thumbnails, capture date when available and clear
-  Favourite, Hide and Restore actions. Selection mode supports bulk hide, restore and managed-upload
-  deletion without turning ordinary browsing into a destructive surface. Cards identify whether
+  Favourite, Hide and Restore actions. Each managed-upload card also exposes **Delete** directly;
+  adults should not need to discover selection mode to remove one photo. **Select photos** supports
+  bulk hide, restore and **Delete selected (n)**. Cards identify whether
   the photo was **Added in Hearth** or came from the **NAS folder**. Permanent deletion is available
-  only for Hearth-managed uploads, requires a focused confirmation dialog and removes the managed
+  only for Hearth-managed uploads (including hidden uploads), requires a focused confirmation dialog
+  whose safe default is **Keep photos**, and removes the managed
   master plus its derivatives. Imported originals remain read-only: the surface explains that they
   must be removed from the approved Synology folder and followed by **Check folder**, or hidden in
-  Hearth. Every action is D-pad reachable, reports its result inline and restores focus. The optional
+  Hearth. Confirmation freezes the exact requested photos even if the library refreshes. Cancel
+  makes no deletion request; successful removal refreshes the gallery, Today and activity and returns
+  focus to a surviving card or the selection control. Partial failures retain their photos and report
+  that they need another try. Every action is D-pad reachable. The optional
   Synology folder-import row is secondary and absent as a prerequisite for normal phone uploads.
 
 ### Games
@@ -444,8 +472,13 @@ the phone More hub.
   appearance. Display and administration verbs stay distinct, including **Photos** and
   **Manage photos**. Navigation rows use their self-explanatory titles without repeated descriptive
   subtitles, keeping each bar slim and scannable. The administration root is named Hearth settings
-  so it cannot be confused with the Home Assistant action surface. **Phones & screens** is one
-  connection hub: QR-approved adult phone connections and private owner-key recovery are separate from
+  so it cannot be confused with the Home Assistant action surface. Settings Back returns to the
+  actual opener: More stays More, while a settings-overview entry returns to Hearth settings.
+  Nested settings return one level at a time without changing the originating menu's layout or
+  options. Header Back pops the existing history entry rather than pushing a duplicate menu;
+  reload, browser Back and remote Back retain the same flow and focus restoration. Direct links
+  without an opener keep the safe existing parent fallback. **Phones & screens** is one
+  connection hub: ordinary QR-approved phones and deliberate D-104 recovery/operator-key fallback are separate from
   shared-screen code approval and confirmed disconnection. Show compact adult rows first, with
   one named-phone setup action per adult. Keep address help, key details and recovery collapsed;
   optional recovery must not show a "Recovery needed" warning on ordinary controller rows.
@@ -505,6 +538,13 @@ the phone More hub.
 
 ## Responsive companion
 
+The iPhone Home Screen entry uses Hearth's existing green fern on an opaque warm-cream square,
+not the browser's letter-only fallback. Declare an explicit same-origin PNG Apple touch icon on
+the shared document, so adding any family or settings route uses the same artwork. Let iOS apply
+its own corner mask. An icon-only change must not switch browser/standalone mode, alter storage or
+phone identity, add background/service-worker behavior, or require removing a working controller.
+Installed-icon refresh remains an actual-iPhone check, not something browser emulation proves.
+
 The same web application may present a phone-oriented shell for:
 
 - adding/editing events
@@ -513,10 +553,10 @@ The same web application may present a phone-oriented shell for:
 - uploading/approving photos
 - reviewing connection problems
 - configuring Home Assistant actions
-- managing independent adult phone connections and private owner-key recovery (D-102/D-103)
+- managing independent adult phone connections and deliberate lost-owner recovery (D-102/D-103/D-104)
 
-Phones & screens labels the main connection **owner phone**, with **Protected · replace with
-server key**, and never offers Remove for it. Owner settings and an owner-phone QR scan have no
+Phones & screens labels the main connection **owner phone**, with **Protected owner phone**,
+and never offers Remove for it. Owner settings and an owner-phone QR scan have no
 Sign out/Disconnect action. People keeps that owner's adult/admin status protected while leaving
 name, colour and photo editing available. Secondary phones retain explicit Remove confirmation;
 screens retain Disconnect. The private key form explains that connecting replaces the owner phone

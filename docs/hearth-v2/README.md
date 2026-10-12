@@ -38,4 +38,11 @@ Open acceptance work is tracked only in [`ACCEPTANCE.md`](ACCEPTANCE.md) and
 Adult phone setup and recovery follow the versioned
 [`PHONE_CONNECTIONS_CONTRACT.md`](PHONE_CONNECTIONS_CONTRACT.md) (D-102): protected owner key
 for the protected owner phone, QR approval for additional phones, no passwords or passkeys.
-Only a fresh backend file key replaces the owner phone (D-103).
+Casual owner removal stays forbidden (D-103); the implemented D-104 extension adds deliberate
+saved-card or exact trusted-phone replacement while retaining private backend recovery.
+
+The selected consumer-appliance direction is
+[`APPLIANCE_ONBOARDING_CONTRACT.md`](APPLIANCE_ONBOARDING_CONTRACT.md) (D-104): private QR setup,
+phone-assisted network commissioning and phone-independent recovery. The private-HTTPS/browser
+setup-card and recovery path is locally implemented; native Bluetooth/Wi-Fi/trusted HDMI remains
+future work. No live access, deployment or networking change is implied by local verification.

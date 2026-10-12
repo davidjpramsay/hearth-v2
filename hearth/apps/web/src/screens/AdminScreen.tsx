@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { IconName } from '../components/Icon';
-import { Link } from 'react-router-dom';
 
 import { signOutAndClear } from '../auth/signOut';
 import { AdminError, AdminLoading } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
+import { SettingsLink } from '../components/SettingsNavigation';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useHearthRuntime } from '../runtime/context';
 import { runtimeApi } from '../api/runtime';
@@ -163,7 +163,7 @@ export function AdminScreen() {
               {group.settings.map((setting) => {
                 const index = settings.indexOf(setting);
                 return (
-                  <Link
+                  <SettingsLink
                     className="admin-setting-row focusable"
                     data-focus-entry={index === 0 ? 'true' : undefined}
                     data-focus-down={adjacentSettingFocusId(
@@ -182,7 +182,7 @@ export function AdminScreen() {
                     </span>
                     <strong className="admin-setting-row__copy">{setting.title}</strong>
                     <Icon name="chevron-right" />
-                  </Link>
+                  </SettingsLink>
                 );
               })}
             </div>

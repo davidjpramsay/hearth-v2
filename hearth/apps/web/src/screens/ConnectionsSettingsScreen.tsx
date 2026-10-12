@@ -1,7 +1,6 @@
-import { Link } from 'react-router-dom';
-
 import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
+import { SettingsLink } from '../components/SettingsNavigation';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import {
   useCalendarConnectionQuery,
@@ -42,7 +41,7 @@ export function ConnectionsSettingsScreen() {
   return (
     <AdminPage title="Connections">
       <div className="connection-list">
-        <Link
+        <SettingsLink
           className="connection-row connection-row--action focusable"
           data-focus-entry="true"
           data-focus-down="connection-home-assistant"
@@ -67,8 +66,8 @@ export function ConnectionsSettingsScreen() {
             {calendar.data === null ? 'Set up' : 'Connected'}
           </span>
           <Icon className="connection-row__chevron" name="chevron-right" />
-        </Link>
-        <Link
+        </SettingsLink>
+        <SettingsLink
           className="connection-row connection-row--action focusable"
           data-focus-down="connection-home-assistant"
           data-focus-id="connection-home-assistant"
@@ -92,7 +91,7 @@ export function ConnectionsSettingsScreen() {
             {homeAssistant.data === null ? 'Set up' : 'Connected'}
           </span>
           <Icon className="connection-row__chevron" name="chevron-right" />
-        </Link>
+        </SettingsLink>
       </div>
     </AdminPage>
   );

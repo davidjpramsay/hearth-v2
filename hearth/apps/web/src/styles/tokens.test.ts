@@ -24,6 +24,14 @@ const runtimeTokens = new Set([
 ]);
 
 describe('design tokens', () => {
+  it('keeps the settings Back control readable in automatic as well as explicit dark mode', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles/app.css'), 'utf8');
+    const rule = css.match(/\.admin-back\s*\{([^}]+)\}/)?.[1];
+    expect(rule).toContain('color: var(--ink)');
+    expect(rule).toContain('background: var(--input-surface)');
+    expect(rule).toContain('border: 1px solid var(--hairline)');
+  });
+
   it('defines every non-runtime custom property used by the stylesheets', () => {
     const sourceRoot = resolve(process.cwd(), 'src');
     const stylesheets = collectCssFiles(sourceRoot).map((path) => readFileSync(path, 'utf8'));

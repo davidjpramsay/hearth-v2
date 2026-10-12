@@ -1,10 +1,9 @@
 import './AppearanceSettingsScreen.css';
 
-import { Link } from 'react-router-dom';
-
 import { useAppearance, type ThemePreference } from '../appearance/appearance';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { SettingsBackLink } from '../components/SettingsNavigation';
 
 const themeOptions: {
   value: ThemePreference;
@@ -39,15 +38,15 @@ export function AppearanceSettingsScreen() {
       <ScreenHeader
         title="Appearance"
         actions={
-          <Link
-            aria-label="Back to More"
+          <SettingsBackLink
+            fallbackLabel="Back to More"
+            fallbackTo="/more"
             className="appearance-back focusable"
             data-focus-id="appearance-back"
-            to="/more"
           >
             <Icon name="chevron-left" />
             <span>Back to More</span>
-          </Link>
+          </SettingsBackLink>
         }
       />
       <section className="appearance-settings" aria-labelledby="theme-choice-heading">

@@ -1,14 +1,32 @@
 # Hearth v2 product specification
 
+## Appliance direction and local access extension (D-104)
+
+The consumer appliance must support phone-only first setup: private device-specific QR,
+authenticated Bluetooth LE Wi-Fi commissioning, Ethernet alternative and LAN operation. No NAS
+administration, copied key, Hearth password/passkey or mandatory vendor account in the ordinary
+setup path. Additional phones and display-only screens need explicit adult approval. Ownership
+must outlive a handset: an explicitly designated recovery adult or a separate private recovery
+QR can authorize replacement while preserving household data. Accidental main-phone removal
+remains protected. Loss of every authority/proof requires physical recovery and verified backup,
+not anonymous re-enrollment. See [the staged contract](APPLIANCE_ONBOARDING_CONTRACT.md).
+
+The private-HTTPS/browser compatibility path now implements scanned setup cards and deliberate
+saved-card/exact trusted-phone recovery locally. It preserves existing networking and uses an
+operator/factory-supplied private card, never an anonymous empty-server QR. Native authenticated
+Bluetooth/Wi-Fi/HDMI remains future work. Publication, deployment and actual Safari acceptance
+remain open; existing households never reopen first setup because phones are missing.
+
 ## Adult phone access (D-102)
 
 Adult controller access uses independent named browser connections, not passwords or passkeys.
-The owner connects the first phone with a protected one-time key file. A connected adult creates
+The owner scans a privately supplied first-use setup card (operator file fallback retained). A connected adult creates
 a short-lived QR for another existing adult controller and explicitly approves the requesting
-phone. The first key-connected phone is the protected owner phone: only a fresh backend file key
-may replace it (D-103), not another phone, self sign-out, QR or People permissions. Removing a
+phone. The first proof-connected phone is protected: deliberate saved-card recovery, explicitly
+trusted exact phone approval or a fresh backend key can replace it (D-104). Ordinary QR, self
+sign-out and People edits cannot. Removing a
 secondary connection never removes another adult, the household or the TV. A private
-owner-key recovery route remains available if the owner or every phone is lost. Keep current access until
+owner-key fallback remains if neither saved card nor trusted phone is available. Keep current access until
 replacement connections pass physical acceptance; no automatic bulk cleanup. See
 [the v1 phone contract](PHONE_CONNECTIONS_CONTRACT.md). Historical passkey decisions/evidence are
 not current enrollment requirements.

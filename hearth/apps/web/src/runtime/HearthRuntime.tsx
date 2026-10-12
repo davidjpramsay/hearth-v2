@@ -7,7 +7,11 @@ import { authStatusQueryKey } from '../auth/queryKeys';
 import { RuntimeContextValue } from './context';
 import { clearIdentityAndReload } from '../auth/signOut';
 import { subscribeScreenAccessChange } from '../auth/screenAccessChange';
-import { phoneInvitationFromHash } from '../auth/phoneInvitation';
+import {
+  phoneInvitationFromHash,
+  privatePhoneIntentFromHash,
+  stripPhoneIntentFragment,
+} from '../auth/phoneInvitation';
 
 const FirstUseSetup = lazy(async () => ({
   default: (await import('../auth/FirstUseSetup')).FirstUseSetup,
@@ -24,9 +28,11 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
   const [phoneIntent, setPhoneIntent] = useState(() =>
     phoneInvitationFromHash(window.location.hash),
   );
+  const [privateIntent, setPrivateIntent] = useState(() =>
+    privatePhoneIntentFromHash(window.location.hash),
+  );
   useLayoutEffect(() => {
-    if (window.location.hash.startsWith('#connect-phone='))
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    stripPhoneIntentFragment();
   }, []);
   const runtime = useQuery({
     queryKey: ['hearth-runtime'],
@@ -84,17 +90,26 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
     );
   }
 
-  if (phoneIntent && runtime.data.mode === 'private' && runtime.data.sharedScreen !== true) {
+  if (
+    (phoneIntent || privateIntent) &&
+    runtime.data.mode === 'private' &&
+    runtime.data.sharedScreen !== true
+  ) {
     if (auth.isPending) return <SecureSetupLoading />;
     if (auth.data?.accessMethod === 'phone' && auth.data.sharedScreen !== true)
       return (
         <Suspense fallback={<SecureSetupLoading />}>
           <PhoneAccess
             auth={auth.data}
-            invitationSecret={phoneIntent}
+            {...(phoneIntent ? { invitationSecret: phoneIntent } : {})}
+            {...(privateIntent ? { privateIntent } : {})}
             timezone={runtime.data.timezone}
+            onOwnerConnected={() =>
+              clearIdentityAndReload(queryClient, '/admin/televisions?recovery=1')
+            }
             onComplete={async () => {
               setPhoneIntent(null);
+              setPrivateIntent(null);
               await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['hearth-runtime'] }),
                 queryClient.invalidateQueries({ queryKey: authStatusQueryKey }),

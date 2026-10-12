@@ -1,7 +1,6 @@
-import { Link } from 'react-router-dom';
-
 import { AdminPage } from '../components/AdminPage';
 import { Icon, type IconName } from '../components/Icon';
+import { SettingsLink } from '../components/SettingsNavigation';
 
 const planningAreas: Array<{
   title: string;
@@ -46,7 +45,7 @@ export function PlanningSettingsScreen() {
     <AdminPage title="Family planning">
       <div className="planning-area-list">
         {planningAreas.map((area, index) => (
-          <Link
+          <SettingsLink
             className="planning-area-card"
             data-focus-entry={index === 0 ? 'true' : undefined}
             data-focus-id={area.focusId}
@@ -60,7 +59,7 @@ export function PlanningSettingsScreen() {
               <strong>{area.title}</strong>
             </div>
             <Icon name="chevron-right" />
-          </Link>
+          </SettingsLink>
         ))}
       </div>
     </AdminPage>

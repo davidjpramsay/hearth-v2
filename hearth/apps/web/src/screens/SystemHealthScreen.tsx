@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import './SystemHealthScreen.css';
 
@@ -15,6 +14,7 @@ import { authStatusQueryKey } from '../auth/queryKeys';
 import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { ApplianceUpdateCard } from '../components/ApplianceUpdateCard';
 import { Icon, type IconName } from '../components/Icon';
+import { SettingsLink } from '../components/SettingsNavigation';
 import { focusById } from '../focus/focusGraph';
 import { useApplianceUpdateQuery, useSystemStatusQuery } from '../hooks/useAdminQueries';
 import {
@@ -183,7 +183,7 @@ export function SystemHealthScreen() {
       <section className="system-connection-health" aria-labelledby="connection-health-title">
         <div className="system-section-heading">
           <h2 id="connection-health-title">Connections and photos</h2>
-          <Link
+          <SettingsLink
             className="system-section-link focusable"
             data-focus-down="system-calendar-health"
             data-focus-entry={
@@ -202,7 +202,7 @@ export function SystemHealthScreen() {
             to="/admin/connections"
           >
             Manage connections
-          </Link>
+          </SettingsLink>
         </div>
         <div className="system-connection-list">
           <IntegrationHealthRow
@@ -241,7 +241,7 @@ export function SystemHealthScreen() {
         </div>
       </section>
 
-      <Link
+      <SettingsLink
         className="system-activity-entry focusable"
         data-focus-down="system-recovery-advanced"
         data-focus-id="system-activity"
@@ -257,7 +257,7 @@ export function SystemHealthScreen() {
           <strong>Recent activity</strong>
         </span>
         <Icon name="chevron-right" />
-      </Link>
+      </SettingsLink>
 
       <details className="system-advanced-recovery">
         <summary
@@ -347,7 +347,7 @@ function IntegrationHealthRow({
   to: string;
 }) {
   return (
-    <Link
+    <SettingsLink
       className="system-connection-row focusable"
       data-focus-down={nextFocusId}
       data-focus-id={focusId}
@@ -375,7 +375,7 @@ function IntegrationHealthRow({
         {label}
       </span>
       <Icon name="chevron-right" />
-    </Link>
+    </SettingsLink>
   );
 }
 

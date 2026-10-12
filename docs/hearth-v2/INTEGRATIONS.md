@@ -1,5 +1,22 @@
 # Hearth v2 integration contracts
 
+## Future appliance network provisioning (D-104; not implemented)
+
+Bluetooth LE is selected for native phone-assisted Wi-Fi setup, with Ethernet and a temporary
+setup-network fallback. Device authentication/private QR proof is independent of transport and
+requires a reviewed local protocol. A platform-owned network adapter, not Home Assistant or the
+ordinary Hearth API, receives Wi-Fi credentials inside that authenticated channel. No Bluetooth,
+Wi-Fi, router, DNS/firewall or Synology configuration is changed by the local browser extension.
+Actual hardware, native permissions, identity and network-loss/recovery remain open gates in
+[the onboarding contract](APPLIANCE_ONBOARDING_CONTRACT.md).
+
+The existing private HTTPS/browser path now accepts privately supplied first-use QR cards and
+explicit saved-card/exact trusted-phone owner recovery. This operates through the existing phone
+service, not Home Assistant, Bluetooth or a network-config adapter. The provisioning-workstation
+helper reads a protected local first-use file; no proof is fetched from anonymous Hearth HTTP.
+Current server reachability/TLS trust remains a prerequisite. Future native QR identity pinning
+must not be inferred from this browser proof. No Apple/EventKit integration is reintroduced.
+
 ## Integration philosophy
 
 Hearth presents one family experience without pretending to own every underlying system. Each external system sits behind a narrow server-side adapter, has a visible health state and can fail without taking down unrelated features.

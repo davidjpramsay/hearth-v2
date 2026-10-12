@@ -1,0 +1,9 @@
+{
+  "format": "hearth.appliance-qr",
+  "version": 1,
+  "applianceId": "appliance_fixture",
+  "identityFingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+  "purpose": "setup",
+  "generation": 0,
+  "setupSecret": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+}

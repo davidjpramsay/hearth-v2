@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "node scripts/build-home-icon.mjs && vite build",
     "dev": "vite --host 127.0.0.1 --port 4320",
     "preview": "vite preview --host 127.0.0.1 --port 4320",
     "typecheck": "tsc -p tsconfig.json --noEmit",

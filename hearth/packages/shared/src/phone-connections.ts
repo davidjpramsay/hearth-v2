@@ -46,6 +46,7 @@ export const PhoneInvitationStateSchema = z.object({
   adultName: z.string(),
   phoneName: PhoneName.nullable(),
   expiresAt: TimestampSchema,
+  purpose: z.enum(['connect', 'recover-owner']).optional(),
 });
 export const PhoneInvitationRevealSchema = PhoneInvitationStateSchema.extend({
   qrUrl: z.string().url(),
@@ -62,3 +63,55 @@ export type PhoneConnection = z.infer<typeof PhoneConnectionSchema>;
 export type PhoneConnections = z.infer<typeof PhoneConnectionsSchema>;
 export type PhoneInvitationState = z.infer<typeof PhoneInvitationStateSchema>;
 export type PhoneInvitationReveal = z.infer<typeof PhoneInvitationRevealSchema>;
+
+export const PhoneRecoveryAdultSchema = z.object({
+  memberId: OpaqueIdSchema,
+  displayName: z.string(),
+  connected: z.boolean(),
+  trusted: z.boolean(),
+  phones: z
+    .array(
+      z.object({
+        connectionId: OpaqueIdSchema,
+        phoneName: PhoneName,
+        trusted: z.boolean(),
+      }),
+    )
+    .max(100),
+});
+export const PhoneRecoverySummarySchema = z.object({
+  available: z.boolean(),
+  ownerName: z.string().nullable(),
+  canManage: z.boolean(),
+  canRecoverOwner: z.boolean(),
+  hasRecoveryCard: z.boolean(),
+  adults: z.array(PhoneRecoveryAdultSchema).max(100),
+});
+export const PhoneRecoveryPolicyCommandSchema = z
+  .object({
+    requestId: OpaqueIdSchema,
+    trustedConnectionIds: z
+      .array(OpaqueIdSchema)
+      .max(20)
+      .refine((ids) => new Set(ids).size === ids.length, 'Duplicate adult'),
+  })
+  .strict();
+export const PhoneRecoveryCardRevealSchema = z
+  .object({
+    id: OpaqueIdSchema,
+    generation: z.number().int().positive(),
+    qrUrl: z.string().url(),
+    expiresAt: TimestampSchema,
+  })
+  .strict();
+export const PhoneRecoveryCommandResultSchema = z.object({ accepted: z.literal(true) }).strict();
+export const PhoneRecoveryClaimSchema = z
+  .object({
+    requestId: OpaqueIdSchema,
+    recoverySecret: z.string().regex(/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/),
+    phoneName: PhoneName,
+  })
+  .strict();
+export type PhoneRecoverySummary = z.infer<typeof PhoneRecoverySummarySchema>;
+export type PhoneRecoveryCardReveal = z.infer<typeof PhoneRecoveryCardRevealSchema>;
+export type PhoneRecoveryClaim = z.infer<typeof PhoneRecoveryClaimSchema>;

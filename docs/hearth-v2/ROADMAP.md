@@ -1,5 +1,23 @@
 # Hearth v2 implementation roadmap
 
+## Selected appliance access work — D-104 (2026-10-12)
+
+1. Future native QR/metadata contract, deterministic fixtures and advisory classification: locally
+   implemented validation only, not channel authentication.
+2. Disposable appliance proof: native scanner, authenticated identity/transport, Bluetooth LE
+   Wi-Fi commissioning and Ethernet discovery. Hardware/protocol selection and actual iPhone
+   permissions/network joining remain open. Do not create a provisioning service in the NAS.
+3. Existing trusted-HTTPS/browser compatibility: locally implemented scanned first-use card,
+   migration 0029 digest-only recovery cards, exact trusted-phone approvals, bounded exact retry,
+   typed phone UI and atomic owner replacement. Preserve TV isolation and content. Provisioning
+   workstation can create a private setup PNG from an existing first-use file, never via a public
+   empty-server endpoint. Browser/API checks are separate from actual Safari/camera/download proof.
+4. Verified owner-consented migration, rollback/recovery copies and physical first-setup,
+   second-adult, owner-phone-loss/all-phone-loss acceptance before activation/publication.
+
+Live D-102/D-103 access is unchanged until an approved verified release. No automatic promotion,
+household reset, live revocation, deployment or networking change is part of local development.
+
 Adult phone connections (2026-10-12, D-102): implement protected owner-key first-phone setup and
 independent QR-approved adult connections, with no passwords/passkeys. Keep current access and
 TV grants while verifying local contracts, migration, authorization, browser interactions and
@@ -7,7 +25,7 @@ recovery. Publication/live activation, owner key issuance, David/Rachael physica
 and deliberate legacy cleanup remain separate open gates; no bulk reset or networking changes.
 
 Protected main phone (2026-10-12, D-103): prevent all app removal/sign-out and owner-adult
-archive/demotion. A fresh backend file key atomically replaces ownership while preserving
+archive/demotion. Deliberate D-104 recovery or a backend file key atomically replaces ownership while preserving
 secondary phones/screens. Test forbidden paths, rollback and expiry; physical owner-key
 replacement and loss/recovery acceptance remain open with the D-102 live release gates.
 

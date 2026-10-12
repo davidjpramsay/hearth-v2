@@ -153,7 +153,7 @@ test('phone More opens setup and household/member changes survive reload', async
   await page.reload();
   await expect(page.getByLabel('Household name')).toHaveValue('Rowan household');
 
-  await page.getByRole('link', { name: 'Back to Hearth settings' }).click();
+  await page.getByRole('link', { name: 'Back to More' }).click();
   await page.getByRole('link', { name: /People/ }).click();
   const add = page.locator('.admin-form--add-member');
   await expect(add.getByRole('radio')).toHaveCount(0);
@@ -539,7 +539,7 @@ test('adult sees concise system health and can create an advanced recovery copy'
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 28 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 29 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connections and photos' })).toBeVisible();
   const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });

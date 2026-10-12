@@ -11,6 +11,53 @@ import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
 
+describe('0029 explicit recovery migration', () => {
+  it('adds recovery without auto-designation, revocation or duplicate owners', () => {
+    const database = new Database(':memory:');
+    for (const file of readdirSync(fileURLToPath(new URL('.', import.meta.url)))
+      .filter((file) => /^\d{4}_.*\.sql$/.test(file) && Number(file.slice(0, 4)) <= 28)
+      .sort()) {
+      database.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
+    }
+    const now = '2026-10-12T00:00:00.000Z';
+    database
+      .prepare(
+        "INSERT INTO households VALUES ('household_kept','Kept','Australia/Perth','en-AU',1,?,?)",
+      )
+      .run(now, now);
+    database
+      .prepare(
+        "INSERT INTO members (id,household_id,display_name,colour,role,created_at,updated_at,capabilities_json) VALUES ('member_kept','household_kept','Adult','#2f766d','adult',?,?,'[\"household.admin\"]')",
+      )
+      .run(now, now);
+    database
+      .prepare(
+        "INSERT INTO controller_phone_connections (id,household_id,member_id,label,source,created_at,last_seen_at,expires_at) VALUES ('phone_kept','household_kept','member_kept','Kept phone','owner',?,?,?)",
+      )
+      .run(now, now, '2027-10-12T00:00:00.000Z');
+    applyMigrations(database);
+    expect(
+      database.prepare('SELECT count(*) AS total FROM controller_phone_recovery_policy').get(),
+    ).toEqual({ total: 0 });
+    expect(database.prepare('SELECT revoked_at FROM controller_phone_connections').get()).toEqual({
+      revoked_at: null,
+    });
+    expect(() =>
+      database
+        .prepare(
+          "INSERT INTO controller_phone_connections (id,household_id,member_id,label,source,created_at,last_seen_at,expires_at) VALUES ('phone_duplicate','household_kept','member_kept','Duplicate','owner',?,?,?)",
+        )
+        .run(now, now, '2027-10-12T00:00:00.000Z'),
+    ).toThrow(/UNIQUE/);
+    expect(database.pragma('foreign_key_check')).toEqual([]);
+    applyMigrations(database);
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version=29').get()).toEqual({
+      name: 'phone_recovery',
+    });
+    database.close();
+  });
+});
+
 describe('0028 independent controller phone migration', () => {
   it('preserves two simultaneous sessions sharing one credential without merging their connections', () => {
     const database = new Database(':memory:');

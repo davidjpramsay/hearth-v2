@@ -5,8 +5,47 @@ import {
   PhoneInvitationCreateSchema,
   PhoneCommandSchema,
   PhoneConnectionSchema,
+  PhoneRecoveryClaimSchema,
+  PhoneRecoveryPolicyCommandSchema,
 } from './phone-connections.js';
 describe('phone access contract', () => {
+  it('accepts only private recovery proof and never caller-selected ownership or adult identity', () => {
+    const input = {
+      requestId: 'request_fixture',
+      recoverySecret: 'A'.repeat(43),
+      phoneName: 'Replacement phone',
+    };
+    expect(PhoneRecoveryClaimSchema.safeParse(input).success).toBe(true);
+    for (const extra of [
+      { memberId: 'member_other' },
+      { owner: true },
+      { role: 'adult' },
+      { householdId: 'household_other' },
+      { recoverySecret: 'ABC123' },
+    ])
+      expect(PhoneRecoveryClaimSchema.safeParse({ ...input, ...extra }).success).toBe(false);
+  });
+  it('keeps trust designation unique, bounded and request-identified', () => {
+    expect(
+      PhoneRecoveryPolicyCommandSchema.safeParse({
+        requestId: 'request_fixture',
+        trustedConnectionIds: ['phone_rachael'],
+      }).success,
+    ).toBe(true);
+    expect(
+      PhoneRecoveryPolicyCommandSchema.safeParse({
+        requestId: 'request_fixture',
+        trustedConnectionIds: ['phone_rachael', 'phone_rachael'],
+      }).success,
+    ).toBe(false);
+    expect(
+      PhoneRecoveryPolicyCommandSchema.safeParse({
+        requestId: 'request_fixture',
+        trustedConnectionIds: [],
+        owner: true,
+      }).success,
+    ).toBe(false);
+  });
   it('requires a strong bounded owner key without accepting passkey or password fields', () => {
     expect(
       OwnerPhoneClaimSchema.safeParse({ ownerKey: 'a'.repeat(64), phoneName: 'David’s phone' })
