@@ -1,5 +1,47 @@
 # Hearth v2 acceptance and definition of done
 
+## Portable fern icon correction — 2026-10-12
+
+Hosted run `38268993642` for `fbc8ac38de5d226e9cc2531ff9a70bc6b5658c81` failed one Home Screen
+icon composition test; Android TV and Synology container builds passed, but browser jobs and
+verified-image publication were correctly skipped. That commit was not available for the phone
+updater. This is a narrow follow-up, not a change to phone authority, recovery or networking.
+
+Reproduction on Darwin/arm64 and isolated Linux/amd64 (Node 24.18.0, Sharp 0.35.5) found five
+decoded colour-channel differences of one level in 255 from floating-point alpha composition.
+Trimmed/resized fern buffers matched exactly; the defect was not merely PNG compression.
+The builder now uses integer alpha blending and checks exact decoded RGB pixels plus PNG,
+180×180, 8-bit RGB and no alpha. Different lossless compression is accepted; a single one-level
+pixel alteration is still rejected. The regenerated opaque asset retains the original fern,
+geometry and cream background; only 19 channels differ from the old asset by one level.
+
+Passed from `hearth/`, logs outside Git under `/tmp/hearth-icon-release.J6uMLc/`:
+
+- `node apps/web/scripts/build-home-icon.mjs` and the same command with `--check`.
+- `pnpm --filter @hearth/web test:unit src/styles/homeScreenIcon.test.ts`: **9 passed**, including
+  different lossless encoding, one-channel mutation and wrong size/alpha/format regressions.
+- The unchanged `scripts/build-home-icon.mjs --check` under the existing local
+  `ghcr.io/davidjpramsay/hearth-v2-server:ad037d7f5c8d67e34dde13eee8762bafca873182` Linux/amd64
+  image: passed. Only current public assets/scripts were mounted read-only into `/app/public`
+  and `/app/scripts`; `--pull=never --network none --read-only --cap-drop ALL
+--security-opt no-new-privileges`, entrypoint `node`. No server startup, data/secrets mount,
+  network access or running-service mutation occurred.
+- `pnpm verify:code`: format/lint/typecheck, **463 unit tests** (58 shared, 40 core, 71 server,
+  294 web), **181 integration tests**, **26 migration tests**, ten deploy/maintenance fixtures,
+  deployment verification and production web/server builds. Existing non-failing lint diagnostics
+  remain. The new temporary CLI fixtures initially failed ESM dependency resolution; a scoped
+  temporary dependency symlink fixed the harness, and all negative cases now assert the real
+  composition error rather than accepting any subprocess failure.
+- `pnpm test:e2e:built tests/e2e/admin.spec.ts --max-failures=1`: **68 passed in 1.5 minutes**,
+  including phone/TV-sized settings, keyboard return, accessibility, layout, title and console/
+  framework-error checks. Browser plugin unavailable; existing Playwright workflow used.
+
+Rendered fern asset and phone settings screenshots were inspected. No manifest/session/TV
+resource or app navigation changed. Complete hosted browser and verified-image publication
+remain an exact-commit gate after push; prior local 1,068-test evidence is not relabeled as a fresh
+full local run. Actual iPhone installed-icon refresh and physical recovery remain not run.
+No NAS deployment, network change, phone/card issuance, pairing or revocation was performed.
+
 ## Complete local release gate and publication authorization — 2026-10-12
 
 The user authorized committing and pushing all prepared changes on `codex/phone-access-release`

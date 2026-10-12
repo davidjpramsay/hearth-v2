@@ -273,6 +273,10 @@ casual removal/sign-out, owner People protection and ordinary-QR restrictions re
   unchanged. This fixes the missing Home Screen icon declaration without adding a manifest,
   standalone-mode switch, service worker, new app identity or phone/session migration. Physical
   installed-icon refresh is separate evidence; never remove a working owner connection for artwork.
+  Portability refinement: integer alpha blending fixes measured Mac/Linux rounding differences;
+  verify exact decoded RGB pixels, PNG format, 180×180 dimensions and opacity rather than compressed
+  byte identity. Preserve strict artwork checks without broad image tolerances; lossless re-encoding
+  is harmless, while even a one-level pixel alteration must fail the regression check.
 - Consequence: Cold loads, reloads and restored routes do not depend solely on the server startup
   script for TV identity/size. Phone/browser sizing is untouched. Install with the existing signing
   identity and `adb install -r`; do not uninstall or clear pairing/launcher preferences to refresh
