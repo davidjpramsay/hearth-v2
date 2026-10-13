@@ -146,6 +146,74 @@ afterEach(() => {
 });
 
 describe('photo removal', () => {
+  it('shows compact whole-thumbnail selection and no competing curation buttons', async () => {
+    const user = userEvent.setup();
+    await renderScreen();
+    await user.click(screen.getByRole('button', { name: 'Select photos' }));
+    const tile = screen.getByRole('button', { name: `Select photo: ${upload.alt}` });
+    expect(tile).toHaveClass('photo-selection-tile');
+    expect(tile.parentElement).toHaveClass('photo-curation__grid--selection');
+    expect(tile).not.toHaveAttribute('data-focus-left');
+    expect(screen.getByRole('button', { name: `Select photo: ${hiddenUpload.alt}` })).toHaveClass(
+      'photo-selection-tile--hidden',
+    );
+    expect(screen.queryByRole('button', { name: `Hide photo: ${upload.alt}` })).toBeNull();
+    await user.click(tile);
+    expect(screen.getByRole('button', { name: `Deselect photo: ${upload.alt}` })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await user.click(screen.getByRole('button', { name: `Deselect photo: ${upload.alt}` }));
+    expect(screen.getByText('0 selected')).toBeVisible();
+    expect(photosApi.deleteManagedPhoto).not.toHaveBeenCalled();
+  });
+
+  it('bounds a hundred-photo selection page and preserves selections across pages and cancellation', async () => {
+    const user = userEvent.setup();
+    const hundred = Array.from({ length: 100 }, (_, index) => ({
+      ...upload,
+      id: `photo_${index}`,
+      alt: `Test photo ${index}`,
+    }));
+    // Test selection state, not JSDOM's expensive accessible-name walk over 100 normal cards.
+    // The real browser suite separately opens the full hundred-photo library before selecting.
+    photos = [];
+    const client = await renderScreen();
+    await user.click(screen.getByRole('button', { name: 'Select photos' }));
+    photos = hundred;
+    client.setQueryData(queryKeys.photoSource, sourceStatus());
+    await screen.findByRole('button', { name: 'Select photo: Test photo 0' });
+    expect(screen.getAllByRole('button', { name: /^Select photo:/ })).toHaveLength(48);
+    expect(screen.getByText('1–48 of 100 photos')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Select photo: Test photo 0' }));
+    await user.click(screen.getByRole('button', { name: 'Next photos' }));
+    expect(screen.getByText('49–96 of 100 photos')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Select photo: Test photo 48' }));
+    await user.click(screen.getByRole('button', { name: 'Next photos' }));
+    expect(screen.getAllByRole('button', { name: /^Select photo:/ })).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Next photos' })).toBeDisabled();
+    expect(screen.getByText('2 selected')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Previous photos' }));
+    expect(screen.getByRole('button', { name: 'Deselect photo: Test photo 48' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected (2)' }));
+    await user.click(screen.getByRole('button', { name: 'Keep photos' }));
+    expect(screen.getByText('2 selected')).toBeVisible();
+    expect(photosApi.deleteManagedPhoto).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Delete selected (2)' }));
+    // A refreshed library must not broaden or lose the already frozen cross-page confirmation.
+    photos = [hundred[0]!, hundred[48]!];
+    client.setQueryData(queryKeys.photoSource, sourceStatus());
+    await user.click(screen.getByRole('button', { name: 'Delete permanently' }));
+    await screen.findByText('2 photos deleted.');
+    expect(vi.mocked(photosApi.deleteManagedPhoto).mock.calls.map(([id]) => id)).toEqual([
+      'photo_0',
+      'photo_48',
+    ]);
+  }, 15_000); // Large JSDOM fixture under the full parallel suite, not a product request deadline.
+
   it('offers direct deletion for visible and hidden Hearth uploads, never NAS imports', async () => {
     await renderScreen();
     expect(screen.getByRole('button', { name: `Delete photo: ${upload.alt}` })).toBeVisible();

@@ -2,6 +2,37 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-106 — Varied photo playback and compact paged removal selection
+
+- Date: 2026-10-13
+- Status: requested implementation, commit/push and manual-update release verification
+- Context: The same starting photo/ordered rotation feels repetitive, and full-height selection
+  cards are impractical for a large phone library.
+- Choice: Shuffle the full visible pool per display session and again after every complete featured
+  cycle, avoiding immediate repeats. Preloading is a pure peek. Preserve native-ratio collage,
+  manual selection, pause/hidden-tab/reduced-motion controls and rotation cadence. Favourites remain
+  first in management only; display playback gives all visible photos a turn.
+- Selection: Whole-thumbnail tiles, three phone columns, 48 per page, persistent cross-page ID
+  selections and visible counts. Exact frozen deletion confirmation, cancel, partial errors and
+  imported-original protection remain. No server/API/persistence change or new background behavior.
+
+## D-105 — Private local welcome presenter, never an anonymous setup QR
+
+- Date: 2026-10-13
+- Status: implemented operator/local-display slice; automatic appliance/HDMI hardware work open
+- Context: First startup should show Hearth's fern, a welcome title, a large QR and simple
+  instructions without reintroducing an anonymous first-owner takeover path.
+- Choice: A local provisioning process with access to the existing protected file opens an
+  ephemeral loopback-only, capability-bound presenter. Only trusted private HTTPS status GETs
+  determine whether it may show the locally generated QR. Failed/stale reads hide it; observing
+  a claim is terminal and removes it permanently. Do not expose or forward the renderer.
+- Boundary: It creates no credential, server route, database migration, network/radio write or
+  display grant. It is not consumer hardware autostart, the external TV shell, or a network page.
+  Factory/HDMI wiring and combined phone/TV commissioning need actual hardware proof.
+- Acceptance: The user permits release/manual update without further physical phone recovery drills.
+  Keep those drills open. A separate isolated physical iPhone first-owner claim passed; neither
+  browser tests nor that claim establish loss/recovery, Bluetooth, Wi-Fi or HDMI acceptance.
+
 ## D-104 — Phone-only appliance commissioning and phone-independent recovery
 
 - Date: 2026-10-12

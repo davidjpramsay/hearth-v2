@@ -4,11 +4,125 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 import { captureEvidence } from './visualEvidence';
+import { stabilizePhotoPlayback } from './photoPlaybackFixture';
+import type { PhotoSourceIndexStatus } from '@hearth/shared';
 
 const evidence = resolve('docs/evidence/phase-7/screenshots');
 
-test.beforeEach(async ({ request }) => {
+test.beforeEach(async ({ request, page }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
+  await stabilizePhotoPlayback(page);
+});
+
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+  { width: 820, height: 1180 },
+  { width: 1920, height: 1080 },
+]) {
+  test(`large photo selection is compact, paged and keyboard reachable at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, testInfo) => {
+    const problems: string[] = [];
+    page.on('console', (message) => {
+      if (['error', 'warning'].includes(message.type())) problems.push(message.text());
+    });
+    await page.route('**/api/v1/households/*/photo-source', async (route) => {
+      const response = await route.fetch();
+      const data = (await response.json()) as PhotoSourceIndexStatus;
+      const originals = data.photos;
+      data.photos = Array.from({ length: 100 }, (_, index) => ({
+        ...originals[index % originals.length]!,
+        id: `photo_selection_fixture_${index}`,
+        alt: `Fictional selection photo ${index}`,
+        canDeletePermanently: true,
+      }));
+      data.collection.photoCount = data.visiblePhotoCount = data.managedPhotoCount = 100;
+      await route.fulfill({ response, json: data });
+    });
+    await page.setViewportSize(viewport);
+    await page.goto('/admin/photos');
+    await expect(page).toHaveTitle(/Hearth/);
+    await page.getByRole('button', { name: 'Select photos' }).click();
+    const grid = page.locator('.photo-curation__grid--selection');
+    const tiles = grid.getByRole('button');
+    await expect(tiles).toHaveCount(48);
+    const boxes = await tiles.evaluateAll((elements) =>
+      elements.map((element) => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, height: box.height };
+      }),
+    );
+    expect(boxes[0]!.y).toBeCloseTo(boxes[1]!.y, 0);
+    expect(boxes[0]!.height).toBeLessThan(240);
+    expect(boxes.every((box) => box.width >= 80 && box.height >= 44)).toBe(true);
+    if (viewport.width === 390) expect(boxes[0]!.y).toBeCloseTo(boxes[2]!.y, 0);
+    await tiles.first().focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(tiles.nth(1)).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(tiles.nth(1)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Next photos' }).click();
+    await expect(page.getByText('49–96 of 100 photos')).toBeVisible();
+    await expect(
+      grid.locator('[data-focus-id="photo-curation-select-photo_selection_fixture_48"]'),
+    ).toBeFocused();
+    await page.getByRole('button', { name: 'Previous photos' }).click();
+    await expect(
+      grid.locator('[data-focus-id="photo-curation-select-photo_selection_fixture_1"]'),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await grid.scrollIntoViewIfNeeded();
+    await captureEvidence(page, { path: testInfo.outputPath('compact-photo-selection.png') });
+    const overflow = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    expect(overflow.scroll).toBeLessThanOrEqual(overflow.width);
+    const a11y = await new AxeBuilder({ page }).analyze();
+    expect(
+      a11y.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? '')),
+    ).toEqual([]);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(
+      grid.locator('.photo-selection-tile--selected .photo-selection-tile__check'),
+    ).not.toHaveCSS('color', 'rgb(255, 255, 255)');
+    const darkA11y = await new AxeBuilder({ page }).analyze();
+    expect(
+      darkA11y.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? '')),
+    ).toEqual([]);
+    await captureEvidence(page, { path: testInfo.outputPath('compact-photo-selection-dark.png') });
+    expect(problems).toEqual([]);
+  });
+}
+
+test('shuffled display visits every photo before repeating and ambient shares the same cycle', async ({
+  page,
+}) => {
+  await page.clock.install();
+  await stabilizePhotoPlayback(page, 123456); // Deliberately not the chronological layout fixture.
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/photos');
+  const feature = page.locator('.photos-hero');
+  await expect(feature).toBeVisible();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  const seen = [await feature.getAttribute('data-photo-id')];
+  await page.getByRole('button', { name: 'Start ambient' }).click();
+  for (let index = 1; index < 5; index += 1) {
+    await page.clock.fastForward(45_000);
+    const current = await feature.getAttribute('data-photo-id');
+    seen.push(current);
+    const source = await feature.locator('img').getAttribute('src');
+    await expect(page.locator('.photo-ambient__image')).toHaveAttribute('src', source!);
+  }
+  expect(new Set(seen).size).toBe(5);
+  await page.clock.fastForward(45_000);
+  expect(await feature.getAttribute('data-photo-id')).not.toBe(seen.at(-1));
+  await page.keyboard.press('ArrowLeft');
+  await page.clock.runFor(50); // Let the paused fixture's focus-restoring animation frame run.
+  await expect(page.getByRole('dialog', { name: /Ambient family photo/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Start ambient' })).toBeFocused();
 });
 
 test('remote-only navigation opens Photos, selects portrait content, and exits ambient immediately', async ({

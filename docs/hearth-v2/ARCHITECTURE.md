@@ -20,6 +20,34 @@ owner removal/screen isolation protections remain; operator file recovery is ret
 QR endpoint, network provisioning daemon, native app or live configuration change is added.
 See [the contract and staged gates](APPLIANCE_ONBOARDING_CONTRACT.md).
 
+## Operator-only first-start presenter (D-105)
+
+`apps/web/scripts/start-first-phone-screen.mjs` opens an ephemeral loopback-only local renderer,
+not a deployed server/web route. It shares protected-file/origin validation with the private card
+builder. An unpredictable local capability path, exact Host/Origin/Fetch Metadata checks, no-store,
+no-referrer, same-origin resource policy and hash-based CSP bound its surface. It must never be
+forwarded through nginx, Tailscale Serve/Funnel, a container port or the external TV shell.
+
+The presenter performs only bounded, deadline-limited, credential-free HTTPS GETs to existing
+`auth/status`, rejecting redirects and unexpected/non-private/unconfigured responses. The QR
+appears only after a successful unclaimed status; stale/failed reads hide it. Claim is terminal:
+stop polling, drop the active QR buffer and refuse further QR GETs. This does not securely erase
+camera/browser copies; the server's consumed first-use proof is the authorization boundary.
+No new grant, endpoint, database migration, recovery method or networking change is introduced.
+Hardware identity, automatic HDMI startup and native network commissioning remain future work.
+
+## Photo playback and compact selection (D-106)
+
+`photoPlayback.ts` shuffles only browser display order, never the server library. `usePhotoPlayback`
+owns session-local non-security seeds and a precomputed next-cycle seed; peek/preload is pure and
+advancing the completed cycle alone reshuffles. Today, collage and ambient use that seam, while
+curation stays in the provider's stable favourites-first order. No photo URLs/seeds/decks are added
+to persistent storage and no server contract changes. Hidden/deleted assets leave the current
+gallery; the empty gallery never restores an old Today preview.
+
+Selection-mode paging bounds mounted tiles to 48, with an ID set spanning pages. Confirmation
+still captures the exact eligible managed assets before any command; paging cannot broaden it.
+
 ## Local Games boundary
 
 Games serves only the household-supplied archive through authenticated, no-store household GETs:

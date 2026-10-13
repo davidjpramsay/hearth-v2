@@ -25,6 +25,13 @@ See [the contract](APPLIANCE_ONBOARDING_CONTRACT.md).
 
 ## Design target
 
+The operator-only first-start display uses the existing fern and Hearth wordmark, **Welcome to
+Hearth**, one large private QR and **Scan with your phone’s camera to set up your home.** Keep the
+QR's white quiet zone and television-safe edges, without extra menus. Loading/unreachable status
+hides the QR. Verified first-owner claim replaces it with **Hearth is ready** and phone-first
+screen-connection guidance. This local presenter is not the anonymous network page or an installed
+HDMI appliance/autostart implementation (D-105).
+
 Hearth is viewed on a 65-inch landscape television from roughly two to four metres away. It is not a tablet interface enlarged onto a wall. The initial logical canvas is 1920×1080 and must scale cleanly to a 3840×2160 panel and to ordinary laptop/mobile browsers.
 
 ## Original design language
@@ -347,6 +354,19 @@ the phone More hub.
   dinner-first television or phone paths.
 
 ### Photos
+
+D-106: Today, Photos and ambient start from a shuffled visible-photo order and give every photo
+a featured turn before repeating. Shuffle again at each completed cycle and avoid an immediate
+repeat at the boundary. Preloading does not consume a turn. Clock/metadata rerenders do not
+restart the rotation timer. Preserve the five-minute Today and 45-second Photos/ambient cadence,
+Pause/Resume, hidden-tab behavior, reduced motion, native ratios and remote focus restoration.
+Favourites stay first in management, not permanently first in playback.
+
+In **Select photos**, replace large curation cards with compact whole-thumbnail buttons: three
+columns on phones, a responsive wider grid elsewhere, clear checked state and accessible photo
+names. Show at most 48 per page, retain selections when paging, and focus the first tile after a
+page change. Keep bulk counts and exact confirmation. Normal curation, imported-original
+protection, cancellation and partial-failure behavior remain unchanged.
 
 - Full-screen ambient slideshow.
 - The normal Photos screen is an orientation-aware full-screen collage rather than a large image

@@ -56,6 +56,21 @@ Casual owner Remove/sign-out, People demotion/archive and shared-screen access s
 The protected backend one-use file remains the operator fallback. See
 [the HTTP/lifecycle contract](PHONE_CONNECTIONS_CONTRACT.md).
 
+## Implemented local presentation tool, not automatic appliance startup (D-105)
+
+The optional operator-only `start-first-phone-screen.mjs` opens the branded welcome/QR/instructions
+surface on the same trusted workstation/display process that can read the first-use file. Only an
+ephemeral `127.0.0.1` listener and unpredictable local renderer path exist; no application API
+returns QR/proof. Host/Origin/Fetch Metadata checks, CSP, no-store and no-referrer protect this
+surface. Do not forward its listener or distribute its private renderer URL.
+
+Bounded credential-free HTTPS status reads gate the private QR. Loading, stale, invalid or failed
+reads hide it; an observed claim is permanently terminal for that presenter. The phone uses the
+unchanged first-use verifier. Subsequent screen enrollment remains separate adult approval, never
+an owner credential handed to the TV. Updating the current NAS does not run this tool. Factory
+boot wiring and actual trusted HDMI hardware acceptance remain open; there is no automatic QR
+on an anonymous empty-server page or after an existing owner session expires.
+
 ## Future physical appliance flow — not implemented
 
 A headless Hearth appliance has a private, device-specific setup QR supplied inside its packaging.

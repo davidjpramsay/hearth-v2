@@ -214,7 +214,7 @@ describe('real browser WebAuthn contract', () => {
       await app.close();
       database.close();
     }
-  });
+  }, 30_000); // Includes cold Chromium startup; this is not a production/auth request deadline.
 });
 
 interface CeremonyResponse {

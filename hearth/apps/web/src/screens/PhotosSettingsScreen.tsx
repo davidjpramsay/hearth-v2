@@ -25,6 +25,7 @@ export function PhotosSettingsScreen() {
   const pendingCurationFocus = useRef<string | null>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
   const [selectionMode, setSelectionMode] = useState(false);
+  const [photoPage, setPhotoPage] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [deleteRequest, setDeleteRequest] = useState<PhotoDeleteRequest | null>(null);
   const refresh = useMutation({
@@ -166,11 +167,16 @@ export function PhotosSettingsScreen() {
   const restorablePhotos = selectedPhotos.filter((photo) => photo.hidden);
   const deletablePhotos = selectedPhotos.filter((photo) => photo.canDeletePermanently);
   const importedSelections = selectedPhotos.length - deletablePhotos.length;
-  const firstCurationFocus = data.photos[0]
-    ? primaryCurationFocusId(data.photos[0], selectionMode)
+  const pageCount = selectionMode ? Math.ceil(data.photos.length / 48) : 1;
+  const currentPage = Math.min(photoPage, Math.max(0, pageCount - 1));
+  const visiblePhotos = selectionMode
+    ? data.photos.slice(currentPage * 48, (currentPage + 1) * 48)
+    : data.photos;
+  const firstCurationFocus = visiblePhotos[0]
+    ? primaryCurationFocusId(visiblePhotos[0], selectionMode)
     : 'photo-settings-view';
-  const lastCurationFocus = data.photos.at(-1)
-    ? primaryCurationFocusId(data.photos.at(-1)!, selectionMode)
+  const lastCurationFocus = visiblePhotos.at(-1)
+    ? primaryCurationFocusId(visiblePhotos.at(-1)!, selectionMode)
     : 'photo-upload-select';
   return (
     <AdminPage backLabel="Back to More" backTo="/more" title="Manage photos">
@@ -308,6 +314,7 @@ export function PhotosSettingsScreen() {
               onClick={() => {
                 setSelectionMode((current) => !current);
                 setSelectedIds(new Set());
+                setPhotoPage(0);
               }}
               type="button"
             >
@@ -367,19 +374,21 @@ export function PhotosSettingsScreen() {
             <p>No photos yet.</p>
           </div>
         ) : (
-          <div className="photo-curation__grid">
-            {data.photos.map((photo, index) => (
+          <div
+            className={`photo-curation__grid${selectionMode ? ' photo-curation__grid--selection' : ''}`}
+          >
+            {visiblePhotos.map((photo, index) => (
               <PhotoCurationCard
                 busy={curation.isPending || bulkCuration.isPending || deletion.isPending}
                 key={photo.id}
                 nextFocus={
-                  data.photos[index + 1]
-                    ? primaryCurationFocusId(data.photos[index + 1]!, selectionMode)
+                  visiblePhotos[index + 1]
+                    ? primaryCurationFocusId(visiblePhotos[index + 1]!, selectionMode)
                     : 'photo-settings-view'
                 }
                 onAction={(action) => curation.mutate({ assetId: photo.id, action })}
                 onDelete={() => {
-                  const neighbour = data.photos[index + 1] ?? data.photos[index - 1];
+                  const neighbour = visiblePhotos[index + 1] ?? visiblePhotos[index - 1];
                   setDeleteRequest({
                     photos: [photo],
                     focusAfter: neighbour
@@ -397,8 +406,8 @@ export function PhotosSettingsScreen() {
                 }}
                 photo={photo}
                 priorFocus={
-                  data.photos[index - 1]
-                    ? primaryCurationFocusId(data.photos[index - 1]!, selectionMode)
+                  visiblePhotos[index - 1]
+                    ? primaryCurationFocusId(visiblePhotos[index - 1]!, selectionMode)
                     : 'photo-selection-toggle'
                 }
                 selected={selectedIds.has(photo.id)}
@@ -407,6 +416,37 @@ export function PhotosSettingsScreen() {
             ))}
           </div>
         )}
+        {selectionMode && pageCount > 1 ? (
+          <nav className="photo-selection-pages" aria-label="Photo selection pages">
+            <p role="status">
+              {currentPage * 48 + 1}–{Math.min((currentPage + 1) * 48, data.photos.length)} of{' '}
+              {data.photos.length} photos
+            </p>
+            <div>
+              {[
+                { label: 'Previous photos', page: currentPage - 1 },
+                { label: 'Next photos', page: currentPage + 1 },
+              ].map(({ label, page }) => (
+                <button
+                  className="photo-selection-toggle focusable"
+                  type="button"
+                  key={label}
+                  disabled={
+                    page < 0 || page >= pageCount || bulkCuration.isPending || deletion.isPending
+                  }
+                  onClick={() => {
+                    setPhotoPage(page);
+                    const first = data.photos[page * 48];
+                    if (first)
+                      requestAnimationFrame(() => focusById(primaryCurationFocusId(first, true)));
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </nav>
+        ) : null}
       </section>
       {curation.isError ? <AdminError message={curation.error.message} /> : null}
       {bulkCuration.isError ? <AdminError message={bulkCuration.error.message} /> : null}
@@ -517,6 +557,36 @@ function PhotoCurationCard({
   const selectFocus = `photo-curation-select-${photo.id}`;
   const deleteFocus = `photo-curation-delete-${photo.id}`;
   const actionDown = photo.canDeletePermanently ? deleteFocus : nextFocus;
+  if (selectionMode)
+    return (
+      <button
+        aria-label={`${selected ? 'Deselect' : 'Select'} photo: ${photo.alt}`}
+        aria-pressed={selected}
+        className={`photo-selection-tile focusable${selected ? ' photo-selection-tile--selected' : ''}${photo.hidden ? ' photo-selection-tile--hidden' : ''}`}
+        data-focus-id={selectFocus}
+        disabled={busy}
+        onClick={onToggleSelection}
+        type="button"
+      >
+        <PhotoAssetImage alt="" className="photo-selection-tile__image" src={photo.thumbnailUrl} />
+        <span aria-hidden="true" className="photo-selection-tile__check">
+          <Icon name="check" />
+        </span>
+        {photo.hidden ? (
+          <span aria-hidden="true" className="photo-selection-tile__hidden">
+            <Icon name="eye-off" />
+          </span>
+        ) : null}
+        {photo.source === 'synology-folder' ? (
+          <span className="photo-selection-tile__source">NAS folder</span>
+        ) : null}
+        <span className="photo-selection-tile__label">{photo.alt}</span>
+        <span className="sr-only">
+          {photoSourceLabel(photo.source)}.{' '}
+          {photo.hidden ? 'Hidden.' : photo.favourite ? 'Favourite.' : ''}
+        </span>
+      </button>
+    );
   return (
     <article
       className={`photo-curation-card${photo.hidden ? ' photo-curation-card--hidden' : ''}${selected ? ' photo-curation-card--selected' : ''}`}
@@ -540,24 +610,7 @@ function PhotoCurationCard({
         </span>
       </div>
       <div className="photo-curation-card__actions">
-        {selectionMode ? (
-          <button
-            aria-label={`${selected ? 'Deselect' : 'Select'} photo: ${photo.alt}`}
-            aria-pressed={selected}
-            className="photo-curation-action photo-curation-action--select focusable"
-            data-focus-down={nextFocus}
-            data-focus-id={selectFocus}
-            data-focus-left={selectFocus}
-            data-focus-right={selectFocus}
-            data-focus-up={priorFocus}
-            disabled={busy}
-            onClick={onToggleSelection}
-            type="button"
-          >
-            <Icon name="check" />
-            {selected ? 'Selected' : 'Select'}
-          </button>
-        ) : photo.hidden ? (
+        {photo.hidden ? (
           <button
             aria-label={`Restore photo: ${photo.alt}`}
             className="photo-curation-action photo-curation-action--restore focusable"

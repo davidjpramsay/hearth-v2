@@ -1,5 +1,99 @@
 # Hearth v2 acceptance and definition of done
 
+## Private welcome display and varied photo playback — 2026-10-13 (D-105/D-106)
+
+The user authorized finishing, committing and pushing for a manual phone-initiated update,
+without further physical phone-connection/recovery drills. This does not close those acceptance
+items or authorize a NAS deployment/network change. No production phone, screen or household
+record was changed during this release work.
+
+Implemented:
+
+- Operator-only branded first-start presenter: existing fern, **Welcome to Hearth**, one private
+  QR and short instructions. Ephemeral loopback/capability-bound display, protected-file input,
+  bounded credential-free private HTTPS status reads, no-store/no-referrer/CSP, Host/Origin/Fetch
+  Metadata checks and terminal QR removal on claim. No anonymous QR endpoint, key issuance,
+  automatic appliance boot, native BLE/Wi-Fi or combined phone/TV grant.
+- Today, Photos collage and ambient use shuffled featured cycles. Every asset in an unchanged
+  visible collection receives a turn before repeating; next cycles avoid an immediate repeat.
+  Peek/preload does not consume a turn. Metadata/clock rerenders do not restart the timer.
+  Preserve cadence, manual selection, pause, hidden tabs, reduced motion, ratios and focus.
+- Compact whole-thumbnail selection, three phone columns, 48 per page, cross-page selections,
+  checked state, visible imported-folder label and keyboard/spatial navigation. Keep exact frozen
+  deletion confirmation, cancellation, managed-upload-only eligibility and partial failures.
+  Management remains stable/favourites-first; no server photo contract or storage change.
+
+Passed from `hearth/`; logs/screenshots outside Git in `/tmp/hearth-welcome-release.oQp7Fn/`:
+
+- `pnpm verify:code`: formatting/lint/typecheck, **485 unit tests** (58 shared, 40 core, 71 server,
+  316 web), **181 integration tests**, **26 migration tests**, ten deployment/maintenance fixtures,
+  deployment scaffold and production web/server builds (`verify-code-complete.log`). The two
+  existing non-failing JSX expression diagnostics remain.
+- Final-source follow-up uses the same checks with bounded test execution:
+  `pnpm -r --if-present test:unit --maxWorkers=2`,
+  `pnpm --filter @hearth/server test:integration --maxWorkers=2`,
+  `pnpm test:migrations`, `pnpm verify:deploy`, and `pnpm build`. Default full parallelism later
+  exceeded an unchanged lazy-phone-screen test's one-second lookup deadline during sustained
+  unrelated Mac workload. No product/test assertion or global runtime setting was changed to
+  bypass it. The real-browser legacy WebAuthn fixture's complete cold-Chromium test now has a
+  scoped 30-second deadline after repeated five-second timeouts; every authentication assertion
+  and production deadline remains unchanged. The hundred-photo unit harness now enters selection before loading its full album
+  and additionally freezes cross-page deletion through a library refresh, avoiding expensive
+  unrelated normal-card accessible-name scans; actual hundred-card entry remains browser-tested.
+- `pnpm verify:ci`: five workflow-policy checks and disjoint **1,073-test** browser inventory.
+  Inventory is not execution; exact-commit hosted browser/image publication remains a release gate.
+- `pnpm test:e2e:built tests/e2e/photos.spec.ts tests/e2e/today-photo-rotation.spec.ts
+tests/e2e/today-polish.spec.ts tests/e2e/today-settings.spec.ts --max-failures=1`:
+  **427 passed in 12.8 minutes**, including all Today composition fixtures, photo ratios/rotation,
+  pause/hidden-tab/reduced-motion, remote focus, management/deletion, compact hundred-photo pages,
+  cross-page selection and light/dark accessibility at phone/tablet/desktop sizes. The final
+  hidden-thumbnail indicator refinement is checked by the focused selection follow-up and exact
+  hosted gate rather than relabeling that earlier full focused run.
+- `pnpm test:e2e:built tests/e2e/photos.spec.ts --grep
+'large photo selection|folder-imported|bulk-selects' --max-failures=1`:
+  final-source **6 passed in 51.4 seconds**, including compact light/dark selection at four
+  viewports, exact managed-photo bulk removal and imported-original protection.
+- `pnpm audit:dependencies`: no known vulnerabilities reported.
+- `pnpm exec prettier --check ../docs/hearth-v2/*.md` and `git diff --check`.
+- `node /tmp/hearth-welcome-release.oQp7Fn/welcome-qa.mjs`: local renderer checked at **1672×941**
+  (concept-native), 1920×1080, 3840×2160, 1366×768, 390×844 and 844×390. Page identity, meaningful
+  content, exact normalized visible copy, no framework overlay, console, horizontal/TV overflow,
+  serious/critical accessibility, failure/recovery and claim-removes-QR checks passed. All QR
+  content was a fictional fixture. The helper was stopped and its fixture proof removed afterward.
+
+Browser plugin unavailable; repository Playwright and a temporary Playwright helper used.
+The concept and latest implementation were inspected with `view_image`. Fidelity checks covered
+exact welcome/instruction/caption copy; cream/charcoal/green palette; two-column whitespace and
+safe edges; large type/line breaks; QR square/quiet zone; original fern and responsive layout.
+Intentional differences: use Hearth's actual fern and Source Sans 3 rather than AI approximations,
+and a real locally generated fixture QR matrix rather than the concept's illustrative pattern.
+No material clipping, overflow or copy mismatch remained. Compact selection screenshots were
+also inspected. No generated concept screenshot is shipped as app UI.
+
+Initial failures were retained and repaired/rechecked rather than skipped: the unchanged legacy
+virtual-WebAuthn integration exceeded its five-second deadline (early isolated/full reruns passed;
+sustained workload later required the scoped browser-fixture deadline above); the new hundred-photo JSDOM case needed a scoped
+15-second test deadline under the complete parallel suite, retaining all assertions; the paused
+Playwright clock needed a frame to execute focus restoration; compact selection needed its visible
+NAS-folder label restored; old Today geometry fixtures needed matching one-photo playback albums
+instead of a different five-photo album. Runtime code was not changed to fake fixture results.
+
+### Separate physical first-owner evidence
+
+An isolated empty private-HTTPS instance of published `fa044a4a7cda0184db814eed3a9022c811518392`
+was used at work, with an actual iPhone on Tailscale. The user confirmed the setup link opened and
+completed setup. Aggregate readback: **1 household, 1 member, 1 owner phone, 1 active session,
+first-use proof consumed, migration 29**. The original first-use file was consumed/deleted. No
+home NAS data/configuration was copied or changed and no proof, credential or private QR was
+reported. Only the task-owned temporary HTTPS listener was removed afterward; the isolated
+service ports were no longer listening. This proves the first-owner claim, not every browser
+storage/persistence behavior, recovery, exact new-release physical rendering or native hardware.
+
+Still not run: actual second-adult enrollment/revocation, saved-card retrieval/all-phone loss,
+trusted-phone lost-owner replacement, Safari relaunch persistence, new photo UI on the physical
+iPhone/TV, factory autostart, HDMI commissioning, native Bluetooth/Wi-Fi and consumer hardware
+identity. Android source/APK is unchanged. Home NAS deployment remains the user's manual action.
+
 ## Portable fern icon correction — 2026-10-12
 
 Hosted run `38268993642` for `fbc8ac38de5d226e9cc2531ff9a70bc6b5658c81` failed one Home Screen

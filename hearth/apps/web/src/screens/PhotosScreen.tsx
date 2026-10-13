@@ -21,6 +21,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { FailureState, LoadingState, StatusBanner } from '../components/Status';
 import { focusById } from '../focus/focusGraph';
 import { usePhotoRotationPreference } from '../hooks/usePhotoRotationPreference';
+import { usePhotoPlayback } from '../hooks/usePhotoPlayback';
 import { usePhotosQuery } from '../hooks/usePhotoQueries';
 import { useHouseholdDateTime } from '../hooks/useHouseholdClock';
 import { useSharedScreen } from '../runtime/sharedScreen';
@@ -30,7 +31,6 @@ import {
   arrangePhotoCollage,
   buildPhotoMosaic,
   fitPhotoMosaicInBox,
-  nextPhotoId,
   PHOTO_COLLAGE_ROTATION_MS,
   photoCollageFeatureSide,
   type PhotoCollageItem,
@@ -68,20 +68,18 @@ export function PhotosScreen({
   const { time: householdTime, date: householdDate } = useHouseholdDateTime();
 
   const gallery = query.data;
+  const { orderedPhotos, advance, peekNextId } = usePhotoPlayback(gallery?.photos);
   const favouriteCount = gallery?.photos.reduce(
     (count, photo) => count + Number(photo.favourite),
     0,
   );
   const selected =
-    gallery?.photos.find((photo) => photo.id === selectedId) ??
-    gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ??
-    gallery?.photos[0] ??
-    null;
-  const collageItems = arrangePhotoCollage(gallery?.photos ?? [], selected?.id ?? null);
+    gallery?.photos.find((photo) => photo.id === selectedId) ?? orderedPhotos[0] ?? null;
+  const collageItems = arrangePhotoCollage(orderedPhotos, selected?.id ?? null);
   const collageFeatureSide = photoCollageFeatureSide(
-    gallery?.photos ?? [],
+    orderedPhotos,
     collageItems[0]?.photo.id ?? null,
-    gallery?.featuredPhotoId ?? gallery?.photos[0]?.id ?? null,
+    orderedPhotos[0]?.id ?? null,
   );
   const visibleCollageItems = compactLandscape ? collageItems.slice(0, 3) : collageItems;
   const visiblePortraitCount = visibleCollageItems.filter(
@@ -117,9 +115,9 @@ export function PhotosScreen({
   }, []);
 
   useEffect(() => {
-    if (gallery === undefined || selected === null || gallery.photos.length < 2) return;
-    const upcomingId = nextPhotoId(gallery.photos, selected.id);
-    const upcoming = gallery.photos.find((photo) => photo.id === upcomingId);
+    if (selected === null || orderedPhotos.length < 2) return;
+    const upcomingId = peekNextId(selected.id);
+    const upcoming = orderedPhotos.find((photo) => photo.id === upcomingId);
     if (upcoming === undefined) return;
     const preload = new Image();
     preload.decoding = 'async';
@@ -127,23 +125,13 @@ export function PhotosScreen({
     return () => {
       preload.src = '';
     };
-  }, [gallery, selected]);
+  }, [orderedPhotos, selected, peekNextId]);
 
   useEffect(() => {
-    if (
-      prefersReducedMotion ||
-      rotationPaused ||
-      !pageVisible ||
-      gallery === undefined ||
-      gallery.photos.length < 2
-    )
-      return;
+    if (prefersReducedMotion || rotationPaused || !pageVisible || orderedPhotos.length < 2) return;
     const timer = window.setTimeout(() => {
       if (document.visibilityState !== 'visible') return;
-      const upcomingId = nextPhotoId(
-        gallery.photos,
-        selectedId ?? gallery.featuredPhotoId ?? gallery.photos[0]?.id ?? null,
-      );
+      const upcomingId = advance(selected?.id ?? null);
       const activeElement = document.activeElement;
       pendingAutomaticFocusId.current =
         activeElement instanceof HTMLElement && collageRef.current?.contains(activeElement)
@@ -154,13 +142,15 @@ export function PhotosScreen({
     return () => window.clearTimeout(timer);
   }, [
     ambient,
+    advance,
     collageRef,
-    gallery,
+    orderedPhotos.length,
     manualSelectionRevision,
     pageVisible,
     prefersReducedMotion,
     rotationPaused,
     selectedId,
+    selected?.id,
   ]);
 
   useLayoutEffect(() => {

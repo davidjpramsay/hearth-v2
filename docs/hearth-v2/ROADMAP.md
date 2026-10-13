@@ -13,7 +13,15 @@
    workstation can create a private setup PNG from an existing first-use file, never via a public
    empty-server endpoint. Browser/API checks are separate from actual Safari/camera/download proof.
 4. Verified owner-consented migration, rollback/recovery copies and physical first-setup,
-   second-adult, owner-phone-loss/all-phone-loss acceptance before activation/publication.
+   second-adult, owner-phone-loss/all-phone-loss acceptance before full consumer-appliance acceptance.
+   The user authorized compatibility publication/manual update with the remaining physical phone
+   loss/recovery checks explicitly open. The isolated first-owner iPhone claim passed on 2026-10-13;
+   this does not establish the lost-phone or native hardware flows.
+
+D-105 adds the operator-only branded local welcome/QR presenter and claim-terminal behavior.
+Automatic factory/HDMI startup, combined phone/TV commissioning and native BLE/Wi-Fi remain open.
+D-106 adds shuffled no-repeat featured cycles across Today/Photos/ambient and compact 48-item
+selection pages. Existing photo deletion/authentication/storage and NAS networking are preserved.
 
 Live D-102/D-103 access is unchanged until an approved verified release. No automatic promotion,
 household reset, live revocation, deployment or networking change is part of local development.

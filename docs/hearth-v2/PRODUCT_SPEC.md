@@ -19,6 +19,12 @@ remain open; existing households never reopen first setup because phones are mis
 
 ## Adult phone access (D-102)
 
+D-105 adds a trusted-local first-start presentation with the existing fern, welcome title,
+one private setup QR and short instructions. The operator supplies an existing first-use file;
+ordinary network pages and the external TV shell cannot obtain it. Successful claim removes the
+QR permanently from that presenter. Consumer hardware autostart, Bluetooth/Wi-Fi commissioning
+and combined automatic phone/TV enrollment remain future work.
+
 Adult controller access uses independent named browser connections, not passwords or passkeys.
 The owner scans a privately supplied first-use setup card (operator file fallback retained). A connected adult creates
 a short-lived QR for another existing adult controller and explicitly approves the requesting
@@ -170,11 +176,18 @@ Can understand the current household state and use clearly exposed room controls
   Synology data directory. A separately approved read-only Synology folder may bulk-import an
   existing collection, but is not required for normal use.
 - Let an authenticated adult select one or more indexed photos in companion administration, then
-  favourite, unfavourite, hide or restore them. Favourites appear first; hidden photos remain
+  favourite, unfavourite, hide or restore them. Favourites appear first in management; hidden photos remain
   indexed but never appear on Today, in the gallery or in ambient mode. Phone-managed uploads may
   also be permanently deleted after explicit confirmation. Hearth must never delete an original
   from the optional read-only Synology import folder: remove that original in Synology and run
   **Check folder**, or hide its Hearth projection instead.
+- Today, Photos and ambient display use a shuffled visible-photo cycle rather than restarting
+  from the same featured photo or walking chronologically. Every photo receives a featured turn
+  before repeating; reshuffle at the end without an immediate repeat. Collage supports come from
+  that shuffled order and never duplicate an image within the frame. Management remains stable.
+- Photo selection uses compact whole-thumbnail tiles, three columns on a phone and 48 photos per
+  page. Selections persist across pages; destructive confirmation still freezes only the exact
+  eligible managed-upload targets. Imported originals remain undeletable.
 - Preserve each image's native aspect ratio. Normal gallery and Today previews must not crop,
   stretch, frame or place a contrasting panel behind the photograph; rounded clipping and a
   temporary focus halo are allowed.

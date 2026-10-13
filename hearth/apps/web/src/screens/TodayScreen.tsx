@@ -36,7 +36,9 @@ export function TodayScreen({
   const photosQuery = usePhotosQuery(!preparing && todayPhoto !== null);
   const { rotationPaused } = usePhotoRotationPreference();
   const rotatingPhoto = useTodayPhotoRotation({
-    fallbackPhoto: todayPhoto ?? null,
+    // Do not flash the fixed server preview before the shuffled album's first image arrives.
+    // A failed album read still retains Today's safe cached preview.
+    fallbackPhoto: photosQuery.isPending ? null : (todayPhoto ?? null),
     gallery: todayPhoto === null ? undefined : photosQuery.data,
     paused: rotationPaused,
   });

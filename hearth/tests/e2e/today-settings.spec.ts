@@ -4,11 +4,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 import { captureEvidence } from './visualEvidence';
+import { stabilizePhotoPlayback } from './photoPlaybackFixture';
 
 const evidence = resolve('docs/evidence/today-notices');
 
-test.beforeEach(async ({ request }) => {
+test.beforeEach(async ({ request, page }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
+  await stabilizePhotoPlayback(page);
 });
 
 test('adult publishes an important notice and chooses the Today overview sections', async ({

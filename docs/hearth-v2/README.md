@@ -46,3 +46,8 @@ The selected consumer-appliance direction is
 phone-assisted network commissioning and phone-independent recovery. The private-HTTPS/browser
 setup-card and recovery path is locally implemented; native Bluetooth/Wi-Fi/trusted HDMI remains
 future work. No live access, deployment or networking change is implied by local verification.
+
+The operator-only first-start presenter offers the fern, **Welcome to Hearth**, a private QR and
+short instructions on a local display. It never exposes that QR through the normal network UI.
+Consumer appliance autostart and actual HDMI commissioning remain unimplemented; updating the
+current NAS does not install a local display process.

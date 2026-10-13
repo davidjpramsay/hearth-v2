@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { PhotoAsset, PhotoGallery, TodayPhotoSummary } from '@hearth/shared';
 
-import { nextPhotoId } from '../screens/photoCollage';
+import { usePhotoPlayback } from './usePhotoPlayback';
 
 export const TODAY_PHOTO_ROTATION_MS = 5 * 60_000;
 
@@ -16,6 +16,7 @@ export function useTodayPhotoRotation({
   paused: boolean;
 }): TodayPhotoSummary | null {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { orderedPhotos, advance, peekNextId } = usePhotoPlayback(gallery?.photos);
   const [pageVisible, setPageVisible] = useState(
     () => typeof document === 'undefined' || document.visibilityState === 'visible',
   );
@@ -26,12 +27,12 @@ export function useTodayPhotoRotation({
   );
 
   const currentAsset = useMemo(
-    () => findCurrentAsset(gallery, selectedId, fallbackPhoto),
-    [fallbackPhoto, gallery, selectedId],
+    () => findCurrentAsset(orderedPhotos, selectedId),
+    [orderedPhotos, selectedId],
   );
   const displayedPhoto = useMemo(
-    () => toTodayPhoto(currentAsset) ?? fallbackPhoto,
-    [currentAsset, fallbackPhoto],
+    () => toTodayPhoto(currentAsset) ?? (gallery === undefined ? fallbackPhoto : null),
+    [currentAsset, fallbackPhoto, gallery],
   );
 
   useEffect(() => {
@@ -48,38 +49,25 @@ export function useTodayPhotoRotation({
   }, []);
 
   useEffect(() => {
-    if (
-      paused ||
-      prefersReducedMotion ||
-      !pageVisible ||
-      fallbackPhoto === null ||
-      gallery === undefined ||
-      gallery.photos.length < 2
-    ) {
+    if (paused || prefersReducedMotion || !pageVisible || orderedPhotos.length < 2) {
       return;
     }
 
-    const currentId = currentAsset?.id ?? gallery.featuredPhotoId ?? gallery.photos[0]?.id ?? null;
+    const currentId = currentAsset?.id ?? null;
     const timer = window.setTimeout(() => {
       if (document.visibilityState !== 'visible') return;
-      setSelectedId(nextPhotoId(gallery.photos, currentId));
+      setSelectedId(advance(currentId));
     }, TODAY_PHOTO_ROTATION_MS);
     return () => window.clearTimeout(timer);
-  }, [currentAsset?.id, fallbackPhoto, gallery, pageVisible, paused, prefersReducedMotion]);
+  }, [advance, currentAsset?.id, orderedPhotos.length, pageVisible, paused, prefersReducedMotion]);
 
   useEffect(() => {
-    if (
-      paused ||
-      prefersReducedMotion ||
-      fallbackPhoto === null ||
-      gallery === undefined ||
-      gallery.photos.length < 2
-    ) {
+    if (paused || prefersReducedMotion || !pageVisible || orderedPhotos.length < 2) {
       return;
     }
-    const currentId = currentAsset?.id ?? gallery.featuredPhotoId ?? gallery.photos[0]?.id ?? null;
-    const upcomingId = nextPhotoId(gallery.photos, currentId);
-    const upcoming = gallery.photos.find((photo) => photo.id === upcomingId);
+    const currentId = currentAsset?.id ?? orderedPhotos[0]?.id ?? null;
+    const upcomingId = peekNextId(currentId);
+    const upcoming = orderedPhotos.find((photo) => photo.id === upcomingId);
     if (upcoming === undefined) return;
     const preload = new Image();
     preload.decoding = 'async';
@@ -87,22 +75,13 @@ export function useTodayPhotoRotation({
     return () => {
       preload.src = '';
     };
-  }, [currentAsset?.id, fallbackPhoto, gallery, paused, prefersReducedMotion]);
+  }, [peekNextId, currentAsset?.id, orderedPhotos, pageVisible, paused, prefersReducedMotion]);
 
   return displayedPhoto;
 }
 
-function findCurrentAsset(
-  gallery: PhotoGallery | undefined,
-  selectedId: string | null,
-  fallbackPhoto: TodayPhotoSummary | null,
-): PhotoAsset | null {
-  if (gallery === undefined) return null;
-  return (
-    gallery.photos.find((photo) => photo.id === selectedId) ??
-    gallery.photos.find((photo) => photo.displayUrl === fallbackPhoto?.url) ??
-    null
-  );
+function findCurrentAsset(photos: PhotoAsset[], selectedId: string | null): PhotoAsset | null {
+  return photos.find((photo) => photo.id === selectedId) ?? photos[0] ?? null;
 }
 
 function toTodayPhoto(photo: PhotoAsset | null): TodayPhotoSummary | null {

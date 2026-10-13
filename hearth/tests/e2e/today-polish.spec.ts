@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { captureEvidence } from './visualEvidence';
+import { stabilizePhotoPlayback, useSinglePhotoAlbum } from './photoPlaybackFixture';
 
 // Finish intercepted refreshes before Playwright disposes their response context.
 test.afterEach(async ({ page }) => {
@@ -11,8 +12,9 @@ test.afterEach(async ({ page }) => {
 
 const evidence = resolve('docs/evidence/today-polish');
 
-test.beforeEach(async ({ request }) => {
+test.beforeEach(async ({ request, page }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
+  await stabilizePhotoPlayback(page);
 });
 
 test('Today summarises every open reminder and links to the complete list', async ({ page }) => {
@@ -406,6 +408,7 @@ for (const viewport of [
       test(`Today composition ${viewport.width}x${viewport.height} ${photo.name} mask ${mask}`, async ({
         page,
       }) => {
+        if (photo.orientation !== 'none') await useSinglePhotoAlbum(page, photo);
         await page.route('**/api/v1/households/*/today?date=*', async (route) => {
           const response = await route.fetch();
           const payload = (await response.json()) as {
@@ -601,6 +604,13 @@ async function addOverflowPlans(page: Page): Promise<void> {
 }
 
 async function usePortraitPhoto(page: Page): Promise<void> {
+  await useSinglePhotoAlbum(page, {
+    orientation: 'portrait',
+    width: 1024,
+    height: 1536,
+    url: '/demo/photos/garden-morning.webp',
+    alt: 'Ezra and Maya water herbs in the family garden.',
+  });
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
     const response = await route.fetch();
     const payload = (await response.json()) as {
@@ -616,6 +626,13 @@ async function usePortraitPhoto(page: Page): Promise<void> {
 }
 
 async function useSparseReadableSummaries(page: Page): Promise<void> {
+  await useSinglePhotoAlbum(page, {
+    orientation: 'portrait',
+    width: 900,
+    height: 1600,
+    url: '/demo/photos/garden-morning.webp',
+    alt: 'Ezra and Maya water herbs in the family garden.',
+  });
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
     const response = await route.fetch();
     const payload = (await response.json()) as {

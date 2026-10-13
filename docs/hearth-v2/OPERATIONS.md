@@ -37,6 +37,28 @@ after verified setup. Hearth must already be reachable over its trusted HTTPS or
 anonymous first-QR endpoint or phone network-join command. Existing households use separate recovery,
 not a retained first-use QR. A private owner **replacement grant** is not a first-setup card.
 
+### Private first-start display (D-105)
+
+On the trusted local provisioning/display workstation, with dependencies installed:
+
+```sh
+node hearth/apps/web/scripts/start-first-phone-screen.mjs \
+  --key-file /PRIVATE/FIRST-USE-FILE \
+  --origin https://TRUSTED-PRIVATE-HEARTH-ORIGIN
+```
+
+These are placeholders, not instructions to issue a live key. The helper opens the local default
+browser using `open` on macOS or `xdg-open` on Linux, binding only an ephemeral loopback port. It
+prints no proof, renderer URL or private path. Keep that display private and stop with Control-C.
+Never proxy/forward the listener via Synology, nginx or Tailscale. No install/autostart, firewall,
+network or ordinary application-container change is made. A supplied setup PNG remains available
+for packaging/non-HDMI use. Hardware boot/fullscreen wiring remains future work.
+
+The welcome QR is shown only while a successful configured private HTTPS status says unclaimed.
+Failed/stale reads hide it. Successful claim permanently removes it from this presenter; missing
+phones never reopen setup. On the phone, finish household/recovery setup, then separately approve
+the display in Phones & screens. A claimed server shows completion without reading a key.
+
 ### Owner-consented recovery setup
 
 After approved migration/release, use the current owner browser's **Phones & screens → Recovery

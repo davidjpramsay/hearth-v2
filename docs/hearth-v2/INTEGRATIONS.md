@@ -2,6 +2,11 @@
 
 ## Future appliance network provisioning (D-104; not implemented)
 
+D-105's local operator presenter is a read-only client of the existing trusted HTTPS claim-status
+endpoint and an existing protected first-use file. It generates QR pixels locally, not via a QR
+service. It does not provision Bluetooth/Wi-Fi, pair the TV, issue keys or expose a network QR
+endpoint. Its ephemeral loopback listener is never installed or forwarded on Synology.
+
 Bluetooth LE is selected for native phone-assisted Wi-Fi setup, with Ethernet and a temporary
 setup-network fallback. Device authentication/private QR proof is independent of transport and
 requires a reviewed local protocol. A platform-owned network adapter, not Home Assistant or the
