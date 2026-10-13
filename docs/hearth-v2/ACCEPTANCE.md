@@ -2,6 +2,17 @@
 
 ## Private welcome display and varied photo playback — 2026-10-13 (D-105/D-106)
 
+First hosted run `38374057088` at `9115e02df30be858310a3d6720f3773ca29737cc` passed code/API,
+Android and both container builds but failed `visual.spec.ts`'s fixed breakfast-photo expectation
+at 4K after 187 shard-four browser passes. Other shards were cancelled and verified images were
+not published. The follow-up pins only that legacy visual fixture's display seed, as the existing
+photo/Today geometry fixtures already do, retaining all image/ratio/focus/layout assertions.
+No runtime, schema or security boundary changed in the follow-up. Complete exact-commit hosted
+browser execution and image publication remain required.
+Local follow-up `pnpm test:e2e:built tests/e2e/visual.spec.ts --max-failures=1` passed **27/27 in
+1.2 minutes**, including all five Today viewports, photo ratio/size, provider-outage and other
+visual states. Lint, shard inventory and diff checks are repeated before the follow-up push.
+
 The user authorized finishing, committing and pushing for a manual phone-initiated update,
 without further physical phone-connection/recovery drills. This does not close those acceptance
 items or authorize a NAS deployment/network change. No production phone, screen or household

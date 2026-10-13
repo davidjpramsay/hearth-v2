@@ -3,14 +3,16 @@ import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { captureEvidence } from './visualEvidence';
+import { stabilizePhotoPlayback } from './photoPlaybackFixture';
 
 const evidence = resolve('docs/evidence/phase-1/screenshots');
 const phaseThreeEvidence = resolve('docs/evidence/phase-3/screenshots');
 const monthEvidence = resolve('docs/evidence/month-calendar');
 const pocketMoneyEvidence = resolve('docs/evidence/pocket-money/screenshots');
 
-test.beforeEach(async ({ request }) => {
+test.beforeEach(async ({ request, page }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
+  await stabilizePhotoPlayback(page);
 });
 
 const viewports = [
