@@ -2,7 +2,7 @@
 
 ## Short human codes (D-110)
 
-The inbound HA component 1.1.0 displays a five-minute six-letter code and waits for approval in
+The inbound HA component 1.1.2 displays a five-minute six-letter code and waits for approval in
 Hearth; it privately generates/exchanges its machine credential. Existing config entries/grants
 remain valid. The matching component must be installed separately; server publication does not
 install HA files. This changes no TV power/media/morning automation or outbound HA adapter.
@@ -332,10 +332,14 @@ builds. No MQTT broker, public discovery, media control or background app launch
 An enabled data feed that cannot be read is unavailable/null, never a false zero/empty success;
 screen control remains independent of those feed failures. All-day wire dates have an exclusive
 end (converted from Hearth's inclusive internal local end date), preserving calendar semantics.
-D-109 adds a separately approved chore-control permission and standard **Today's chores** HA to-do
+D-109 adds a scoped chore-control permission and standard **Today's chores** HA to-do
 entity. Tick/untick maps only to existing domain completion/undo on today's occurrences with exact
 retry and observed-completion protection. No creation, removal, reassignment, schedule, payment,
 calendar-edit or admin operations. Legacy/read-only grants never gain this capability automatically.
+D-111 removes the new-setup permission picker: one explicit approval includes all current unrevoked
+screens and all three existing flags. Limited grants and newly paired screens require confirmed
+disconnect/reconnect through the existing HA entry's repair. No schema/scope expansion, future
+automatic grants or change to the outbound adapter. Component 1.1.2 matches the one-approval wording.
 
 ### Hearth controls Home Assistant (existing outbound adapter)
 

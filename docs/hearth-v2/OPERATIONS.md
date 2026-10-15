@@ -36,16 +36,19 @@ signed TV APK without uninstall/clearing its pairing, and manually copy only the
 `hearth/integrations/home_assistant/custom_components/hearth` folder into HA's `custom_components`.
 Restart HA at an agreed quiet time. It is not built-in, HACS-published or auto-discovered.
 
-After verifying/releasing D-110 and installing matching HA component 1.1.1, add Hearth in HA using
+After verifying/releasing D-111 and installing matching HA component 1.1.2, add Hearth in HA using
 only the trusted private HTTPS root. It displays six letters. On the adult Hearth phone, open
-Connections → Home Assistant, enter those letters, choose screens/data permissions and approve.
+Connections → Home Assistant, enter those letters, read the included access and approve once.
+No permission boxes: all current unrevoked Hearth screens, calendar/chore data and today's chore
+complete/reopen are included. This grants no adult/admin or general editing authority.
 HA completes automatically. Never copy its hidden credential or use an adult session, TV key or
 HA long-lived token for this direction. TLS verification stays enabled; test HTTP stays loopback-only.
 HA protects its credential in config entries/backups. Disconnect to revoke it, then start a fresh
-six-letter request. Existing working grants need not be replaced.
-For D-109 chore tick/untick, separately enable **Allow completing and reopening today’s chores**
-before approving the code. Existing read-only grants must be revoked/replaced to change permissions;
-installing a new version never upgrades them. HA exposes **Today's chores** as a status-only to-do
+six-letter request. Existing full working grants need not be replaced. For a limited grant, use
+**Reconnect Home Assistant** on the adult phone, confirm, then open the existing HA Hearth entry's
+reauthentication repair for fresh letters. Do not add a duplicate HA entry. Newly paired screens
+also need reconnect; later features/devices are not silently granted. Installing an update never
+widens permissions. HA exposes **Today's chores** as a status-only to-do
 list. It needs no online TV. It is unavailable for denied, stale-day, truncated or failed chore data.
 Verify complete then reopen on one explicitly agreed test chore, with normal earnings/audit checks;
 do not use real household chores for a speculative smoke test. Calendar stays read-only; admin access

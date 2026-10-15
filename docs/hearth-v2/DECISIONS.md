@@ -2,6 +2,29 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-111 — One explicit Home Assistant approval, no permission picker
+
+- Date: 2026-10-15
+- Status: owner-requested implementation; publication and private Hearth/HA updates approved,
+  subject to release checks. Live reconnect and functional device proof remain separate.
+- Context: The adult completed setup without ticking permissions, leaving a connected but unusable
+  integration. Per-feature choices made the difference between server data and screen control harder
+  to understand. The owner explicitly requested the supported bundle without options.
+- Choice: Disclose one bundle before **Approve Home Assistant**: all currently paired, unrevoked
+  Hearth screens, calendar/chore information and completing/reopening today's existing chores.
+  Snapshot the screen IDs and all three true flags only on explicit approval; uncertain retries
+  reuse that exact request. No checkboxes. Zero screens still permits data/chores; more than the
+  contract's 20 screens blocks approval instead of silently selecting a subset.
+- Boundary: This is not unrestricted access. No adult/admin login, calendar edits, general chore
+  editing, payments, power, media or background app launch. Ordinary completion affects earnings.
+  Existing limited grants are not upgraded; confirmed disconnect and fresh adult approval are
+  required. Newly paired screens also require reconnect. Future features are not silently granted.
+- Consequences: Supersedes D-108/D-109's per-feature setup UI, not their scoped transport, default-false
+  legacy flags or revocation rules. No schema, migration or credential-format change. HA component
+  1.1.2 matches the instructions, including its actual progress-action translation. Use the existing
+  HA entry's reauthentication repair after disconnect, not a duplicate entry. No live TV/chore command
+  or morning-automation change is included in this rollout.
+
 ## D-110 — Six-letter invitations and invisible machine credentials
 
 - Date: 2026-10-15

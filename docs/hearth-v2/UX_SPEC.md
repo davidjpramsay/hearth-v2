@@ -3,8 +3,11 @@
 ## Home Assistant connection directions (D-108)
 
 Connections → Home Assistant separates **Home Assistant controls Hearth** from the existing
-**Hearth controls Home Assistant** safety/script adapter. An adult chooses screen names and
-explicit read-only chore/calendar sharing before approving the six-letter code displayed by HA.
+**Hearth controls Home Assistant** safety/script adapter. Before approving HA's six-letter code,
+show one clear bundle: all current Hearth screens, calendar/chore information and completing or
+reopening today's chores (D-111). No permission checkboxes. A limited existing grant shows
+**Reconnect Home Assistant**, with confirmation before disconnecting; use the existing HA entry's
+connection repair for fresh letters. New screens require reconnect, not automatic access expansion.
 The integration creates/exchanges the long credential automatically; no key field/reveal appears
 in Hearth or HA setup (D-110). Normalise grouped/lowercase input to uppercase and show clear
 expired/retry/cancel states. No code enters query caches/storage. Disconnection needs a clear
@@ -14,9 +17,9 @@ In HA each approved screen has a tab selector showing the observed route and off
 state. Accepted/pending is not applied. No admin/setup destinations or automatic app takeover.
 The manual custom-integration installation is not a built-in discovered integration; disclose the
 updated native-shell requirement without claiming physical installation or foreground proof.
-The separate **Allow completing and reopening today’s chores** checkbox defaults off, is disabled
-until chores are shared, and clears when sharing is unticked (D-109). Disclose the normal effect on
-earned pocket money. Summary distinguishes **Read only** from **Complete and reopen today’s chores**.
+Disclose the normal effect of chore completion on earned pocket money and the excluded admin,
+calendar-edit and broader chore actions. The summary truthfully reports legacy **Read only** grants
+until explicitly replaced; new approval includes **Complete and reopen today’s chores**.
 HA's **Today's chores** to-do list permits tick/untick only; it never offers Hearth admin access.
 No optimistic completion, duplicate commands, silent stale-day writes or false empty lists on errors.
 

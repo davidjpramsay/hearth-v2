@@ -17,13 +17,21 @@ const summary: BridgeConnection = {
   id: 'bridge_test',
   createdAt: '2026-10-15T00:00:00Z',
   revokedAt: null,
-  screenIds: ['screen_active'],
+  screenIds: ['screen_active', 'screen_other'],
   shareChores: true,
-  shareCalendar: false,
+  shareCalendar: true,
   controlChores: true,
 };
 const overview = {
   pairedDevices: [
+    {
+      id: 'screen_other',
+      name: 'Kitchen screen',
+      type: 'television',
+      status: 'connected',
+      revokedAt: null,
+      lastSeenAt: null,
+    },
     {
       id: 'screen_active',
       name: 'Living room screen',
@@ -88,33 +96,35 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe('short-code Home Assistant connection', () => {
-  it('defaults permissions off, excludes revoked screens and never offers a key field', async () => {
+  it('discloses one complete Hearth bundle without checkboxes or automatic approval', async () => {
     show();
     await ready();
-    expect(screen.getByLabelText('Living room screen')).not.toBeChecked();
-    expect(screen.queryByLabelText('Revoked screen')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Share chores (read only)')).not.toBeChecked();
-    expect(screen.getByLabelText('Share calendar (read only)')).not.toBeChecked();
-    expect(screen.getByLabelText('Allow completing and reopening today’s chores')).toBeDisabled();
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(screen.getByText('Switch tabs on all current Hearth screens (2).')).toBeInTheDocument();
+    expect(screen.getByText('Read your calendar and chores.')).toBeInTheDocument();
+    expect(screen.getByText('Complete and reopen today’s chores.')).toBeInTheDocument();
+    expect(screen.getByText(/Completing chores affects earned pocket money/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This does not allow admin access, calendar edits/),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText('One-time key')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Code shown in Home Assistant')).toHaveValue('ABCDEF');
     expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
   });
-  it('sends only the short approval and selected permissions, without storage or mutation caching', async () => {
+  it('approves all unrevoked screens and supported features, without storage or mutation caching', async () => {
     const storage = vi.spyOn(Storage.prototype, 'setItem');
     const { client } = show();
     const button = await ready();
-    fireEvent.click(screen.getByLabelText('Share chores (read only)'));
     fireEvent.click(button);
     await screen.findByText(/Approved. Home Assistant/);
     expect(homeAssistantBridgeApi.approvePairing).toHaveBeenCalledWith(
       {
         requestId: expect.any(String),
         code: 'ABCDEF',
-        screenIds: [],
+        screenIds: ['screen_other', 'screen_active'],
         shareChores: true,
-        shareCalendar: false,
-        controlChores: false,
+        shareCalendar: true,
+        controlChores: true,
       },
       expect.any(AbortSignal),
     );
@@ -129,24 +139,74 @@ describe('short-code Home Assistant connection', () => {
       ),
     ).not.toContain('ABCDEF');
   });
-  it('requires separate opt-in and clears control when sharing is unchecked', async () => {
+  it('includes calendar and chores even when no screens are paired', async () => {
+    vi.mocked(adminApi.getAdmin).mockResolvedValue({ ...overview, pairedDevices: [] });
     show();
     const button = await ready();
-    const share = screen.getByLabelText('Share chores (read only)');
-    const control = screen.getByLabelText('Allow completing and reopening today’s chores');
-    fireEvent.click(share);
-    fireEvent.click(control);
-    fireEvent.click(share);
-    expect(control).not.toBeChecked();
-    expect(control).toBeDisabled();
-    fireEvent.click(share);
-    fireEvent.click(control);
+    await screen.findByText(/No screens are paired yet/);
     fireEvent.click(button);
     await screen.findByText(/Approved. Home Assistant/);
     expect(vi.mocked(homeAssistantBridgeApi.approvePairing).mock.calls[0]![0]).toMatchObject({
       shareChores: true,
+      shareCalendar: true,
       controlChores: true,
+      screenIds: [],
     });
+  });
+  it('blocks approval rather than silently excluding screens above the existing limit', async () => {
+    vi.mocked(adminApi.getAdmin).mockResolvedValue({
+      ...overview,
+      pairedDevices: Array.from({ length: 21 }, (_, index) => ({
+        ...overview.pairedDevices[0]!,
+        id: `screen_${index}`,
+      })),
+    });
+    show();
+    expect(await ready()).toBeDisabled();
+    await screen.findByText(/supports up to 20 paired screens/);
+    expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
+  });
+  it('cannot approve while the paired-screen query has failed', async () => {
+    vi.mocked(adminApi.getAdmin).mockRejectedValue(new Error('offline'));
+    show();
+    const button = await ready();
+    await screen.findByText('Could not load paired screens.');
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
+  });
+  it('does not silently broaden a limited connection and requires confirmed reconnection', async () => {
+    const limited = {
+      ...summary,
+      screenIds: [],
+      shareChores: false,
+      shareCalendar: false,
+      controlChores: false,
+    };
+    vi.mocked(homeAssistantBridgeApi.getConnection).mockResolvedValue(limited);
+    show();
+    await screen.findByText(/This connection has limited access/);
+    expect(screen.queryByLabelText('Code shown in Home Assistant')).not.toBeInTheDocument();
+    expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect Home Assistant' }));
+    expect(homeAssistantBridgeApi.revoke).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep access' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect Home Assistant' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect and reconnect' }));
+    await screen.findByLabelText('Code shown in Home Assistant');
+    expect(homeAssistantBridgeApi.revoke).toHaveBeenCalledOnce();
+    expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
+    expect(limited).toMatchObject({ screenIds: [], controlChores: false });
+  });
+  it('requires reconnect for newly paired screens rather than automatically extending a grant', async () => {
+    vi.mocked(homeAssistantBridgeApi.getConnection).mockResolvedValue({
+      ...summary,
+      screenIds: ['screen_active'],
+    });
+    show();
+    await screen.findByRole('button', { name: 'Reconnect Home Assistant' });
+    expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
+    expect(homeAssistantBridgeApi.revoke).not.toHaveBeenCalled();
   });
   it('keeps invalid/incomplete codes out of requests', async () => {
     show();
@@ -162,8 +222,12 @@ describe('short-code Home Assistant connection', () => {
     vi.mocked(homeAssistantBridgeApi.approvePairing).mockRejectedValueOnce(
       new Error('private error text'),
     );
-    show();
+    const { client } = show();
     fireEvent.click(await ready());
+    vi.mocked(adminApi.getAdmin).mockResolvedValue({ ...overview, pairedDevices: [] });
+    await act(async () => {
+      await client.refetchQueries();
+    });
     fireEvent.click(await screen.findByRole('button', { name: 'Retry same approval' }));
     await screen.findByText(/Approved. Home Assistant/);
     const calls = vi.mocked(homeAssistantBridgeApi.approvePairing).mock.calls;

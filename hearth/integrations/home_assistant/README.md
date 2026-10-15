@@ -16,7 +16,8 @@ and launching the Hearth app; this bridge does not replace it.
 2. In HA **Settings → Devices & services → Add integration → Hearth**, enter only
    Hearth's private HTTPS origin. HA displays six uppercase letters and waits.
 3. On the connected adult Hearth phone, open **Connections → Home Assistant**, enter those letters,
-   choose screens and optional data/chore permissions, then **Approve Home Assistant**.
+   then **Approve Home Assistant**. One approval includes all currently paired Hearth screens,
+   calendar/chore information and completing/reopening today's chores; there are no permission boxes.
    HA completes automatically. No long key to type. HA must trust the certificate.
    The explicit HTTP exception accepts literal loopback IPs for local tests only.
 
@@ -29,6 +30,10 @@ in Hearth to stop access; HA requests reauthentication after a 401. Replacement
 connections must identify the same household. Existing config entries remain compatible.
 New short-code setup needs matching Hearth server migration 0031 and custom component 1.1.1.
 Version 1.1.1 places the code in HA's progress-action translation; 1.1.0's waiting dialog hid it.
+Component 1.1.2 matches the single-approval Hearth UI (D-111). Older restricted grants stay restricted
+until an adult explicitly disconnects/reconnects. After revocation, use the existing Hearth entry's
+reauthentication repair in HA rather than adding a duplicate entry. Newly paired screens need a
+reconnect too; later devices or features are not silently granted.
 Codes expire after five minutes; close/restart setup if expired. Approve only a setup you started.
 No credentials belong in URLs or YAML.
 
@@ -37,11 +42,11 @@ The household has read-only open/completed chore counts (bounded items and
 or enabled-but-unavailable data makes the corresponding entities unavailable.
 Calendar freshness stays `current`/`stale`/`offline`; offline and incomplete range
 reads fail, rather than returning an empty calendar. All-day ends are exclusive.
-With chore control explicitly enabled, **Today's chores** is also an HA to-do list: tick/untick
+With the single approval's chore control enabled, **Today's chores** is also an HA to-do list: tick/untick
 today's existing chores. No add, remove, rename, reassignment, schedule or payment actions.
 Completion changes affect earned pocket money normally. Locked/non-actionable chores are omitted;
-failed, old-day or truncated data makes the list unavailable. Existing grants remain read-only
-until an adult revokes/replaces them with the additional permission. No TV needs to be on.
+failed, old-day or truncated data makes the list unavailable. Restricted existing grants retain
+their exact permissions until an adult explicitly reconnects with the disclosed bundle. No TV needs to be on.
 
 Large ranges use sequential requests of at most 31 elapsed days, with overlap
 deduplication; aggregate limits are 744 days and 10,000 events (explicit errors).

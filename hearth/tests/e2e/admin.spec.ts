@@ -429,8 +429,9 @@ test('private calendar setup does not describe the live connection as a local de
 for (const viewport of [
   { width: 390, height: 844 },
   { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
 ]) {
-  test(`Home Assistant chore control requires explicit opt-in at ${viewport.width}px`, async ({
+  test(`Home Assistant connects all Hearth features with one approval at ${viewport.width}px`, async ({
     page,
     request,
   }, testInfo) => {
@@ -452,27 +453,20 @@ for (const viewport of [
     await page.goto('/admin/connections/home-assistant');
     await expect(page).toHaveTitle(/Hearth/);
     await expect(page.getByRole('heading', { name: 'Home Assistant', exact: true })).toBeVisible();
-    const control = page.getByLabel('Allow completing and reopening today’s chores');
-    const share = page.getByLabel('Share chores (read only)');
-    await expect(control).toBeDisabled();
-    await expect(control).not.toBeChecked();
+    const bridge = page.locator('.ha-bridge-settings');
+    await expect(bridge.getByRole('checkbox')).toHaveCount(0);
+    await expect(bridge.getByText('Read your calendar and chores.')).toBeVisible();
+    await expect(bridge.getByText('Complete and reopen today’s chores.')).toBeVisible();
     await page
       .locator('.ha-bridge-settings')
       .screenshot({ path: testInfo.outputPath('six-letter-setup.png') });
-    await share.check();
-    await control.focus();
-    await page.keyboard.press('Space');
-    await expect(control).toBeChecked();
-    await share.uncheck();
-    await expect(control).toBeDisabled();
-    await expect(control).not.toBeChecked();
-    await share.check();
-    await control.check();
     await expect(
-      page.getByText('Share chores first. Completion changes affect earned pocket money as usual.'),
+      page.getByText(/Completing chores affects earned pocket money as usual/),
     ).toBeVisible();
     await page.getByLabel('Code shown in Home Assistant').fill(pairing.code.toLowerCase());
-    await page.getByRole('button', { name: 'Approve Home Assistant' }).click();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Approve Home Assistant' })).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(page.getByText(/Approved. Home Assistant will finish/)).toBeVisible();
     const exchange = await request.post(
       `http://127.0.0.1:4310/api/v1/home-assistant/pairing-requests/${pairing.id}/exchanges`,
@@ -491,7 +485,36 @@ for (const viewport of [
     });
     expect(state.status()).toBe(200);
     const snapshot = await state.json();
-    expect(snapshot.permissions.controlChores).toBe(true);
+    expect(snapshot.permissions).toEqual({
+      shareChores: true,
+      shareCalendar: true,
+      controlChores: true,
+    });
+    const admin = await request.get(
+      'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/admin',
+      {
+        headers: { 'X-Hearth-Demo-Actor': 'member_maya' },
+      },
+    );
+    expect(admin.status()).toBe(200);
+    const expectedScreens = (await admin.json()).pairedDevices
+      .filter(
+        (screen: { status: string; revokedAt: string | null }) =>
+          screen.status !== 'revoked' && screen.revokedAt === null,
+      )
+      .map((screen: { id: string }) => screen.id)
+      .sort();
+    expect(snapshot.screens.map((screen: { id: string }) => screen.id).sort()).toEqual(
+      expectedScreens,
+    );
+    expect(snapshot.calendar).not.toBeNull();
+    expect(
+      (
+        await request.get('http://127.0.0.1:4310/api/v1/households/household_hearth_demo/admin', {
+          headers,
+        })
+      ).status(),
+    ).toBe(403);
     const chore = snapshot.chores.items.find(
       (item: { state: string; locked: boolean }) => item.state === 'pending' && !item.locked,
     );
@@ -533,6 +556,55 @@ for (const viewport of [
     expect(problems).toEqual([]);
   });
 }
+
+test('a limited HA connection requires confirmed reconnect instead of a silent permissions upgrade', async ({
+  page,
+  request,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const secret = `ha_${randomBytes(32).toString('base64url')}`;
+  const issued = await request.post(
+    'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/home-assistant-bridge',
+    {
+      headers: { 'X-Hearth-Demo-Actor': 'member_maya' },
+      data: {
+        requestId: 'request_browser_limited',
+        secret,
+        screenIds: [],
+        shareChores: false,
+        shareCalendar: false,
+        controlChores: false,
+      },
+    },
+  );
+  expect(issued.status()).toBe(200);
+  await page.goto('/admin/connections/home-assistant');
+  await expect(page.getByText(/This connection has limited access/)).toBeVisible();
+  await expect(page.getByLabel('Code shown in Home Assistant')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Reconnect Home Assistant', exact: true }).click();
+  const keep = page.getByRole('button', { name: 'Keep access', exact: true });
+  await expect(keep).toBeVisible();
+  await keep.click();
+  const headers = { authorization: `HearthAutomation ${secret}` };
+  const untouched = await request.get('http://127.0.0.1:4310/api/v1/home-assistant/state', {
+    headers,
+  });
+  expect((await untouched.json()).permissions).toEqual({
+    shareChores: false,
+    shareCalendar: false,
+    controlChores: false,
+  });
+  await page.getByRole('button', { name: 'Reconnect Home Assistant', exact: true }).click();
+  await page
+    .locator('.ha-bridge-settings')
+    .screenshot({ path: testInfo.outputPath('limited-connection-reconnect.png') });
+  await page.getByRole('button', { name: 'Disconnect and reconnect', exact: true }).click();
+  await expect(page.getByLabel('Code shown in Home Assistant')).toBeVisible();
+  expect(
+    (await request.get('http://127.0.0.1:4310/api/v1/home-assistant/state', { headers })).status(),
+  ).toBe(401);
+  await expect(page.locator('.ha-bridge-settings').getByRole('checkbox')).toHaveCount(0);
+});
 
 test('adult can test, map, save and remove a tightly scoped Home Assistant connection', async ({
   page,

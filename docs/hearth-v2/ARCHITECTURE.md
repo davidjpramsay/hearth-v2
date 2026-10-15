@@ -1,5 +1,14 @@
 # Hearth v2 architecture
 
+## Single-approval presentation boundary (D-111)
+
+The adult web component derives all current unrevoked paired-screen IDs from the authenticated
+admin query and freezes that set plus the three enabled capabilities on explicit approval. There
+is no permission picker or server-side automatic upgrade. The existing typed scoped contract and
+20-screen bound are unchanged. Limited grants/new screens require confirmed revocation and fresh
+approval through HA's existing-entry reauthentication. HA 1.1.2 changes setup wording only; no
+provider secret, runtime network setting or general admin authority crosses this boundary.
+
 ## Human-code authority boundary (D-110)
 
 `HomeAssistantPairingService` separates machine initiation/exchange from same-origin adult approval.

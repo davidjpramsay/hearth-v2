@@ -1,5 +1,12 @@
 # Hearth v2 domain and data model
 
+## Explicit bundle approval (D-111)
+
+No data-model or migration change. New UI approval captures all current unrevoked screen IDs
+(maximum 20) and explicitly true sharing/control flags. Legacy false flags remain false until a
+fresh adult-approved grant replaces them. Newly paired screens and future capabilities are not
+implicitly added. Exact retry retains the original request and screen set despite query changes.
+
 ## Human connection requests (D-110)
 
 Migration `0031_connection_codes.sql` is additive: digest-only phone invitation codes (FK cascade

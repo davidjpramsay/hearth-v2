@@ -1,5 +1,45 @@
 # Hearth v2 acceptance and definition of done
 
+## D-111 single-approval Home Assistant setup — 2026-10-15
+
+The adult explicitly requested no permission picker and approved publication/private Hearth and HA
+updates after checks. One disclosed approval includes all currently paired unrevoked screens and
+the three existing scoped capabilities. Old limited grants are unchanged; confirmed reconnect and
+fresh adult approval are required. No server schema, runtime networking, TV/chore command or morning
+automation change is part of this patch. HA 1.1.2 updates both step and actual progress instructions.
+
+Local passed checks:
+
+- `pnpm verify:code`: format, lint, workspace typecheck, 585 unit tests (including 13 bridge UI
+  tests), 217 integration tests, 28 migration tests, deploy/scaffold fixtures and production builds.
+  After the final reconnect-help wording, `pnpm --filter @hearth/web build` passed again.
+- `python3.12 -B -m unittest discover -s hearth/integrations/home_assistant/tests -v`: 60 passed.
+  The Mac's default `python3` is 3.9 and cannot import the required modern APIs; reran with 3.12,
+  not by weakening the component. `uvx --offline ruff check` and `ruff format --check` passed.
+- `pnpm verify:ci`: 5 policy tests and disjoint coverage of 1,080 browser cases (270 per shard).
+- `pnpm audit:dependencies`: no known vulnerabilities. `ANDROID_HOME=/opt/homebrew/share/android-commandlinetools pnpm verify:tv`:
+  test, Debug/Release lint and builds passed; TV source/APK installation unchanged.
+- `pnpm test:e2e:built tests/e2e/admin.spec.ts --grep 'one approval|limited HA connection' --reporter=line --output=/tmp/hearth-single-approval-e2e`:
+  4 passed. 390×844, 1440×900 and 1920×1080 bundle approval/exchange, all current screens and flags,
+  automation credential blocked from admin (403), demo complete/exact retry/reopen, keyboard approval,
+  no overflow, no serious/critical Axe findings and no console/page errors. Limited grant cancel
+  leaves permissions untouched; confirmed disconnect revokes the old credential (401).
+- Deterministic UI tests also cover zero screens, 21-screen blocking, failed screen lookup,
+  newly paired screens, no automatic upgrade and exact uncertain retry after query changes.
+
+Rendered light phone and TV-sized setup images were visually inspected. Safe demo screenshots are
+under `/tmp/hearth-single-approval-e2e/`; no production code/key is included. Browser-plugin skill
+was unavailable, so repository Playwright supplies automated/demo proof and CUA supplies live UI
+inspection. The React/frontend-testing skills kept permissions derived and frozen on explicit action
+and required rendered/keyboard/access-isolation checks.
+
+Live preflight: fresh HA full backup **Before Hearth single approval 2026-10-15** completed (2.91 MB,
+this system). It is rollback evidence, not a tested restore. Broader local admin checks, fresh hosted
+all-job/image publication, private deployment and HA 1.1.2 installation are pending this checkpoint.
+The existing limited HA grant is deliberately not revoked or expanded. Physical adult reconnect,
+actual screen navigation/feedback, real data readback and agreed test-chore complete/reopen remain
+not run; no physical-device success follows from these demo checks.
+
 ## D-110 live installation and HA progress-prompt correction — 2026-10-15
 
 Server/web release `b65aefe05c855ffb44c382a8415a5bfa58003e2d` passed

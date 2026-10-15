@@ -17,10 +17,6 @@ export function HomeAssistantBridgeSettings() {
   const queryClient = useQueryClient();
   const summaryKey = [...queryKeys.admin, 'home-assistant-bridge'];
   const [code, setCode] = useState('');
-  const [screenIds, setScreenIds] = useState<string[]>([]);
-  const [shareChores, setShareChores] = useState(false);
-  const [shareCalendar, setShareCalendar] = useState(false);
-  const [controlChores, setControlChores] = useState(false);
   const [busy, setBusy] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
@@ -65,8 +61,23 @@ export function HomeAssistantBridgeSettings() {
       device.type === 'television' && device.status !== 'revoked' && device.revokedAt === null,
   );
   const locked = busy || waiting || uncertain;
+  const tooManyScreens = screens.length > 20;
+  const canApprove =
+    summary.isSuccess &&
+    connection === null &&
+    admin.isSuccess &&
+    !tooManyScreens &&
+    ConnectionCodeSchema.safeParse(code).success;
+  const needsReconnect =
+    connection !== null &&
+    (!connection.shareChores ||
+      !connection.shareCalendar ||
+      !connection.controlChores ||
+      screens.some((screen) => !connection.screenIds.includes(screen.id)));
   async function approve() {
-    if (running.current) return;
+    // Freeze the disclosed bundle only on explicit approval. An uncertain retry
+    // must keep the original payload, even if the paired-screen query changes.
+    if (running.current || (approval.current === null && (locked || !canApprove))) return;
     running.current = true;
     setBusy(true);
     setError(null);
@@ -76,10 +87,10 @@ export function HomeAssistantBridgeSettings() {
     approval.current ??= {
       requestId: createRequestId('ha_approval'),
       code,
-      screenIds: screenIds.filter((id) => screens.some((screen) => screen.id === id)),
-      shareChores,
-      shareCalendar,
-      controlChores,
+      screenIds: screens.map((screen) => screen.id),
+      shareChores: true,
+      shareCalendar: true,
+      controlChores: true,
     };
     try {
       await homeAssistantBridgeApi.approvePairing(approval.current, controller.signal);
@@ -150,8 +161,11 @@ export function HomeAssistantBridgeSettings() {
         </summary>
         <ol>
           <li>Install the current Hearth custom integration in Home Assistant.</li>
-          <li>In Home Assistant, add Hearth and enter your private Hearth address.</li>
-          <li>Enter its six-letter code below, choose permissions, then approve.</li>
+          <li>
+            In Home Assistant, add Hearth and enter your private Hearth address. If already added,
+            open its connection repair instead.
+          </li>
+          <li>Enter its six-letter code below and approve the Hearth connection.</li>
         </ol>
         <p>
           Only visible screens respond to tab changes. Native TVs need the updated Hearth APK.
@@ -174,6 +188,12 @@ export function HomeAssistantBridgeSettings() {
       {connection ? (
         <div className="ha-bridge-summary">
           <h3>Home Assistant is connected</h3>
+          {needsReconnect ? (
+            <p className="ha-bridge-reconnect" role="status">
+              This connection has limited access. Reconnect once to enable screens, calendar and
+              chore control.
+            </p>
+          ) : null}
           <dl>
             <div>
               <dt>Allowed screens</dt>
@@ -182,7 +202,7 @@ export function HomeAssistantBridgeSettings() {
                   .map(
                     (id) =>
                       screens.find((screen) => screen.id === id)?.name ??
-                      'Previously selected screen',
+                      'Previously paired screen',
                   )
                   .join(', ') || 'None'}
               </dd>
@@ -202,9 +222,7 @@ export function HomeAssistantBridgeSettings() {
               <dd>{connection.shareCalendar ? 'Read only' : 'Not shared'}</dd>
             </div>
           </dl>
-          <p className="field-help">
-            Disconnect before replacing this connection or changing its permissions.
-          </p>
+          <p className="field-help">Newly paired screens need a reconnect to be included.</p>
         </div>
       ) : null}
       {summary.isSuccess && connection === null && !waiting && !uncertain ? (
@@ -212,8 +230,7 @@ export function HomeAssistantBridgeSettings() {
           className="admin-form"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!locked && ConnectionCodeSchema.safeParse(code).success && admin.isSuccess)
-              void approve();
+            if (!locked && canApprove) void approve();
           }}
         >
           <label htmlFor="ha-connection-code">Code shown in Home Assistant</label>
@@ -242,73 +259,31 @@ export function HomeAssistantBridgeSettings() {
               onRetry={() => void admin.refetch()}
             />
           ) : null}
-          <fieldset disabled={locked || !admin.isSuccess}>
-            <legend>Allowed screens</legend>
-            {screens.length === 0 ? (
-              <p>No paired screens are available.</p>
-            ) : (
-              screens.map((screen) => (
-                <label className="ha-bridge-choice" key={screen.id}>
-                  <input
-                    type="checkbox"
-                    checked={screenIds.includes(screen.id)}
-                    disabled={screenIds.length >= 20 && !screenIds.includes(screen.id)}
-                    onChange={(event) =>
-                      setScreenIds((current) =>
-                        event.target.checked
-                          ? [...current, screen.id]
-                          : current.filter((id) => id !== screen.id),
-                      )
-                    }
-                  />
-                  <span>{screen.name}</span>
-                </label>
-              ))
-            )}
-          </fieldset>
-          <fieldset disabled={locked}>
-            <legend>Share information</legend>
-            <label className="ha-bridge-choice">
-              <input
-                type="checkbox"
-                checked={shareChores}
-                onChange={(event) => {
-                  setShareChores(event.target.checked);
-                  if (!event.target.checked) setControlChores(false);
-                }}
-              />
-              <span>Share chores (read only)</span>
-            </label>
-            <label className="ha-bridge-choice">
-              <input
-                type="checkbox"
-                checked={shareCalendar}
-                onChange={(event) => setShareCalendar(event.target.checked)}
-              />
-              <span>Share calendar (read only)</span>
-            </label>
-          </fieldset>
-          <fieldset disabled={locked}>
-            <legend>Chore control (optional)</legend>
-            <label className="ha-bridge-choice">
-              <input
-                type="checkbox"
-                checked={controlChores}
-                disabled={!shareChores}
-                onChange={(event) => setControlChores(event.target.checked)}
-              />
-              <span>Allow completing and reopening today’s chores</span>
-            </label>
+          <div className="ha-bridge-access" aria-labelledby="ha-included-access">
+            <h3 id="ha-included-access">Included with this connection</h3>
+            <ul>
+              <li>
+                Switch tabs on all current Hearth screens
+                {admin.isSuccess ? ` (${screens.length})` : ''}.
+              </li>
+              <li>Read your calendar and chores.</li>
+              <li>Complete and reopen today’s chores.</li>
+            </ul>
+            {admin.isSuccess && screens.length === 0 ? (
+              <p>No screens are paired yet. Calendar and chores still work without a TV.</p>
+            ) : null}
             <p className="field-help">
-              Share chores first. Completion changes affect earned pocket money as usual. This does
-              not allow creating, deleting or reassigning chores, or opening admin.
+              Completing chores affects earned pocket money as usual. This does not allow admin
+              access, calendar edits, or creating, deleting or reassigning chores.
             </p>
-          </fieldset>
-          <button
-            className="admin-submit"
-            type="submit"
-            disabled={locked || !admin.isSuccess || !ConnectionCodeSchema.safeParse(code).success}
-          >
+          </div>
+          {tooManyScreens ? (
+            <p className="field-help" role="alert">
+              This connection supports up to 20 paired screens. Remove unused screen pairings before
+              connecting; no screens will be silently left out.
+            </p>
+          ) : null}
+          <button className="admin-submit" type="submit" disabled={locked || !canApprove}>
             {busy ? 'Approving…' : 'Approve Home Assistant'}
           </button>
         </form>
@@ -330,15 +305,21 @@ export function HomeAssistantBridgeSettings() {
             role="group"
             aria-label="Disconnect Home Assistant"
           >
-            <strong>Disconnect Home Assistant?</strong>
-            <span>This cancels pending approvals and stops its access to Hearth.</span>
+            <strong>
+              {needsReconnect ? 'Reconnect Home Assistant?' : 'Disconnect Home Assistant?'}
+            </strong>
+            <span>
+              {needsReconnect
+                ? 'Disconnect this limited connection, then open the existing Hearth connection’s repair in Home Assistant for fresh letters. Your phones and screens stay paired.'
+                : 'This cancels pending approvals and stops its access to Hearth.'}
+            </span>
             <button
               className="admin-danger"
               type="button"
               disabled={busy}
               onClick={() => void revoke()}
             >
-              Yes, disconnect
+              {needsReconnect ? 'Disconnect and reconnect' : 'Yes, disconnect'}
             </button>
             <button
               className="admin-secondary"
@@ -356,7 +337,11 @@ export function HomeAssistantBridgeSettings() {
             disabled={busy}
             onClick={() => setConfirmRevoke(true)}
           >
-            {connection ? 'Disconnect Home Assistant' : 'Cancel pending connection'}
+            {connection
+              ? needsReconnect
+                ? 'Reconnect Home Assistant'
+                : 'Disconnect Home Assistant'
+              : 'Cancel pending connection'}
           </button>
         )
       ) : null}

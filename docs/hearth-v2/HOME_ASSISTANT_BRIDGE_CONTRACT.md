@@ -2,16 +2,20 @@
 
 This opt-in local integration is separate from Hearth's existing outbound Home Assistant
 safety/script adapter. It grants no adult login, provider access or general household write authority.
-The D-109 extension permits only today's chore completion/reopening with separate adult opt-in.
+The D-109 extension permits only today's chore completion/reopening. D-111 includes this in one
+explicitly approved setup bundle; it does not broaden existing grants or the transport.
 Home Assistant still owns TV power, app launching and media. The bridge only navigates Hearth
 while its paired display is already open and visible; it never launches or interrupts another app.
 
 ## Authority and setup
 
-An authenticated administrator selects existing paired screens and explicitly permits read-only
-chores and/or calendar sharing in Connections → Home Assistant. A separate `controlChores`
-permission, off by default and requiring `shareChores`, permits completing/reopening today's
-existing chores. It grants no chore creation, deletion, assignment, schedule, exception, account,
+An authenticated administrator approves the disclosed bundle in Connections → Home Assistant:
+all currently paired unrevoked screens, chores/calendar information and today's chore status changes.
+The UI sends every current screen ID (maximum 20) and all three permission flags true. Zero screens
+still permits data/chores; exceeding 20 blocks approval. No checkbox picker is shown (D-111).
+The separate stored `controlChores` permission still requires `shareChores`; old grants/defaults
+remain unchanged. It permits completing/reopening today's existing chores, not chore creation,
+deletion, assignment, schedule, exception, account,
 calendar-edit or pocket-money management rights. Ordinary completion changes still affect earned
 pocket money through Hearth's existing domain rules. Under D-110 the HA integration generates a random
 32-byte `ha_` key privately and exchanges it automatically after adult approval. The phone never
@@ -24,8 +28,11 @@ This is not a built-in/automatically discovered HA integration and needs no MQTT
 ### Six-letter device approval (D-110)
 
 HA accepts the trusted private HTTPS root, displays six letters and waits. The adult enters those
-letters in Hearth Connections → Home Assistant, selects permissions and approves a setup they
-initiated. Closing HA's dialog cancels its task/session. Unexchanged requests expire without access.
+letters in Hearth Connections → Home Assistant, reads the included access and approves a setup they
+initiated. Existing limited grants require confirmed disconnect and fresh approval through the HA
+entry's reauthentication repair, not a duplicate entry. Newly paired screens also require reconnect;
+future capabilities are not automatically granted. Approval/retry freezes the disclosed screen set.
+Closing HA's dialog cancels its task/session. Unexchanged requests expire without access.
 
 - Machine `POST /api/v1/home-assistant/pairing-requests`: strict `{requestId,secret}` →
   `{id,code,expiresAt,interval:3}`; no Cookie, Origin or Authorization accepted.

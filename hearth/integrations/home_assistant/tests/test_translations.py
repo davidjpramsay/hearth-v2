@@ -24,6 +24,11 @@ class PairingTranslationTests(unittest.TestCase):
                 self.assertEqual(fields, {"code"})
                 rendered = prompt.format(code="ABCDEF")
                 self.assertEqual(rendered.count("ABCDEF"), 1)
+                self.assertIn(
+                    "Screens, calendar and chore control are included", rendered
+                )
+                self.assertIn("no boxes to tick", rendered)
+                self.assertNotIn("choose permissions", rendered)
                 for instruction in [
                     "More",
                     "Connections",

@@ -1,11 +1,22 @@
 # Hearth v2 implementation roadmap
 
+## Single Home Assistant approval — D-111 (2026-10-15)
+
+Replace permission choices with the disclosed current-feature bundle; preserve restricted existing
+grants, the 20-screen bound and exact retries. Verify UI/API isolation, reconnect confirmation and
+mobile/TV-sized rendering, then run hosted gates before the approved private Hearth/HA update.
+Install wording-only component 1.1.2 with backup/config checks and quiet Core restart. The existing
+limited live grant needs one adult-approved reconnect; no automatic upgrade. Physical tab feedback,
+real calendar/chores and agreed test-chore complete/reopen remain separate open acceptance gates.
+The morning routine, TV content and runtime networking must remain unchanged by this rollout.
+
 ## Short-code connection usability — D-110 (2026-10-15)
 
 Replace manual Hearth key entry with six uppercase invitation letters or private QR. Preserve
 strong machine/recovery proof and all existing connections. Verify typed contracts, additive
 migration, expiry/replay/revocation races, origin/screen isolation, HA config-flow task lifecycle
-and mobile/TV rendering before publication. Install matching HA 1.1.0 separately with approval.
+and mobile/TV rendering before publication. Install matching HA component separately with approval
+(current wording version 1.1.2; D-111).
 Physical phone/HA/TV acceptance and the morning Today-selection change remain separate open gates.
 
 ## Inbound Home Assistant integration — 2026-10-15 (D-108)
