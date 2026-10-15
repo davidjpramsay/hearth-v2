@@ -12,11 +12,21 @@ finishing the connection/release. Keep that routine's existing music/wake/volume
 guards; after actual screen registration, append bounded ready → select stored option `today` →
 observed-ack verification, using the real selected-screen entity ID, never a guessed placeholder.
 
+The approved 2026-10-15 installation checkpoint is now release `05130f0`: full hosted/local browser
+gates passed, exact verified server/web images are live and private/ready, and the in-place signed
+TV update reports 0.1.1-debug/code 2. A full local HA backup was completed before installation;
+restore remains untested. The exact custom-component files were manually installed and verified,
+HA configuration checked, Core restarted with no running routines, and the real Hearth config flow
+is available. File editor is stopped, autostart disabled, and the HA staging installers removed.
+No key has been entered by the agent and no household entities or navigation/chore actions are
+claimed yet. Await the owner's private phone grant/key submission; the morning automation is
+still unchanged. See [the acceptance checkpoint](ACCEPTANCE.md) for commands, results and open gates.
+
 Use the trusted Hearth **server** origin, not a television IP. HA's household/server device owns
 chore/calendar entities; its child screen devices own tab selectors. Server chore commands do not
 require the TV to be online. Android TV Remote/ADB still owns physical power and app launching.
 
-This local source change does not install anything on HA or the TV. Preserve the running TV while
+Publishing source alone does not install anything on HA or the TV. Preserve the running TV while
 in use. After verified release and explicit live-change approval: back up HA, update Hearth using
 the existing verified private release workflow (preserving Synology networking), update the existing
 signed TV APK without uninstall/clearing its pairing, and manually copy only the bundled
@@ -44,12 +54,13 @@ verify no wake/launch/navigation is performed. Check offline/expiry/revocation, 
 counts and timed/all-day calendar ranges without logging household contents. Retain private backups
 and use the existing rollback procedure; no compose/network reset, re-pair or public exposure.
 
-## Appliance access — D-104 (local browser implementation, hardware pending)
+## Appliance access — D-104 (browser/server released, hardware pending)
 
 The selected product uses a private supplied QR, phone-assisted authenticated network setup,
-explicit recovery phones and a separate offline recovery QR. Local browser recovery routes and
-migration 0029 are implemented, but not deployed. No radio/network service runs; protected
-D-102/D-103 operator-file fallback remains. Current live access is unchanged.
+explicit recovery phones and a separate offline recovery QR. Browser recovery routes and migration
+0029 are included in the verified private release; this deployment does not prove physical phone
+recovery or appliance hardware. No radio/network service runs; protected D-102/D-103 operator-file
+fallback remains. The HA installation preserves existing household phone/screen access.
 Do not serve the existing private owner key/QR to anonymous browsers, add an empty-server bypass,
 open ports, change Synology networking, or auto-promote a secondary adult to implement this plan.
 No live key issuance, pairing, migration or deployment is authorized by local implementation.

@@ -1,5 +1,58 @@
 # Hearth v2 acceptance and definition of done
 
+## HA release and installed-device checkpoint — 2026-10-15
+
+Released software: `05130f051ea33a9f875562b4a9f3b97f7669a193`, pushed to main and
+`codex/admin-ui-consistency`. [Hosted Verify Hearth run 38690895856](https://github.com/davidjpramsay/hearth-v2/actions/runs/38690895856)
+passed every job: complete code/API gate, dependency audit, 54 offline HA tests, Android
+test/lint/Debug+Release builds, all four browser shards and exact-commit image publication.
+The corrected local `pnpm test:e2e:built --max-failures=5 --reporter=line
+--output=/tmp/hearth-ha-live-release.9FD3XZ/e2e-final` also passed **1,075/1,075 in 24.6 minutes**.
+Earlier local failures and their narrow assertion fixes are recorded in the preparation checkpoint.
+
+Approved live operations and evidence:
+
+- `./hearth/deploy/synology/activate-private-release.sh
+05130f051ea33a9f875562b4a9f3b97f7669a193` exited 0. Both exact images were pulled before replacement;
+  the existing protected backup/rollback procedure ran. A transitional external 502 during startup
+  resolved: private HTTPS `/api/v1/readiness` and `/api/v1/health` now return 200, database ready and
+  the exact release. An unauthenticated bridge-state request returns 401. The installer verified the
+  existing commissioned bridge/DNS rules and loopback publication; no network configuration was
+  replaced. Protected release-helper hashes are unchanged before/after and match the repository.
+- The signed local Debug APK was integrity-checked on the Mac, in HA staging and on the TV, then
+  transferred with HA's existing `androidtv.upload` and installed with guarded `pm install -r`.
+  Android's own response says **Success**, `versionCode=2`, `versionName=0.1.1-debug`. No uninstall,
+  data clear, re-pair, app launch, power, music, volume or remote-key command was sent. The preflight
+  reported Hearth not visible; physical relaunch/pairing retention and new TV control remain untested.
+- With the approved local HA backup already complete, copied only the 13 committed component files
+  into the previously absent custom-component target. Every installed file matches the checked
+  archive; ten Python files parse. No HA YAML, secret/config-entry or automation was edited.
+  Removed only the two owned HA staging installers and their empty staging directory; local copies
+  remain outside Git. The TV temporary APK remains available pending final setup cleanup.
+- HA's built-in Check configuration reported **Configuration will not prevent Home Assistant from
+  starting!**. Both a read-only template and the restart confirmation showed no running automation
+  or script. Restarted Core only, without upgrading HA/OS or rebooting the TV. After reconnection,
+  **Add integration → Hearth** opens the real protected config flow. The trusted server origin is
+  entered, HTTP-loopback exception unchecked, key empty. This proves installed flow registration,
+  not an authenticated connection or household entity registration.
+- File editor is stopped with start-on-boot/watchdog/auto-update/sidebar off. Its official wrapper
+  reports an Error badge after Stop; the inspected first shutdown log explicitly shows SIGTERM and
+  all configurator services successfully stopped. It is not running or a required ongoing service.
+- The owner enrolled the laptop as a screen themselves. It is not an adult controller; do not use
+  that screen credential to issue the HA grant. It is an available candidate for a no-TV-interruption
+  navigation test once the adult explicitly selects it in the grant.
+
+Evidence is outside Git at `/tmp/hearth-ha-live-release.9FD3XZ/`, including `hosted-result.json`,
+`deploy.log`, `browser-final.log`, `tv-update-receipt.png` and `ha-connection-ready.png` (empty key).
+No key, household payload, reminder/provider identifier or private configuration was exported.
+
+**Blocked on owner action:** approve the chosen screens and data/chore permissions on the enrolled
+adult phone, then privately enter and submit that new key in HA. Do not read/copy the key through
+agent tools or chat. Still not run: live household entities/data, laptop or updated-TV navigation
+acknowledgement, agreed test-chore complete/reopen, revocation/offline recovery and actual iPhone
+Safari/layout proof. The 06:30 automation remains enabled and unchanged; its Today-selection addition
+must wait for the real registered TV entity. No morning routine was triggered.
+
 ## HA live-connection release preparation — 2026-10-15
 
 The user subsequently approved finishing the private connection, its verified release and
