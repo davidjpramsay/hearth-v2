@@ -1,5 +1,22 @@
 # Hearth v2 local environment and operations plan
 
+## Current HA single-approval release — D-111 (2026-10-15)
+
+Private Hearth runs verified source `f61454839f22da5cc6ed8bc636fb70db27850a0a`; hosted run
+38723549135 passed every job, including 1,080 browser cases and image publication. Existing bridge,
+DNS rules, loopback publication, private runtime and household connections were preserved. HA loaded
+component 1.1.2 after a fresh 2.91 MB full backup, exact-file verification, configuration/no-running-
+routine checks and a Core-only restart. File editor is stopped; component rollback is retained.
+The existing Ramsay HA entry was reloaded after the brief server outage and has no setup error.
+
+The adult's previous zero-scope connection remains deliberately limited. Reload Hearth on the
+phone, open **More → Connections → Home Assistant → Reconnect Home Assistant**, then confirm.
+In HA, repair/re-authenticate that existing Hearth entry for fresh six letters; do not add another
+hub/entry. Enter the letters on the adult phone and approve the disclosed bundle once. This includes
+all current paired screens, calendar/chore information and today's chore complete/reopen. No boxes.
+New screens need reconnect too. No live reconnect, screen command, data/chore functional proof or
+morning-automation change is claimed yet. See ACCEPTANCE for commands, artifacts and open gates.
+
 ## Home Assistant inbound bridge installation (D-108)
 
 The component is validated against HA 2026.10.1/current config-flow APIs; verify the installed

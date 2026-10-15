@@ -26,19 +26,71 @@ Local passed checks:
   leaves permissions untouched; confirmed disconnect revokes the old credential (401).
 - Deterministic UI tests also cover zero screens, 21-screen blocking, failed screen lookup,
   newly paired screens, no automatic upgrade and exact uncertain retry after query changes.
+- `pnpm test:e2e:built tests/e2e/admin.spec.ts tests/e2e/device-isolation.spec.ts --reporter=line --output=/tmp/hearth-single-approval-admin-e2e`:
+  72 admin cases passed (1.8 minutes). The second filename matched no file; screen isolation was
+  therefore run separately, not claimed from this command.
+- `pnpm test:e2e:built tests/e2e/screen-admin-isolation.spec.ts tests/e2e/device-connection.spec.ts --reporter=line --output=/tmp/hearth-single-approval-isolation-e2e`:
+  28 passed (1.5 minutes), including phone/TV/4K shared-screen administration isolation.
 
-Rendered light phone and TV-sized setup images were visually inspected. Safe demo screenshots are
-under `/tmp/hearth-single-approval-e2e/`; no production code/key is included. Browser-plugin skill
+Rendered light phone and TV-sized setup images were visually inspected. CUA additionally checked
+390×844 and 1920×1080 dark presentation, actual `data-theme=dark`, no checkboxes/overflow and no
+warning/error logs. The demo's explicit light preference initially overrode the system-media test;
+dark was selected through its Appearance UI and light was restored afterward. Temporary media and
+viewport overrides, QA tab and owned demo servers were removed after inspection.
+Safe demo screenshots are under `/tmp/hearth-single-approval-e2e/` and
+`/tmp/hearth-single-approval-live.jQYxkC/`; no production code/key is included. Browser-plugin skill
 was unavailable, so repository Playwright supplies automated/demo proof and CUA supplies live UI
 inspection. The React/frontend-testing skills kept permissions derived and frozen on explicit action
 and required rendered/keyboard/access-isolation checks.
 
 Live preflight: fresh HA full backup **Before Hearth single approval 2026-10-15** completed (2.91 MB,
-this system). It is rollback evidence, not a tested restore. Broader local admin checks, fresh hosted
-all-job/image publication, private deployment and HA 1.1.2 installation are pending this checkpoint.
-The existing limited HA grant is deliberately not revoked or expanded. Physical adult reconnect,
-actual screen navigation/feedback, real data readback and agreed test-chore complete/reopen remain
-not run; no physical-device success follows from these demo checks.
+this system). It is rollback evidence, not a tested restore.
+
+### D-111 approved release and live installation
+
+- Source `f61454839f22da5cc6ed8bc636fb70db27850a0a` was pushed non-force/atomically to `main` and
+  `codex/admin-ui-consistency`. Hosted [run 38723549135](https://github.com/davidjpramsay/hearth-v2/actions/runs/38723549135)
+  passed all eight jobs: code/API, Android TV, container builds, all four browser shards (1,080
+  cases) and exact verified-image publication. Artifact-action Node 20 deprecation notices were
+  non-failing runner advisories, not application failures.
+- `./hearth/deploy/synology/activate-private-release.sh f61454839f22da5cc6ed8bc636fb70db27850a0a`
+  completed successfully. The existing fixed helper pulled both verified images before replacement,
+  retained its SQLite backup/rollback boundary and verified the original `172.24.0.0/16` bridge/DNS
+  rules twice. Exact server/web tags are running; web publication remains `127.0.0.1:8433→8080`.
+  Helper/update-agent hashes match the preflight. No runtime env, credential, network or grant edits.
+- External health at `2026-10-15T11:10:11.995Z`: `ok`, `sqlite-ready`, `private`, exact `f614548...`.
+  Readiness `ready/database ready/private` and runtime returned HTTP 200. Unauthenticated HA state
+  remains 401. These are service checks, not actual phone/TV behavior.
+- HA archive `hearth-ha-f614548.tar` SHA-256
+  `77eeed09e3f163c9279f5c964ba746d821432d08d9756974146529d4502aace9` was uploaded through the existing
+  authenticated official File editor, without an external port. The guarded updater verified the
+  archive's exact 15 members/13 files, old installed version 1.1.1, all 13 installed hashes and ten
+  Python parses. Previous component files remain in private rollback directory
+  `.hearth-component-rollback-20261015-f614548`; the inert uploaded archive/staging were removed.
+  Success and injected partial-replacement rollback were both tested first in disposable local
+  fixtures; all 13 previous hashes were restored in the latter. This is not a full HA restore drill.
+- Configuration passed before/after copying. Template readback and the Core confirmation both
+  showed no running automations/scripts. Only HA Core was restarted, not HA OS/Supervisor. The
+  existing integration briefly retried while Hearth was restarting; after Hearth became ready,
+  reloading that existing entry recovered it. HA visibly shows **Version 1.1.2**, the original one
+  Ramsay entry/device and four entities, with no setup error. No duplicate entry, re-pair, approval,
+  TV navigation, chore command or morning-automation edit was performed.
+- File editor was stopped afterward; Start is available and autostart/watchdog/auto-update/sidebar
+  switches remain off. Its existing controlled-stop Error badge recurred; this is not a claim that
+  the stopped helper is running. HA continues to load the updated component independently.
+
+Live artifacts: `/tmp/hearth-single-approval-live.jQYxkC/` contains hosted results, deployment log,
+safe health/readiness readback, `ha-install-result.txt`, backup/config/quiet-restart evidence,
+`ha-file-editor-stopped.png` and `ha-1.1.2-loaded.png`. No key, code, token or household payload was
+read for this release evidence. CUA's temporary QA overrides/tab and owned demo servers were closed;
+the existing Hearth screen and updated HA entry remain available for the owner.
+
+Still not run: adult-phone reload/rendered single-approval reconnect, live all-scope data/screen
+readback, actual selected-screen navigation/feedback, real chore complete/reopen, grant revocation
+and recovery drills. The existing limited grant was deliberately not revoked or expanded. The adult
+must confirm **Reconnect Home Assistant** on the phone, then use the existing HA entry's repair for
+fresh six letters. Do not use **Add hub** to create a duplicate or call this fully connected before
+that adult approval and observed functional evidence.
 
 ## D-110 live installation and HA progress-prompt correction — 2026-10-15
 

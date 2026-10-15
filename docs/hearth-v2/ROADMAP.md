@@ -9,6 +9,9 @@ Install wording-only component 1.1.2 with backup/config checks and quiet Core re
 limited live grant needs one adult-approved reconnect; no automatic upgrade. Physical tab feedback,
 real calendar/chores and agreed test-chore complete/reopen remain separate open acceptance gates.
 The morning routine, TV content and runtime networking must remain unchanged by this rollout.
+Released checkpoint: `f614548` passed all hosted jobs (1,080 browser cases), is healthy on the
+private NAS, and HA visibly loaded 1.1.2 with the existing entry. The old limited grant is unchanged;
+adult-phone reconnect and actual data/tab/chore functional acceptance remain open. See ACCEPTANCE.
 
 ## Short-code connection usability — D-110 (2026-10-15)
 

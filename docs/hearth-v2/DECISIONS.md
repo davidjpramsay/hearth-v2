@@ -5,8 +5,8 @@ Record durable choices here. New decisions should include date, status, context,
 ## D-111 — One explicit Home Assistant approval, no permission picker
 
 - Date: 2026-10-15
-- Status: owner-requested implementation; publication and private Hearth/HA updates approved,
-  subject to release checks. Live reconnect and functional device proof remain separate.
+- Status: implemented, locally/hosted verified and approved private release installed as `f614548`
+  with HA component 1.1.2. Live adult reconnect and functional device proof remain separate.
 - Context: The adult completed setup without ticking permissions, leaving a connected but unusable
   integration. Per-feature choices made the difference between server data and screen control harder
   to understand. The owner explicitly requested the supported bundle without options.
