@@ -25,12 +25,43 @@ the progress prompt. Version 1.1.0 therefore hid the six letters. The unapproved
 no household grant or device/chore command was issued. Component **1.1.1** moves the code and brief
 instructions into the real progress translation in both source and English. Two regression tests
 assert its `{code}` placeholder, rendered six letters and approval/expiry instructions; the component
-suite now passes **60/60**, with Ruff format/lint and targeted Prettier checks. Installing and visibly
-checking 1.1.1 remains the next gate; do not claim a real approved HA connection yet.
+suite now passes **60/60**, with Ruff format/lint and targeted Prettier checks.
+
+Installed component **1.1.1** from `cdb9bb5460b8df0c17b42a45d61d3724af74adc7` after its hosted code
+gate passed. All 13 hashes match the archive; ten Python files parse. The old 1.1.0 files have their
+own private rollback copy, and the temporary archive was removed. Rechecked valid configuration and
+no running routines, then restarted Core only. The real URL-only form and subsequent live progress
+dialog now visibly show **six uppercase letters**, the adult-phone approval path and five-minute
+expiry. The code and hidden credential are not in the evidence. That preview reached its normal
+five-minute expiry without approval, visibly displayed the expiry message, and was closed. The
+trusted-origin form is left ready for the owner to press Submit when both devices are ready; no
+actual grant, household entity read, navigation or chore command is claimed.
+The final full hosted workflow
+[38717042149](https://github.com/davidjpramsay/hearth-v2/actions/runs/38717042149) passed every job,
+including all four browser shards and verified-image publication. Server/web stay on the already
+verified `b65aefe` because this correction
+changes only the HA component, tests and documentation; no redundant NAS restart is required.
 
 Evidence is outside Git at `/tmp/hearth-short-codes-live.jBzgZE/`: hosted result/log, deployment log,
 health/readiness, unchanged helper hashes, HA backup/install/restart/stopped receipts and key-free
-setup screenshots. No hidden machine credential, private household content or pairing code was logged.
+setup screenshots, `ha-final-ready.png` and the redacted `ha-1.1.1-progress-proof.txt`. No hidden machine credential,
+private household content or pairing code was logged. Physical Safari approval, real entities,
+screen acknowledgement, agreed test-chore writes and morning-automation changes remain open.
+
+Rendered QA (CUA in the existing private HA browser; no terminal Playwright against live HA):
+
+| Check                             | Result                                                                                                                                                                          |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page identity                     | Correct private HA integration dashboard; title Integrations – Home Assistant.                                                                                                  |
+| Meaningful render / error overlay | URL-only form and real approval dialog render; no framework overlay.                                                                                                            |
+| Interaction                       | Submit trusted HTTPS origin → live six-letter progress prompt with permissions/expiry guidance. No adult approval submitted.                                                    |
+| Screenshot evidence               | `ha-1.1.1-setup-ready.png` contains no code or key; prompt proof is redacted text.                                                                                              |
+| Console                           | Preserved HA history has opaque Object/disconnected errors around maintenance; no new entry after the corrected prompt was shown. Not claimed as a clean-session console audit. |
+| Physical / permissions            | Adult-phone entry, final grant and actual household/screen/chore behavior remain unverified.                                                                                    |
+
+File editor was independently checked after the final restart: Start available, Stop absent, zero
+enabled automatic/sidebar switches. The temporary maintenance tab was closed; owner setup remains
+at the trusted-origin starting form in the original HA tab, without a manual key field.
 
 ## D-110 release gate follow-up — 2026-10-15
 

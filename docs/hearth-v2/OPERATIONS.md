@@ -12,15 +12,18 @@ finishing the connection/release. Keep that routine's existing music/wake/volume
 guards; after actual screen registration, append bounded ready → select stored option `today` →
 observed-ack verification, using the real selected-screen entity ID, never a guessed placeholder.
 
-The approved 2026-10-15 installation checkpoint is now release `05130f0`: full hosted/local browser
-gates passed, exact verified server/web images are live and private/ready, and the in-place signed
-TV update reports 0.1.1-debug/code 2. A full local HA backup was completed before installation;
-restore remains untested. The exact custom-component files were manually installed and verified,
-HA configuration checked, Core restarted with no running routines, and the real Hearth config flow
-is available. File editor is stopped, autostart disabled, and the HA staging installers removed.
-No key has been entered by the agent and no household entities or navigation/chore actions are
-claimed yet. Setup is paused for D-110; do not ask the owner to copy a long key. The morning automation is
-still unchanged. See [the acceptance checkpoint](ACCEPTANCE.md) for commands, results and open gates.
+The approved 2026-10-15 installation checkpoint is server/web release `b65aefe`: all hosted jobs,
+including 1,078 browser checks and exact-image publication, passed; the private NAS is healthy and
+its existing networking is preserved. The earlier in-place TV package remains 0.1.1-debug/code 2;
+D-110 requires no additional APK installation. A fresh full local HA backup completed (2.73 MB),
+and component **1.1.1** from `cdb9bb5` is installed with all 13 hashes verified. Configuration checks
+passed and Core restarted only after confirming no running routines. The real HA dialog now shows
+six uppercase letters and the adult-phone approval instructions; 1.1.0 hid the letters and is
+superseded. File editor is stopped, autostart disabled, temporary installers removed and component
+rollback copies retained. Backup restore remains untested. No key was manually entered or exposed,
+and no household entities, screen commands or chore writes are claimed until owner approval and
+separate functional proof. The morning automation remains unchanged. See
+[the acceptance checkpoint](ACCEPTANCE.md) for exact commands, results and open gates.
 
 Use the trusted Hearth **server** origin, not a television IP. HA's household/server device owns
 chore/calendar entities; its child screen devices own tab selectors. Server chore commands do not
