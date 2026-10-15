@@ -1,5 +1,24 @@
 # Hearth v2 acceptance and definition of done
 
+## D-110 release gate follow-up — 2026-10-15
+
+Publication of `fa6f8d3` was approved, but hosted run
+[38713169398](https://github.com/davidjpramsay/hearth-v2/actions/runs/38713169398) blocked deployment:
+code/API, Android and image-build jobs passed, then browser shard 3 failed with
+`route.fulfill: Route is already handled!` in the unchanged static Today composition matrix
+(`1920x1080 portrait-2-3 mask 2`). No production activation or HA component replacement occurred.
+The matrix now reads its seeded Today response once before navigation and serves cloned JSON;
+all geometry assertions and route-draining checks remain, with no production behavior change.
+The formerly failing case passed **40/40 consecutive repetitions** on the frozen production build:
+
+```sh
+pnpm test:e2e:built --grep 'Today composition 1920x1080 portrait-2-3 mask 2$' --repeat-each=40 --reporter=line --output=/tmp/hearth-short-codes-live.jBzgZE/matrix-repeat
+```
+
+Targeted Prettier and ESLint checks passed. A new complete hosted workflow and verified image
+publication remain required before activation. A fresh named local HA backup completed (2.73 MB);
+the staged component archive is inert and File editor was stopped while the release was blocked.
+
 ## Six-letter connections — D-110 local checkpoint (2026-10-15)
 
 Local implementation replaces manual HA key entry with machine-generated secret/short-code adult

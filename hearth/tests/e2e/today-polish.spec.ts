@@ -409,9 +409,16 @@ for (const viewport of [
         page,
       }) => {
         if (photo.orientation !== 'none') await useSinglePhotoAlbum(page, photo);
+        // This matrix checks static geometry, not realtime Today refreshes. Load the
+        // seeded response before navigation so refresh interception cannot outlive
+        // the final assertion while waiting on route.fetch().
+        const response = await page.request.get(
+          '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
+        );
+        expect(response.ok()).toBe(true);
+        const basePayload: unknown = await response.json();
         await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-          const response = await route.fetch();
-          const payload = (await response.json()) as {
+          const payload = structuredClone(basePayload) as {
             photo: null | {
               alt: string;
               height?: number;
@@ -469,7 +476,7 @@ for (const viewport of [
                   url: `${originalPhoto.url}?matrix=${photo.name}-${mask}`,
                   width: photo.width,
                 };
-          await route.fulfill({ response, json: payload });
+          await route.fulfill({ json: payload });
         });
 
         await page.setViewportSize(viewport);
