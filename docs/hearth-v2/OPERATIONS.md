@@ -1,23 +1,34 @@
 # Hearth v2 local environment and operations plan
 
-## Pending Modules release — D-112 (local only)
+## Current Modules release — D-112 (2026-10-15)
 
-The local implementation adds migration 0032 and matching HA component 1.2.0. It is not part of the
-installed D-111 release below. No live module flag, device, container, networking or HA file changed.
-Wait for explicit publication/deployment/installation approval and green release gates. Preserve
-the exact private runtime network/container configuration, take/verify current backup and rollback
-evidence, deploy matching Hearth images, verify readiness/migration, and install the HA component
-only under separate approved quiet-restart procedures. Neither step should navigate/wake the TV.
+After explicit owner approval, verified source `35c7bb7578179b810215540bceb09b61e4d414dc` was
+published and activated on the private NAS. Hosted run 38748473984 passed all eight jobs, including
+1,088 browser cases and both exact-image publications. The unchanged fixed helper checked its
+protected database snapshot, preserved the commissioned bridge/DNS and loopback publication, and
+confirmed private readiness and the exact health version. This image includes migration 0032;
+successful startup is evidence of migration completion, not a direct production-database query.
+
+HA Core remains 2026.10.1. Matching component 1.2.0 is installed and visibly loaded after a fresh
+3.11 MB full local backup, fourteen installed-file hash checks, eleven Python parses, configuration
+validation and an approved Core-only restart with no running automations/scripts. Configuration,
+automation and script hashes are unchanged. Component-only rollback is retained privately;
+temporary installer/archive/staging are removed. File editor is stopped with its four automatic/
+sidebar switches off. Its known controlled-stop Error badge is not a running installation failure.
+The original Ramsay entry still has one device/four entities and no setup error.
 
 Existing grants retain `controlModules=false`; reconnect once after both updates through the
 existing HA entry's repair, then approve the disclosed bundle on the adult phone. Do not reconnect
-twice or add a duplicate entry. Before approval no live module switches are usable. Test a single
+twice or add a duplicate entry. Before approval the eleven module switches are not registered. Test a single
 agreed feature off/on with retained data, state feedback and a visible screen only when convenient.
 Old binaries do not enforce module flags: do not treat a rollback to a pre-D-112 release as preserving
 disabled-feature protection. Coordinate a compatible rollback rather than silently bypassing it.
 No payload, credential or private household content belongs in release evidence.
+No live module flag, TV tab/power, chore/calendar item, morning automation or network setting was
+changed. Actual phone Modules rendering, reconnect and agreed physical off/on proof remain open.
+Exact commands and safe artifacts are recorded in ACCEPTANCE.
 
-## Current HA single-approval release — D-111 (2026-10-15)
+## Previous HA single-approval release — D-111 (2026-10-15)
 
 Private Hearth runs verified source `f61454839f22da5cc6ed8bc636fb70db27850a0a`; hosted run
 38723549135 passed every job, including 1,080 browser cases and image publication. Existing bridge,

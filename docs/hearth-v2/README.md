@@ -44,11 +44,11 @@ The opt-in, local Home Assistant integration follows
 foreground Hearth screen tabs and read-only chores/calendar feedback. D-109 adds only today's chore
 completion/reopening, not admin access or general editing. D-111 presents one explicit approval for
 all current screens and these existing capabilities; old limited grants require deliberate reconnect.
-The local D-112 extension explicitly adds module switching to fresh approvals, with default-false
-legacy authority and matching component 1.2.0; it is not yet installed live.
-Its installation and physical acceptance are separate from local implementation.
+The D-112 extension explicitly adds module switching to fresh approvals, with default-false legacy
+authority. Verified private release `35c7bb7` and matching HA component 1.2.0 are installed;
+adult reconnect and actual-device module acceptance remain open in ACCEPTANCE.
 The D-110 setup uses six-letter adult-approved codes; the integration exchanges its strong
-private credential automatically. Current single-approval setup uses matching HA component 1.1.2.
+private credential automatically. Current single-approval setup uses matching HA component 1.2.0.
 
 Adult phone setup and recovery follow the versioned
 [`PHONE_CONNECTIONS_CONTRACT.md`](PHONE_CONNECTIONS_CONTRACT.md) (D-102): protected owner key

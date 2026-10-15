@@ -9,10 +9,11 @@ disabled tabs disappear from selectors, and queued navigation to them is cancell
 off stops the outbound adapter, not inbound pairing/module management. All-off is recoverable.
 
 The new `controlModules` grant permits only fixed boolean module commands. It defaults false for
-all old records. Matching local component 1.2.0 exposes eleven household configuration switches;
+all old records. Matching component 1.2.0 exposes eleven household configuration switches;
 they can re-enable a feature without its data scope. Fresh one-approval setup discloses this new
 capability explicitly. Separate approved installation/restart and adult reconnect are needed on
-an existing live HA instance. No live installation is implied by this implementation.
+an existing live HA instance. The current private release and HA 1.2.0 installation are verified
+in ACCEPTANCE; its old limited grant still requires one explicit adult reconnect.
 
 ## Short human codes (D-110)
 

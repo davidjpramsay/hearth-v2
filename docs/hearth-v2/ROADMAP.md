@@ -2,13 +2,13 @@
 
 ## Household Modules — D-112 (2026-10-15)
 
-Locally implement the eleven retained-data switches, server enforcement, responsive menus/routes,
-all-off recovery and separately approved HA module control. Test default/backward compatibility,
-durable receipts, unchanged feature tables, disabled I/O/commands, races and mobile/TV rendering.
-Run the repository gate before proposing publication. Local HA component 1.2.0 is not installed.
-Open release gates: explicit publish/deploy/HA-install approval, hosted checks/images, backup and
-private migration 0032, matching HA installation with quiet restart, one deliberate adult reconnect,
-then an agreed reversible real-device module test. Do not alter the live TV/morning automation.
+The eleven retained-data switches, enforcement, responsive menus/routes and all-off recovery passed
+local verification. With owner approval, `35c7bb7` passed all hosted gates (1,088 browser cases),
+published its verified images and is healthy on the private NAS with migration 0032. Matching HA
+component 1.2.0 is installed/loaded after backup, configuration checks and quiet Core restart.
+Current limited authority is unchanged. Open gates: adult-phone Modules rendering, one deliberate
+adult reconnect, then an agreed reversible physical module off/on test with retained-data/state
+feedback. No live feature flag, TV tab/power or morning automation was changed. See ACCEPTANCE.
 
 ## Single Home Assistant approval — D-111 (2026-10-15)
 

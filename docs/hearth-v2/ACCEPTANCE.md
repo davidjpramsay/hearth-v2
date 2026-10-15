@@ -1,6 +1,6 @@
 # Hearth v2 acceptance and definition of done
 
-## D-112 household Modules — 2026-10-15 (local implementation)
+## D-112 household Modules — 2026-10-15
 
 The requested simple **More → Modules** page has eleven household-wide switches. Off removes
 family/admin navigation, direct routes, Today cards/dialogs and photo/game entry points; server
@@ -10,7 +10,7 @@ with every feature off. Migration 0032 stores audited flags and durable actor-sc
 Finite request leases include disconnect handling; pending disabled-tab HA commands are cancelled.
 
 The separately disclosed `controlModules` capability defaults false for old grants and pending
-approvals. Fresh single approval explicitly includes it. Matching local HA component 1.2.0 adds
+approvals. Fresh single approval explicitly includes it. Matching HA component 1.2.0 adds
 eleven observed-state configuration switches, removes disabled selector options and makes disabled
 chore/calendar entities unavailable without content attributes. No silent grant expansion, general
 admin authority or feature data deletion. Old Today command receipts are redacted while Notices
@@ -45,11 +45,62 @@ audit/shard logs and final screenshots under `final-browser/*/modules-first-view
 `final-browser/*/all-off-core-phone.png`. Earlier exploratory/failing-run artifacts remain separate
 from this final green run.
 
-Not run/unchanged: no GitHub publication/hosted run, private NAS deployment/migration, live HA file
-installation/restart/reconnect, actual iPhone Safari or physical TV/HA module toggle. Android shell
-code is unchanged; no APK build/install is part of this web/server change. No live household flag,
-credential, TV content, automation or network configuration changed. Publication/deployment and
-matching HA installation require explicit approval; new actual-device acceptance remains separate.
+### D-112 approved release and live installation
+
+The owner explicitly approved publishing/deploying Hearth and installing matching HA with a quiet
+Core restart, retaining networking and current TV/module state.
+
+- `git fetch origin`, clean-tree/diff checks and ancestor verification preceded a non-force push
+  of `35c7bb7578179b810215540bceb09b61e4d414dc` to `main` and `codex/admin-ui-consistency`.
+  Hosted [run 38748473984](https://github.com/davidjpramsay/hearth-v2/actions/runs/38748473984)
+  passed all eight jobs: complete code/API gate, Android test/lint/build, both container builds,
+  four browser shards of **272 passed each (1,088 total)** and exact verified-image publication.
+  Artifact-action Node 20 deprecation annotations were non-failing runner advisories.
+- `./hearth/deploy/synology/activate-private-release.sh 35c7bb7578179b810215540bceb09b61e4d414dc`
+  exited 0. Both immutable images were pulled before replacement. The unchanged fixed helper took
+  and verified its protected stopped-database snapshot before migrating; normal success cleanup
+  followed. The prior image/version remains the rollback reference; a full restore was not tested.
+  The original `172.24.0.0/16` bridge/DNS rules were verified twice and publication remains
+  `127.0.0.1:8433→8080`. Activator, update-agent, release-safety and firewall-hook hashes are identical
+  before/after. No private env, Compose, network, ACL, token or credential edits.
+- External health at `2026-10-15T14:23:41.804Z` returned `ok/sqlite-ready/private` and exact
+  `35c7bb7...`; readiness returned `ready/database ready/private`; runtime was HTTP 200.
+  Unauthenticated HA state remains HTTP 401. Transitional HTTP 502s during container replacement
+  resolved. Exact-image ready startup establishes that included migration 0032 completed; no direct
+  production database, household payload or grant/credential query was performed.
+  Generic Docker/root-directory/firewall diagnostics were denied to the unprivileged deployment
+  account; the existing bounded helper supplied release/network checks without extra privileges.
+- HA UI independently confirmed Core 2026.10.1. `hassio.backup_full` created **Before Hearth Modules
+  2026-10-15**, **3.11 MB**, on this system. This is rollback evidence, not a verified restore.
+- Archive `hearth-ha-35c7bb7.tar` was created with `git archive` from the exact committed component;
+  SHA-256 `4bdc1a1a45d9939233f2cef44073ab190216b038b56404406b50845a5d0a4051` matched after
+  authenticated official File editor upload. The guarded `python3 /homeassistant/install-ha-35c7bb7.py`
+  checked exactly sixteen archive members/fourteen source files, prior version 1.1.2, every installed
+  hash and eleven Python parses, then installed 1.2.0. The thirteen prior files are retained in
+  `.hearth-component-rollback-20261015-35c7bb7`. Success and an injected partial replacement were
+  tested first using `python3.12 -B /tmp/hearth-modules-live.8xYTFF/test-installer.py`; rollback
+  restored every old hash and removed the newly added switch file in the disposable fixture.
+- HA configuration validation passed before/after copying. `configuration.yaml`, `automations.yaml`
+  and `scripts.yaml` hashes are unchanged. The read-only Template tool and final restart confirmation
+  both showed no running automations/scripts. Core alone restarted and reported it had started;
+  the integration visibly shows **Version 1.2.0**, the original Ramsay entry, one device/four
+  entities and no setup error. No duplicate entry, reconnect, new authority or module entities
+  were silently added. Switches register only after deliberate new adult approval.
+- Temporary installer, archive and staging were removed; private component rollback is retained.
+  File editor was stopped and independently checked after restart: Start available, Stop absent,
+  autostart/watchdog/auto-update/sidebar all off. Its existing controlled-stop Error badge recurred.
+
+Live evidence: `/tmp/hearth-modules-live.8xYTFF/` contains `hosted-result.json`, `hosted-full.log`,
+`deploy.log`, safe before/after helper hashes, health/readiness JSON, `ha-preflight.txt`,
+`ha-install-result.txt`, backup/configuration/quiet-restart screenshots and `ha-1.2.0-loaded.png`.
+No secret, approval code, household content or raw provider identifier is included. The browser
+inspection used CUA for the real authenticated HA UI, separate from the Playwright demo tests.
+
+Still not run: adult-phone Modules rendering and the one deliberate reconnect; physical HA/TV
+module off/on, retained-data readback and state feedback. Existing limited grants remain restricted;
+do not add a duplicate HA entry. No live module flag, TV tab/power, chore/calendar item, morning
+automation or network setting changed. Android source/APK is unchanged; its hosted gate passed,
+but no APK was installed. D-112 must not be called fully physically accepted on release proof alone.
 
 ## D-111 single-approval Home Assistant setup — 2026-10-15
 
