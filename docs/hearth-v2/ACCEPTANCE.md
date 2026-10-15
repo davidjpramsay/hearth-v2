@@ -102,6 +102,45 @@ do not add a duplicate HA entry. No live module flag, TV tab/power, chore/calend
 automation or network setting changed. Android source/APK is unchanged; its hosted gate passed,
 but no APK was installed. D-112 must not be called fully physically accepted on release proof alone.
 
+### Follow-up acceptance preflight — 2026-10-15
+
+The owner requested thorough completion of the remaining connection, real-device, morning-routine
+and recovery work. Read-only live inspection still shows HA 1.2.0 with the original one-device/
+four-entity restricted entry. Hearth health at `2026-10-15T15:14:14.254Z` is private/sqlite-ready on
+exact `35c7bb7...`. No device grant was broadened, credential inspected or household data changed.
+
+Fresh focused checks (source unchanged):
+
+- `pnpm --dir hearth --filter @hearth/server exec vitest run src/phone-connections.integration.test.ts src/modules.integration.test.ts src/home-assistant-bridge.integration.test.ts`:
+  **111 passed**. Includes atomic owner recovery, lost/old phone rejection, preserved secondary
+  phones/screens/content, trusted-phone restrictions, retry/race behavior, HA scope separation and
+  module enforcement. These use isolated test databases, not the real household or physical phones.
+- `pnpm --dir hearth test:e2e:built tests/e2e/modules.spec.ts tests/e2e/phone-codes.spec.ts tests/e2e/screen-admin-isolation.spec.ts --reporter=line --output=/tmp/hearth-live-proof.O1Xs4L/browser`:
+  **22 passed** (58.1 seconds). Demo/mocked phone entry, light/dark phone/TV-sized Modules,
+  keyboard/a11y and paired-screen administration isolation; not actual Safari/TCL proof.
+- `pnpm --dir hearth --filter @hearth/web exec vitest run src/components/PhoneRecoveryPanel.test.tsx src/runtime/HearthRuntime.phone.test.tsx`:
+  **9 passed**, including private recovery preview/acknowledgment, trust selection and phone-entry UI.
+- `python3.12 -B -m unittest discover -s hearth/integrations/home_assistant/tests -v`:
+  **68 passed**, fake transport/HA stand-ins. Browser plugin unavailable; repository Playwright
+  supplies isolated rendered checks, CUA supplies read-only real HA inspection.
+
+The live 06:30 routine was inspected without running or saving it. Its full 177-line YAML was copied
+through the editor's normal Copy action to a private mode-0600 rollback file outside Git, with the
+previous clipboard restored. The virtualized editor's initial 36-line DOM text was incomplete and
+was replaced by the complete copy before YAML validation. Existing routine has 22 actions, mode
+single and no `select.select_option` step. Its wake/music/30%-volume/foreground guards are unchanged.
+The Today extension requires the actual authorised TV selector after reconnect; no guessed entity
+or first-screen fallback was installed. A missing optional Python YAML parser was bypassed using
+the repository's existing js-yaml parser, without adding a dependency.
+
+Safe test logs/screenshots: `/tmp/hearth-live-proof.O1Xs4L/`. The private automation rollback copy
+must not be published. Phone approval and TV-availability confirmation were requested; no live
+reconnect, navigation, chore completion, module toggle or destructive recovery drill occurred.
+Actual iPhone saved-card retrieval/recovery still needs a disposable household/device proof;
+current owner access must not be replaced merely to close a test. Native authenticated Bluetooth/
+Wi-Fi/trusted-HDMI commissioning requires chosen disposable hardware and remains separate future
+implementation, not something proved by these browser or schema tests.
+
 ## D-111 single-approval Home Assistant setup — 2026-10-15
 
 The adult explicitly requested no permission picker and approved publication/private Hearth and HA
