@@ -1,5 +1,23 @@
 # Hearth v2 architecture
 
+## Household availability boundary (D-112)
+
+The fixed shared module schema drives a persisted `ModulesService`, authenticated GET/adult PUT,
+scoped automation PUT, server endpoint gates and aggregate projections. Feature checks follow existing
+authentication and precede repository/provider I/O. Finite per-household reader/writer leases order a
+module change after preceding feature requests and before later ones; SSE holds no indefinite lease.
+Today skips disabled optional repositories/provider reads and chore materialization. HA rechecks
+availability around asynchronous work and cancels disabled pending navigation. In-flight background
+provider reads cannot be recalled; their cached data is never projected while disabled.
+
+The web ModulesProvider loads availability before features mount, filters navigation, gates deep
+routes and clears disabled domain caches. SSE plus foreground/poll catch-up updates other clients;
+cached Today content is immediately masked by known flags. No frontend-only security assumption.
+The new default-false `controlModules` scope is distinct from content sharing, chore control and
+outbound Home controls. HA component 1.2.0 adds observed-state Switch entities, never general admin
+authority. D-112 extends D-111's explicitly approved bundle with a fourth capability for fresh
+approvals only. See [MODULES_CONTRACT.md](MODULES_CONTRACT.md).
+
 ## Single-approval presentation boundary (D-111)
 
 The adult web component derives all current unrevoked paired-screen IDs from the authenticated

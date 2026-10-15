@@ -1,5 +1,56 @@
 # Hearth v2 acceptance and definition of done
 
+## D-112 household Modules — 2026-10-15 (local implementation)
+
+The requested simple **More → Modules** page has eleven household-wide switches. Off removes
+family/admin navigation, direct routes, Today cards/dialogs and photo/game entry points; server
+gates direct/asset/legacy Assist routes before feature I/O. Data, provider configuration and Today
+preferences remain saved. Core management and inbound HA pairing/module switches remain usable
+with every feature off. Migration 0032 stores audited flags and durable actor-scoped exact receipts.
+Finite request leases include disconnect handling; pending disabled-tab HA commands are cancelled.
+
+The separately disclosed `controlModules` capability defaults false for old grants and pending
+approvals. Fresh single approval explicitly includes it. Matching local HA component 1.2.0 adds
+eleven observed-state configuration switches, removes disabled selector options and makes disabled
+chore/calendar entities unavailable without content attributes. No silent grant expansion, general
+admin authority or feature data deletion. Old Today command receipts are redacted while Notices
+is off, and an unrelated Today save cannot edit a disabled feature preference.
+
+Passed local checks:
+
+- `pnpm --dir hearth verify:code`: format, lint, full workspace typecheck, 617 unit tests
+  (93 shared, 40 core, 71 server, 413 web), 254 server integration tests including 37 new module
+  cases, 28 migration cases, deployment/scaffold fixtures and production server/web builds.
+- `python3.12 -B -m unittest discover -s hearth/integrations/home_assistant/tests -v`: 68 passed
+  with fake HTTP and HA import stand-ins, not a real HA runtime.
+- `uvx --offline ruff check hearth/integrations/home_assistant` and
+  `uvx --offline ruff format --check hearth/integrations/home_assistant` passed.
+- `pnpm --dir hearth audit:dependencies`: no known vulnerabilities.
+- `pnpm --dir hearth verify:ci`: policy checks and complete, disjoint four-shard coverage of
+  1,088 browser cases. This proves the local shard policy, not hosted execution.
+- `pnpm --dir hearth test:e2e:built --max-failures=5 --output=/tmp/hearth-modules-proof.PO42nR/final-browser`:
+  **1,088 passed (23.3 minutes)**, including all eight new Modules cases. Phone 390×844 and
+  desktop/TV-sized adult browser 1920×1080, light/dark, full-row keyboard focus, large targets,
+  serious/critical axe checks, all-off core recovery, exact HA retry, realtime route exit, mixed-case/
+  encoded deep links, retained reminders, unrelated unsaved form preservation and paired-screen
+  admin isolation. Existing phone/tablet/TV/4K, calendar, weather, games, photos and Today-composition
+  regressions also passed. Final rendered screenshots were manually inspected. Browser plugin was
+  unavailable; the repository Playwright harness was used.
+- `git diff --check` and root specification-document Prettier checks passed. Initial focus styling,
+  alternate-path ownership, old menu/migration expectations and notice-receipt leakage were repaired
+  with regression coverage. No unresolved local test failures remain.
+
+Evidence: `/tmp/hearth-modules-proof.PO42nR/` (isolated demo/fake data only); it contains code/HA/
+audit/shard logs and final screenshots under `final-browser/*/modules-first-view-*.png` and
+`final-browser/*/all-off-core-phone.png`. Earlier exploratory/failing-run artifacts remain separate
+from this final green run.
+
+Not run/unchanged: no GitHub publication/hosted run, private NAS deployment/migration, live HA file
+installation/restart/reconnect, actual iPhone Safari or physical TV/HA module toggle. Android shell
+code is unchanged; no APK build/install is part of this web/server change. No live household flag,
+credential, TV content, automation or network configuration changed. Publication/deployment and
+matching HA installation require explicit approval; new actual-device acceptance remains separate.
+
 ## D-111 single-approval Home Assistant setup — 2026-10-15
 
 The adult explicitly requested no permission picker and approved publication/private Hearth and HA

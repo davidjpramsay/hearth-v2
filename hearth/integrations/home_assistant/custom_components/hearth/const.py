@@ -8,6 +8,37 @@ POLL_SECONDS = 10
 REQUEST_TIMEOUT_SECONDS = 8
 COMMAND_TIMEOUT_SECONDS = 35
 ACK_POLL_SECONDS = 1
+MODULE_LABELS = {
+    "calendar": "Calendar",
+    "weather": "Weather",
+    "reminders": "Reminders",
+    "chores": "Chores and pocket money",
+    "lists": "Lists",
+    "meals": "Meals",
+    "home": "Home controls",
+    "photos": "Photos",
+    "games": "Games",
+    "notices": "Notices",
+    "dailyVerse": "Daily Bible verse",
+}
+TAB_MODULES = {
+    "calendar": "calendar",
+    "calendar_week": "calendar",
+    "calendar_month": "calendar",
+    **{
+        key: key
+        for key in (
+            "weather",
+            "reminders",
+            "chores",
+            "lists",
+            "meals",
+            "home",
+            "photos",
+            "games",
+        )
+    },
+}
 MAX_BODY_BYTES = 2 * 1024 * 1024
 MAX_CALENDAR_DAYS = 31
 MAX_CALENDAR_CHUNKS = 24

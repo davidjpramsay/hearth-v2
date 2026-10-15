@@ -8,8 +8,10 @@ import { queryKeys } from '../api/queryKeys';
 import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
 import { WeatherLocationSettings } from '../components/WeatherLocationSettings';
 import { useAdminQuery } from '../hooks/useAdminQueries';
+import { useModules } from '../modules/context';
 
 export function HouseholdSettingsScreen() {
+  const modules = useModules();
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<{ name: string; timezone: string } | null>(null);
@@ -95,7 +97,7 @@ export function HouseholdSettingsScreen() {
           {save.isPending ? 'Saving…' : 'Save household'}
         </button>
       </form>
-      <WeatherLocationSettings />
+      {modules.weather ? <WeatherLocationSettings /> : null}
     </AdminPage>
   );
 }

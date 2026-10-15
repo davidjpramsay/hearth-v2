@@ -21,6 +21,7 @@ const summary: BridgeConnection = {
   shareChores: true,
   shareCalendar: true,
   controlChores: true,
+  controlModules: true,
 };
 const overview = {
   pairedDevices: [
@@ -125,6 +126,7 @@ describe('short-code Home Assistant connection', () => {
         shareChores: true,
         shareCalendar: true,
         controlChores: true,
+        controlModules: true,
       },
       expect.any(AbortSignal),
     );

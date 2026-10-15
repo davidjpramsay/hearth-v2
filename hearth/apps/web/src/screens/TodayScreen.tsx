@@ -23,6 +23,7 @@ import { useTodayQuery } from '../hooks/useTodayQueries';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { getTodayRailCapacity, useTodayViewportClass } from '../layout/todayRailCapacity';
 import { useHearthRuntime } from '../runtime/context';
+import { useModules } from '../modules/context';
 
 export function TodayScreen({
   scenario,
@@ -31,8 +32,10 @@ export function TodayScreen({
   scenario: DemoScenario | 'offline';
   preparing: boolean;
 }) {
+  const modules = useModules();
   const query = useTodayQuery(!preparing);
-  const todayPhoto = query.data?.sections.photo === true ? query.data.photo : null;
+  const todayPhoto =
+    modules.photos && query.data?.sections.photo === true ? query.data.photo : null;
   const photosQuery = usePhotosQuery(!preparing && todayPhoto !== null);
   const { rotationPaused } = usePhotoRotationPreference();
   const rotatingPhoto = useTodayPhotoRotation({
@@ -54,7 +57,21 @@ export function TodayScreen({
 
   if (preparing || query.isPending) return <LoadingState />;
   if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
-  const today = query.data;
+  const raw = query.data;
+  const today = {
+    ...raw,
+    weather: modules.weather ? raw.weather : null,
+    events: modules.calendar ? raw.events : [],
+    chores: modules.chores ? raw.chores : [],
+    sections: {
+      dinner: modules.meals && raw.sections.dinner,
+      listSummary: modules.lists && raw.sections.listSummary,
+      notice: modules.notices && raw.sections.notice,
+      photo: modules.photos && raw.sections.photo,
+      dailyVerse: modules.dailyVerse && raw.sections.dailyVerse,
+      reminders: modules.reminders && raw.sections.reminders,
+    },
+  };
   const showReminderSummary = today.sections.reminders && today.reminderSummary !== null;
   const visibleSummaryCount = [
     today.sections.dinner,
@@ -124,6 +141,13 @@ export function TodayScreen({
     showPhoto;
   const empty = today.events.length === 0 && today.chores.length === 0 && !hasVisibleSummaryContent;
   if (empty) {
+    if (!modules.calendar && !modules.chores)
+      return (
+        <div className="screen today-screen">
+          <ScreenHeader title="Today" />
+          <p>All set for today.</p>
+        </div>
+      );
     return (
       <EmptyState onBootstrap={runtime.mode === 'private' ? undefined : () => void bootstrap()} />
     );
@@ -173,19 +197,21 @@ export function TodayScreen({
         eyebrow={today.household.mode}
         title="Today"
         actions={
-          <div className="today-glance">
-            <div className="weather">
-              <Icon name={today.weather === null ? 'cloud' : 'sun'} />
-              <strong>
-                {today.weather === null ? '—' : `${today.weather.temperatureCelsius}°`}
-              </strong>
-              <span>{today.weather?.condition ?? 'Forecast unavailable'}</span>
+          modules.weather ? (
+            <div className="today-glance">
+              <div className="weather">
+                <Icon name={today.weather === null ? 'cloud' : 'sun'} />
+                <strong>
+                  {today.weather === null ? '—' : `${today.weather.temperatureCelsius}°`}
+                </strong>
+                <span>{today.weather?.condition ?? 'Forecast unavailable'}</span>
+              </div>
             </div>
-          </div>
+          ) : undefined
         }
       />
       {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
-      {today.freshness === 'stale' && online ? (
+      {modules.calendar && today.freshness === 'stale' && online ? (
         <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
           {today.statusMessage}
         </StatusBanner>
@@ -197,102 +223,109 @@ export function TodayScreen({
         data-rail-capacity={railCapacity}
         data-summary-count={visibleSummaryCount}
       >
-        <div className="today-columns">
-          <section className="today-section upcoming-section">
-            <div className="section-heading">
-              <h2>Upcoming</h2>
-              {eventOverflowCount > 0 ? (
-                <Link
-                  aria-label={`View ${eventOverflowCount} more ${eventOverflowCount === 1 ? 'plan' : 'plans'} in Calendar`}
-                  className="today-section-more focusable"
-                  data-focus-down={firstBottomFocusId}
-                  data-focus-id="today-event-overflow"
-                  data-focus-left="nav-today"
-                  data-focus-right={
-                    choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId
-                  }
-                  data-focus-up={lastEventFocusId}
-                  to="/calendar/agenda"
-                >
-                  +{eventOverflowCount} more <Icon name="chevron-right" />
-                </Link>
-              ) : (
-                <span>{today.events.length} plans</span>
-              )}
-            </div>
-            <div className="event-list">
-              {visibleEvents.map((event, index, events) => (
-                <EventRow
-                  event={event}
-                  focus={{
-                    'data-focus-id': `today-event-${event.id}`,
-                    'data-focus-up':
-                      index === 0
-                        ? `today-event-${event.id}`
-                        : `today-event-${events[index - 1]?.id}`,
-                    'data-focus-down':
-                      index === events.length - 1
-                        ? eventAfterRowsFocusId
-                        : `today-event-${events[index + 1]?.id}`,
-                    'data-focus-left': 'nav-today',
-                    'data-focus-right': visibleChores[Math.min(index, visibleChores.length - 1)]
-                      ? `today-chore-${visibleChores[Math.min(index, visibleChores.length - 1)]!.id}`
-                      : 'nav-today',
-                  }}
-                  key={event.id}
-                  onSelect={setSelectedEvent}
-                />
-              ))}
-            </div>
-          </section>
-          <section className="today-section chores-due-section">
-            <div className="section-heading">
-              <h2>Due now &amp; today</h2>
-              {choreOverflowCount > 0 ? (
-                <Link
-                  aria-label={`View ${choreOverflowCount} more ${choreOverflowCount === 1 ? 'chore' : 'chores'}`}
-                  className="today-section-more focusable"
-                  data-focus-down={choreBottomFocusId}
-                  data-focus-id="today-chore-overflow"
-                  data-focus-left={
-                    eventOverflowCount > 0 ? 'today-event-overflow' : lastEventFocusId
-                  }
-                  data-focus-right="today-chore-overflow"
-                  data-focus-up={lastChoreFocusId}
-                  to="/chores"
-                >
-                  +{choreOverflowCount} more <Icon name="chevron-right" />
-                </Link>
-              ) : (
-                <span>{today.chores.filter((item) => item.state === 'pending').length} left</span>
-              )}
-            </div>
-            <div className="chore-list">
-              {visibleChores.map((occurrence, index, chores) => (
-                <ChoreRow
-                  focus={{
-                    'data-focus-id': `today-chore-${occurrence.id}`,
-                    'data-focus-entry': occurrence.id === primaryChoreId ? 'true' : undefined,
-                    'data-focus-up':
-                      index === 0
-                        ? `today-chore-${occurrence.id}`
-                        : `today-chore-${chores[index - 1]?.id}`,
-                    'data-focus-down':
-                      index === chores.length - 1
-                        ? choreAfterRowsFocusId
-                        : `today-chore-${chores[index + 1]?.id}`,
-                    'data-focus-left':
-                      index < visibleEvents.length
-                        ? `today-event-${visibleEvents[index]?.id}`
+        <div
+          className={`today-columns${!modules.calendar || !modules.chores ? ' today-columns--single' : ''}`}
+          hidden={!modules.calendar && !modules.chores}
+        >
+          {modules.calendar ? (
+            <section className="today-section upcoming-section">
+              <div className="section-heading">
+                <h2>Upcoming</h2>
+                {eventOverflowCount > 0 ? (
+                  <Link
+                    aria-label={`View ${eventOverflowCount} more ${eventOverflowCount === 1 ? 'plan' : 'plans'} in Calendar`}
+                    className="today-section-more focusable"
+                    data-focus-down={firstBottomFocusId}
+                    data-focus-id="today-event-overflow"
+                    data-focus-left="nav-today"
+                    data-focus-right={
+                      choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId
+                    }
+                    data-focus-up={lastEventFocusId}
+                    to="/calendar/agenda"
+                  >
+                    +{eventOverflowCount} more <Icon name="chevron-right" />
+                  </Link>
+                ) : (
+                  <span>{today.events.length} plans</span>
+                )}
+              </div>
+              <div className="event-list">
+                {visibleEvents.map((event, index, events) => (
+                  <EventRow
+                    event={event}
+                    focus={{
+                      'data-focus-id': `today-event-${event.id}`,
+                      'data-focus-up':
+                        index === 0
+                          ? `today-event-${event.id}`
+                          : `today-event-${events[index - 1]?.id}`,
+                      'data-focus-down':
+                        index === events.length - 1
+                          ? eventAfterRowsFocusId
+                          : `today-event-${events[index + 1]?.id}`,
+                      'data-focus-left': 'nav-today',
+                      'data-focus-right': visibleChores[Math.min(index, visibleChores.length - 1)]
+                        ? `today-chore-${visibleChores[Math.min(index, visibleChores.length - 1)]!.id}`
                         : 'nav-today',
-                  }}
-                  key={occurrence.id}
-                  mutation={mutation}
-                  occurrence={occurrence}
-                />
-              ))}
-            </div>
-          </section>
+                    }}
+                    key={event.id}
+                    onSelect={setSelectedEvent}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {modules.chores ? (
+            <section className="today-section chores-due-section">
+              <div className="section-heading">
+                <h2>Due now &amp; today</h2>
+                {choreOverflowCount > 0 ? (
+                  <Link
+                    aria-label={`View ${choreOverflowCount} more ${choreOverflowCount === 1 ? 'chore' : 'chores'}`}
+                    className="today-section-more focusable"
+                    data-focus-down={choreBottomFocusId}
+                    data-focus-id="today-chore-overflow"
+                    data-focus-left={
+                      eventOverflowCount > 0 ? 'today-event-overflow' : lastEventFocusId
+                    }
+                    data-focus-right="today-chore-overflow"
+                    data-focus-up={lastChoreFocusId}
+                    to="/chores"
+                  >
+                    +{choreOverflowCount} more <Icon name="chevron-right" />
+                  </Link>
+                ) : (
+                  <span>{today.chores.filter((item) => item.state === 'pending').length} left</span>
+                )}
+              </div>
+              <div className="chore-list">
+                {visibleChores.map((occurrence, index, chores) => (
+                  <ChoreRow
+                    focus={{
+                      'data-focus-id': `today-chore-${occurrence.id}`,
+                      'data-focus-entry': occurrence.id === primaryChoreId ? 'true' : undefined,
+                      'data-focus-up':
+                        index === 0
+                          ? `today-chore-${occurrence.id}`
+                          : `today-chore-${chores[index - 1]?.id}`,
+                      'data-focus-down':
+                        index === chores.length - 1
+                          ? choreAfterRowsFocusId
+                          : `today-chore-${chores[index + 1]?.id}`,
+                      'data-focus-left':
+                        index < visibleEvents.length
+                          ? `today-event-${visibleEvents[index]?.id}`
+                          : 'nav-today',
+                    }}
+                    key={occurrence.id}
+                    mutation={mutation}
+                    occurrence={occurrence}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
         {visibleSummaryCount === 0 && !showPhoto ? null : (
           <div
@@ -414,14 +447,17 @@ export function TodayScreen({
         {mutation.pendingOccurrenceId === null ? '' : 'Saving chore change'}
       </p>
       <EventDetailsDialog
-        event={selectedEvent}
+        event={modules.calendar ? selectedEvent : null}
         onClose={() => setSelectedEvent(null)}
         timezone={runtime.timezone}
       />
-      <NoticeDetailsDialog message={selectedNotice} onClose={() => setSelectedNotice(null)} />
+      <NoticeDetailsDialog
+        message={modules.notices ? selectedNotice : null}
+        onClose={() => setSelectedNotice(null)}
+      />
       <DailyVerseDetailsDialog
         onClose={() => setSelectedDailyVerse(null)}
-        verse={selectedDailyVerse}
+        verse={modules.dailyVerse ? selectedDailyVerse : null}
       />
     </div>
   );

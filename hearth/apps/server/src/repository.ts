@@ -23,6 +23,7 @@ import type {
   TodaySummary,
   WeatherForecast,
   WeekSchedule,
+  ModuleFlags,
 } from '@hearth/shared';
 
 import {
@@ -38,6 +39,7 @@ import {
 export class RepositoryError extends Error {
   constructor(
     readonly code:
+      | 'MODULE_DISABLED'
       | 'VALIDATION_ERROR'
       | 'UNAUTHENTICATED'
       | 'NOT_FOUND'
@@ -58,6 +60,7 @@ export class RepositoryError extends Error {
 }
 
 export interface HearthRepository {
+  setModuleAvailability?(read: (householdId: string) => ModuleFlags): void;
   getToday(householdId: string, localDate: string): Promise<TodaySummary>;
   getWeather(householdId: string): Promise<WeatherForecast>;
   getWeek(householdId: string, startDate: string): Promise<WeekSchedule>;

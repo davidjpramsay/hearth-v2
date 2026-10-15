@@ -17,7 +17,8 @@ and launching the Hearth app; this bridge does not replace it.
    Hearth's private HTTPS origin. HA displays six uppercase letters and waits.
 3. On the connected adult Hearth phone, open **Connections → Home Assistant**, enter those letters,
    then **Approve Home Assistant**. One approval includes all currently paired Hearth screens,
-   calendar/chore information and completing/reopening today's chores; there are no permission boxes.
+   calendar/chore information, completing/reopening today's chores and module on/off switches;
+   there are no permission boxes.
    HA completes automatically. No long key to type. HA must trust the certificate.
    The explicit HTTP exception accepts literal loopback IPs for local tests only.
 
@@ -34,6 +35,14 @@ Component 1.1.2 matches the single-approval Hearth UI (D-111). Older restricted 
 until an adult explicitly disconnects/reconnects. After revocation, use the existing Hearth entry's
 reauthentication repair in HA rather than adding a duplicate entry. Newly paired screens need a
 reconnect too; later devices or features are not silently granted.
+Component 1.2.0 matches household Modules (D-112), requiring server migration 0032. It adds eleven
+household **module** configuration switches with observed state and no optimistic updates. An off
+feature's switch remains available to turn it back on. The fresh adult approval explicitly includes
+module control; old grants default false and need one deliberate reconnect, not an automatic upgrade.
+Disabled modules hide corresponding screen destinations and deny reads/commands even under old
+data scopes; chore/calendar entities become unavailable, with no retained content attributes.
+Home controls off does not disable this inbound module-management connection. No feature data is
+deleted. This local version is not proof that files are installed on a live HA instance.
 Codes expire after five minutes; close/restart setup if expired. Approve only a setup you started.
 No credentials belong in URLs or YAML.
 
@@ -71,3 +80,5 @@ or live install acceptance.
 Patterns follow the official [coordinator](https://developers.home-assistant.io/docs/integration_fetching_data/),
 [config flow](https://developers.home-assistant.io/docs/core/integration/config_flow/)
 and [calendar](https://developers.home-assistant.io/docs/core/entity/calendar/) docs.
+Module switches follow the official [Switch entity](https://developers.home-assistant.io/docs/core/entity/switch/)
+API and configuration entity category; properties read coordinator memory only.

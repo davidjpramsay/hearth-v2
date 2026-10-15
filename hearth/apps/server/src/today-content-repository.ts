@@ -45,7 +45,7 @@ const DEMO_NOTICE: HouseholdNotice = {
 type NoticeAction = 'notice.create' | 'notice.update' | 'notice.archive';
 
 export interface TodayContentRepository {
-  getConfiguration(householdId: string): Promise<TodayConfiguration>;
+  getConfiguration(householdId: string, includeNotices?: boolean): Promise<TodayConfiguration>;
   getActiveNotice(householdId: string): Promise<HouseholdNotice | null>;
   createNotice(
     householdId: string,
@@ -68,6 +68,7 @@ export interface TodayContentRepository {
     householdId: string,
     input: UpdateTodaySectionsRequest,
     actor: CommandActor,
+    includeNotices?: boolean,
   ): Promise<TodayConfigurationCommandResult>;
   reset(): void;
   setScenario(scenario: DemoScenario): void;
@@ -92,15 +93,15 @@ export class TodayContentService implements TodayContentRepository {
     return this.options.clock ?? new FixedClock(DEMO_NOW);
   }
 
-  async getConfiguration(householdId: string): Promise<TodayConfiguration> {
+  async getConfiguration(householdId: string, includeNotices = true): Promise<TodayConfiguration> {
     this.assertHousehold(householdId);
-    return this.buildConfiguration(householdId);
+    return this.buildConfiguration(householdId, includeNotices);
   }
 
-  private buildConfiguration(householdId: string): TodayConfiguration {
+  private buildConfiguration(householdId: string, includeNotices = true): TodayConfiguration {
     const now = this.clock.now().toISOString();
     const sections = this.readSections(householdId);
-    const notices = this.readNotices(householdId);
+    const notices = includeNotices ? this.readNotices(householdId) : [];
     return TodayConfigurationSchema.parse({
       householdId,
       sections,
@@ -244,6 +245,7 @@ export class TodayContentService implements TodayContentRepository {
     householdId: string,
     input: UpdateTodaySectionsRequest,
     actor: CommandActor,
+    includeNotices = true,
   ): Promise<TodayConfigurationCommandResult> {
     this.assertHousehold(householdId);
     return this.replayOrRun(
@@ -283,6 +285,7 @@ export class TodayContentService implements TodayContentRepository {
               this.clock.now().toISOString(),
             );
       },
+      includeNotices,
     );
   }
 
@@ -350,6 +353,7 @@ export class TodayContentService implements TodayContentRepository {
     targetId: string,
     actor: CommandActor,
     mutation: () => void,
+    includeNotices = true,
   ): Promise<TodayConfigurationCommandResult> {
     const receiptKey = `${householdId}:${commandType}:${requestId}`;
     const stored =
@@ -369,7 +373,7 @@ export class TodayContentService implements TodayContentRepository {
         result: 'succeeded',
       });
       const result = TodayConfigurationCommandResultSchema.parse({
-        configuration: this.buildConfiguration(householdId),
+        configuration: this.buildConfiguration(householdId, includeNotices),
         audit,
         replayed: false,
       });

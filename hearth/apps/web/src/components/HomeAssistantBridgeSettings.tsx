@@ -73,6 +73,7 @@ export function HomeAssistantBridgeSettings() {
     (!connection.shareChores ||
       !connection.shareCalendar ||
       !connection.controlChores ||
+      !connection.controlModules ||
       screens.some((screen) => !connection.screenIds.includes(screen.id)));
   async function approve() {
     // Freeze the disclosed bundle only on explicit approval. An uncertain retry
@@ -91,6 +92,7 @@ export function HomeAssistantBridgeSettings() {
       shareChores: true,
       shareCalendar: true,
       controlChores: true,
+      controlModules: true,
     };
     try {
       await homeAssistantBridgeApi.approvePairing(approval.current, controller.signal);
@@ -191,10 +193,14 @@ export function HomeAssistantBridgeSettings() {
           {needsReconnect ? (
             <p className="ha-bridge-reconnect" role="status">
               This connection has limited access. Reconnect once to enable screens, calendar and
-              chore control.
+              chore and module control.
             </p>
           ) : null}
           <dl>
+            <div>
+              <dt>Modules</dt>
+              <dd>{connection.controlModules ? 'Turn on and off' : 'Not allowed'}</dd>
+            </div>
             <div>
               <dt>Allowed screens</dt>
               <dd>
@@ -268,13 +274,15 @@ export function HomeAssistantBridgeSettings() {
               </li>
               <li>Read your calendar and chores.</li>
               <li>Complete and reopen today’s chores.</li>
+              <li>Turn Hearth modules on and off.</li>
             </ul>
             {admin.isSuccess && screens.length === 0 ? (
               <p>No screens are paired yet. Calendar and chores still work without a TV.</p>
             ) : null}
             <p className="field-help">
               Completing chores affects earned pocket money as usual. This does not allow admin
-              access, calendar edits, or creating, deleting or reassigning chores.
+              access, calendar edits, or creating, deleting or reassigning chores. Module switches
+              remain available when a feature is off so it can be turned back on.
             </p>
           </div>
           {tooManyScreens ? (

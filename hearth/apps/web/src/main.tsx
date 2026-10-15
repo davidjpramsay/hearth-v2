@@ -11,6 +11,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { initializeAppearance } from './appearance/appearance';
 import { App } from './App';
 import { HearthRuntimeBootstrap } from './runtime/HearthRuntime';
+import { ModulesProvider } from './modules/ModulesProvider';
 
 initializeAppearance();
 
@@ -38,7 +39,9 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <HearthRuntimeBootstrap>
-        <RouterProvider router={router} />
+        <ModulesProvider>
+          <RouterProvider router={router} />
+        </ModulesProvider>
       </HearthRuntimeBootstrap>
     </QueryClientProvider>
   </StrictMode>,

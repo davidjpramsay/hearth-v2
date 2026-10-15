@@ -15,6 +15,7 @@ import { Icon } from '../components/Icon';
 import { HomeAssistantBridgeSettings } from '../components/HomeAssistantBridgeSettings';
 import { useHomeAssistantConnectionQuery } from '../hooks/useConnectionQueries';
 import { useHearthRuntime } from '../runtime/context';
+import { useModules } from '../modules/context';
 
 type MappingSelection = SaveHomeAssistantConnectionRequest['mappings'];
 
@@ -29,8 +30,9 @@ const EMPTY_MAPPINGS: MappingSelection = {
 };
 
 export function HomeAssistantConnectionSettingsScreen() {
+  const modules = useModules();
   const runtime = useHearthRuntime();
-  const connection = useHomeAssistantConnectionQuery();
+  const connection = useHomeAssistantConnectionQuery(modules.home);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [testResult, setTestResult] = useState<HomeAssistantConnectionTestResult | null>(null);
@@ -76,6 +78,12 @@ export function HomeAssistantConnectionSettingsScreen() {
     },
   });
 
+  if (!modules.home)
+    return (
+      <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Home Assistant">
+        <HomeAssistantBridgeSettings />
+      </AdminPage>
+    );
   if (connection.isPending || connection.isError)
     return (
       <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Home Assistant">

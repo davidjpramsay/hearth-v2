@@ -56,6 +56,7 @@ import {
 import { HomeService } from './home-repository.js';
 import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
 import { HomeAssistantPairingService } from './home-assistant-pairings.js';
+import { ModulesService } from './modules-repository.js';
 import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
@@ -114,6 +115,7 @@ const dailyVerseProvider = demoMode
     ? new UnconfiguredDailyVerseProvider()
     : new EsvDailyVerseProvider(database, esvApiKey);
 const clock = demoMode ? new FixedClock(DEMO_NOW) : new SystemClock();
+const modules = new ModulesService(database, () => clock.now());
 const adminRepository = new SqliteAdminRepository(database, {
   seedDemo: demoMode,
   now: () => clock.now(),
@@ -286,6 +288,7 @@ const phoneConnections =
     ? undefined
     : new PhoneConnectionService(database, companionAuth, companionAuthConfiguration);
 const homeAssistantBridge = new HomeAssistantBridgeService(adminRepository, repository, {
+  modules,
   database,
   now: () => clock.now(),
 });
@@ -299,6 +302,7 @@ const homeAssistantPairings = new HomeAssistantPairingService(homeAssistantBridg
 });
 
 const server = buildServer({
+  modules,
   gamesArchive: new GamesArchive(process.env.HEARTH_GAMES_ARCHIVE_PATH, demoMode),
   realtimeHub,
   demoMode,

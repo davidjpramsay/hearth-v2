@@ -1,4 +1,4 @@
-"""Manual-install local Hearth integration with optional chore status control."""
+"""Manual-install local Hearth integration with scoped chore and module control."""
 
 from aiohttp import DummyCookieJar
 from homeassistant.config_entries import ConfigEntry
@@ -11,7 +11,13 @@ from .client import HearthClient
 from .const import CONF_ALLOW_LOOPBACK_HTTP, CONF_AUTOMATION_KEY, CONF_URL, DOMAIN
 from .coordinator import HearthCoordinator
 
-PLATFORMS = [Platform.SELECT, Platform.SENSOR, Platform.CALENDAR, Platform.TODO]
+PLATFORMS = [
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.CALENDAR,
+    Platform.TODO,
+    Platform.SWITCH,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -1,5 +1,19 @@
 # Hearth v2 integration contracts
 
+## Module availability and HA control (D-112)
+
+The household Modules flags govern direct and aggregate access, including existing HA grants and
+legacy Assist routes. Off stops new corresponding provider reads/commands; it does not revoke or
+erase the provider connection. Calendar/chore HA projections become null/unavailable while off,
+disabled tabs disappear from selectors, and queued navigation to them is cancelled. Home controls
+off stops the outbound adapter, not inbound pairing/module management. All-off is recoverable.
+
+The new `controlModules` grant permits only fixed boolean module commands. It defaults false for
+all old records. Matching local component 1.2.0 exposes eleven household configuration switches;
+they can re-enable a feature without its data scope. Fresh one-approval setup discloses this new
+capability explicitly. Separate approved installation/restart and adult reconnect are needed on
+an existing live HA instance. No live installation is implied by this implementation.
+
 ## Short human codes (D-110)
 
 The inbound HA component 1.1.2 displays a five-minute six-letter code and waits for approval in

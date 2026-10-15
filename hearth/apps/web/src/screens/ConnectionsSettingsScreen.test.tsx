@@ -60,6 +60,7 @@ describe('Home Assistant connection direction summary', () => {
       shareChores: true,
       shareCalendar: true,
       controlChores: false,
+      controlModules: false,
     });
     show();
     expect(

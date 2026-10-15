@@ -9,6 +9,7 @@ import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useHearthRuntime } from '../runtime/context';
 import { runtimeApi } from '../api/runtime';
 import { authStatusQueryKey } from '../auth/queryKeys';
+import { useModulePathAvailable, useModules } from '../modules/context';
 
 interface Setting {
   title: string;
@@ -40,6 +41,7 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
   {
     title: 'Household & access',
     settings: [
+      { title: 'Modules', icon: 'leaf', path: '/admin/modules' },
       {
         title: 'Household details',
         icon: 'home',
@@ -84,8 +86,6 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
   },
 ];
 
-const settings = settingGroups.flatMap((group) => group.settings);
-
 function settingFocusId(title: string): string {
   const firstWord =
     title
@@ -95,12 +95,20 @@ function settingFocusId(title: string): string {
   return `admin-${firstWord}`;
 }
 
-function adjacentSettingFocusId(index: number, fallback: string): string {
-  const setting = settings[index];
-  return setting === undefined ? fallback : settingFocusId(setting.title);
-}
-
 export function AdminScreen() {
+  const modules = useModules();
+  const available = useModulePathAvailable();
+  const groups = settingGroups
+    .map((group) => ({
+      ...group,
+      settings: group.settings.filter((setting) => available(setting.path)),
+    }))
+    .filter((group) => group.settings.length > 0);
+  const settings = groups.flatMap((group) => group.settings);
+  function adjacentSettingFocusId(index: number, fallback: string): string {
+    const setting = settings[index];
+    return setting === undefined ? fallback : settingFocusId(setting.title);
+  }
   const runtime = useHearthRuntime();
   const queryClient = useQueryClient();
   const admin = useAdminQuery();
@@ -156,7 +164,7 @@ export function AdminScreen() {
         </div>
       </div>
       <div className="admin-setting-groups">
-        {settingGroups.map((group) => (
+        {groups.map((group) => (
           <section className="admin-setting-group" key={group.title}>
             <h2>{group.title}</h2>
             <SettingsMenu className="admin-setting-list">
@@ -166,7 +174,13 @@ export function AdminScreen() {
                   <SettingsMenuLink
                     className="admin-setting-row"
                     icon={setting.icon}
-                    label={setting.title}
+                    label={
+                      setting.path === '/admin/planning' && !modules.chores
+                        ? 'Family planning'
+                        : setting.path === '/admin/today' && !modules.notices
+                          ? 'Today screen'
+                          : setting.title
+                    }
                     titleClassName="admin-setting-row__copy"
                     data-focus-entry={index === 0 ? 'true' : undefined}
                     data-focus-down={adjacentSettingFocusId(

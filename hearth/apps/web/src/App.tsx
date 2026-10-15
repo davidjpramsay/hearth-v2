@@ -11,6 +11,11 @@ import { useRealtimeInvalidation } from './hooks/useRealtimeInvalidation';
 import { useDraftNavigationGuard } from './hooks/useDraftNavigationGuard';
 import { useScreenPresentation } from './hooks/useScreenPresentation';
 import { TodayScreen } from './screens/TodayScreen';
+import { useModulePathAvailable } from './modules/context';
+import { normalizeModulePath } from '@hearth/shared';
+const ModulesSettingsScreen = lazy(async () => ({
+  default: (await import('./screens/ModulesSettingsScreen')).ModulesSettingsScreen,
+}));
 
 const AdminAuthBoundary = lazy(async () => ({
   default: (await import('./auth/AdminAuthBoundary')).AdminAuthBoundary,
@@ -139,94 +144,116 @@ export function App() {
         </div>
       )}
       <Suspense fallback={<LoadingState />}>
-        <Routes>
-          <Route
-            path="/today"
-            element={<TodayScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route path="/calendar" element={<Navigate replace to="/calendar/agenda" />} />
-          <Route
-            path="/calendar/week"
-            element={<WeekScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route
-            path="/calendar/month"
-            element={<MonthScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route
-            path="/calendar/agenda"
-            element={<AgendaScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route path="/week" element={<LegacyCalendarRedirect view="week" />} />
-          <Route path="/month" element={<LegacyCalendarRedirect view="month" />} />
-          <Route
-            path="/weather"
-            element={<WeatherScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route
-            path="/chores"
-            element={<ChoresScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route
-            path="/lists"
-            element={<ListsScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route
-            path="/meals"
-            element={<MealsScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route
-            path="/photos"
-            element={<PhotosScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route
-            path="/reminders"
-            element={<RemindersScreen preparing={preparing} scenario={scenario} />}
-          />
-          <Route path="/home" element={<HomeScreen preparing={preparing} scenario={scenario} />} />
-          <Route path="/more" element={<MoreScreen />} />
-          <Route path="/games" element={<GamesScreen />} />
-          <Route path="/appearance" element={<AppearanceSettingsScreen />} />
-          <Route path="/admin/appearance" element={<Navigate replace to="/appearance" />} />
-          <Route
-            element={
-              <AdminAuthBoundary>
-                <Outlet />
-              </AdminAuthBoundary>
-            }
-          >
-            <Route path="/admin" element={<AdminScreen />} />
-            <Route path="/admin/household" element={<HouseholdSettingsScreen />} />
-            <Route path="/admin/people" element={<PeopleSettingsScreen />} />
-            <Route path="/admin/access" element={<AdultAccessScreen />} />
-            <Route path="/admin/today" element={<TodaySettingsScreen />} />
-            <Route path="/admin/televisions" element={<TelevisionsSettingsScreen />} />
-            <Route path="/admin/connections" element={<ConnectionsSettingsScreen />} />
+        <ModuleRouteBoundary>
+          <Routes>
             <Route
-              path="/admin/connections/calendar"
-              element={<CalendarConnectionSettingsScreen />}
+              path="/today"
+              element={<TodayScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route path="/calendar" element={<Navigate replace to="/calendar/agenda" />} />
+            <Route
+              path="/calendar/week"
+              element={<WeekScreen preparing={preparing} scenario={scenario} />}
             />
             <Route
-              path="/admin/connections/home-assistant"
-              element={<HomeAssistantConnectionSettingsScreen />}
+              path="/calendar/month"
+              element={<MonthScreen preparing={preparing} scenario={scenario} />}
             />
-            <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
-            <Route path="/admin/lists" element={<ListsSettingsScreen />} />
-            <Route path="/admin/meals" element={<MealsSettingsScreen />} />
-            <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
-            <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
-            <Route path="/admin/chore-day" element={<ChoreDaySettingsScreen />} />
-            <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
-            <Route path="/admin/system" element={<SystemHealthScreen />} />
-            <Route path="/admin/activity" element={<SystemActivityScreen />} />
-            <Route path="/admin/rewards" element={<Navigate replace to="/admin/pocket-money" />} />
-          </Route>
-          <Route path="/pair" element={<PairingScreen />} />
-          <Route path="*" element={<Navigate replace to="/today" />} />
-        </Routes>
-        <PresentedRouteObserver onPresented={confirmPresentedPath} />
+            <Route
+              path="/calendar/agenda"
+              element={<AgendaScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route path="/week" element={<LegacyCalendarRedirect view="week" />} />
+            <Route path="/month" element={<LegacyCalendarRedirect view="month" />} />
+            <Route
+              path="/weather"
+              element={<WeatherScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route
+              path="/chores"
+              element={<ChoresScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route
+              path="/lists"
+              element={<ListsScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route
+              path="/meals"
+              element={<MealsScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route
+              path="/photos"
+              element={<PhotosScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route
+              path="/reminders"
+              element={<RemindersScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route
+              path="/home"
+              element={<HomeScreen preparing={preparing} scenario={scenario} />}
+            />
+            <Route path="/more" element={<MoreScreen />} />
+            <Route path="/games" element={<GamesScreen />} />
+            <Route path="/appearance" element={<AppearanceSettingsScreen />} />
+            <Route path="/admin/appearance" element={<Navigate replace to="/appearance" />} />
+            <Route
+              element={
+                <AdminAuthBoundary>
+                  <Outlet />
+                </AdminAuthBoundary>
+              }
+            >
+              <Route path="/admin" element={<AdminScreen />} />
+              <Route path="/admin/modules" element={<ModulesSettingsScreen />} />
+              <Route path="/admin/household" element={<HouseholdSettingsScreen />} />
+              <Route path="/admin/people" element={<PeopleSettingsScreen />} />
+              <Route path="/admin/access" element={<AdultAccessScreen />} />
+              <Route path="/admin/today" element={<TodaySettingsScreen />} />
+              <Route path="/admin/televisions" element={<TelevisionsSettingsScreen />} />
+              <Route path="/admin/connections" element={<ConnectionsSettingsScreen />} />
+              <Route
+                path="/admin/connections/calendar"
+                element={<CalendarConnectionSettingsScreen />}
+              />
+              <Route
+                path="/admin/connections/home-assistant"
+                element={<HomeAssistantConnectionSettingsScreen />}
+              />
+              <Route path="/admin/planning" element={<PlanningSettingsScreen />} />
+              <Route path="/admin/lists" element={<ListsSettingsScreen />} />
+              <Route path="/admin/meals" element={<MealsSettingsScreen />} />
+              <Route path="/admin/photos" element={<PhotosSettingsScreen />} />
+              <Route path="/admin/routines" element={<RoutinesSettingsScreen />} />
+              <Route path="/admin/chore-day" element={<ChoreDaySettingsScreen />} />
+              <Route path="/admin/pocket-money" element={<PocketMoneySettingsScreen />} />
+              <Route path="/admin/system" element={<SystemHealthScreen />} />
+              <Route path="/admin/activity" element={<SystemActivityScreen />} />
+              <Route
+                path="/admin/rewards"
+                element={<Navigate replace to="/admin/pocket-money" />}
+              />
+            </Route>
+            <Route path="/pair" element={<PairingScreen />} />
+            <Route path="*" element={<Navigate replace to="/today" />} />
+          </Routes>
+          <PresentedRouteObserver onPresented={confirmPresentedPath} />
+        </ModuleRouteBoundary>
       </Suspense>
     </AppShell>
+  );
+}
+
+function ModuleRouteBoundary({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const allowed = useModulePathAvailable();
+  return allowed(pathname) ? (
+    children
+  ) : (
+    <Navigate
+      replace
+      to={normalizeModulePath(pathname).startsWith('/admin/') ? '/admin/modules' : '/today'}
+    />
   );
 }
 

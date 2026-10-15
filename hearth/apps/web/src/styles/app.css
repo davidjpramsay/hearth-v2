@@ -3063,6 +3063,13 @@
 .pairing-loading--error {
   color: var(--brick);
 }
+.today-columns.today-columns--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.today-columns[hidden] {
+  display: none;
+}
+
 .phone-tabs {
   display: none;
 }

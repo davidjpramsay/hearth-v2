@@ -7,6 +7,14 @@ import { getRealtimeUrl } from '../api/realtime';
 import { hostedReleaseMonitor } from '../runtime/hostedRelease';
 
 export const REALTIME_QUERY_DOMAINS: Record<string, readonly string[]> = {
+  'modules.changed': [
+    'modules',
+    'today',
+    'today-configuration',
+    'admin',
+    'activity',
+    'home-assistant-bridge',
+  ],
   'chore.changed': ['today', 'chores', 'chore-occurrence', 'pocket-money', 'activity'],
   'list.changed': ['today', 'lists', 'list-settings', 'activity'],
   'meal.changed': ['today', 'meals', 'saved-meal-library', 'activity'],

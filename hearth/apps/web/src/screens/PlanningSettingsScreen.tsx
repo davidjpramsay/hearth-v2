@@ -1,6 +1,7 @@
 import { AdminPage } from '../components/AdminPage';
 import type { IconName } from '../components/Icon';
 import { SettingsMenu, SettingsMenuLink } from '../components/SettingsMenu';
+import { useModulePathAvailable } from '../modules/context';
 
 const planningAreas: Array<{
   title: string;
@@ -41,20 +42,23 @@ const planningAreas: Array<{
 ];
 
 export function PlanningSettingsScreen() {
+  const available = useModulePathAvailable();
   return (
     <AdminPage title="Family planning">
       <SettingsMenu className="planning-area-list">
-        {planningAreas.map((area, index) => (
-          <SettingsMenuLink
-            className="planning-area-card"
-            icon={area.icon}
-            label={area.title}
-            data-focus-entry={index === 0 ? 'true' : undefined}
-            data-focus-id={area.focusId}
-            key={area.title}
-            to={area.path}
-          />
-        ))}
+        {planningAreas
+          .filter((area) => available(area.path))
+          .map((area, index) => (
+            <SettingsMenuLink
+              className="planning-area-card"
+              icon={area.icon}
+              label={area.title}
+              data-focus-entry={index === 0 ? 'true' : undefined}
+              data-focus-id={area.focusId}
+              key={area.title}
+              to={area.path}
+            />
+          ))}
       </SettingsMenu>
     </AdminPage>
   );

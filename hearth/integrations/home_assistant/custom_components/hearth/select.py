@@ -7,7 +7,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .client import screen_available
-from .const import TAB_LABELS
+from .const import TAB_LABELS, TAB_MODULES
 from .coordinator import HearthCoordinator
 from .entity import HearthScreenEntity
 
@@ -41,10 +41,14 @@ class HearthTabSelect(HearthScreenEntity, SelectEntity):
 
     def __init__(self, coordinator: HearthCoordinator, screen_id: str) -> None:
         super().__init__(coordinator, screen_id)
-        self._attr_options = list(TAB_LABELS)
         self._attr_unique_id = (
             f"{coordinator.data['household']['id']}_screen_{screen_id}_tab"
         )
+
+    @property
+    def options(self) -> list[str]:
+        modules = self.coordinator.data.get("modules", {})
+        return [tab for tab in TAB_LABELS if modules.get(TAB_MODULES.get(tab), True)]
 
     @property
     def available(self) -> bool:
@@ -56,11 +60,12 @@ class HearthTabSelect(HearthScreenEntity, SelectEntity):
     def current_option(self) -> str | None:
         # Cold start, pending commands and failed acknowledgement never supply
         # a default or the requested option in place of the observed route.
-        return self.screen["currentTab"] if self.available else None
+        option = self.screen["currentTab"] if self.available else None
+        return option if option in self.options else None
 
     async def async_select_option(self, option: str) -> None:
-        if option not in TAB_LABELS:
-            raise HomeAssistantError("Unknown Hearth tab")
+        if option not in self.options:
+            raise HomeAssistantError("That Hearth tab is turned off or unknown")
         if not self.available:
             raise HomeAssistantError("The Hearth screen is not visible and online")
         await self.coordinator.async_navigate(self.screen_id, option)

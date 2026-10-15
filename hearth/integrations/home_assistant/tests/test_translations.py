@@ -25,7 +25,8 @@ class PairingTranslationTests(unittest.TestCase):
                 rendered = prompt.format(code="ABCDEF")
                 self.assertEqual(rendered.count("ABCDEF"), 1)
                 self.assertIn(
-                    "Screens, calendar and chore control are included", rendered
+                    "Screens, calendar, chore control and module switches are included",
+                    rendered,
                 )
                 self.assertIn("no boxes to tick", rendered)
                 self.assertNotIn("choose permissions", rendered)

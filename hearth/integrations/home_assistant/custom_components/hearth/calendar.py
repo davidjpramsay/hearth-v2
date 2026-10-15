@@ -44,6 +44,7 @@ class HearthCalendar(HearthEntity, CalendarEntity):
         data = self.coordinator.data
         return (
             super().available
+            and data.get("modules", {}).get("calendar", True)
             and not self._range_failed
             and data["permissions"]["shareCalendar"]
             and data["calendar"] is not None
@@ -52,6 +53,8 @@ class HearthCalendar(HearthEntity, CalendarEntity):
 
     @property
     def extra_state_attributes(self) -> JsonObject:
+        if not self.available:
+            return {}
         projection = self.coordinator.data["calendar"]
         return {
             "freshness": projection["freshness"]

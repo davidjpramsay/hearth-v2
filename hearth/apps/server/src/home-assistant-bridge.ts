@@ -18,7 +18,12 @@ import {
   type TvDeviceSession,
   type ScreenTab,
   type CalendarEvent,
+  type ModuleId,
+  type UpdateModuleRequest,
+  SCREEN_TAB_PATHS,
+  moduleForPath,
 } from '@hearth/shared';
+import { ModulesService } from './modules-repository.js';
 
 import type { AdminRepository } from './admin-repository.js';
 import { RepositoryError, type HearthRepository } from './repository.js';
@@ -54,6 +59,45 @@ type ChoreReceipt = {
 
 /** Inbound authority only. Never accepts an HA long-lived token or an adult/TV credential. */
 export class HomeAssistantBridgeService {
+  private modules: ModulesService;
+  setModules(modules: ModulesService): void {
+    this.modules = modules;
+  }
+  setModule(secret: string, module: ModuleId, input: UpdateModuleRequest) {
+    const row = this.authenticate(secret);
+    if (row.connection.controlModules !== true)
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Reconnect Home Assistant from an adult phone to allow module switches.',
+      );
+    const result = this.modules.update(
+      row.householdId,
+      module,
+      input,
+      { id: 'service_home_assistant', type: 'service', source: 'automation' },
+      `automation:${row.connection.id}`,
+    );
+    this.cancelDisabledCommands(row.householdId);
+    return result;
+  }
+  cancelDisabledCommands(householdId: string): void {
+    const enabled = this.modules.get(householdId).enabled;
+    for (const row of this.commands.values()) {
+      const connection = this.connections.get(row.connectionId);
+      const module = moduleForPath(SCREEN_TAB_PATHS[row.command.tab]);
+      if (
+        connection?.householdId === householdId &&
+        module &&
+        !enabled[module] &&
+        row.command.status === 'pending'
+      )
+        this.setStatus(row, 'cancelled');
+    }
+  }
+  private assertTabEnabled(householdId: string, tab: ScreenTab): void {
+    const module = moduleForPath(SCREEN_TAB_PATHS[tab]);
+    if (module) this.modules.assertEnabled(householdId, module);
+  }
   private readonly connections = new Map<string, ConnectionRow>();
   private readonly commands = new Map<string, CommandRow>();
   private readonly presentations = new Map<string, Presentation>();
@@ -63,8 +107,13 @@ export class HomeAssistantBridgeService {
   constructor(
     private readonly admin: AdminRepository,
     private readonly repository: HearthRepository,
-    private readonly options: { database?: InstanceType<typeof Database>; now?: () => Date } = {},
+    private readonly options: {
+      database?: InstanceType<typeof Database>;
+      now?: () => Date;
+      modules?: ModulesService;
+    } = {},
   ) {
+    this.modules = options.modules ?? new ModulesService(options.database, () => this.now());
     const db = options.database;
     if (db === undefined) return;
     for (const row of db
@@ -161,7 +210,15 @@ export class HomeAssistantBridgeService {
       (row) => row.householdId === householdId && row.requestId === input.requestId,
     );
     if (previous !== undefined) {
-      if (previous.inputHash !== inputHash) this.conflict();
+      const { controlModules: _newPermission, ...legacyInput } = input;
+      if (
+        previous.inputHash !== inputHash &&
+        !(
+          input.controlModules !== true &&
+          previous.inputHash === digest(JSON.stringify(legacyInput))
+        )
+      )
+        this.conflict();
       return { connection: structuredClone(previous.connection), replayed: true };
     }
     if (this.active(householdId) !== undefined)
@@ -184,6 +241,7 @@ export class HomeAssistantBridgeService {
       shareChores: input.shareChores,
       shareCalendar: input.shareCalendar,
       controlChores: input.controlChores,
+      controlModules: input.controlModules ?? false,
     };
     const row: ConnectionRow = {
       connection,
@@ -280,20 +338,25 @@ export class HomeAssistantBridgeService {
 
   async state(secret: string) {
     const row = this.authenticate(secret);
+    this.cancelDisabledCommands(row.householdId);
+    const enabled = this.modules.get(row.householdId).enabled;
     const household = await this.admin.getHousehold(row.householdId);
     const date = localDateInTimezone(this.now().toISOString(), household.timezone);
     const [devices, chores, calendar] = await Promise.all([
       this.devices(row.householdId),
-      row.connection.shareChores
+      enabled.chores && row.connection.shareChores
         ? this.repository.getChores(row.householdId, date).catch(() => null)
         : null,
-      row.connection.shareCalendar
+      enabled.calendar && row.connection.shareCalendar
         ? this.calendarRange(row, date, addLocalDays(date, 7)).catch(() => null)
         : null,
     ]);
     // Recheck after awaited reads so revocation cannot leak an in-flight snapshot.
     this.authenticate(secret);
-    const occurrences = chores?.groups.flatMap((group) => group.occurrences) ?? [];
+    const latest = this.modules.get(row.householdId).enabled;
+    const occurrences = latest.chores
+      ? (chores?.groups.flatMap((group) => group.occurrences) ?? [])
+      : [];
     return BridgeStateSchema.parse({
       version: 1,
       generatedAt: this.now().toISOString(),
@@ -302,7 +365,9 @@ export class HomeAssistantBridgeService {
         shareChores: row.connection.shareChores,
         shareCalendar: row.connection.shareCalendar,
         controlChores: row.connection.controlChores,
+        controlModules: row.connection.controlModules === true,
       },
+      modules: latest,
       screens: devices
         .filter(
           (device) => row.connection.screenIds.includes(device.id) && device.revokedAt === null,
@@ -314,13 +379,19 @@ export class HomeAssistantBridgeService {
             id: device.id,
             name: device.name,
             online,
-            currentTab: online ? (presentation?.tab ?? null) : null,
+            currentTab:
+              online &&
+              presentation?.tab &&
+              (!moduleForPath(SCREEN_TAB_PATHS[presentation.tab]) ||
+                latest[moduleForPath(SCREEN_TAB_PATHS[presentation.tab])!])
+                ? presentation.tab
+                : null,
             lastSeenAt: presentation?.receivedAt ?? null,
             command: this.latestCommand(row.connection.id, device.id)?.command ?? null,
           };
         }),
       chores:
-        chores === null
+        chores === null || !latest.chores
           ? null
           : {
               localDate: date,
@@ -336,7 +407,7 @@ export class HomeAssistantBridgeService {
                 locked: chore.locked,
               })),
             },
-      calendar,
+      calendar: latest.calendar ? calendar : null,
     });
   }
 
@@ -346,6 +417,7 @@ export class HomeAssistantBridgeService {
     input: BridgeChoreCompletionRequest,
   ) {
     const row = this.authenticate(secret);
+    this.modules.assertEnabled(row.householdId, 'chores');
     if (!row.connection.shareChores || !row.connection.controlChores)
       throw new RepositoryError(
         'FORBIDDEN',
@@ -388,6 +460,7 @@ export class HomeAssistantBridgeService {
       throw new RepositoryError('CONFLICT', 'Refresh today’s chores before changing them.');
     const chores = await this.repository.getChores(row.householdId, date);
     this.authenticate(secret);
+    this.modules.assertEnabled(row.householdId, 'chores');
     const concurrent = replay();
     if (concurrent !== null) return concurrent;
     // Date may have rolled over while a read was in flight.
@@ -458,6 +531,7 @@ export class HomeAssistantBridgeService {
 
   async navigate(secret: string, deviceId: string, requestId: string, tab: ScreenTab) {
     const row = this.authenticate(secret);
+    this.assertTabEnabled(row.householdId, tab);
     this.clean();
     const inputHash = digest(JSON.stringify({ deviceId, tab }));
     const replay = [...this.commands.values()].find(
@@ -471,6 +545,7 @@ export class HomeAssistantBridgeService {
     }
     const devices = await this.devices(row.householdId);
     this.authenticate(secret);
+    this.assertTabEnabled(row.householdId, tab);
     // Device enumeration yields. A simultaneous exact retry may have committed meanwhile.
     const concurrent = [...this.commands.values()].find(
       (candidate) =>
@@ -554,6 +629,11 @@ export class HomeAssistantBridgeService {
       return result(null);
     const row = this.latestCommand(connection.connection.id, session.deviceId);
     if (row === undefined || row.command.status !== 'pending') return result(null);
+    const module = moduleForPath(SCREEN_TAB_PATHS[row.command.tab]);
+    if (module && !this.modules.get(session.householdId).enabled[module]) {
+      this.setStatus(row, 'cancelled');
+      return result(null);
+    }
     if (row.instanceId !== input.instanceId || !this.isOnline(previous) || input.tab === null) {
       this.setStatus(row, 'cancelled');
       return result(null);
@@ -567,6 +647,7 @@ export class HomeAssistantBridgeService {
 
   async calendar(secret: string, start: string, end: string) {
     const row = this.authenticate(secret);
+    this.modules.assertEnabled(row.householdId, 'calendar');
     if (!row.connection.shareCalendar)
       throw new RepositoryError('FORBIDDEN', 'Calendar sharing is not enabled for Home Assistant.');
     const home = await this.admin.getHousehold(row.householdId);
@@ -589,6 +670,7 @@ export class HomeAssistantBridgeService {
         : Date.parse(event.start) < Date.parse(end) && Date.parse(event.end) > Date.parse(start),
     );
     this.authenticate(secret);
+    this.modules.assertEnabled(row.householdId, 'calendar');
     return result;
   }
 
@@ -601,6 +683,7 @@ export class HomeAssistantBridgeService {
     const events = new Map<string, CalendarEvent>();
     let freshness: 'current' | 'stale' | 'offline' = 'current';
     for (let date = start; date < end; date = addLocalDays(date, 7)) {
+      this.modules.assertEnabled(row.householdId, 'calendar');
       const week = await this.repository.getWeek(row.householdId, date);
       if (week.freshness === 'offline' || (week.freshness === 'stale' && freshness === 'current'))
         freshness = week.freshness;

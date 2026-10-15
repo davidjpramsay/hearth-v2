@@ -2,6 +2,25 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-112 — Household Modules with retained data and scoped HA switches
+
+- Date: 2026-10-15
+- Status: implemented locally; verification evidence in ACCEPTANCE. Not released or installed live.
+- Context: The adult wants simple module on/off controls that hide a feature everywhere, deny HA
+  access while off and retain its data for later. HA must also be able to restore modules.
+- Choice: Eleven fixed household flags, all default on. One adult Modules page plus separately
+  approved HA switches. Enforce at HTTP/provider/aggregate/command boundaries, not only navigation.
+  Retain feature data/configuration and independent Today choices. Core household/access/system,
+  Today/clock and inbound HA management cannot be disabled.
+- Authority: Add `controlModules` default false. Fresh single approval explicitly grants it;
+  old grants/pending approvals stay restricted until deliberate reconnect. Off forbids corresponding
+  reads/writes, including exact feature-command retries, but the module switch stays available.
+- Consequences: Add migration 0032, audited/idempotent actor-scoped module commands, realtime flags
+  and local HA component 1.2.0. Cancel pending disabled-tab commands. Never broaden credentials into
+  adult access, payments, arbitrary edits, power or media. This extends D-111's future explicit
+  bundle, not its installed historical grant. No live settings, networking or runtime changes are
+  authorized by implementing this page. Contract: MODULES_CONTRACT.md.
+
 ## D-111 — One explicit Home Assistant approval, no permission picker
 
 - Date: 2026-10-15

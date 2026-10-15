@@ -1,5 +1,22 @@
 # Hearth v2 local environment and operations plan
 
+## Pending Modules release — D-112 (local only)
+
+The local implementation adds migration 0032 and matching HA component 1.2.0. It is not part of the
+installed D-111 release below. No live module flag, device, container, networking or HA file changed.
+Wait for explicit publication/deployment/installation approval and green release gates. Preserve
+the exact private runtime network/container configuration, take/verify current backup and rollback
+evidence, deploy matching Hearth images, verify readiness/migration, and install the HA component
+only under separate approved quiet-restart procedures. Neither step should navigate/wake the TV.
+
+Existing grants retain `controlModules=false`; reconnect once after both updates through the
+existing HA entry's repair, then approve the disclosed bundle on the adult phone. Do not reconnect
+twice or add a duplicate entry. Before approval no live module switches are usable. Test a single
+agreed feature off/on with retained data, state feedback and a visible screen only when convenient.
+Old binaries do not enforce module flags: do not treat a rollback to a pre-D-112 release as preserving
+disabled-feature protection. Coordinate a compatible rollback rather than silently bypassing it.
+No payload, credential or private household content belongs in release evidence.
+
 ## Current HA single-approval release — D-111 (2026-10-15)
 
 Private Hearth runs verified source `f61454839f22da5cc6ed8bc636fb70db27850a0a`; hosted run

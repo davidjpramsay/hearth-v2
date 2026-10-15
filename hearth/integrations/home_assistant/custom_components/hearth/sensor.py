@@ -36,6 +36,7 @@ class HearthChoreCount(HearthEntity, SensorEntity):
         data = self.coordinator.data
         return (
             super().available
+            and data.get("modules", {}).get("chores", True)
             and data["permissions"]["shareChores"]
             and data["chores"] is not None
         )

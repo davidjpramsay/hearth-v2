@@ -9,6 +9,7 @@ import { useSharedScreen } from '../runtime/sharedScreen';
 import { HouseholdDateTime } from './HouseholdDateTime';
 import { Icon, type IconName } from './Icon';
 import { SettingsLink } from './SettingsNavigation';
+import { useModulePathAvailable } from '../modules/context';
 
 interface NavigationItem {
   label: string;
@@ -46,6 +47,7 @@ const adminNavigationGroups: Array<{ label: string; items: AdminNavigationItem[]
     label: 'Content',
     items: [
       { label: 'Overview', path: '/admin', icon: 'leaf' },
+      { label: 'Modules', path: '/admin/modules', icon: 'leaf' },
       { label: 'Today', path: '/admin/today', icon: 'today' },
       { label: 'Photos', path: '/admin/photos', icon: 'image' },
       {
@@ -104,6 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function AppShellLayout({ children }: { children: ReactNode }) {
+  const available = useModulePathAvailable();
   const { pathname } = useLocation();
   const { preferences } = useAppearance();
   const runtime = useHearthRuntime();
@@ -148,7 +151,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
       observer.disconnect();
     };
   }, [pathname]);
-  const navigation = baseNavigation;
+  const navigation = baseNavigation.filter((item) => available(item.path));
   if (pathname === '/pair') {
     return (
       <main className="pair-shell" id="main-content">
@@ -193,7 +196,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
             data-focus-id="nav-appearance"
             data-focus-left="nav-appearance"
             data-focus-right={`appearance-${preferences.theme}`}
-            data-focus-up="nav-games"
+            data-focus-up={`nav-${navigation.at(-1)?.label.toLowerCase() ?? 'today'}`}
             to="/appearance"
           >
             <Icon name="moon" />
@@ -214,6 +217,10 @@ function AppShellLayout({ children }: { children: ReactNode }) {
 }
 
 function AdminDesktopNavigation({ pathname }: { pathname: string }) {
+  const available = useModulePathAvailable();
+  const groups = adminNavigationGroups
+    .map((group) => ({ ...group, items: group.items.filter((item) => available(item.path)) }))
+    .filter((group) => group.items.length > 0);
   return (
     <aside className="admin-desktop-rail" aria-label="Administration">
       <NavLink className="admin-desktop-brand" to="/admin">
@@ -224,7 +231,7 @@ function AdminDesktopNavigation({ pathname }: { pathname: string }) {
         </span>
       </NavLink>
       <nav className="admin-desktop-nav">
-        {adminNavigationGroups.map((group) => (
+        {groups.map((group) => (
           <section key={group.label}>
             <h2>{group.label}</h2>
             {group.items.map((item) => {
@@ -259,6 +266,8 @@ function isAdminNavigationActive(pathname: string, item: AdminNavigationItem): b
 }
 
 function PhoneNavigation() {
+  const available = useModulePathAvailable();
+  const navigation = phoneNavigation.filter((item) => available(item.path));
   const { pathname } = useLocation();
   const keyboardOpen = usePhoneKeyboardOpen();
   const moreActive =
@@ -267,14 +276,25 @@ function PhoneNavigation() {
     pathname.startsWith('/admin') ||
     ['/lists', '/meals', '/home', '/photos', '/reminders', '/games'].includes(pathname);
   return (
-    <nav className="phone-tabs" aria-label="Primary navigation" hidden={keyboardOpen}>
-      {phoneNavigation.map((item, index) => (
-        <PhoneTab item={item} index={index} pathname={pathname} key={item.label} />
+    <nav
+      className="phone-tabs"
+      style={{ gridTemplateColumns: `repeat(${navigation.length + 1}, minmax(0, 1fr))` }}
+      aria-label="Primary navigation"
+      hidden={keyboardOpen}
+    >
+      {navigation.map((item, index) => (
+        <PhoneTab
+          item={item}
+          index={index}
+          pathname={pathname}
+          navigation={navigation}
+          key={item.label}
+        />
       ))}
       <NavLink
         className={`phone-tab${moreActive ? ' phone-tab--active' : ''}`}
         data-focus-id="phone-tab-more"
-        data-focus-left={`phone-tab-${phoneNavigation.at(-1)?.label.toLowerCase() ?? 'today'}`}
+        data-focus-left={`phone-tab-${navigation.at(-1)?.label.toLowerCase() ?? 'today'}`}
         data-focus-right="phone-tab-more"
         to="/more"
       >
@@ -338,10 +358,12 @@ function PhoneTab({
   item,
   index,
   pathname,
+  navigation,
 }: {
   item: NavigationItem;
   index: number;
   pathname: string;
+  navigation: NavigationItem[];
 }) {
   const sectionActive =
     pathname === item.path || (item.label === 'Calendar' && pathname.startsWith('/calendar/'));
@@ -350,14 +372,12 @@ function PhoneTab({
       className={`phone-tab${sectionActive ? ' phone-tab--active' : ''}`}
       data-focus-id={`phone-tab-${item.label.toLowerCase()}`}
       data-focus-left={
-        index === 0
-          ? 'phone-tab-today'
-          : `phone-tab-${phoneNavigation[index - 1]?.label.toLowerCase()}`
+        index === 0 ? 'phone-tab-today' : `phone-tab-${navigation[index - 1]?.label.toLowerCase()}`
       }
       data-focus-right={
-        index === phoneNavigation.length - 1
+        index === navigation.length - 1
           ? 'phone-tab-more'
-          : `phone-tab-${phoneNavigation[index + 1]?.label.toLowerCase()}`
+          : `phone-tab-${navigation[index + 1]?.label.toLowerCase()}`
       }
       to={item.path}
     >

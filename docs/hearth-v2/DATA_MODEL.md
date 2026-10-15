@@ -1,5 +1,16 @@
 # Hearth v2 domain and data model
 
+## Retained household Modules (D-112)
+
+Migration `0032_household_modules.sql` adds fixed-ID boolean overrides keyed by household/module,
+and durable exact-retry receipts keyed by household/actor-scope/request. Missing override means on.
+The setting, receipt and `module.update` audit commit atomically. Exact retry returns the original
+receipt without restoring an older flag over a later command; changed reuse conflicts. Feature
+tables, independent Today preferences, provider settings and device grants are not deleted or rewritten.
+`modules.changed` invalidates clients. Grants/pending HA approvals store optional `controlModules`
+in existing JSON; missing means false, with no bulk upgrade of old rows. New approval explicitly
+sets it true. No credentials or private module content enter module audits/receipts.
+
 ## Explicit bundle approval (D-111)
 
 No data-model or migration change. New UI approval captures all current unrevoked screen IDs

@@ -113,6 +113,8 @@ for (const viewport of [
       await page.keyboard.press('ArrowDown');
       await expect(menu.getByRole('link', { name: 'Games', exact: true })).toBeFocused();
       await page.keyboard.press('ArrowDown');
+      await expect(menu.getByRole('link', { name: 'Modules', exact: true })).toBeFocused();
+      await page.keyboard.press('ArrowDown');
       await expect(photos).toBeFocused();
       await expect(photos).not.toHaveCSS('box-shadow', 'none');
       await page.keyboard.press('Enter');
@@ -195,6 +197,8 @@ test('Hearth settings groups household tasks and keeps remote movement continuou
   await expect(page.locator('[data-focus-id="admin-today"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-chores"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focus-id="admin-modules"]')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('[data-focus-id="admin-household"]')).toBeFocused();
 });
@@ -489,6 +493,7 @@ for (const viewport of [
       shareChores: true,
       shareCalendar: true,
       controlChores: true,
+      controlModules: true,
     });
     const admin = await request.get(
       'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/admin',
@@ -593,6 +598,7 @@ test('a limited HA connection requires confirmed reconnect instead of a silent p
     shareChores: false,
     shareCalendar: false,
     controlChores: false,
+    controlModules: false,
   });
   await page.getByRole('button', { name: 'Reconnect Home Assistant', exact: true }).click();
   await page
@@ -720,7 +726,7 @@ test('adult sees concise system health and can create an advanced recovery copy'
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 31 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 32 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connections and photos' })).toBeVisible();
   const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });

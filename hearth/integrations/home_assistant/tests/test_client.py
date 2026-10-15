@@ -28,6 +28,28 @@ from support import (
 
 
 class SchemaTests(unittest.TestCase):
+    def test_old_module_defaults_and_disabled_data_are_never_projected(self):
+        old = client.validate_state(state())
+        self.assertFalse(old["permissions"]["controlModules"])
+        self.assertTrue(all(old["modules"].values()))
+        raw = state()
+        raw["modules"] = dict.fromkeys(client.MODULE_LABELS, True)
+        raw["modules"].update(chores=False, calendar=False)
+        raw["permissions"]["controlModules"] = True
+        result = client.validate_state(raw)
+        self.assertIsNone(result["chores"])
+        self.assertIsNone(result["calendar"])
+        self.assertNotIn(raw["chores"]["items"][0]["title"], json.dumps(result))
+        for invalid in (None, {}, {**raw["modules"], "weather": 1}):
+            with (
+                self.subTest(invalid=invalid),
+                self.assertRaises(client.HearthProtocolError),
+            ):
+                client.validate_state({**raw, "modules": invalid})
+        del raw["modules"]
+        with self.assertRaises(client.HearthProtocolError):
+            client.validate_state(raw)
+
     def test_old_permissions_never_gain_control_and_completion_ids_require_opt_in(self):
         old = state()
         old["permissions"].pop("controlChores")
@@ -63,7 +85,12 @@ class SchemaTests(unittest.TestCase):
         )
         fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
         validated = client.validate_state(fixture)
-        self.assertEqual(validated, fixture)
+        expected = {
+            **fixture,
+            "permissions": {**fixture["permissions"], "controlModules": False},
+            "modules": dict.fromkeys(client.MODULE_LABELS, True),
+        }
+        self.assertEqual(validated, expected)
 
         all_day = next(
             item for item in validated["calendar"]["events"] if item["allDay"]
@@ -299,6 +326,50 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             await make_client(Session(Response(bad))).async_set_chore_completion(
                 "chore_demo", "2026-10-15", True, None
             )
+
+    async def test_module_transport_retry_is_exact_and_response_is_bound(self):
+        receipt = {
+            "configuration": {
+                "householdId": "household_demo",
+                "enabled": dict.fromkeys(client.MODULE_LABELS, True),
+            },
+            "audit": {},
+            "replayed": True,
+        }
+        receipt["configuration"]["enabled"]["weather"] = False
+        session = Session(TimeoutError(), Response(receipt))
+        connection = make_client(session)
+        connection._household_id = "household_demo"
+        result = await connection.async_set_module("weather", False)
+        self.assertTrue(result["replayed"])
+        self.assertEqual(session.calls[0], session.calls[1])
+        self.assertEqual(session.calls[0][0], "PUT")
+        self.assertEqual(session.calls[0][2]["json"]["enabled"], False)
+        self.assertNotIn("audit", result)
+        for bad in (
+            {
+                **receipt,
+                "configuration": {
+                    **receipt["configuration"],
+                    "householdId": "household_other",
+                },
+            },
+            {**receipt, "configuration": {**receipt["configuration"], "enabled": {}}},
+            {**receipt, "replayed": 1},
+        ):
+            connection = make_client(Session(Response(bad)))
+            connection._household_id = "household_demo"
+            with self.assertRaises(client.HearthError):
+                await connection.async_set_module("weather", False)
+        for module_id, enabled in (("../admin", True), ("weather", 1)):
+            empty = Session()
+            with self.assertRaises(client.HearthProtocolError):
+                await make_client(empty).async_set_module(module_id, enabled)
+            self.assertEqual(empty.calls, [])
+        denied = Session(Response(status=403), Response(receipt))
+        with self.assertRaises(client.HearthError):
+            await make_client(denied).async_set_module("weather", False)
+        self.assertEqual(len(denied.calls), 1)
 
     async def test_reopen_sends_observed_completion_and_never_retries_http_errors(self):
         receipt = {

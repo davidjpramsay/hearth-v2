@@ -9,6 +9,7 @@ import { todayApi as hearthApi } from '../api/today';
 import { AdminPage, AdminQueryState } from '../components/AdminPage';
 import { Icon, type IconName } from '../components/Icon';
 import { useTodayConfigurationQuery } from '../hooks/useTodayQueries';
+import { useModules } from '../modules/context';
 
 const sectionOptions: Array<{
   key: keyof TodaySectionVisibility;
@@ -48,6 +49,22 @@ const sectionOptions: Array<{
 ];
 
 export function TodaySettingsScreen() {
+  const modules = useModules();
+  const options = sectionOptions.filter(
+    (option) =>
+      modules[
+        (
+          {
+            dinner: 'meals',
+            listSummary: 'lists',
+            notice: 'notices',
+            photo: 'photos',
+            dailyVerse: 'dailyVerse',
+            reminders: 'reminders',
+          } as const
+        )[option.key]
+      ],
+  );
   const query = useTodayConfigurationQuery();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
@@ -128,11 +145,12 @@ export function TodaySettingsScreen() {
     });
   }
 
-  if (query.isPending) return <AdminQueryState title="Today & notices" />;
+  if (query.isPending)
+    return <AdminQueryState title={modules.notices ? 'Today & notices' : 'Today screen'} />;
   if (configuration === undefined)
     return (
       <AdminQueryState
-        title="Today & notices"
+        title={modules.notices ? 'Today & notices' : 'Today screen'}
         error={query.error ?? new Error('Today settings could not be loaded.')}
         onRetry={() => void query.refetch()}
       />
@@ -140,23 +158,23 @@ export function TodaySettingsScreen() {
 
   const error = saveSections.error ?? saveNotice.error ?? archiveNotice.error;
   return (
-    <AdminPage title="Today & notices">
+    <AdminPage title={modules.notices ? 'Today & notices' : 'Today screen'}>
       <section className="today-admin-section">
         <div className="today-admin-section__heading">
           <h2>Show on Today</h2>
           <span aria-live="polite">
-            {Object.values(configuration.sections).filter(Boolean).length} of{' '}
-            {sectionOptions.length} shown
+            {options.filter((option) => configuration.sections[option.key]).length} of{' '}
+            {options.length} shown
           </span>
         </div>
         <div className="today-section-switches">
-          {sectionOptions.map((option) => {
+          {options.map((option, index) => {
             const enabled = configuration.sections[option.key];
             return (
               <button
                 aria-checked={enabled}
                 className="today-section-switch focusable"
-                data-focus-entry={option.key === 'dinner' ? 'true' : undefined}
+                data-focus-entry={index === 0 ? 'true' : undefined}
                 data-focus-id={`today-setting-${option.key}`}
                 key={option.key}
                 onClick={() => toggleSection(option.key)}
@@ -178,138 +196,142 @@ export function TodaySettingsScreen() {
         </div>
       </section>
 
-      <section className="today-admin-section">
-        <div className="today-admin-section__heading">
-          <h2>{editing === null ? 'Create a notice' : 'Edit notice'}</h2>
-          <Icon name="today" />
-        </div>
-        <form
-          className="notice-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (message.trim().length > 0) saveNotice.mutate();
-          }}
-        >
-          <label>
-            Message
-            <textarea
-              maxLength={240}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="What should everyone know?"
-              required
-              rows={3}
-              value={message}
-            />
-            <small>{message.length}/240</small>
-          </label>
-          <div className="notice-form__options">
-            <label>
-              Priority
-              <select
-                onChange={(event) => setPriority(event.target.value as 'standard' | 'important')}
-                value={priority}
-              >
-                <option value="standard">Standard</option>
-                <option value="important">Important · show first</option>
-              </select>
-            </label>
-            <label>
-              Keep visible
-              <select
-                onChange={(event) =>
-                  setExpiry(event.target.value as 'day' | 'tomorrow' | 'week' | 'none')
-                }
-                value={expiry}
-              >
-                <option value="day">For 8 hours</option>
-                <option value="tomorrow">Until tomorrow</option>
-                <option value="week">For one week</option>
-                <option value="none">Until an adult removes it</option>
-              </select>
-            </label>
+      {modules.notices ? (
+        <section className="today-admin-section">
+          <div className="today-admin-section__heading">
+            <h2>{editing === null ? 'Create a notice' : 'Edit notice'}</h2>
+            <Icon name="today" />
           </div>
-          <div className="notice-form__actions">
-            {editing === null ? null : (
+          <form
+            className="notice-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (message.trim().length > 0) saveNotice.mutate();
+            }}
+          >
+            <label>
+              Message
+              <textarea
+                maxLength={240}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="What should everyone know?"
+                required
+                rows={3}
+                value={message}
+              />
+              <small>{message.length}/240</small>
+            </label>
+            <div className="notice-form__options">
+              <label>
+                Priority
+                <select
+                  onChange={(event) => setPriority(event.target.value as 'standard' | 'important')}
+                  value={priority}
+                >
+                  <option value="standard">Standard</option>
+                  <option value="important">Important · show first</option>
+                </select>
+              </label>
+              <label>
+                Keep visible
+                <select
+                  onChange={(event) =>
+                    setExpiry(event.target.value as 'day' | 'tomorrow' | 'week' | 'none')
+                  }
+                  value={expiry}
+                >
+                  <option value="day">For 8 hours</option>
+                  <option value="tomorrow">Until tomorrow</option>
+                  <option value="week">For one week</option>
+                  <option value="none">Until an adult removes it</option>
+                </select>
+              </label>
+            </div>
+            <div className="notice-form__actions">
+              {editing === null ? null : (
+                <button
+                  className="button button--quiet"
+                  onClick={() => {
+                    setEditing(null);
+                    setMessage('');
+                    setPriority('standard');
+                    setExpiry('tomorrow');
+                  }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+              )}
               <button
-                className="button button--quiet"
-                onClick={() => {
-                  setEditing(null);
-                  setMessage('');
-                  setPriority('standard');
-                  setExpiry('tomorrow');
-                }}
-                type="button"
+                className="button button--primary"
+                disabled={saveNotice.isPending}
+                type="submit"
               >
-                Cancel
+                {saveNotice.isPending
+                  ? 'Saving…'
+                  : editing === null
+                    ? 'Publish notice'
+                    : 'Save notice'}
               </button>
-            )}
-            <button
-              className="button button--primary"
-              disabled={saveNotice.isPending}
-              type="submit"
-            >
-              {saveNotice.isPending
-                ? 'Saving…'
-                : editing === null
-                  ? 'Publish notice'
-                  : 'Save notice'}
-            </button>
-          </div>
-        </form>
-      </section>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
-      <section className="today-admin-section">
-        <div className="today-admin-section__heading">
-          <h2>Notices</h2>
-          <span>{sortedNotices.length}</span>
-        </div>
-        {sortedNotices.length === 0 ? (
-          <p className="notice-empty">No notices.</p>
-        ) : (
-          <div className="notice-list">
-            {sortedNotices.map((notice) => (
-              <article
-                className={`notice-card${notice.id === configuration.activeNoticeId ? ' notice-card--active' : ''}`}
-                key={notice.id}
-              >
-                <div>
-                  <span className={`notice-priority notice-priority--${notice.priority}`}>
-                    {notice.priority === 'important' ? 'Important' : 'Standard'}
-                  </span>
-                  {notice.id === configuration.activeNoticeId ? (
-                    <span>Showing on Today</span>
-                  ) : null}
-                  <p>{notice.message}</p>
-                  <small>{noticeWindowLabel(notice)}</small>
-                </div>
-                <div className="notice-card__actions">
-                  <button
-                    className="button button--quiet"
-                    onClick={() => {
-                      setEditing(notice);
-                      setMessage(notice.message);
-                      setPriority(notice.priority);
-                      setExpiry(notice.expiresAt === null ? 'none' : 'tomorrow');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    type="button"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="button button--danger"
-                    disabled={archiveNotice.isPending}
-                    onClick={() => archiveNotice.mutate(notice.id)}
-                    type="button"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </article>
-            ))}
+      {modules.notices ? (
+        <section className="today-admin-section">
+          <div className="today-admin-section__heading">
+            <h2>Notices</h2>
+            <span>{sortedNotices.length}</span>
           </div>
-        )}
-      </section>
+          {sortedNotices.length === 0 ? (
+            <p className="notice-empty">No notices.</p>
+          ) : (
+            <div className="notice-list">
+              {sortedNotices.map((notice) => (
+                <article
+                  className={`notice-card${notice.id === configuration.activeNoticeId ? ' notice-card--active' : ''}`}
+                  key={notice.id}
+                >
+                  <div>
+                    <span className={`notice-priority notice-priority--${notice.priority}`}>
+                      {notice.priority === 'important' ? 'Important' : 'Standard'}
+                    </span>
+                    {notice.id === configuration.activeNoticeId ? (
+                      <span>Showing on Today</span>
+                    ) : null}
+                    <p>{notice.message}</p>
+                    <small>{noticeWindowLabel(notice)}</small>
+                  </div>
+                  <div className="notice-card__actions">
+                    <button
+                      className="button button--quiet"
+                      onClick={() => {
+                        setEditing(notice);
+                        setMessage(notice.message);
+                        setPriority(notice.priority);
+                        setExpiry(notice.expiresAt === null ? 'none' : 'tomorrow');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="button button--danger"
+                      disabled={archiveNotice.isPending}
+                      onClick={() => archiveNotice.mutate(notice.id)}
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
       {error === null ? null : (
         <p className="admin-inline-error" role="alert">
           {error.message}

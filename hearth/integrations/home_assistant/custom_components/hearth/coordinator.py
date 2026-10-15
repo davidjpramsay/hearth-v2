@@ -56,6 +56,26 @@ class HearthCoordinator(DataUpdateCoordinator[JsonObject]):
         )
         self.entry.async_start_reauth(self.hass)
 
+    async def async_set_module(self, module_id: str, enabled: bool) -> None:
+        async with self._state_lock:
+            if not self.data["permissions"].get("controlModules", False):
+                raise HomeAssistantError(
+                    "Reconnect Hearth from an adult phone to allow module switches"
+                )
+            try:
+                await self.client.async_set_module(module_id, enabled)
+                self.async_set_updated_data(await self.client.async_state())
+            except HearthAuthError:
+                self._auth_failed()
+                raise HomeAssistantError("Hearth requires reauthentication") from None
+            except HearthError:
+                self.async_set_update_error(
+                    UpdateFailed("Refresh Hearth before changing more modules")
+                )
+                raise HomeAssistantError(
+                    "Module change could not be confirmed. Refresh Hearth before retrying."
+                ) from None
+
     async def async_navigate(self, screen_id: str, tab: str) -> None:
         async with self._state_lock:
             try:

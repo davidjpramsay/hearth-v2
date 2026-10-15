@@ -34,6 +34,7 @@ import {
   type ChoreSkipResult,
   type DemoScenario,
   type Member,
+  type ModuleFlags,
   type MonthSchedule,
   type TodaySummary,
   type WeatherForecast,
@@ -81,6 +82,10 @@ const TEMPLATE_DESCRIPTIONS = new Map<string, string>([
 ]);
 
 export class SqliteHearthRepository implements HearthRepository {
+  private moduleAvailability?: (householdId: string) => ModuleFlags;
+  setModuleAvailability(read: (householdId: string) => ModuleFlags): void {
+    this.moduleAvailability = read;
+  }
   private scenario: DemoScenario = 'healthy';
   private readonly calendar: CalendarProjectionService;
   private readonly seedCalendarSnapshot: (() => void) | null;
@@ -147,12 +152,29 @@ export class SqliteHearthRepository implements HearthRepository {
     await this.applyLatency();
     const seed = createDemoSeed();
     const household = this.readHousehold(householdId);
+    const modules = this.moduleAvailability?.(householdId);
     const [projection, weatherForecast] = await Promise.all([
-      this.calendar.projectRange(householdId, localDate, localDate, this.calendarMode()),
-      this.readWeather(household.timezone),
+      modules?.calendar === false
+        ? {
+            freshness: 'current' as const,
+            statusMessage: null,
+            calendars: [],
+            events: [],
+            integration: {
+              id: 'integration_calendar',
+              kind: 'calendar' as const,
+              label: 'Calendar',
+              status: 'not-configured' as const,
+              lastSuccessfulAt: null,
+              message: 'Calendar is turned off.',
+            },
+          }
+        : this.calendar.projectRange(householdId, localDate, localDate, this.calendarMode()),
+      modules?.weather === false ? emptyWeatherSnapshot() : this.readWeather(household.timezone),
     ]);
     const isEmpty = this.scenario === 'empty';
-    const chores = isEmpty ? [] : this.readOccurrences(householdId, localDate);
+    const chores =
+      isEmpty || modules?.chores === false ? [] : this.readOccurrences(householdId, localDate);
 
     const now = this.clock.now();
     return {
@@ -166,9 +188,12 @@ export class SqliteHearthRepository implements HearthRepository {
         hour12: false,
       }).format(now),
       displayDate: displayDate(localDate, household.locale),
-      weather: this.demoSeedEnabled
-        ? { temperatureCelsius: 16, condition: 'Clear', source: 'demo' }
-        : weatherForDate(weatherForecast, localDate),
+      weather:
+        modules?.weather === false
+          ? null
+          : this.demoSeedEnabled
+            ? { temperatureCelsius: 16, condition: 'Clear', source: 'demo' }
+            : weatherForDate(weatherForecast, localDate),
       freshness: projection.freshness,
       statusMessage: projection.statusMessage,
       calendars: projection.calendars,
@@ -254,7 +279,9 @@ export class SqliteHearthRepository implements HearthRepository {
     const household = this.readHousehold(householdId);
     const [projection, weatherForecast] = await Promise.all([
       this.calendar.projectRange(householdId, startDate, endDate, this.calendarMode()),
-      this.readWeather(household.timezone),
+      this.moduleAvailability?.(householdId).weather === false
+        ? emptyWeatherSnapshot()
+        : this.readWeather(household.timezone),
     ]);
     return {
       householdId,
@@ -266,7 +293,7 @@ export class SqliteHearthRepository implements HearthRepository {
       days: createWeekDays(
         startDate,
         this.currentLocalDate(householdId),
-        this.demoSeedEnabled,
+        this.demoSeedEnabled && this.moduleAvailability?.(householdId).weather !== false,
         weatherForecast.daily,
       ),
       calendars: projection.calendars,

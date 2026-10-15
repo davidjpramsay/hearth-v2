@@ -25,6 +25,7 @@ from .const import (
     MAX_CALENDAR_CHUNKS,
     MAX_CALENDAR_DAYS,
     MAX_CALENDAR_EVENTS,
+    MODULE_LABELS,
     REQUEST_TIMEOUT_SECONDS,
     TAB_LABELS,
 )
@@ -57,7 +58,7 @@ class HearthConnectionError(HearthError):
 
 
 class HearthTransportError(HearthConnectionError):
-    """A timeout/socket failure permits one exact idempotent POST retry."""
+    """A timeout/socket failure permits one exact idempotent command retry."""
 
 
 class HearthProtocolError(HearthError):
@@ -271,6 +272,14 @@ def validate_state(value: Any) -> JsonObject:
         "calendar": None,
     }
     result["permissions"]["controlChores"] = control_chores
+    result["permissions"]["controlModules"] = _boolean(
+        permissions.get("controlModules", False)
+    )
+    if result["permissions"]["controlModules"] and "modules" not in item:
+        _invalid()
+    modules = item.get("modules", dict.fromkeys(MODULE_LABELS, True))
+    modules = _object(modules, set(MODULE_LABELS))
+    result["modules"] = {name: _boolean(modules[name]) for name in MODULE_LABELS}
     seen: set[str] = set()
     for screen in _array(item["screens"], 20):
         screen = _object(
@@ -296,7 +305,11 @@ def validate_state(value: Any) -> JsonObject:
                 else validate_command(screen["command"]),
             }
         )
-    if item["chores"] is not None and result["permissions"]["shareChores"]:
+    if (
+        item["chores"] is not None
+        and result["permissions"]["shareChores"]
+        and result["modules"]["chores"]
+    ):
         chores = _object(
             item["chores"], {"localDate", "open", "completed", "truncated", "items"}
         )
@@ -332,7 +345,11 @@ def validate_state(value: Any) -> JsonObject:
             "truncated": _boolean(chores["truncated"]),
             "items": entries,
         }
-    if item["calendar"] is not None and result["permissions"]["shareCalendar"]:
+    if (
+        item["calendar"] is not None
+        and result["permissions"]["shareCalendar"]
+        and result["modules"]["calendar"]
+    ):
         result["calendar"] = validate_calendar(item["calendar"])
     return result
 
@@ -617,6 +634,37 @@ class HearthClient:
             "localDate": local_date,
             "state": expected,
             "completionId": receipt["completionId"],
+            "replayed": _boolean(receipt["replayed"]),
+        }
+
+    async def async_set_module(self, module_id: str, enabled: bool) -> JsonObject:
+        """Use one explicit state and exact request across bounded transport retries."""
+        _enum(module_id, MODULE_LABELS)
+        _boolean(enabled)
+        payload = {"requestId": f"ha_module_{uuid4().hex}", "enabled": enabled}
+        for attempt in range(2):
+            try:
+                response = await self._request(
+                    "PUT",
+                    f"/api/v1/home-assistant/modules/{module_id}",
+                    payload=payload,
+                )
+                break
+            except HearthTransportError:
+                if attempt:
+                    raise
+        receipt = _object(response, {"configuration", "audit", "replayed"})
+        configuration = _object(receipt["configuration"], {"householdId", "enabled"})
+        household_id = _identifier(configuration["householdId"])
+        if self._household_id is not None and household_id != self._household_id:
+            raise HearthAuthError("Hearth household changed; reauthenticate") from None
+        flags = _object(configuration["enabled"], set(MODULE_LABELS))
+        flags = {name: _boolean(flags[name]) for name in MODULE_LABELS}
+        if flags[module_id] != enabled:
+            _invalid()
+        return {
+            "householdId": household_id,
+            "enabled": flags,
             "replayed": _boolean(receipt["replayed"]),
         }
 

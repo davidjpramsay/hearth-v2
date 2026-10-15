@@ -1250,6 +1250,7 @@ export const AuditSummarySchema = z.object({
     'notice.update',
     'notice.archive',
     'today.sections.update',
+    'module.update',
   ]),
   targetId: OpaqueIdSchema,
   occurredAt: TimestampSchema,
@@ -1405,6 +1406,7 @@ export const RealtimeEventSchema = z.object({
     'today.changed',
     'photos.changed',
     'reminders.changed',
+    'modules.changed',
   ]),
   householdId: OpaqueIdSchema,
   targetId: OpaqueIdSchema,
@@ -1412,6 +1414,7 @@ export const RealtimeEventSchema = z.object({
 });
 
 export const ApiErrorCodeSchema = z.enum([
+  'MODULE_DISABLED',
   'VALIDATION_ERROR',
   'UNAUTHENTICATED',
   'NOT_FOUND',

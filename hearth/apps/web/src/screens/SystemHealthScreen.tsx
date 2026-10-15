@@ -23,15 +23,17 @@ import {
 } from '../hooks/useConnectionQueries';
 import { usePhotoSourceQuery } from '../hooks/usePhotoQueries';
 import { useHearthRuntime } from '../runtime/context';
+import { useModules } from '../modules/context';
 
 export function SystemHealthScreen() {
+  const modules = useModules();
   const runtime = useHearthRuntime();
   const queryClient = useQueryClient();
   const query = useSystemStatusQuery();
   const applianceUpdate = useApplianceUpdateQuery(runtime.mode === 'private');
-  const calendar = useCalendarConnectionQuery();
-  const homeAssistant = useHomeAssistantConnectionQuery();
-  const photos = usePhotoSourceQuery();
+  const calendar = useCalendarConnectionQuery(modules.calendar);
+  const homeAssistant = useHomeAssistantConnectionQuery(modules.home);
+  const photos = usePhotoSourceQuery(modules.photos);
   const pendingRequestId = useRef<string | null>(null);
   const pendingUpdateRequestId = useRef<string | null>(null);
   const pendingUpdateVersion = useRef<string | null>(null);
@@ -182,7 +184,9 @@ export function SystemHealthScreen() {
 
       <section className="system-connection-health" aria-labelledby="connection-health-title">
         <div className="system-section-heading">
-          <h2 id="connection-health-title">Connections and photos</h2>
+          <h2 id="connection-health-title">
+            {modules.photos ? 'Connections and photos' : 'Connections'}
+          </h2>
           <SettingsLink
             className="system-section-link focusable"
             data-focus-down="system-calendar-health"
@@ -205,39 +209,45 @@ export function SystemHealthScreen() {
           </SettingsLink>
         </div>
         <div className="system-connection-list">
-          <IntegrationHealthRow
-            detail={calendarDetail(calendar)}
-            focusId="system-calendar-health"
-            icon="calendar"
-            label={calendarLabel(calendar)}
-            nextFocusId="system-home-assistant-health"
-            priorFocusId="system-manage-connections"
-            title="Calendar"
-            tone={calendarTone(calendar)}
-            to="/admin/connections/calendar"
-          />
-          <IntegrationHealthRow
-            detail={homeAssistantDetail(homeAssistant)}
-            focusId="system-home-assistant-health"
-            icon="home"
-            label={homeAssistantLabel(homeAssistant)}
-            nextFocusId="system-photo-health"
-            priorFocusId="system-calendar-health"
-            title="Home Assistant"
-            tone={homeAssistantTone(homeAssistant)}
-            to="/admin/connections/home-assistant"
-          />
-          <IntegrationHealthRow
-            detail={photoDetail(photos)}
-            focusId="system-photo-health"
-            icon="image"
-            label={photoLabel(photos)}
-            nextFocusId="system-activity"
-            priorFocusId="system-home-assistant-health"
-            title="Family photos"
-            tone={photoTone(photos)}
-            to="/admin/photos"
-          />
+          {modules.calendar ? (
+            <IntegrationHealthRow
+              detail={calendarDetail(calendar)}
+              focusId="system-calendar-health"
+              icon="calendar"
+              label={calendarLabel(calendar)}
+              nextFocusId="system-home-assistant-health"
+              priorFocusId="system-manage-connections"
+              title="Calendar"
+              tone={calendarTone(calendar)}
+              to="/admin/connections/calendar"
+            />
+          ) : null}
+          {modules.home ? (
+            <IntegrationHealthRow
+              detail={homeAssistantDetail(homeAssistant)}
+              focusId="system-home-assistant-health"
+              icon="home"
+              label={homeAssistantLabel(homeAssistant)}
+              nextFocusId="system-photo-health"
+              priorFocusId="system-calendar-health"
+              title="Home Assistant"
+              tone={homeAssistantTone(homeAssistant)}
+              to="/admin/connections/home-assistant"
+            />
+          ) : null}
+          {modules.photos ? (
+            <IntegrationHealthRow
+              detail={photoDetail(photos)}
+              focusId="system-photo-health"
+              icon="image"
+              label={photoLabel(photos)}
+              nextFocusId="system-activity"
+              priorFocusId="system-home-assistant-health"
+              title="Family photos"
+              tone={photoTone(photos)}
+              to="/admin/photos"
+            />
+          ) : null}
         </div>
       </section>
 

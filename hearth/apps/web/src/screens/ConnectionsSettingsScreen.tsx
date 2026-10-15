@@ -9,18 +9,24 @@ import {
   useCalendarConnectionQuery,
   useHomeAssistantConnectionQuery,
 } from '../hooks/useConnectionQueries';
+import { useModules } from '../modules/context';
 
 export function ConnectionsSettingsScreen() {
+  const modules = useModules();
   const admin = useAdminQuery();
-  const calendar = useCalendarConnectionQuery();
-  const homeAssistant = useHomeAssistantConnectionQuery();
+  const calendar = useCalendarConnectionQuery(modules.calendar);
+  const homeAssistant = useHomeAssistantConnectionQuery(modules.home);
   // Safe grant metadata only. Never put the one-time issue request/key in Query caches.
   const bridge = useQuery({
     queryKey: [...queryKeys.admin, 'home-assistant-bridge'],
     queryFn: ({ signal }) => homeAssistantBridgeApi.getConnection(signal),
     retry: false,
   });
-  if (admin.isPending || calendar.isPending || homeAssistant.isPending)
+  if (
+    admin.isPending ||
+    (modules.calendar && calendar.isPending) ||
+    (modules.home && homeAssistant.isPending)
+  )
     return <AdminQueryState title="Connections" />;
   if (admin.data === undefined)
     return (
@@ -30,7 +36,7 @@ export function ConnectionsSettingsScreen() {
         onRetry={() => void admin.refetch()}
       />
     );
-  if (calendar.data === undefined)
+  if (modules.calendar && calendar.data === undefined)
     return (
       <AdminQueryState
         title="Connections"
@@ -38,7 +44,7 @@ export function ConnectionsSettingsScreen() {
         onRetry={() => void calendar.refetch()}
       />
     );
-  if (homeAssistant.data === undefined)
+  if (modules.home && homeAssistant.data === undefined)
     return (
       <AdminQueryState
         title="Connections"
@@ -50,34 +56,38 @@ export function ConnectionsSettingsScreen() {
   return (
     <AdminPage title="Connections">
       <SettingsMenu className="connection-list">
-        <SettingsMenuLink
-          className="connection-row connection-row--action focusable"
-          icon="calendar"
-          label="Calendar"
-          description={
-            calendar.data === null ? undefined : `${calendar.data.label} · ${calendar.data.message}`
-          }
-          data-focus-entry="true"
-          data-focus-down="connection-home-assistant"
-          data-focus-id="connection-calendar"
-          data-focus-left="connection-calendar"
-          data-focus-right="connection-calendar"
-          data-focus-up="connection-calendar"
-          to="/admin/connections/calendar"
-          status={
-            <span
-              className={`connection-badge${calendar.data === null ? '' : ' connection-badge--healthy'}`}
-            >
-              {calendar.data === null ? 'Set up' : 'Connected'}
-            </span>
-          }
-        />
+        {modules.calendar ? (
+          <SettingsMenuLink
+            className="connection-row connection-row--action focusable"
+            icon="calendar"
+            label="Calendar"
+            description={
+              calendar.data == null
+                ? undefined
+                : `${calendar.data.label} · ${calendar.data.message}`
+            }
+            data-focus-entry="true"
+            data-focus-down="connection-home-assistant"
+            data-focus-id="connection-calendar"
+            data-focus-left="connection-calendar"
+            data-focus-right="connection-calendar"
+            data-focus-up="connection-calendar"
+            to="/admin/connections/calendar"
+            status={
+              <span
+                className={`connection-badge${calendar.data === null ? '' : ' connection-badge--healthy'}`}
+              >
+                {calendar.data === null ? 'Set up' : 'Connected'}
+              </span>
+            }
+          />
+        ) : null}
         <SettingsMenuLink
           className="connection-row connection-row--action focusable"
           icon="home"
           label="Home Assistant"
           description={
-            homeAssistant.data === null
+            homeAssistant.data == null
               ? bridge.data == null
                 ? undefined
                 : 'Approved Home Assistant access to Hearth.'
@@ -93,7 +103,7 @@ export function ConnectionsSettingsScreen() {
             <span
               className={`connection-badge${homeAssistant.data === null && bridge.data == null ? '' : ' connection-badge--healthy'}`}
             >
-              {homeAssistant.data !== null
+              {homeAssistant.data != null
                 ? 'Connected'
                 : bridge.data != null
                   ? 'Access enabled'

@@ -60,7 +60,7 @@ describe('0031 additive connection codes', () => {
       database.prepare('SELECT count(*) AS n FROM controller_phone_invitation_codes').get(),
     ).toEqual({ n: 0 });
     expect(database.prepare('SELECT max(version) AS n FROM schema_migrations').get()).toEqual({
-      n: 31,
+      n: 32,
     });
     expect(database.pragma('foreign_key_check')).toEqual([]);
     database.close();

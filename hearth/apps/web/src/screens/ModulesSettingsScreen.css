@@ -1,0 +1,72 @@
+.modules-list {
+  display: grid;
+  border: 1px solid var(--hairline);
+  border-radius: 1rem;
+  overflow: clip;
+}
+.module-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 76px;
+  padding: 0.875rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  background: var(--surface);
+  text-align: start;
+  cursor: pointer;
+}
+.module-switch:last-child {
+  border-bottom: 0;
+}
+.module-switch > svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--eucalyptus);
+}
+.module-switch > span:nth-child(2) {
+  display: grid;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+.module-switch strong {
+  font-size: 1.125rem;
+}
+.module-switch small {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.module-switch__state {
+  font-size: 1rem;
+  color: var(--muted);
+}
+.admin-page .modules-list .module-switch:focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: -4px;
+  box-shadow: none;
+  transform: none;
+}
+.module-switch[aria-checked='true'] .settings-toggle {
+  background: var(--eucalyptus);
+}
+.module-switch[aria-checked='true'] .settings-toggle > span {
+  transform: translateX(19px);
+}
+.module-switch:disabled,
+.module-switch[aria-disabled='true'] {
+  cursor: wait;
+  opacity: 0.65;
+}
+.modules-status {
+  min-height: 1.5em;
+  margin-block: 0.25rem;
+}
+@media (max-width: 700px) {
+  .module-switch[aria-checked='true'] .settings-toggle > span {
+    transform: translateX(18px);
+  }
+}

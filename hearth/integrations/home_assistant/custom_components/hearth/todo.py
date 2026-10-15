@@ -46,6 +46,7 @@ class HearthChoresTodo(HearthEntity, TodoListEntity):
         now = datetime.now(UTC)
         return (
             super().available
+            and data.get("modules", {}).get("chores", True)
             and data["permissions"].get("controlChores", False)
             and data["permissions"]["shareChores"]
             and chores is not None

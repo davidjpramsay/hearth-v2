@@ -1,6 +1,9 @@
 import { getHearthRuntime, householdId } from './core';
 
 export const queryKeys = {
+  get modules() {
+    return [householdId(getHearthRuntime()), 'modules'] as const;
+  },
   get today() {
     const runtime = getHearthRuntime();
     return [householdId(runtime), 'today', runtime.localDate] as const;

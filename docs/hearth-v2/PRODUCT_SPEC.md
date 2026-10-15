@@ -1,5 +1,16 @@
 # Hearth v2 product specification
 
+## Household Modules (D-112)
+
+Adults can turn Calendar, Weather, Reminders, Chores & pocket money, Lists, Meals, Home controls,
+Photos, Games, Notices and Daily Bible verse on/off from one simple Modules page. Off is household-wide:
+hide all corresponding family/admin surfaces and deny feature API/HA access, without deleting any
+saved content or provider configuration. Re-enabling restores it. Today/clock and core household,
+access, inbound HA connection, recovery and system management remain available even with every module off.
+HA may turn modules back on only under the newly disclosed `controlModules` grant; older approvals
+are not expanded. These are fixed feature switches, not a layout editor or plugin marketplace.
+The binding behavior is in [MODULES_CONTRACT.md](MODULES_CONTRACT.md).
+
 ## Human connection codes (D-110)
 
 Ordinary Hearth connection must not require typing a machine secret. New screen, phone and HA

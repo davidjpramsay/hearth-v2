@@ -1,5 +1,18 @@
 # Hearth v2 television and companion UX specification
 
+## Modules (D-112)
+
+**More → Modules** (also Hearth settings → Modules) is one adult-only page of eleven labelled
+On/Off switches, shared styles, large targets and short retained-data copy. No confirmation maze,
+per-screen picker or data deletion. Show confirmed state, Saving, a readable failure and safe exact
+retry; do not present an unconfirmed optimistic switch. Disabled feature destinations disappear from
+phone tabs, TV rail, More, planning/settings and Today, including overlays. If another adult or HA
+turns off the current feature, leave it for Today, or Modules for an admin feature route. Core
+management stays reachable. Independent Today visibility preferences are retained, not reset.
+The one HA approval now also discloses **Turn Hearth modules on and off**. Existing connections without
+this capability require one confirmed reconnect; never silently expand them. In HA the household
+device has standard module switches that remain usable while their features are off.
+
 ## Home Assistant connection directions (D-108)
 
 Connections → Home Assistant separates **Home Assistant controls Hearth** from the existing

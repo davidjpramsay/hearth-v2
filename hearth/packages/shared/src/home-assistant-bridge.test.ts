@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_MODULE_FLAGS } from './modules.js';
 import stateFixture from '../fixtures/home-assistant-bridge-v1/state.json' with { type: 'json' };
 import {
   BridgeCalendarQuerySchema,
@@ -13,7 +14,11 @@ import {
 
 describe('Home Assistant bridge v1 boundary', () => {
   it('validates the shared language-neutral HA interoperability fixture', () => {
-    expect(BridgeStateSchema.parse(stateFixture)).toEqual(stateFixture);
+    expect(BridgeStateSchema.parse(stateFixture)).toEqual({
+      ...stateFixture,
+      modules: DEFAULT_MODULE_FLAGS,
+      permissions: { ...stateFixture.permissions, controlModules: false },
+    });
   });
   it('maps only explicit public routes, not admin, external URLs, fragments or path prefixes', () => {
     for (const [tab, path] of Object.entries(SCREEN_TAB_PATHS))

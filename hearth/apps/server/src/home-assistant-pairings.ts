@@ -40,6 +40,7 @@ export class HomeAssistantPairingService {
       ?.prepare('SELECT record_json FROM home_assistant_bridge_pairings')
       .all() as { record_json: string }[]) ?? []) {
       const parsed = JSON.parse(row.record_json) as Pairing;
+      if (parsed.approval) parsed.approval.input.controlModules ??= false;
       this.rows.set(parsed.id, parsed);
     }
     this.clean();
@@ -96,6 +97,7 @@ export class HomeAssistantPairingService {
       shareChores: input.shareChores,
       shareCalendar: input.shareCalendar,
       controlChores: input.controlChores,
+      controlModules: input.controlModules ?? false,
     };
     if (row.approval) {
       if (JSON.stringify(row.approval) !== JSON.stringify({ input: permissions, reference }))

@@ -3,6 +3,7 @@ import './MoreScreen.css';
 import type { IconName } from '../components/Icon';
 import { SettingsMenu, SettingsMenuLink } from '../components/SettingsMenu';
 import { useSharedScreen } from '../runtime/sharedScreen';
+import { useModulePathAvailable, useModules } from '../modules/context';
 
 interface MoreLink {
   title: string;
@@ -29,6 +30,7 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
   {
     title: 'Manage Hearth',
     links: [
+      { title: 'Modules', icon: 'leaf', path: '/admin/modules' },
       {
         title: 'Manage photos',
         icon: 'image',
@@ -94,11 +96,25 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
 ];
 
 export function MoreScreen() {
+  const modules = useModules();
+  const available = useModulePathAvailable();
   const sharedScreen = useSharedScreen();
   const groups = baseGroups
     .map((group) => ({
       ...group,
-      links: group.links.filter((link) => !sharedScreen || !link.path.startsWith('/admin')),
+      links: group.links
+        .filter(
+          (link) => available(link.path) && (!sharedScreen || !link.path.startsWith('/admin')),
+        )
+        .map((link) => ({
+          ...link,
+          title:
+            link.path === '/admin/planning' && !modules.chores
+              ? 'Family planning'
+              : link.path === '/admin/today' && !modules.notices
+                ? 'Today screen'
+                : link.title,
+        })),
     }))
     .filter((group) => group.links.length > 0);
   const flattened = groups.flatMap((group) => group.links);

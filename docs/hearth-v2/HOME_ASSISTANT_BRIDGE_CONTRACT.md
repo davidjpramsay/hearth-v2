@@ -4,14 +4,16 @@ This opt-in local integration is separate from Hearth's existing outbound Home A
 safety/script adapter. It grants no adult login, provider access or general household write authority.
 The D-109 extension permits only today's chore completion/reopening. D-111 includes this in one
 explicitly approved setup bundle; it does not broaden existing grants or the transport.
+D-112 adds separately scoped fixed module switching under [MODULES_CONTRACT.md](MODULES_CONTRACT.md).
 Home Assistant still owns TV power, app launching and media. The bridge only navigates Hearth
 while its paired display is already open and visible; it never launches or interrupts another app.
 
 ## Authority and setup
 
 An authenticated administrator approves the disclosed bundle in Connections → Home Assistant:
-all currently paired unrevoked screens, chores/calendar information and today's chore status changes.
-The UI sends every current screen ID (maximum 20) and all three permission flags true. Zero screens
+all currently paired unrevoked screens, chores/calendar information, today's chore status changes
+and turning household modules on/off. The UI sends every current screen ID (maximum 20) and all four
+permission flags true. Zero screens
 still permits data/chores; exceeding 20 blocks approval. No checkbox picker is shown (D-111).
 The separate stored `controlChores` permission still requires `shareChores`; old grants/defaults
 remain unchanged. It permits completing/reopening today's existing chores, not chore creation,
@@ -37,7 +39,7 @@ Closing HA's dialog cancels its task/session. Unexchanged requests expire withou
 - Machine `POST /api/v1/home-assistant/pairing-requests`: strict `{requestId,secret}` →
   `{id,code,expiresAt,interval:3}`; no Cookie, Origin or Authorization accepted.
 - Adult `POST .../home-assistant-bridge/pairing-approvals`: strict
-  `{requestId,code,screenIds,shareChores,shareCalendar,controlChores}` →
+  `{requestId,code,screenIds,shareChores,shareCalendar,controlChores,controlModules}` →
   `{approved:true,expiresAt}`; normal controller/household/origin checks. Binds the exact
   approving connection and session hash, not an adult name.
 - Machine `POST /api/v1/home-assistant/pairing-requests/{id}/exchanges`: strict `{secret}` →
@@ -59,8 +61,8 @@ Closing HA's dialog cancels its task/session. Unexchanged requests expire withou
 Admin endpoints (normal adult authority, no shared-screen fallback):
 
 - `GET /api/v1/households/{householdId}/home-assistant-bridge`: safe grant summary or null.
-- Legacy compatibility `POST` same path: `{requestId,secret,screenIds,shareChores,shareCalendar,controlChores}`. Missing
-  `controlChores` in legacy grants defaults to false; existing grants are never upgraded. Request IDs are
+- Legacy compatibility `POST` same path: `{requestId,secret,screenIds,shareChores,shareCalendar,controlChores,controlModules}`. Missing
+  `controlChores` and `controlModules` in legacy grants default to false; existing grants are never upgraded. Request IDs are
   idempotent; changed reuse conflicts. Response `{connection,replayed}` never echoes the key.
 - `POST .../home-assistant-bridge/revocations`: `{requestId}`; immediately disables all grants/commands.
 
@@ -72,7 +74,11 @@ cookie is also supplied. TV Bearer and adult cookies are not accepted on automat
 Responses are private/no-store. Version 1 exposes:
 
 - `GET /api/v1/home-assistant/state`: `{version:1,generatedAt,household:{id,name,timezone},
-permissions:{shareChores,shareCalendar,controlChores},screens,chores,calendar}`.
+permissions:{shareChores,shareCalendar,controlChores,controlModules},modules,screens,chores,calendar}`.
+- `PUT /api/v1/home-assistant/modules/{moduleId}`: strict `{requestId,enabled}` →
+  `{configuration,audit,replayed}`; requires `controlModules`, not data sharing. Fixed module IDs
+  and all flags follow MODULES_CONTRACT.md. Exact retry is durable/actor-scoped; changed reuse conflicts;
+  30 new commands/minute. A module-off command cannot disable core management or its own switch.
 - `POST /api/v1/home-assistant/screens/{deviceId}/navigation`: `{requestId,tab}` →
   `{command,replayed}`. Only explicitly approved, unrevoked screens; no arbitrary path/URL.
 - `GET /api/v1/home-assistant/calendar?start=<ISO instant>&end=<ISO instant>`: at most
@@ -106,6 +112,10 @@ days and cached freshness; events `{id,title,start,end,startLocalDate,endLocalDa
 No provider IDs, URLs, notes, location, credentials or recurrence internals. Calendar range reads
 share this safe projection and return at most 2000 occurrences. Disabled shares return null and
 their specific endpoints reject access. Freshness is not upgraded when upstream data is stale.
+Household flags additionally gate content/commands even if their original scopes were approved:
+off means null projections, unavailable entities and no disabled navigation delivery. Existing
+feature-command retries cannot bypass off. Old state DTOs default modules on and module-control
+authority false. New grants require deliberate reconnect, not a silent permission upgrade.
 
 ## Paired display protocol
 

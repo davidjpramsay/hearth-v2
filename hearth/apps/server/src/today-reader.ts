@@ -9,8 +9,10 @@ import type { DailyVerseProvider } from './integrations/daily-verse-provider.js'
 import { TodayVerseCache } from './integrations/today-verse-cache.js';
 import type { RealtimeHub } from './realtime.js';
 import { localDateInTimezone } from '@hearth/core';
+import type { ModulesService } from './modules-repository.js';
 
 export function createTodayReader({
+  modules,
   repository,
   adminRepository,
   planningRepository,
@@ -21,6 +23,7 @@ export function createTodayReader({
   realtime,
   now = () => new Date(),
 }: {
+  modules: ModulesService;
   repository: HearthRepository;
   adminRepository: AdminRepository;
   planningRepository: PlanningRepository;
@@ -35,31 +38,34 @@ export function createTodayReader({
     realtime.publish(id, 'today.changed', id),
   );
   return async (householdId: string, localDate: string) => {
+    const enabled = modules.get(householdId).enabled;
     const [today, household, lists, meals, gallery, todayConfiguration, activeNotice] =
       await Promise.all([
         repository.getToday(householdId, localDate),
         adminRepository.getHousehold(householdId),
-        planningRepository.getLists(householdId),
-        planningRepository.getMealPlan(householdId, localDate),
-        photoRepository.getGallery(householdId).catch(() => null),
-        todayContentRepository.getConfiguration(householdId),
-        todayContentRepository.getActiveNotice(householdId),
+        enabled.lists ? planningRepository.getLists(householdId) : { lists: [] },
+        enabled.meals ? planningRepository.getMealPlan(householdId, localDate) : { days: [] },
+        enabled.photos ? photoRepository.getGallery(householdId).catch(() => null) : null,
+        todayContentRepository.getConfiguration(householdId, enabled.notices),
+        enabled.notices ? todayContentRepository.getActiveNotice(householdId) : null,
       ]);
-    const reminderOverview = todayConfiguration.sections.reminders
-      ? await reminderRepository.getOverview(householdId, false).catch(() => null)
-      : null;
+    const reminderOverview =
+      enabled.reminders && todayConfiguration.sections.reminders
+        ? await reminderRepository.getOverview(householdId, false).catch(() => null)
+        : null;
     const members = new Map(household.members.map((member) => [member.id, member]));
     const primaryList = lists.lists[0];
     const dinner = meals.days[0]?.entries.find((entry) => entry.slot === 'dinner');
     const featuredPhoto =
       gallery?.photos.find((photo) => photo.id === gallery.featuredPhotoId) ?? null;
-    const dailyVerse = todayConfiguration.sections.dailyVerse
-      ? verseCache.read(
-          householdId,
-          localDate,
-          localDate === localDateInTimezone(now().toISOString(), household.timezone),
-        )
-      : null;
+    const dailyVerse =
+      enabled.dailyVerse && todayConfiguration.sections.dailyVerse
+        ? verseCache.read(
+            householdId,
+            localDate,
+            localDate === localDateInTimezone(now().toISOString(), household.timezone),
+          )
+        : null;
     const openReminders = (reminderOverview?.reminders ?? [])
       .filter((reminder) => !reminder.isCompleted)
       .toSorted((left, right) => compareTodayReminders(left, right, localDate));
@@ -80,41 +86,63 @@ export function createTodayReader({
         : null;
     return TodaySummarySchema.parse({
       ...today,
+      integrations: today.integrations.filter(
+        (item) => enabled[item.kind === 'calendar' ? 'calendar' : 'home'],
+      ),
       household: { ...household, mode: today.household.mode },
-      dinner: dinner?.mealName ?? today.dinner,
-      listSummary:
-        primaryList === undefined
+      weather: enabled.weather ? today.weather : null,
+      freshness: enabled.calendar ? today.freshness : 'current',
+      statusMessage: enabled.calendar ? today.statusMessage : null,
+      dinner: enabled.meals ? (dinner?.mealName ?? today.dinner) : null,
+      listSummary: !enabled.lists
+        ? null
+        : primaryList === undefined
           ? today.listSummary
           : { name: primaryList.name, remainingCount: primaryList.remainingCount },
       notice: activeNotice?.message ?? null,
       dailyVerse,
       reminderSummary,
-      sections: todayConfiguration.sections,
-      photo: !todayConfiguration.sections.photo
-        ? null
-        : gallery === null
-          ? today.photo
-          : featuredPhoto === null
-            ? null
-            : {
-                url: featuredPhoto.displayUrl,
-                alt: featuredPhoto.alt,
-                orientation: featuredPhoto.orientation,
-                width: featuredPhoto.width,
-                height: featuredPhoto.height,
-              },
-      calendars: today.calendars.map((calendar) => ({
-        ...calendar,
-        owner: calendar.owner === null ? null : (members.get(calendar.owner.id) ?? calendar.owner),
-      })),
-      events: today.events.map((event) => ({
-        ...event,
-        owner: event.owner === null ? null : (members.get(event.owner.id) ?? event.owner),
-      })),
-      chores: today.chores.map((chore) => ({
-        ...chore,
-        assignee: members.get(chore.assignee.id) ?? chore.assignee,
-      })),
+      sections: {
+        dinner: enabled.meals && todayConfiguration.sections.dinner,
+        listSummary: enabled.lists && todayConfiguration.sections.listSummary,
+        notice: enabled.notices && todayConfiguration.sections.notice,
+        photo: enabled.photos && todayConfiguration.sections.photo,
+        dailyVerse: enabled.dailyVerse && todayConfiguration.sections.dailyVerse,
+        reminders: enabled.reminders && todayConfiguration.sections.reminders,
+      },
+      photo:
+        !enabled.photos || !todayConfiguration.sections.photo
+          ? null
+          : gallery === null
+            ? today.photo
+            : featuredPhoto === null
+              ? null
+              : {
+                  url: featuredPhoto.displayUrl,
+                  alt: featuredPhoto.alt,
+                  orientation: featuredPhoto.orientation,
+                  width: featuredPhoto.width,
+                  height: featuredPhoto.height,
+                },
+      calendars: !enabled.calendar
+        ? []
+        : today.calendars.map((calendar) => ({
+            ...calendar,
+            owner:
+              calendar.owner === null ? null : (members.get(calendar.owner.id) ?? calendar.owner),
+          })),
+      events: !enabled.calendar
+        ? []
+        : today.events.map((event) => ({
+            ...event,
+            owner: event.owner === null ? null : (members.get(event.owner.id) ?? event.owner),
+          })),
+      chores: !enabled.chores
+        ? []
+        : today.chores.map((chore) => ({
+            ...chore,
+            assignee: members.get(chore.assignee.id) ?? chore.assignee,
+          })),
     });
   };
 }

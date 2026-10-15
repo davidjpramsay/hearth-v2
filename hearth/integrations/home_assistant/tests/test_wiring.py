@@ -198,6 +198,8 @@ def _stubs():
     add("homeassistant.helpers.entity_platform", AddEntitiesCallback=object)
     add("homeassistant.components.select", SelectEntity=type("SelectEntity", (), {}))
     add("homeassistant.components.sensor", SensorEntity=type("SensorEntity", (), {}))
+    add("homeassistant.components.switch", SwitchEntity=type("SwitchEntity", (), {}))
+    add("homeassistant.const", EntityCategory=SimpleNamespace(CONFIG="config"))
     add(
         "homeassistant.components.todo",
         TodoListEntity=type("TodoListEntity", (), {}),
@@ -243,6 +245,7 @@ class WiringTests(unittest.IsolatedAsyncioTestCase):
         cls.calendar_module = module("calendar")
         cls.flow_module = module("config_flow")
         cls.todo_module = module("todo")
+        cls.switch_module = module("switch")
 
     @classmethod
     def tearDownClass(cls):
@@ -265,6 +268,98 @@ class WiringTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             self.make_coordinator().settings["update_interval"], timedelta(seconds=10)
         )
+
+    async def test_module_switch_retains_observed_off_state_and_can_enable_it(self):
+        coord = self.make_coordinator()
+        coord.data["permissions"]["controlModules"] = True
+        coord.data["modules"] = dict.fromkeys(client.MODULE_LABELS, True)
+        coord.data["modules"]["games"] = False
+        switch = self.switch_module.HearthModuleSwitch(coord, "games")
+        coord.async_set_module = AsyncMock()
+        self.assertTrue(switch.available)
+        self.assertFalse(switch.is_on)
+        await switch.async_turn_on()
+        coord.async_set_module.assert_awaited_once_with("games", True)
+        self.assertFalse(switch.is_on)  # No optimistic update.
+        coord.data["modules"]["games"] = True
+        self.assertTrue(switch.is_on)
+        coord.data["permissions"]["controlModules"] = False
+        self.assertFalse(switch.available)
+        self.assertIsNone(switch.is_on)
+        with self.assertRaises(HomeAssistantError):
+            await switch.async_turn_off()
+
+    def test_module_switches_never_inherit_old_grant_authority_and_tabs_filter(self):
+        coord = self.make_coordinator()
+        switch = self.switch_module.HearthModuleSwitch(coord, "home")
+        self.assertFalse(switch.available)
+        coord.data["modules"] = dict.fromkeys(client.MODULE_LABELS, False)
+        tab = self.select_module.HearthTabSelect(coord, "screen_kitchen")
+        self.assertEqual(tab.options, ["today", "more"])
+        self.assertIsNone(switch.is_on)
+
+    async def test_module_switch_entities_appear_once_only_after_new_authority(self):
+        coord = self.make_coordinator()
+        coord.data["modules"] = dict.fromkeys(client.MODULE_LABELS, True)
+        entry = SimpleNamespace(runtime_data=coord, async_on_unload=lambda fn: None)
+        entities = []
+        await self.switch_module.async_setup_entry(
+            SimpleNamespace(), entry, entities.extend
+        )
+        self.assertEqual(entities, [])
+        coord.data["permissions"]["controlModules"] = True
+        for callback in coord.listeners:
+            callback()
+            callback()
+        self.assertEqual(len(entities), 11)
+        self.assertEqual(len({entity._attr_unique_id for entity in entities}), 11)
+        coord.data["permissions"]["controlModules"] = False
+        self.assertTrue(all(not entity.available for entity in entities))
+
+    def test_disabled_module_hides_even_previously_cached_entity_content(self):
+        coord = self.chore_control()
+        coord.data["modules"] = dict.fromkeys(client.MODULE_LABELS, True)
+        coord.data["modules"].update(chores=False, calendar=False)
+        opened = self.sensor_module.HearthChoreCount(coord, "open")
+        todo = self.todo_module.HearthChoresTodo(coord)
+        calendar = self.calendar_module.HearthCalendar(coord)
+        self.assertFalse(opened.available)
+        self.assertIsNone(opened.native_value)
+        self.assertEqual(opened.extra_state_attributes, {})
+        self.assertIsNone(todo.todo_items)
+        self.assertFalse(calendar.available)
+        self.assertIsNone(calendar.event)
+        self.assertEqual(calendar.extra_state_attributes, {})
+
+    async def test_module_coordinator_refreshes_after_acceptance_and_does_not_optimistically_change(
+        self,
+    ):
+        coord = self.make_coordinator()
+        coord.data["permissions"]["controlModules"] = True
+        original = coord.data
+        coord.client.async_set_module = AsyncMock()
+        updated = client.validate_state(state())
+        updated["permissions"]["controlModules"] = True
+        updated["modules"]["photos"] = False
+        coord.client.async_state = AsyncMock(return_value=updated)
+        await coord.async_set_module("photos", False)
+        coord.client.async_set_module.assert_awaited_once_with("photos", False)
+        self.assertIs(coord.data, updated)
+        self.assertNotIn("modules", original)
+
+    async def test_module_coordinator_auth_failure_requests_reauth_without_changing_state(
+        self,
+    ):
+        coord = self.make_coordinator()
+        coord.data["permissions"]["controlModules"] = True
+        coord.client.async_set_module = AsyncMock(
+            side_effect=client.HearthAuthError("fixture")
+        )
+        original = coord.data
+        with self.assertRaises(HomeAssistantError):
+            await coord.async_set_module("games", False)
+        self.assertEqual(coord.entry.reauths, 1)
+        self.assertIs(coord.data, original)
 
     def chore_control(self):
         data = state()

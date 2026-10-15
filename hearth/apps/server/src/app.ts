@@ -2,6 +2,13 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { BrowserAccess } from './browser-access.js';
 import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
 import { HomeAssistantPairingService } from './home-assistant-pairings.js';
+import { ModuleRequestLeases, ModulesService, moduleForApiRoute } from './modules-repository.js';
+import {
+  ModuleIdSchema,
+  ModulesConfigurationSchema,
+  UpdateModuleRequestSchema,
+  ModuleCommandResultSchema,
+} from '@hearth/shared';
 import { PHONE_PENDING_COOKIE, type PhoneConnectionService } from './phone-connections.js';
 import { z } from 'zod';
 
@@ -354,6 +361,7 @@ export interface BuildServerOptions {
   homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
   homeAssistantBridge?: HomeAssistantBridgeService;
   homeAssistantPairings?: HomeAssistantPairingService;
+  modules?: ModulesService;
   systemOperations?: SystemOperationsRepository;
   applianceUpdate?: ApplianceUpdateRepository;
   companionAuth?: CompanionAuthRepository;
@@ -388,6 +396,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const gamesArchive = options.gamesArchive ?? new GamesArchive(undefined, demoMode);
   const releaseVersion =
     options.releaseVersion?.trim() || process.env.HEARTH_VERSION?.trim() || 'development';
+  const modules = options.modules ?? new ModulesService(undefined, () => runtime.clock.now());
+  const moduleLeases = new ModuleRequestLeases();
+  const moduleRequests = new WeakMap<
+    FastifyRequest,
+    { release?: () => void; finished: boolean; executing: boolean }
+  >();
   const repository = options.repository ?? new InMemoryHearthRepository();
   const adminRepository =
     options.adminRepository ?? new InMemoryAdminRepository(() => runtime.clock.now());
@@ -485,6 +499,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   const readToday = createTodayReader({
+    modules,
     repository,
     adminRepository,
     planningRepository,
@@ -497,7 +512,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
   const homeAssistantBridge =
     options.homeAssistantBridge ??
-    new HomeAssistantBridgeService(adminRepository, repository, { now: () => runtime.clock.now() });
+    new HomeAssistantBridgeService(adminRepository, repository, {
+      modules,
+      now: () => runtime.clock.now(),
+    });
+  homeAssistantBridge.setModules(modules);
+  (repository as HearthRepository).setModuleAvailability?.((id) => modules.get(id).enabled);
   const homeAssistantPairings =
     options.homeAssistantPairings ??
     new HomeAssistantPairingService(homeAssistantBridge, {
@@ -513,6 +533,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     '/api/v1/home-assistant/pairing-requests/:id/exchanges',
   ]);
   const automationRoutes = new Set([
+    '/api/v1/home-assistant/modules/:moduleId',
     '/api/v1/home-assistant/state',
     '/api/v1/home-assistant/calendar',
     '/api/v1/home-assistant/screens/:deviceId/navigation',
@@ -652,6 +673,65 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.addHook('onResponse', finishBrowserRequest);
   server.addHook('onRequestAbort', finishBrowserRequest);
   server.addHook('onTimeout', finishBrowserRequest);
+  // Hold feature reads/writes until their response completes; a module-off commit cannot race
+  // a preceding authorized feature mutation. Core event streams never hold these finite leases.
+  server.addHook('preHandler', async (request, reply) => {
+    if (reply.sent) return;
+    const route = request.routeOptions.url ?? '';
+    const household = (request.params as { householdId?: string }).householdId;
+    const automation = automationRoutes.has(route)
+      ? homeAssistantBridge.authenticate(automationSecret(request)).householdId
+      : null;
+    const id = household ?? automation;
+    if (!id || route.endsWith('/events') || !route.startsWith('/api/v1/')) return;
+    const write = request.method === 'PUT' && /\/modules\/:moduleId$/.test(route);
+    const content =
+      moduleForApiRoute(route) !== null ||
+      automation !== null ||
+      /\/(today|today-configuration|today-sections|admin|assist\/day-summary)$/.test(route);
+    if (!write && !content) return;
+    await run(reply, async () => {
+      const pending: { release?: () => void; finished: boolean; executing: boolean } = {
+        finished: false,
+        executing: false,
+      };
+      moduleRequests.set(request, pending);
+      reply.raw.once('close', () => void finishModuleRequest(request));
+      const release = await moduleLeases.acquire(id, write);
+      if (pending.finished || request.raw.aborted) {
+        release();
+        throw new RepositoryError('COMMAND_FAILED', 'That request was cancelled.', true);
+      }
+      pending.release = release;
+      const module = moduleForApiRoute(route);
+      if (module) modules.assertEnabled(id, module);
+    });
+  });
+  const finishModuleRequest = async (request: FastifyRequest) => {
+    const entry = moduleRequests.get(request);
+    if (!entry) return;
+    entry.finished = true;
+    if (!entry.executing) entry.release?.();
+  };
+  server.addHook('onResponse', finishModuleRequest);
+  server.addHook('onRequestAbort', finishModuleRequest);
+  server.addHook('onTimeout', finishModuleRequest);
+  server.addHook('onRoute', (route) => {
+    const handler = route.handler;
+    route.handler = async function (request, reply) {
+      const entry = moduleRequests.get(request);
+      if (entry) entry.executing = true;
+      try {
+        return await handler.call(this, request, reply);
+      } finally {
+        if (entry) {
+          entry.executing = false;
+          // A disconnected caller cannot release a still-running feature mutation early.
+          if (entry.finished) entry.release?.();
+        }
+      }
+    };
+  });
 
   function acceptAdultSession(
     request: FastifyRequest,
@@ -1115,11 +1195,62 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.get('/api/v1/households/:householdId/admin', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     if (params === null) return reply;
-    return run(reply, async () =>
-      AdminOverviewSchema.parse(
-        await adminRepository.getOverview(params.householdId, actorId(request.headers, options)),
-      ),
+    return run(reply, async () => {
+      const overview = await adminRepository.getOverview(
+        params.householdId,
+        actorId(request.headers, options),
+      );
+      const enabled = modules.get(params.householdId).enabled;
+      return AdminOverviewSchema.parse({
+        ...overview,
+        integrations: overview.integrations.filter(
+          (item) => enabled[item.kind === 'calendar' ? 'calendar' : 'home'],
+        ),
+      });
+    });
+  });
+
+  server.get('/api/v1/households/:householdId/modules', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (!params) return reply;
+    return run(reply, async () => {
+      await adminRepository.getHousehold(params.householdId);
+      return ModulesConfigurationSchema.parse(modules.get(params.householdId));
+    });
+  });
+  server.put('/api/v1/households/:householdId/modules/:moduleId', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const params = parse(
+      HouseholdParamsSchema.extend({ moduleId: ModuleIdSchema }),
+      request.params,
+      reply,
     );
+    const body = parse(UpdateModuleRequestSchema, request.body, reply);
+    if (!params || !body) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = modules.update(params.householdId, params.moduleId, body, actor);
+      homeAssistantBridge.cancelDisabledCommands(params.householdId);
+      if (!result.replayed)
+        realtime.publish(params.householdId, 'modules.changed', result.audit.targetId);
+      return ModuleCommandResultSchema.parse(result);
+    });
+  });
+  server.put('/api/v1/home-assistant/modules/:moduleId', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const params = parse(z.object({ moduleId: ModuleIdSchema }), request.params, reply);
+    const body = parse(UpdateModuleRequestSchema, request.body, reply);
+    if (!params || !body) return reply;
+    return run(reply, async () => {
+      const secret = automationSecret(request);
+      const row = homeAssistantBridge.authenticate(secret);
+      const result = homeAssistantBridge.setModule(secret, params.moduleId, body);
+      if (!result.replayed)
+        realtime.publish(row.householdId, 'modules.changed', result.audit.targetId);
+      return ModuleCommandResultSchema.parse(result);
+    });
   });
 
   server.get('/api/v1/households/:householdId/activity', async (request, reply) => {
@@ -1192,7 +1323,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return run(reply, async () => {
       await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
       return TodayConfigurationSchema.parse(
-        await todayContentRepository.getConfiguration(params.householdId),
+        await todayContentRepository.getConfiguration(
+          params.householdId,
+          modules.get(params.householdId).enabled.notices,
+        ),
       );
     });
   });
@@ -1204,11 +1338,34 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return run(reply, async () => {
       const actor = commandActor(request.headers, options, adminRepository);
       await adminRepository.getOverview(params.householdId, actor.id);
+      const saved = await todayContentRepository.getConfiguration(params.householdId, false);
+      const sectionModules = {
+        dinner: 'meals',
+        listSummary: 'lists',
+        notice: 'notices',
+        photo: 'photos',
+        dailyVerse: 'dailyVerse',
+        reminders: 'reminders',
+      } as const;
+      for (const key of Object.keys(sectionModules) as Array<keyof typeof sectionModules>) {
+        if (body[key] !== saved.sections[key])
+          modules.assertEnabled(params.householdId, sectionModules[key]);
+      }
       const result = TodayConfigurationCommandResultSchema.parse(
-        await todayContentRepository.updateSections(params.householdId, body, actor),
+        await todayContentRepository.updateSections(
+          params.householdId,
+          body,
+          actor,
+          modules.get(params.householdId).enabled.notices,
+        ),
       );
       realtime.publish(params.householdId, 'today.changed', params.householdId);
-      return result;
+      return modules.get(params.householdId).enabled.notices
+        ? result
+        : {
+            ...result,
+            configuration: { ...result.configuration, notices: [], activeNoticeId: null },
+          };
     });
   });
 
@@ -1454,7 +1611,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         ),
       );
       realtime.publish(params.householdId, 'household.changed', params.householdId);
-      return overview;
+      const enabled = modules.get(params.householdId).enabled;
+      return {
+        ...overview,
+        integrations: overview.integrations.filter(
+          (item) => enabled[item.kind === 'calendar' ? 'calendar' : 'home'],
+        ),
+      };
     });
   });
 
@@ -2176,6 +2339,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const members = memberLookup(household.members);
       return WeekScheduleSchema.parse({
         ...week,
+        days: modules.get(params.householdId).enabled.weather
+          ? week.days
+          : week.days.map((day) => ({ ...day, forecast: null })),
         calendars: week.calendars.map((calendar) => ({
           ...calendar,
           owner:
@@ -3261,6 +3427,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   if (demoMode) {
     server.post('/api/v1/demo/reset', async (_request, reply) => {
+      modules.reset();
       homeAssistantPairings.reset();
       homeAssistantBridge.reset();
       planningRepository.reset();
@@ -3340,7 +3507,7 @@ async function run(reply: FastifyReply, operation: () => Promise<unknown>): Prom
             ? 401
             : error.code === 'NOT_FOUND'
               ? 404
-              : error.code === 'FORBIDDEN'
+              : error.code === 'FORBIDDEN' || error.code === 'MODULE_DISABLED'
                 ? 403
                 : [
                       'CONFLICT',

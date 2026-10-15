@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ConnectionCodeSchema } from './connection-codes.js';
+import { DEFAULT_MODULE_FLAGS, ModuleFlagsSchema } from './modules.js';
 
 import {
   ChoreStateSchema,
@@ -49,13 +50,17 @@ const BridgeGrantFieldsSchema = z
     shareChores: z.boolean(),
     shareCalendar: z.boolean(),
     controlChores: z.boolean().default(false),
+    controlModules: z.boolean().default(false),
   })
   .strict();
 export const BridgeGrantRequestSchema = BridgeGrantFieldsSchema.refine(
   (value) => !value.controlChores || value.shareChores,
   'Share chores before allowing completion changes',
 );
-export type BridgeGrantRequest = z.infer<typeof BridgeGrantRequestSchema>;
+export type BridgeGrantRequest = Omit<
+  z.infer<typeof BridgeGrantRequestSchema>,
+  'controlModules'
+> & { controlModules?: boolean };
 // The integration generates the secret. The adult sees/types only the expiring code.
 export const BridgePairingStartSchema = BridgeGrantFieldsSchema.pick({
   requestId: true,
@@ -75,7 +80,10 @@ export const BridgePairingApprovalSchema = BridgeGrantFieldsSchema.omit({ secret
     (value) => !value.controlChores || value.shareChores,
     'Share chores before allowing completion changes',
   );
-export type BridgePairingApproval = z.infer<typeof BridgePairingApprovalSchema>;
+export type BridgePairingApproval = Omit<
+  z.infer<typeof BridgePairingApprovalSchema>,
+  'controlModules'
+> & { controlModules?: boolean };
 export const BridgePairingApprovalResultSchema = z.object({
   approved: z.literal(true),
   expiresAt: TimestampSchema,
@@ -173,7 +181,9 @@ export const BridgeStateSchema = z.object({
     shareChores: z.boolean(),
     shareCalendar: z.boolean(),
     controlChores: z.boolean().default(false),
+    controlModules: z.boolean().default(false),
   }),
+  modules: ModuleFlagsSchema.default(DEFAULT_MODULE_FLAGS),
   screens: z
     .array(
       z.object({
