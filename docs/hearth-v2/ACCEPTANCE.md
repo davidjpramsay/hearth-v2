@@ -1,5 +1,37 @@
 # Hearth v2 acceptance and definition of done
 
+## D-110 live installation and HA progress-prompt correction — 2026-10-15
+
+Server/web release `b65aefe05c855ffb44c382a8415a5bfa58003e2d` passed
+[hosted run 38714468224](https://github.com/davidjpramsay/hearth-v2/actions/runs/38714468224):
+all code/API, Android, image and publication jobs, with **1,078/1,078 browser cases** across four
+clean shards. The complete affected local Today/phone rerun passed **395/395 in 4.1 minutes**.
+The approved private activation command exited 0; external health reports that exact version,
+private mode and SQLite ready. Readiness is ready; unauthenticated bridge state returns 401.
+The fixed helper verified the existing bridge/DNS rules and loopback-only published port;
+activation/update-helper hashes are unchanged before/after. No networking was replaced.
+
+A fresh local HA full backup completed (**2.73 MB**, named Before Hearth short codes 2026-10-15).
+Installed component 1.1.0's 13 exact-archive files, verified every hash and parsed ten Python files.
+Previous component files are retained in a private component-only rollback directory. The temporary
+archive was removed after verification. No HA YAML, config-entry credential or automation was edited.
+HA configuration check passed; both running-routine template and restart confirmation reported no
+running automation/script. Core alone restarted successfully. File editor is stopped with all four
+automatic/sidebar toggles off; its shutdown log confirms services stopped despite the Error badge.
+
+Actual installed **Add integration → Hearth** proved the URL-only form and secure live pairing start,
+but caught a rendering defect: HA uses `config.progress.approve`, not the pair step description, for
+the progress prompt. Version 1.1.0 therefore hid the six letters. The unapproved dialog was closed;
+no household grant or device/chore command was issued. Component **1.1.1** moves the code and brief
+instructions into the real progress translation in both source and English. Two regression tests
+assert its `{code}` placeholder, rendered six letters and approval/expiry instructions; the component
+suite now passes **60/60**, with Ruff format/lint and targeted Prettier checks. Installing and visibly
+checking 1.1.1 remains the next gate; do not claim a real approved HA connection yet.
+
+Evidence is outside Git at `/tmp/hearth-short-codes-live.jBzgZE/`: hosted result/log, deployment log,
+health/readiness, unchanged helper hashes, HA backup/install/restart/stopped receipts and key-free
+setup screenshots. No hidden machine credential, private household content or pairing code was logged.
+
 ## D-110 release gate follow-up — 2026-10-15
 
 Publication of `fa6f8d3` was approved, but hosted run

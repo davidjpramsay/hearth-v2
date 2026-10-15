@@ -27,7 +27,8 @@ proved. Do not upgrade HA automatically; agree a compatibility fix or upgrade se
 Protect HA's config entries/backups: they retain the automation key. Revoke it
 in Hearth to stop access; HA requests reauthentication after a 401. Replacement
 connections must identify the same household. Existing config entries remain compatible.
-New short-code setup needs matching Hearth server migration 0031 and custom component 1.1.0.
+New short-code setup needs matching Hearth server migration 0031 and custom component 1.1.1.
+Version 1.1.1 places the code in HA's progress-action translation; 1.1.0's waiting dialog hid it.
 Codes expire after five minutes; close/restart setup if expired. Approve only a setup you started.
 No credentials belong in URLs or YAML.
 

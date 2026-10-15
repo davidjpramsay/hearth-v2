@@ -35,7 +35,7 @@
       "pairing_failed": "The connection request expired or could not be completed. Start again and approve only a setup you initiated."
     },
     "progress": {
-      "approve": "Waiting for approval on your Hearth phone…"
+      "approve": "On your adult phone, open **Hearth → More → Connections → Home Assistant**.\n\nEnter **{code}**, choose permissions and approve.\n\nKeep this window open. The code expires after five minutes."
     }
   },
   "entity": {

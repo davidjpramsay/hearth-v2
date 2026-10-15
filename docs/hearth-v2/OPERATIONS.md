@@ -33,7 +33,7 @@ signed TV APK without uninstall/clearing its pairing, and manually copy only the
 `hearth/integrations/home_assistant/custom_components/hearth` folder into HA's `custom_components`.
 Restart HA at an agreed quiet time. It is not built-in, HACS-published or auto-discovered.
 
-After verifying/releasing D-110 and installing matching HA component 1.1.0, add Hearth in HA using
+After verifying/releasing D-110 and installing matching HA component 1.1.1, add Hearth in HA using
 only the trusted private HTTPS root. It displays six letters. On the adult Hearth phone, open
 Connections → Home Assistant, enter those letters, choose screens/data permissions and approve.
 HA completes automatically. Never copy its hidden credential or use an adult session, TV key or
