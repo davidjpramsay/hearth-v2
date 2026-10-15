@@ -10,8 +10,9 @@ import type {
 import { connectionsApi as hearthApi } from '../api/connections';
 import { createRequestId } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
-import { AdminError, AdminPage, AdminQueryState } from '../components/AdminPage';
+import { AdminError, AdminLoading, AdminPage } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
+import { HomeAssistantBridgeSettings } from '../components/HomeAssistantBridgeSettings';
 import { useHomeAssistantConnectionQuery } from '../hooks/useConnectionQueries';
 import { useHearthRuntime } from '../runtime/context';
 
@@ -75,23 +76,20 @@ export function HomeAssistantConnectionSettingsScreen() {
     },
   });
 
-  if (connection.isPending)
+  if (connection.isPending || connection.isError)
     return (
-      <AdminQueryState
-        title="Home Assistant"
-        backTo="/admin/connections"
-        backLabel="Back to Connections"
-      />
-    );
-  if (connection.isError)
-    return (
-      <AdminQueryState
-        title="Home Assistant"
-        backTo="/admin/connections"
-        backLabel="Back to Connections"
-        error={connection.error}
-        onRetry={() => void connection.refetch()}
-      />
+      <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Home Assistant">
+        <HomeAssistantBridgeSettings />
+        <h2>Hearth controls Home Assistant</h2>
+        {connection.isPending ? (
+          <AdminLoading />
+        ) : (
+          <AdminError
+            message={connection.error.message}
+            onRetry={() => void connection.refetch()}
+          />
+        )}
+      </AdminPage>
     );
 
   const currentConnection = connection.data;
@@ -133,6 +131,8 @@ export function HomeAssistantConnectionSettingsScreen() {
 
   return (
     <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Home Assistant">
+      <HomeAssistantBridgeSettings />
+      <h2>Hearth controls Home Assistant</h2>
       <div className="calendar-privacy-note home-assistant-privacy-note">
         <Icon name="shield" />
         <div>
@@ -179,7 +179,6 @@ export function HomeAssistantConnectionSettingsScreen() {
                 <input
                   autoCapitalize="none"
                   autoCorrect="off"
-                  data-focus-entry="true"
                   data-focus-id="home-assistant-server-url"
                   defaultValue="http://homeassistant.local:8123"
                   inputMode="url"

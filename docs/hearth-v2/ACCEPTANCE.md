@@ -1,5 +1,248 @@
 # Hearth v2 acceptance and definition of done
 
+## HA live-connection release preparation — 2026-10-15
+
+The user subsequently approved finishing the private connection, its verified release and
+matching TV update, and adding Today selection to the existing 06:30 routine. Preserve that
+routine's wake/music/volume guards and do not run it during setup. HA represents the household
+as a **Hearth server** and each approved display as a child **Hearth screen**, not two server
+connections, network discovery or location tracking.
+
+Pre-release checks from `hearth/`, evidence outside Git at
+`/tmp/hearth-ha-live-release.9FD3XZ/`:
+
+- `pnpm verify` passed its complete code/CI gates: format, lint, types, 577 unit tests,
+  208 API integration tests, 27 migration tests, ten deployment fixtures, production builds
+  and the 1,075-case browser shard inventory. The browser stage exposed an obsolete migration-29
+  assertion; corrected to the actual migration 30. A subsequent run exposed an accidentally
+  inserted HA URL assertion in the existing People-colour test; removed that unrelated assertion
+  and retained its original route/overlay checks. The exact collapsed-height expectation now
+  matches D-107's intentional 48px control size. No cases/assertions were skipped or relaxed.
+- The full corrected `pnpm test:e2e:built --max-failures=5 --reporter=line` run is in progress;
+  neither complete browser acceptance nor hosted acceptance is claimed at this checkpoint.
+- `pnpm audit:dependencies`: no known vulnerabilities.
+- `ANDROID_HOME=/opt/homebrew/share/android-commandlinetools ./apps/tv/gradlew -p apps/tv
+testDebugUnitTest lintDebug lintRelease assembleDebug assembleRelease --offline`: passed,
+  including 21 Kotlin tests, both full lint variants and Debug/Release APK assembly.
+  `apksigner verify --print-certs` passed for the locally signed Debug APK. No physical update yet.
+- The 54 offline HA tests passed under both Python 3.12 and the isolated actual-HA environment;
+  Ruff lint/format and `git diff --check` passed. The Mac's unrelated default Python 3.9 cannot
+  run these Python-3.12+ tests; the supported runtime passes. CI now runs the offline component
+  suite as well. These tests do not prove live config-entry/entity registration.
+
+Live preflight: HA Core 2026.10.1 / OS 18.3; no configured Hearth integration. An explicitly
+approved full local HA backup **Before Hearth bridge 2026-10-15** completed and appears in the
+backup list (2.63 MB, This system); restore and off-box recovery are not tested. With specific
+approval, installed official File editor 6.2.0 through HA, restricted to the configuration base,
+Git off, warning-level logs, start-on-boot/watchdog/automatic-update/sidebar off. It is running
+temporarily through authenticated ingress; no external port was enabled. Read-only command-form
+preflight confirms the Hearth target directory does not exist. No component files, credentials,
+automation changes or TV commands have been installed/sent at this checkpoint. Stop File editor
+after setup. Synology health/readiness remain private/ready on `3df5cbf`.
+
+Remaining gates: complete local/hosted release checks and image publication, exact private
+deployment with unchanged networking, signed update preserving TV pairing, component install/
+restart, explicit scoped grant and private key entry, live entities/readback and observed TV tab
+acknowledgement. Actual chore writes require an agreed test chore. Do not count source, imports,
+offline tests or a backup listing as physical control or recovery proof.
+
+## Optional Home Assistant chore control — 2026-10-15 (D-109)
+
+User requested chores only, following the discussion of completion/reopening versus broader edits.
+This extends the local D-108 bridge on `codex/admin-ui-consistency`; it does not authorize live
+HA/NAS/TV changes, pairing, deployment or Git publication. **No home system was contacted or changed.**
+
+Implemented: separate off-by-default `controlChores` requiring `shareChores`. Existing/legacy
+grants remain read-only. The isolated automation namespace exposes only explicit completion and
+reopening of today's existing household occurrences; no creation, deletion, rename, assignment,
+schedule/exception, calendar, payment or admin actions. Existing completion/undo domain rules,
+audit actor/source, earnings calculations and realtime invalidation are reused, not duplicated.
+No online TV is required for chore actions. The unpublished migration 0030 now also stores exact
+input-bound chore reservations/receipts. Crash recovery reads the existing atomic domain receipt;
+exact retries after restart or midnight never execute again, changed reuse conflicts, and revocation
+is rechecked after awaited reads. Observed completion IDs protect against stale reopening; new
+commands are limited to 30/minute. The HA **Today's chores** to-do entity has update-only capability
+and rejects detail edits. It omits locked/non-actionable chores and is unavailable for old-day,
+failed or truncated data, never an optimistic or false-empty success.
+
+Frontend skills kept permission changes in explicit event handlers and required rendered validation.
+Browser plugin unavailable; used the existing project Playwright workflow on loopback only. Flow:
+390×844 phone / 1440×900 desktop → Home Assistant settings → sharing then separate chore opt-in →
+private one-time key dismissed → correct permission summary → real local API complete/retry/reopen.
+Page identity/nonblank content, no framework overlay or relevant console errors, no horizontal
+overflow, keyboard Space toggle and serious/critical accessibility checks passed. Inspected both
+summary screenshots; text, spacing and targets are legible without clipping. No actual Safari or
+HA dashboard rendering is claimed. A Codex Browser plugin is optional for future interactive QA,
+not required by Hearth's Home Assistant integration.
+
+Checks from `hearth/` unless otherwise stated:
+
+| Command/check                                                                                                                                                                                                                                                                                                        | Result                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format:check`; Prettier check of changed authoritative docs; `git diff --check`                                                                                                                                                                                                                                | Passed                                                                                                                                                                             |
+| `pnpm typecheck`; `pnpm lint`                                                                                                                                                                                                                                                                                        | Passed; same two existing non-failing JSX AST diagnostics                                                                                                                          |
+| `pnpm --filter @hearth/shared test:unit`                                                                                                                                                                                                                                                                             | 64 passed                                                                                                                                                                          |
+| `pnpm --filter @hearth/core test:unit`                                                                                                                                                                                                                                                                               | 40 passed                                                                                                                                                                          |
+| `pnpm --filter @hearth/server test:unit`                                                                                                                                                                                                                                                                             | 71 passed                                                                                                                                                                          |
+| `pnpm --filter @hearth/web test:unit --maxWorkers=1 --testTimeout=30000`                                                                                                                                                                                                                                             | 402 passed in 57 files                                                                                                                                                             |
+| `pnpm --filter @hearth/server test:integration`                                                                                                                                                                                                                                                                      | 208 passed, including 27 bridge tests                                                                                                                                              |
+| `pnpm --filter @hearth/server test:migrations`                                                                                                                                                                                                                                                                       | 27 passed; preserved access and empty new receipt table                                                                                                                            |
+| `pnpm build`; `pnpm verify:deploy`                                                                                                                                                                                                                                                                                   | Production web/server builds and 10 static deployment checks passed; no deployment                                                                                                 |
+| `pnpm test:e2e:built tests/e2e/admin.spec.ts --grep 'Home Assistant chore control' --max-failures=1 --reporter=line --output=/tmp/hearth-ha-chores-proof.jbSohC/e2e`                                                                                                                                                 | 2 passed; both viewports, keyboard, accessibility, API roundtrip                                                                                                                   |
+| `pnpm test:e2e:built tests/e2e/admin.spec.ts tests/e2e/screen-admin-isolation.spec.ts --grep 'tightly scoped Home Assistant connection\|Home Assistant setup has\|Connections contains\|screen\|television\|TV\|tablet' --max-failures=1 --reporter=line --output=/tmp/hearth-ha-chores-proof.jbSohC/e2e-regression` | 21 passed; outbound setup, TV/4K/tablet isolation, Back, pairing, light/dark and accessibility                                                                                     |
+| From workspace root: `PYTHONDONTWRITEBYTECODE=1 /tmp/hearth-ha-check.gSFK1s/venv/bin/python -B -m unittest discover -s hearth/integrations/home_assistant/tests -q`                                                                                                                                                  | 54 offline tests passed                                                                                                                                                            |
+| From workspace root: `/tmp/hearth-ha-check.gSFK1s/venv/bin/ruff check hearth/integrations/home_assistant`; same tool `format --check`                                                                                                                                                                                | Passed                                                                                                                                                                             |
+| Actual HA 2026.10.1 smoke: `/tmp/hearth-ha-check.gSFK1s/venv/bin/python -B /tmp/hearth-ha-chores-proof.jbSohC/actual-ha-todo-smoke.py` from workspace root                                                                                                                                                           | Actual API imports, instance-supported feature, TodoItem values, complete/reopen dispatch, no optimism, edit denial and permission loss passed; fictional coordinator, not live HA |
+
+The first new audit test used incorrect SQL aliases and was corrected to actual `source_channel` /
+`action_type` columns. The first HA import smoke incorrectly asserted a class-level attribute that
+HA wraps as a descriptor; the corrected instance-level and behavior smoke passed. No product tests
+were removed or skipped. Screenshots and the temporary smoke script are outside Git:
+
+- `/tmp/hearth-ha-chores-proof.jbSohC/e2e/admin-Home-Assistant-chore-f5faf-es-explicit-opt-in-at-390px/chore-control-summary.png`
+- `/tmp/hearth-ha-chores-proof.jbSohC/e2e/admin-Home-Assistant-chore-8e081-s-explicit-opt-in-at-1440px/chore-control-summary.png`
+
+Remaining: approved verified release, installed HA version/backup/component setup, real HA entity
+registration/dashboard tick/untick on an agreed test chore, observed household/earnings/audit and
+revocation/recovery checks. No physical TV, actual iPhone Safari, full hosted/full Playwright gate,
+hassfest or live deployment ran. Native Kotlin was unchanged by D-109 and was not rebuilt here;
+its earlier D-108 local evidence remains separately recorded below. Nothing committed/pushed.
+
+## Inbound Home Assistant integration — 2026-10-15 (D-108)
+
+User approved implementation and focused automated tests, while explicitly saying the home TV is
+in use. **No live TV/ADB, Home Assistant, NAS deployment, network or household changes.** This
+work remains local alongside D-107 UI cleanup; no commit, push or publication is implied.
+
+Implemented: explicit adult grant/revocation with digest-only independent `HearthAutomation`
+authority; selected paired-screen public-tab controls with 15s leases/30s command expiry,
+24h idempotency receipts, observed-route acknowledgement, native foreground-generation gating
+and server-time/monotonic expiry. Old APKs fail closed for control. No wake/app launch, media,
+admin navigation, generic URLs/intents, chore completion, calendar editing or EventKit changes.
+Optional chores/calendar projections omit provider IDs, notes, locations, credentials, permissions
+and money. Enabled-but-unavailable feeds remain null rather than false zero/empty. Migration 0030
+creates no grant and preserves existing access. Private `/assist` writes remain uncommissioned.
+
+The HA custom component uses config flow, a dedicated cookie-free verified-TLS session, coordinated
+polling, per-screen select entities, read-only chore sensors and read-only calendar. It is a manual
+custom-component install, not built-in, HACS-published or auto-discovered. Canonical language-neutral
+fixture: `hearth/packages/shared/fixtures/home-assistant-bridge-v1/state.json`.
+
+Local evidence (not physical HA/TV acceptance):
+
+- New server tests cover adult-only issue, digest/no-key readback, mixed-cookie fail-closed isolation,
+  explicit read permissions, provider outage isolation, actual-route acknowledgement, exact/concurrent
+  retries, changed reuse, transaction rollback, stale/revoked/unapproved screens, new-instance/restart
+  cancellation, superseding, rate bounds, all-day positive/negative offsets and precise-range overflow.
+- New shared tests validate route/identity/permission/range boundaries and the canonical fixture.
+  Existing server API, unit and migration checks are repeated; final results recorded below.
+- Kotlin unit checks, debug/release lint and debug APK build passed. Capability build is version
+  `0.1.1-debug`, code 2; no APK was installed. Real pause/resume, push, D-pad and signing compatibility
+  against the installed TV build remain not run.
+- HA Python: 45 offline tests; actual HA 2026.10.1 import/schema/session/calendar-value smoke,
+  Ruff lint/format and JSON/AST checks passed. Stubs only cover limited wiring; hassfest and full
+  HA lifecycle/config-entry/entity registration remain not run.
+- Disposable loopback-only private fixture with in-memory fictional data: the actual aiohttp
+  `HearthClient` changed the paired browser screen from Today to Weather and waited for its applied
+  acknowledgement. Exact HTTP replay returned `replayed=true` with the same command. A real calendar
+  range decoded. No identifiers, content or keys were printed. Keyboard Left escaped Weather to the
+  rail, Up/Up/Enter returned Today, and safe aggregate readback confirmed the manually observed tab.
+- Interactive in-app browser phone setup at 390×844: no horizontal overflow, all choices/default
+  sharing off, explicit individual opt-in, 48px choice/button targets and keyboard-operable setup
+  disclosure. Screenshots outside Git in `/tmp/hearth-ha-bridge-proof.aATGOd/` contain fictional data.
+  One development-only HMR dependency-array warning occurred while the hook was being edited;
+  fresh compiled-preview readback had no warnings/errors, no framework overlay and meaningful
+  content. Parent Connections now says Access enabled for an inbound grant instead of misleading
+  Set up; the existing outbound connection remains separate. Entry focus starts at the new setup
+  disclosure rather than scrolling past the new controls to the legacy outbound token form.
+
+Final checks from `hearth/`:
+
+| Check                                                                                                                                                                                                                                  | Result                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `pnpm format:check`; Prettier check of changed authoritative docs; `git diff --check`                                                                                                                                                  | Passed                                                                                                 |
+| `pnpm typecheck`; final `pnpm --filter @hearth/web typecheck`; `pnpm lint` and final scoped ESLint                                                                                                                                     | Passed; two existing non-failing JSX expression-resolution diagnostics                                 |
+| `pnpm --filter @hearth/shared test:unit`                                                                                                                                                                                               | 63 passed                                                                                              |
+| `pnpm --filter @hearth/core test:unit`                                                                                                                                                                                                 | 40 passed                                                                                              |
+| `pnpm --filter @hearth/server test:unit`                                                                                                                                                                                               | 71 passed                                                                                              |
+| `pnpm --filter @hearth/web test:unit --maxWorkers=1 --testTimeout=30000`                                                                                                                                                               | 401 passed in 57 files                                                                                 |
+| `pnpm --filter @hearth/server test:integration`                                                                                                                                                                                        | 199 passed, including 18 new bridge tests                                                              |
+| `pnpm --filter @hearth/server test:migrations`                                                                                                                                                                                         | 27 passed                                                                                              |
+| `pnpm verify:deploy`                                                                                                                                                                                                                   | 10 scaffold checks passed; no live deployment                                                          |
+| `pnpm build`; final `pnpm --filter @hearth/web build` after entry-focus polish                                                                                                                                                         | Passed, 30 migration files copied                                                                      |
+| `pnpm test:e2e:built tests/e2e/admin.spec.ts --grep 'tightly scoped Home Assistant connection\|Home Assistant setup has\|Connections contains' --max-failures=1 --reporter=line --output=/tmp/hearth-ha-bridge-proof.aATGOd/e2e-admin` | 3 passed                                                                                               |
+| `pnpm test:e2e:built tests/e2e/screen-admin-isolation.spec.ts --max-failures=1 --reporter=line --output=/tmp/hearth-ha-bridge-proof.aATGOd/e2e-isolation`                                                                              | 11 passed, including wall-tablet/tablet/TV/4K, redirect/auth/Back and accessibility checks             |
+| `ANDROID_HOME=/opt/homebrew/share/android-commandlinetools ./apps/tv/gradlew -p apps/tv testDebugUnitTest lintDebug lintRelease assembleDebug --offline`                                                                               | 21 Kotlin tests, both lint variants and debug APK passed                                               |
+| `python -B -m unittest discover -s hearth/integrations/home_assistant/tests -v` using isolated Python 3.12/3.14 runtimes                                                                                                               | 45 passed; actual HA 2026.10.1 import/selector/session/calendar and session-cleanup smokes also passed |
+
+The default parallel web run and an initial serial run were interrupted after existing UI/network
+waits timed out on this loaded Mac (16 GB RAM, about 12 GB swap in use). The complete serial web
+run with a 30s per-test budget passed all assertions; no product assertions or test cases were
+removed. Three new async Connections-summary tests use explicit 5s query waits, matching browser
+expectations; the focused panel/summary rerun passed 12/12 after an initial 1s wait timed out.
+HA entry cleanup was also exercised with real HA/aiohttp across reload, first-refresh failure and
+cancellation: sessions detached and shared connectors remained open. This is not full device/entity
+registration or physical HA acceptance. Full Playwright/hosted workflow, hassfest, Android emulator/
+device and Release APK assembly remain not run. Owned local servers, tabs and build daemons were
+stopped after verification; the screenshots remain outside Git. No commit/push/deployment occurred.
+
+Remaining physical gates: agreed quiet-time verified server/TV update, HA backup/component install/
+restart, private key entry, actual household registration/entities, intended TV tab/manual feedback,
+inactive-other-app/no-interruption, native pause/resume/reload, revocation, real safe chores/calendar
+readback and recovery. Actual iPhone Safari and full hosted/release/Android-device gates remain open.
+No production connection is claimed by source, import, emulator or browser proof.
+
+## Administration consistency — 2026-10-15 (D-107)
+
+Local preparation on `codex/admin-ui-consistency`, based on published `3df5cbf`. Not pushed or
+deployed; no live household, pairing, credential, photo or NAS/network configuration is changed.
+
+- Shared joined menu rows across More, Hearth settings, Family planning and Connections replace
+  the planning-only purple cards and inconsistent root/submenu geometry. Keep the existing
+  SettingsLink/opener/focus seam, routes, conditional admin visibility and status messages.
+- Central companion scale: 32px page titles, 22px section headings, 18px navigation, 16px body/
+  controls and 14px labels/help; standard actions/fields are at least 48px and compact utilities
+  at least 44px. Long labels wrap, native checkbox/radio/file/crop controls remain separate,
+  and family-screen TV menu rows retain 28px type/80px targets with normal doubled 4K scaling.
+- Eucalyptus primary, neutral secondary/Keep and brick destructive actions; no focus enlargement.
+  People photo actions no longer stack unnecessarily. Activity filters wrap into two readable
+  rows on narrow phones instead of running Connections into System. Light/dark phone navigation
+  uses the same blue selected state as the family shell. A documentation ambiguity about
+  automatic updates is clarified: installation needs approval; backup/rollback/reload are automatic.
+
+Passed from `hearth/`: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm build`,
+`pnpm exec prettier --check` for the six changed authoritative documents, and `git diff --check`.
+Lint retains two existing non-failing JSX expression-resolution diagnostics. After the final
+stable production build, Vite preview readback at 390×844 and 1366×768 confirmed the joined menu,
+dark People form, light overview, 64px/18px menu scale, 32px page heading and no horizontal overflow.
+Back restored the exact More opener. The preview console contained no warnings or errors.
+
+Interactive in-app browser review uses only loopback `http://127.0.0.1:4320`, a demo server on
+4310 and a disposable in-memory fictional household. Reviewed More, overview, planning, People,
+Household/weather, routines, chore-day, pocket money, Lists, Meals, Photos, Calendar connection,
+Home Assistant connection, Phones & screens, Today and System/activity. No household settings were saved,
+connections created, credentials entered or deletion confirmed. Actual production phone access
+uses a different connected-phone panel from the legacy demo; its live workflow is not proved.
+
+Spot-check viewports: 320×700, 390×844, 844×390, 820×1180, 1180×820, 1366×768, 1920×1080 and
+3840×2160; light and dark, not every route/theme/viewport combination. Meaningful Hearth content,
+no horizontal document overflow in the inspected layouts and no framework overlay/app console
+errors were observed. Measured companion menu rows are 64px/18px, desktop rail controls 44px/16px,
+standard fields/actions 48px/16px and activity filters 44px/14px. TV-layout More rows are 80px with
+28px CSS type and double physically at 4K. This is browser layout evidence, not a paired physical TV.
+
+Interactions: More → Family planning → header Back returns to More and the exact original row;
+desktop menu Down/Enter → Today → Escape restores the overview and opener; New chore/Cancel,
+activity filtering and photo Delete → Keep photos remain usable. No deletion request was sent.
+Screenshots stay outside Git under `/tmp/hearth-admin-consistency-XkT7eZ/` and contain demo data only.
+
+Browser plugin unavailable; the existing computer-use in-app browser performed interactive rendered
+review without a test runner. **Not run at this checkpoint (before D-108 test approval):** automated unit, API,
+migration, accessibility/e2e suites, CI/hosted release checks and Android gates. None were added,
+modified, skipped or relabeled as passing. Actual iPhone Safari, paired TCL/remote, private phone
+enrollment/recovery, commit/push, image publication and deployment remain unverified/not performed.
+This does not close the complete release gate or authorize an update to the live NAS.
+
 ## Private welcome display and varied photo playback — 2026-10-13 (D-105/D-106)
 
 First hosted run `38374057088` at `9115e02df30be858310a3d6720f3773ca29737cc` passed code/API,

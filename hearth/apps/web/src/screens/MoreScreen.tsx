@@ -1,7 +1,7 @@
 import './MoreScreen.css';
 
-import { Icon, type IconName } from '../components/Icon';
-import { SettingsLink } from '../components/SettingsNavigation';
+import type { IconName } from '../components/Icon';
+import { SettingsMenu, SettingsMenuLink } from '../components/SettingsMenu';
 import { useSharedScreen } from '../runtime/sharedScreen';
 
 interface MoreLink {
@@ -110,15 +110,18 @@ export function MoreScreen() {
       {groups.map((group) => (
         <section className="more-group" key={group.title}>
           <h2>{group.title}</h2>
-          <div className="more-grid">
+          <SettingsMenu className="more-grid">
             {group.links.map((link) => {
               const index = flattened.findIndex((candidate) => candidate.path === link.path);
               const prior = flattened[index - 1];
               const next = flattened[index + 1];
               const focusId = moreFocusId(link);
               return (
-                <SettingsLink
-                  className="more-card focusable"
+                <SettingsMenuLink
+                  className="more-card"
+                  icon={link.icon}
+                  iconClassName="more-card__icon"
+                  label={link.title}
                   data-focus-entry={index === 0 ? 'true' : undefined}
                   data-focus-id={focusId}
                   data-focus-left="phone-tab-more"
@@ -126,16 +129,10 @@ export function MoreScreen() {
                   data-focus-down={next === undefined ? focusId : moreFocusId(next)}
                   to={link.path}
                   key={link.title}
-                >
-                  <span className="more-card__icon">
-                    <Icon name={link.icon} />
-                  </span>
-                  <strong>{link.title}</strong>
-                  <Icon name="chevron-right" />
-                </SettingsLink>
+                />
               );
             })}
-          </div>
+          </SettingsMenu>
         </section>
       ))}
     </div>

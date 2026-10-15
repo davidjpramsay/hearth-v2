@@ -1,5 +1,33 @@
 # Hearth v2 architecture
 
+## Opt-in inbound Home Assistant bridge — D-108
+
+The separate `HomeAssistantBridgeService` authenticates digest-only Hearth automation grants,
+selected paired-screen leases, expiring/idempotent tab commands and safe chores/calendar
+projections. Shared Zod contracts and an explicit public route map sit in
+`packages/shared/src/home-assistant-bridge.ts`. Automation authorization is isolated before the
+global browser/device hooks, including mixed-cookie failures; it cannot become a TV or adult actor.
+The web screen reports only through its existing paired-device credential, with serial polling,
+observed-route acknowledgement and visibility/native foreground-generation gates. No JavaScript
+reads the TV secret. No command is sent to Android intents or another app. Old native shells without
+the new eligibility capability fail closed for this feature.
+
+`integrations/home_assistant/custom_components/hearth` is a manually installed HA custom
+integration, not another server process or MQTT broker. HA owns its private config-entry credential
+and entities; Hearth stores only its digest and safe grant metadata. Normal repository reads may
+materialize chore occurrences or refresh caches. D-109 adds narrowly approved chore complete/undo
+only through the existing domain repository and Home Assistant service audit actor. A separate
+default-false grant flag, exact input-bound durable bridge receipts and existing atomic domain
+receipts isolate authority and recover a crash between execution and safe response persistence.
+Current-household-day and observed-completion guards protect new commands. No general household,
+provider, adult-account or payment write authority is exposed.
+See `HOME_ASSISTANT_BRIDGE_CONTRACT.md` for the exact versioned transport and acceptance boundaries.
+One HA connection targets the private Hearth server, never the TV's IP address. Household entities
+belong to a **Hearth server** device; selected per-display entities are child **Hearth screen** devices.
+Tab commands are relayed by the server to the named paired foreground screen. Household data and
+chore actions are server operations independent of TV availability. Physical power/app launch
+remain in HA's existing Android TV integration, not the Hearth tab selector.
+
 ## Appliance commissioning boundary (D-104)
 
 Future native phone onboarding uses private per-device QR proof and authenticated Bluetooth LE
@@ -47,6 +75,14 @@ gallery; the empty gallery never restores an old Today preview.
 
 Selection-mode paging bounds mounted tiles to 48, with an ID set spanning pages. Confirmation
 still captures the exact eligible managed assets before any command; paging cannot broaden it.
+
+## Shared administration presentation (D-107)
+
+`SettingsMenu`/`SettingsMenuLink` own joined menu presentation across More, the settings overview,
+Family planning and Connections. They delegate to the existing `SettingsLink`, retaining allowed
+opener history and focus attributes. `styles/admin.css` and shared admin tokens define companion
+typography, controls and action roles without affecting family-screen TV sizing. This is a
+presentation boundary only: no API, credential, role, pairing, mutation or runtime-network change.
 
 ## Local Games boundary
 

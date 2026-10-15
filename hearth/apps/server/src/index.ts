@@ -54,6 +54,7 @@ import {
   resolveOpenMeteoWeatherConfiguration,
 } from './integrations/weather-provider.js';
 import { HomeService } from './home-repository.js';
+import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
 import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
@@ -297,6 +298,10 @@ const server = buildServer({
   reminderRepository,
   calendarConnectionRepository,
   homeAssistantConnectionRepository,
+  homeAssistantBridge: new HomeAssistantBridgeService(adminRepository, repository, {
+    database,
+    now: () => clock.now(),
+  }),
   systemOperations,
   applianceUpdate,
   ...(companionAuth === undefined || companionAuthConfiguration === null

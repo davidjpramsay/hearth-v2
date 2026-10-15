@@ -1,5 +1,23 @@
 # Hearth v2 television and companion UX specification
 
+## Home Assistant connection directions (D-108)
+
+Connections → Home Assistant separates **Home Assistant controls Hearth** from the existing
+**Hearth controls Home Assistant** safety/script adapter. An adult chooses screen names and
+explicit read-only chore/calendar sharing before creating a connection key. Show the one-time
+key only for private setup; clear it when dismissed and never put it in query cache, storage,
+URLs, logs or clipboard automatically. Disconnection needs a clear confirmation and affects only
+this integration, never the adult phone, TV pairing or outbound HA connection.
+In HA each approved screen has a tab selector showing the observed route and offline/unavailable
+state. Accepted/pending is not applied. No admin/setup destinations or automatic app takeover.
+The manual custom-integration installation is not a built-in discovered integration; disclose the
+updated native-shell requirement without claiming physical installation or foreground proof.
+The separate **Allow completing and reopening today’s chores** checkbox defaults off, is disabled
+until chores are shared, and clears when sharing is unticked (D-109). Disclose the normal effect on
+earned pocket money. Summary distinguishes **Read only** from **Complete and reopen today’s chores**.
+HA's **Today's chores** to-do list permits tick/untick only; it never offers Hearth admin access.
+No optimistic completion, duplicate commands, silent stale-day writes or false empty lists on errors.
+
 ## Appliance setup UX (D-104; browser path local, hardware path future)
 
 The consumer flow is **Scan setup QR → Join home Wi-Fi → Name your household → Save recovery**.
@@ -446,6 +464,17 @@ protection, cancellation and partial-failure behavior remain unchanged.
 
 - Household, member, integration and permissions management.
 - Optimised for the companion browser rather than the family TV.
+- More, Hearth settings, Family planning and Connections share joined navigation rows: a green
+  icon, a sentence-case title and a muted chevron. Companion rows use 18px type, a 36px icon and
+  a 64px minimum height; long titles wrap without clipping. Family-screen TV menus retain 28px
+  titles and 80px targets rather than inheriting the companion scale.
+- Admin pages use a shared 32px page title, 22px section title, 16px body/control text and 14px
+  labels/help. Standard actions and text fields are at least 48px high with 12px corners; compact
+  utility actions remain at least 44px. Image/radio/checkbox widgets retain their own semantics.
+  Constructive primary actions use eucalyptus; secondary/cancel actions stay neutral and
+  destructive actions use brick. A safe Keep/Cancel choice never inherits destructive styling.
+  Use consistent blue keyboard focus without shifting or enlarging companion controls. Theme,
+  native editing, readable wrapping and the existing Back/opener behavior remain intact.
 - Visible copy is task-first. A heading or control label is not followed by text that merely repeats
   it. Keep explanations only when they affect a decision, explain state, or protect privacy,
   recovery or an irreversible action.
@@ -513,7 +542,9 @@ protection, cancellation and partial-failure behavior remain unchanged.
   and Photos setup status; it links to the dedicated setup screen instead of
   exposing credentials or raw provider details. When an appliance update is available it appears
   immediately after the health summary, shows the actual blocking action instead of an inert
-  button, and uses short release identifiers. Update and scheduled backups are automatic; the
+  button, and uses short release identifiers. Installing a server update requires explicit adult
+  consent; its backup/rollback and subsequent client reload are automatic. Scheduled backups are
+  automatic; the
   uncommon manual copy action stays collapsed under **Advanced recovery**.
   Progress appears only during an active update. Completion shows a concise installed state;
   a newer release remains installable after that. Cancelling connected-phone confirmation or rejecting a

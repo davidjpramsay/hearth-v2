@@ -1,6 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
+
+import { homeAssistantBridgeApi } from '../api/homeAssistantBridge';
+import { queryKeys } from '../api/queryKeys';
 import { AdminPage, AdminQueryState } from '../components/AdminPage';
-import { Icon } from '../components/Icon';
-import { SettingsLink } from '../components/SettingsNavigation';
+import { SettingsMenu, SettingsMenuLink } from '../components/SettingsMenu';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import {
   useCalendarConnectionQuery,
@@ -11,6 +14,12 @@ export function ConnectionsSettingsScreen() {
   const admin = useAdminQuery();
   const calendar = useCalendarConnectionQuery();
   const homeAssistant = useHomeAssistantConnectionQuery();
+  // Safe grant metadata only. Never put the one-time issue request/key in Query caches.
+  const bridge = useQuery({
+    queryKey: [...queryKeys.admin, 'home-assistant-bridge'],
+    queryFn: ({ signal }) => homeAssistantBridgeApi.getConnection(signal),
+    retry: false,
+  });
   if (admin.isPending || calendar.isPending || homeAssistant.isPending)
     return <AdminQueryState title="Connections" />;
   if (admin.data === undefined)
@@ -40,9 +49,14 @@ export function ConnectionsSettingsScreen() {
 
   return (
     <AdminPage title="Connections">
-      <div className="connection-list">
-        <SettingsLink
+      <SettingsMenu className="connection-list">
+        <SettingsMenuLink
           className="connection-row connection-row--action focusable"
+          icon="calendar"
+          label="Calendar"
+          description={
+            calendar.data === null ? undefined : `${calendar.data.label} · ${calendar.data.message}`
+          }
           data-focus-entry="true"
           data-focus-down="connection-home-assistant"
           data-focus-id="connection-calendar"
@@ -50,49 +64,48 @@ export function ConnectionsSettingsScreen() {
           data-focus-right="connection-calendar"
           data-focus-up="connection-calendar"
           to="/admin/connections/calendar"
-        >
-          <span className="admin-setting-row__icon">
-            <Icon name="calendar" />
-          </span>
-          <div>
-            <strong>Calendar</strong>
-            {calendar.data === null ? null : (
-              <p>{`${calendar.data.label} · ${calendar.data.message}`}</p>
-            )}
-          </div>
-          <span
-            className={`connection-badge${calendar.data === null ? '' : ' connection-badge--healthy'}`}
-          >
-            {calendar.data === null ? 'Set up' : 'Connected'}
-          </span>
-          <Icon className="connection-row__chevron" name="chevron-right" />
-        </SettingsLink>
-        <SettingsLink
+          status={
+            <span
+              className={`connection-badge${calendar.data === null ? '' : ' connection-badge--healthy'}`}
+            >
+              {calendar.data === null ? 'Set up' : 'Connected'}
+            </span>
+          }
+        />
+        <SettingsMenuLink
           className="connection-row connection-row--action focusable"
+          icon="home"
+          label="Home Assistant"
+          description={
+            homeAssistant.data === null
+              ? bridge.data == null
+                ? undefined
+                : 'Approved Home Assistant access to Hearth.'
+              : `${homeAssistant.data.label} · ${homeAssistant.data.message}`
+          }
           data-focus-down="connection-home-assistant"
           data-focus-id="connection-home-assistant"
           data-focus-left="connection-home-assistant"
           data-focus-right="connection-home-assistant"
           data-focus-up="connection-calendar"
           to="/admin/connections/home-assistant"
-        >
-          <span className="admin-setting-row__icon">
-            <Icon name="home" />
-          </span>
-          <div>
-            <strong>Home Assistant</strong>
-            {homeAssistant.data === null ? null : (
-              <p>{`${homeAssistant.data.label} · ${homeAssistant.data.message}`}</p>
-            )}
-          </div>
-          <span
-            className={`connection-badge${homeAssistant.data === null ? '' : ' connection-badge--healthy'}`}
-          >
-            {homeAssistant.data === null ? 'Set up' : 'Connected'}
-          </span>
-          <Icon className="connection-row__chevron" name="chevron-right" />
-        </SettingsLink>
-      </div>
+          status={
+            <span
+              className={`connection-badge${homeAssistant.data === null && bridge.data == null ? '' : ' connection-badge--healthy'}`}
+            >
+              {homeAssistant.data !== null
+                ? 'Connected'
+                : bridge.data != null
+                  ? 'Access enabled'
+                  : bridge.isPending
+                    ? 'Checking access…'
+                    : bridge.isError
+                      ? 'Check access'
+                      : 'Set up'}
+            </span>
+          }
+        />
+      </SettingsMenu>
     </AdminPage>
   );
 }

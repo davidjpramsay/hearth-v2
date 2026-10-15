@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.net.http.SslError
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -15,13 +16,20 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.SafeBrowsingResponse
+import android.webkit.SslErrorHandler
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.annotation.RequiresApi
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import java.util.concurrent.Executors
@@ -38,6 +46,8 @@ class MainActivity : ComponentActivity() {
     private var nativeBridge: NativeBridge? = null
     private var pairingGeneration = 0
     private var hasResumed = false
+    private var hasReadyWebContent = false
+    private val presentationState = PresentationState()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,6 +75,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        publishPresentation(presentationState.update(
+            resumed = true,
+            windowFocused = hasWindowFocus(),
+            contentReady = presentationContentReady(),
+        ))
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enterTelevisionMode()
         webView?.onResume()
@@ -72,12 +87,22 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        publishPresentation(presentationState.update(resumed = false))
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         webView?.onPause()
         super.onPause()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        publishPresentation(presentationState.update(
+            windowFocused = hasFocus,
+            contentReady = presentationContentReady(),
+        ))
+    }
+
     override fun onDestroy() {
+        publishPresentation(presentationState.update(resumed = false, contentReady = false))
         pairingGeneration += 1
         handler.removeCallbacksAndMessages(null)
         destroyWebView()
@@ -95,6 +120,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showServerEntry(error: String? = null) {
+        hideWebContent()
         pairingGeneration += 1
         recovery.showServerEntry(
             initialOrigin = localState.serverOrigin ?: BuildConfig.DEFAULT_SERVER_ORIGIN,
@@ -104,6 +130,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun beginPairing(rawOrigin: String) {
+        hideWebContent()
         val origin = runCatching { TrustedOrigin.normalize(rawOrigin, BuildConfig.DEBUG) }
             .getOrElse {
                 showServerEntry(it.message)
@@ -195,6 +222,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun validateCredential(credential: TvCredential) {
+        hideWebContent()
         val generation = ++pairingGeneration
         recovery.showConnecting("Reconnecting this television…")
         networkExecutor.execute {
@@ -257,12 +285,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun installCredentialAndLoad(credential: TvCredential) {
+        val generation = pairingGeneration
         val secureAttribute = if (credential.serverOrigin.startsWith("https://")) "; Secure" else ""
         val cookie = "$deviceCookie=${credential.pairingSecret}; Path=/; HttpOnly; SameSite=Strict$secureAttribute"
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
         cookieManager.setCookie(credential.serverOrigin, cookie) { accepted ->
-            onMain(pairingGeneration) {
+            onMain(generation) {
                 if (!accepted) {
                     recovery.showOffline(
                         "Android could not secure the television session.",
@@ -312,15 +341,15 @@ class MainActivity : ComponentActivity() {
                 WebViewCompat.addDocumentStartJavaScript(this, viewportScript, setOf(origin))
             }
             webChromeClient = WebChromeClient()
-            webViewClient = HearthWebViewClient(
-                trustedOrigin = origin,
-                fallbackViewportScript = if (supportsDocumentStart) null else viewportScript,
-                onReady = ::showWebContent,
-                onUnavailable = ::showWebUnavailable,
+            webViewClient = presentationWebViewClient(
+                this, origin, if (supportsDocumentStart) null else viewportScript,
             )
         }
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
-        val bridge = NativeBridge(view, origin, ::networkAvailable, ::finishAfterTransition)
+        val bridge = NativeBridge(
+            view, origin, ::networkAvailable, ::finishAfterTransition,
+            presentationStatus = { presentationState.snapshot },
+        )
         if (!bridge.install()) {
             view.destroy()
             recovery.showWebViewUpdate()
@@ -340,6 +369,82 @@ class MainActivity : ComponentActivity() {
         view.loadUrl(origin + path)
     }
 
+    private fun presentationWebViewClient(
+        view: WebView,
+        origin: String,
+        fallbackViewportScript: String?,
+    ): WebViewClient = object : WebViewClient() {
+        private var committed = false
+        private var unavailable = false
+        private var documentGeneration = 0
+
+        private fun delegate(): HearthWebViewClient {
+            val generation = documentGeneration
+            return HearthWebViewClient(
+                trustedOrigin = origin,
+                fallbackViewportScript = fallbackViewportScript,
+                onReady = { url ->
+                    if (
+                        webView === view && generation == documentGeneration &&
+                        committed && !unavailable && TrustedOrigin.matches(origin, url) &&
+                        view.url?.let { TrustedOrigin.matches(origin, it) } == true
+                    ) showWebContent(url)
+                },
+                onUnavailable = { message ->
+                    if (webView === view && generation == documentGeneration) {
+                        unavailable = true
+                        showWebUnavailable(message)
+                    }
+                },
+            )
+        }
+
+        override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+            documentGeneration += 1
+            committed = false
+            unavailable = false
+            if (webView === view) {
+                hasReadyWebContent = false
+                publishPresentation(presentationState.update(contentReady = false))
+            }
+        }
+
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+            delegate().shouldOverrideUrlLoading(view, request)
+
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+            delegate().shouldInterceptRequest(view, request)
+
+        override fun onPageCommitVisible(view: WebView, url: String) {
+            committed = true
+            delegate().onPageCommitVisible(view, url)
+        }
+
+        override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) =
+            delegate().doUpdateVisitedHistory(view, url, isReload)
+
+        override fun onPageFinished(view: WebView, url: String) = delegate().onPageFinished(view, url)
+
+        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) =
+            delegate().onReceivedError(view, request, error)
+
+        override fun onReceivedHttpError(
+            view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse,
+        ) = delegate().onReceivedHttpError(view, request, errorResponse)
+
+        override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) =
+            delegate().onReceivedSslError(view, handler, error)
+
+        @RequiresApi(Build.VERSION_CODES.O_MR1)
+        override fun onSafeBrowsingHit(
+            view: WebView, request: WebResourceRequest, threatType: Int, callback: SafeBrowsingResponse,
+        ) = delegate().onSafeBrowsingHit(view, request, threatType, callback)
+
+        @RequiresApi(Build.VERSION_CODES.O)
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean =
+            delegate().onRenderProcessGone(view, detail)
+    }
+
     private fun showWebContent(url: String) {
         val uri = Uri.parse(url)
         localState.lastPath = uri.encodedPath?.takeIf(String::isNotBlank) ?: "/today"
@@ -348,11 +453,26 @@ class MainActivity : ComponentActivity() {
             visibility = View.VISIBLE
             requestFocus()
         }
+        hasReadyWebContent = true
+        publishPresentation(presentationState.update(contentReady = presentationContentReady()))
     }
 
     private fun showWebUnavailable(message: String?) {
-        webView?.visibility = View.GONE
+        hideWebContent()
         recovery.showOffline(familyReachabilityMessage(message), ::bootstrap, ::changeAddress)
+    }
+
+    private fun hideWebContent() {
+        hasReadyWebContent = false
+        publishPresentation(presentationState.update(contentReady = false))
+        webView?.visibility = View.GONE
+    }
+
+    private fun presentationContentReady(): Boolean =
+        hasReadyWebContent && webView?.isShown == true && recovery.visibility != View.VISIBLE
+
+    private fun publishPresentation(snapshot: PresentationSnapshot?) {
+        if (snapshot != null) nativeBridge?.sendPresentation(snapshot)
     }
 
     private fun changeAddress() {
@@ -376,6 +496,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun destroyWebView() {
+        hideWebContent()
         val view = webView ?: return
         root.removeView(view)
         view.stopLoading()

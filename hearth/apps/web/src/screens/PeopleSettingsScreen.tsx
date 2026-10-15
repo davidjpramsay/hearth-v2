@@ -267,7 +267,7 @@ function MemberEditor({
         Household administrator
       </label>
       <div className="member-editor__actions">
-        <button className="admin-secondary" disabled={savePending} type="submit">
+        <button className="admin-primary" disabled={savePending} type="submit">
           Save
         </button>
         {protectedMember ? null : (

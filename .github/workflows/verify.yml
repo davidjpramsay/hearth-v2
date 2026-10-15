@@ -28,6 +28,10 @@ jobs:
 
       - uses: ./.github/actions/setup-hearth
 
+      - name: Test Home Assistant custom component offline
+        working-directory: .
+        run: python3 -B -m unittest discover -s hearth/integrations/home_assistant/tests -v
+
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps --only-shell chromium
 

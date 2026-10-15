@@ -170,6 +170,7 @@ export function TelevisionsSettingsScreen() {
               >
                 <span>It will need a new code to reconnect.</span>
                 <button
+                  className="admin-secondary"
                   disabled={revoke.isPending}
                   onClick={() => setConfirmRemoval(null)}
                   type="button"
@@ -177,6 +178,7 @@ export function TelevisionsSettingsScreen() {
                   Keep connected
                 </button>
                 <button
+                  className="admin-danger"
                   disabled={revoke.isPending}
                   onClick={() => revoke.mutate(device.id)}
                   type="button"
@@ -186,6 +188,7 @@ export function TelevisionsSettingsScreen() {
               </div>
             ) : (
               <button
+                className="admin-danger"
                 disabled={revoke.isPending}
                 onClick={() => setConfirmRemoval(device.id)}
                 type="button"

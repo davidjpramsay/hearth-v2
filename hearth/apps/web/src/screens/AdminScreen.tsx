@@ -4,7 +4,7 @@ import type { IconName } from '../components/Icon';
 import { signOutAndClear } from '../auth/signOut';
 import { AdminError, AdminLoading } from '../components/AdminPage';
 import { Icon } from '../components/Icon';
-import { SettingsLink } from '../components/SettingsNavigation';
+import { SettingsMenu, SettingsMenuLink } from '../components/SettingsMenu';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { useHearthRuntime } from '../runtime/context';
 import { runtimeApi } from '../api/runtime';
@@ -159,12 +159,15 @@ export function AdminScreen() {
         {settingGroups.map((group) => (
           <section className="admin-setting-group" key={group.title}>
             <h2>{group.title}</h2>
-            <div className="admin-setting-list">
+            <SettingsMenu className="admin-setting-list">
               {group.settings.map((setting) => {
                 const index = settings.indexOf(setting);
                 return (
-                  <SettingsLink
-                    className="admin-setting-row focusable"
+                  <SettingsMenuLink
+                    className="admin-setting-row"
+                    icon={setting.icon}
+                    label={setting.title}
+                    titleClassName="admin-setting-row__copy"
                     data-focus-entry={index === 0 ? 'true' : undefined}
                     data-focus-down={adjacentSettingFocusId(
                       index + 1,
@@ -176,22 +179,16 @@ export function AdminScreen() {
                     data-focus-up={adjacentSettingFocusId(index - 1, settingFocusId(setting.title))}
                     to={setting.path}
                     key={setting.title}
-                  >
-                    <span className="admin-setting-row__icon">
-                      <Icon name={setting.icon} />
-                    </span>
-                    <strong className="admin-setting-row__copy">{setting.title}</strong>
-                    <Icon name="chevron-right" />
-                  </SettingsLink>
+                  />
                 );
               })}
-            </div>
+            </SettingsMenu>
           </section>
         ))}
       </div>
       {runtime.mode === 'private' ? null : (
         <p className="demo-session-note">
-          Demo adult session · Private deployment uses passkey sign-in.
+          Demo adult session · Private deployment uses approved phone connections.
         </p>
       )}
     </section>

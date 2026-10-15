@@ -11,6 +11,44 @@ import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
 
+describe('0030 opt-in Home Assistant bridge migration', () => {
+  it('preserves paired-device and adult state and creates no grant automatically', () => {
+    const database = new Database(':memory:');
+    for (const file of readdirSync(fileURLToPath(new URL('.', import.meta.url)))
+      .filter((file) => /^\d{4}_.*\.sql$/.test(file) && Number(file.slice(0, 4)) <= 29)
+      .sort())
+      database.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
+    database
+      .prepare(
+        "INSERT INTO households VALUES ('household_kept','Kept','Australia/Perth','en-AU',1,'now','now')",
+      )
+      .run();
+    database
+      .prepare(
+        "INSERT INTO paired_devices (id,household_id,name,device_type,credential_reference,scopes_json,paired_at,capabilities_json) VALUES ('device_kept','household_kept','Kept TV','television','sha256:fixture','[\"household.read\"]','now','[]')",
+      )
+      .run();
+    const before = database.prepare('SELECT * FROM paired_devices').all();
+    applyMigrations(database);
+    applyMigrations(database);
+    expect(database.prepare('SELECT * FROM paired_devices').all()).toEqual(before);
+    expect(
+      database.prepare('SELECT count(*) AS total FROM home_assistant_bridge_connections').get(),
+    ).toEqual({ total: 0 });
+    expect(
+      database.prepare('SELECT count(*) AS total FROM home_assistant_bridge_commands').get(),
+    ).toEqual({ total: 0 });
+    expect(
+      database.prepare('SELECT count(*) AS total FROM home_assistant_bridge_chore_receipts').get(),
+    ).toEqual({ total: 0 });
+    expect(database.prepare('SELECT name FROM schema_migrations WHERE version=30').get()).toEqual({
+      name: 'home_assistant_bridge',
+    });
+    expect(database.pragma('foreign_key_check')).toEqual([]);
+    database.close();
+  });
+});
+
 describe('0029 explicit recovery migration', () => {
   it('adds recovery without auto-designation, revocation or duplicate owners', () => {
     const database = new Database(':memory:');

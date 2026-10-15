@@ -1,6 +1,6 @@
 import { AdminPage } from '../components/AdminPage';
-import { Icon, type IconName } from '../components/Icon';
-import { SettingsLink } from '../components/SettingsNavigation';
+import type { IconName } from '../components/Icon';
+import { SettingsMenu, SettingsMenuLink } from '../components/SettingsMenu';
 
 const planningAreas: Array<{
   title: string;
@@ -43,25 +43,19 @@ const planningAreas: Array<{
 export function PlanningSettingsScreen() {
   return (
     <AdminPage title="Family planning">
-      <div className="planning-area-list">
+      <SettingsMenu className="planning-area-list">
         {planningAreas.map((area, index) => (
-          <SettingsLink
+          <SettingsMenuLink
             className="planning-area-card"
+            icon={area.icon}
+            label={area.title}
             data-focus-entry={index === 0 ? 'true' : undefined}
             data-focus-id={area.focusId}
             key={area.title}
             to={area.path}
-          >
-            <span>
-              <Icon name={area.icon} />
-            </span>
-            <div>
-              <strong>{area.title}</strong>
-            </div>
-            <Icon name="chevron-right" />
-          </SettingsLink>
+          />
         ))}
-      </div>
+      </SettingsMenu>
     </AdminPage>
   );
 }

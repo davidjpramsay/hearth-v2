@@ -393,7 +393,7 @@ function PocketMoneyRuleForm({
             ))}
           </select>
         </label>
-        <button className="admin-secondary" disabled={pending} type="submit">
+        <button className="admin-primary" disabled={pending} type="submit">
           {pending ? 'Saving…' : `Save ${child.member.displayName}`}
         </button>
       </form>

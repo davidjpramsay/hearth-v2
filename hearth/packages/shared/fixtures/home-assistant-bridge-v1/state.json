@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-15T03:00:00Z",
+  "household": { "id": "household_fixture", "name": "Fixture home", "timezone": "Australia/Perth" },
+  "permissions": { "shareChores": true, "shareCalendar": true, "controlChores": false },
+  "screens": [
+    {
+      "id": "device_fixture",
+      "name": "Fixture screen",
+      "online": true,
+      "currentTab": "weather",
+      "lastSeenAt": "2026-10-15T03:00:00Z",
+      "command": {
+        "id": "command_fixture",
+        "tab": "weather",
+        "status": "applied",
+        "createdAt": "2026-10-15T02:59:55Z",
+        "expiresAt": "2026-10-15T03:00:25Z"
+      }
+    }
+  ],
+  "chores": {
+    "localDate": "2026-10-15",
+    "open": 1,
+    "completed": 1,
+    "truncated": false,
+    "items": [
+      {
+        "id": "chore_fixture_one",
+        "title": "Fixture chore",
+        "assignee": "Fixture child",
+        "state": "pending",
+        "completionId": null,
+        "locked": false
+      },
+      {
+        "id": "chore_fixture_two",
+        "title": "Another fixture chore",
+        "assignee": "Fixture child",
+        "state": "completed",
+        "completionId": null,
+        "locked": false
+      }
+    ]
+  },
+  "calendar": {
+    "freshness": "stale",
+    "events": [
+      {
+        "id": "event_fixture_day",
+        "title": "Fixture all-day event",
+        "start": "2026-10-15T00:00:00Z",
+        "end": "2026-10-16T00:00:00Z",
+        "startLocalDate": "2026-10-15",
+        "endLocalDate": "2026-10-16",
+        "allDay": true
+      },
+      {
+        "id": "event_fixture_time",
+        "title": "Fixture timed event",
+        "start": "2026-10-15T10:00:00+08:00",
+        "end": "2026-10-15T11:00:00+08:00",
+        "startLocalDate": "2026-10-15",
+        "endLocalDate": "2026-10-15",
+        "allDay": false
+      }
+    ]
+  }
+}

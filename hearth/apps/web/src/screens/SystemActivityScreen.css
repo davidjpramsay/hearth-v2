@@ -60,9 +60,21 @@
   cursor: pointer;
 }
 .activity-filter[aria-pressed='true'] {
-  color: var(--plum);
+  color: var(--eucalyptus);
   background: var(--surface);
-  box-shadow: var(--shadow-rest);
+  box-shadow: none;
+}
+
+@media (max-width: 520px) {
+  .activity-filters {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .activity-filters .activity-filter {
+    flex: 1 0 calc(33.333% - 8px);
+    white-space: nowrap;
+  }
 }
 .activity-count {
   min-height: 36px;

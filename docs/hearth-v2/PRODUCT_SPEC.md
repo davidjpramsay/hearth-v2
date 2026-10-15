@@ -239,6 +239,14 @@ Hearth data backup boundary.
 
 ### 9. Home Assistant controls
 
+- Opt-in Home Assistant integration: select the tab on an explicitly approved, already open Hearth
+  screen and read its observed tab. This never powers on a TV, launches Hearth over another app,
+  opens administration or controls media. Home Assistant retains physical TV/app-launch authority.
+- Separately approved read-only chores and calendar projections may feed HA entities/automations;
+  no general household or calendar-edit authority is granted by this bridge (D-108).
+- A separate off-by-default chore-control permission permits completing/reopening today's existing
+  chores in HA (D-109). It requires chore sharing and uses Hearth's normal audit/earnings rules.
+  No chore creation/deletion/assignment, schedule edits, payments or adult administration.
 - Launch allowlisted scenes and scripts such as Evening, Goodnight and Screen Off.
 - Display selected door, climate, energy or presence states.
 - No generic entity browser on the family screen.

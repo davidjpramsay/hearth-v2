@@ -1,0 +1,63 @@
+{
+  "title": "Hearth",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Hearth",
+        "description": "Use the trusted private HTTPS origin and the automation key generated in Hearth → Connections → Home Assistant. Screen navigation and optional chore status control require separate approval in Hearth.",
+        "data": {
+          "url": "Hearth origin",
+          "automation_key": "Automation key",
+          "allow_loopback_http": "Allow HTTP to a literal loopback IP (local tests only)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect Hearth",
+        "description": "Enter a replacement automation key for the same household. Generate it in Hearth → Connections → Home Assistant after revoking the previous grant.",
+        "data": {
+          "url": "Hearth origin",
+          "automation_key": "Replacement automation key",
+          "allow_loopback_http": "Allow HTTP to a literal loopback IP (local tests only)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "The automation key is invalid or was revoked.",
+      "cannot_connect": "Could not reach Hearth securely. Check the origin and trusted certificate.",
+      "invalid_bridge": "Use a trusted HTTPS origin serving the Hearth v1 bridge. HTTP is allowed only for explicitly selected local loopback tests."
+    },
+    "abort": {
+      "already_configured": "This Hearth household is already configured.",
+      "reauth_successful": "Hearth was reconnected.",
+      "unique_id_mismatch": "This key belongs to a different household. Enter a key for the existing household."
+    }
+  },
+  "entity": {
+    "select": {
+      "visible_tab": {
+        "name": "Visible tab",
+        "state": {
+          "today": "Today",
+          "calendar": "Agenda",
+          "calendar_week": "Week",
+          "calendar_month": "Month",
+          "weather": "Weather",
+          "reminders": "Reminders",
+          "chores": "Chores",
+          "lists": "Lists",
+          "meals": "Meals",
+          "home": "Home",
+          "photos": "Photos",
+          "games": "Games",
+          "more": "More"
+        }
+      }
+    },
+    "sensor": {
+      "open_chores": { "name": "Open chores" },
+      "completed_chores": { "name": "Completed chores" }
+    },
+    "calendar": { "calendar": { "name": "Calendar" } },
+    "todo": { "today_chores": { "name": "Today's chores" } }
+  }
+}

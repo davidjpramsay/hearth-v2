@@ -1,5 +1,24 @@
 # Hearth v2 domain and data model
 
+## Home Assistant inbound grants and screen commands (D-108)
+
+Migration `0030_home_assistant_bridge.sql` adds a digest-only connection per household (at most
+one active), explicit selected Hearth screen IDs and read-sharing flags, idempotent grant/revoke
+receipts, and bounded screen-command receipts. No raw automation key, HA credential, provider ID,
+chore title or calendar payload is persisted by this bridge. Command receipts contain only Hearth
+connection/device/instance/request IDs, tab, status, timestamps and input digest; command rows are
+pruned after 24h. Existing household, TV and phone records remain untouched by the migration.
+Screen presence/observed routes are ephemeral and expire after 15s; restart cancels pending delivery
+while preserving recent idempotency receipts. Revocation cancels pending commands immediately.
+New grants require a fresh random key. `home-assistant.bridge.grant`, `.revoke` and `screen.navigate`
+audit entries distinguish adult approval from service requests; queue acceptance is not delivery proof.
+The unpublished migration also includes D-109's `home_assistant_bridge_chore_receipts`, keyed by
+connection/request. It retains an input digest, reservation timestamp and nullable safe status receipt
+(occurrence/date/state/completion ID/replayed); no titles or secrets. Existing atomic domain receipts
+recover interrupted response persistence. Chore receipts remain durable with the grant, unlike 24h
+screen navigation receipts. `controlChores` defaults false for old grants and requires read sharing.
+Completion/undo uses the existing audit trail and earnings calculations, not a second chore ledger.
+
 This document defines conceptual entities and invariants. Concrete table/column names may evolve through migrations, but ownership and history rules should remain stable.
 
 ## Device-local games and external puzzle data

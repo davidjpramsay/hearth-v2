@@ -2,6 +2,69 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-109 — Separately approved Home Assistant chore completion and reopening
+
+- Date: 2026-10-15
+- Status: user-requested local extension to D-108; live HA/TV/NAS installation and publication are
+  separate approvals. No device in use may be disturbed.
+- Context: The owner asked for chores only after discussing broader HA write access. Read-only
+  sharing must not silently turn into write authority; accidental completion can affect earnings.
+- Choice: Off-by-default `controlChores`, requiring `shareChores`, permits status changes on
+  today's existing household occurrences only. Expose a standard HA to-do entity; no add, delete,
+  rename, reassignment, schedule/exception, calendar, payment or administration operations. Keep
+  existing grants read-only. Screen approval/presence is independent of chore control.
+- Safety: Derive the household from the dedicated grant, bind exact request IDs/payloads durably
+  before execution, use existing atomic completion/undo rules and audit actor/source, and require
+  the observed completion ID for reopening. Recover accepted receipts after a crash or midnight
+  without applying again. A revoked grant cannot replay. Bound new requests to 30/minute.
+- Consequences: Extend the unpublished migration 0030 and version-1 opt-in contract. The HA list
+  omits locked/non-actionable chores and is unavailable for failed, stale-day or truncated feeds.
+  It refreshes observed state after acceptance instead of checking boxes optimistically. Existing
+  pocket-money calculations respond normally; no financial control is granted. Broader edits and
+  adult-account access remain out of scope.
+
+## D-108 — Dedicated local HA integration for Hearth tabs and safe readback
+
+- Date: 2026-10-15
+- Status: user-requested local implementation; focused automated tests approved. No live HA/NAS/TV
+  installation or commands while the home TV is in use. Publication and physical acceptance open.
+- Context: The existing outbound HA connection does not make Hearth a device/entity in HA. The
+  priority is explicit tab selection and observed active-tab feedback, with optional chores/calendar
+  information. Reusing adult or TV credentials would grant unrelated household write authority.
+- Choice: Manually installed HA custom integration with config flow/coordinated polling, selected
+  paired screens, digest-only distinct `HearthAutomation` credential, revocation and no cookie fallback.
+  Ephemeral visible-screen leases, native eligibility generation, strict shared tab map, 30s commands,
+  exact receipts, and observed-route acknowledgement prevent misleading optimistic success or stale
+  navigation. Old native shells fail closed; HA keeps power, app launching and media authority.
+- Readback: Explicitly opt-in read-only chore projection and provider-owned calendar projection;
+  bound ranges/counts and omit provider identifiers, notes, locations, URLs, permissions and money.
+  Null enabled feeds mean unavailable, never false empty/zero. Existing cache/occurrence materialization
+  is not new completion/calendar-write authority. Internal inclusive all-day ends convert to exclusive
+  wire dates. Calendar/chores failures do not take away screen navigation.
+- Consequences: Migration 0030, new versioned contract, native foreground capability and private
+  manual HA component install. No MQTT broker, public discovery, server credentials in TV/phone
+  bundles, generic URLs/intents, EventKit revival or live networking change. Existing private `/assist`
+  write routes remain unavailable and are no longer documented as commissioned production support.
+  D-109 subsequently adds separately approved chore completion/reopening only.
+
+## D-107 — One coherent administration scale and joined menu primitive
+
+- Date: 2026-10-15
+- Status: requested local UI cleanup; publication, deployment and physical acceptance remain separate
+- Context: More uses green joined rows while planning uses larger purple cards; individual admin
+  forms vary in button heights, typography and focus. Safe and destructive choices can look alike.
+- Choice: Share typed, state-free settings-menu components over the existing navigation seam.
+  Centralize companion sizing: 32px page titles, 22px section headings, 18px navigation, 16px body
+  and controls, 14px labels/help, 48px standard controls and 44px compact utilities. Use eucalyptus
+  primary, neutral secondary/cancel and brick destructive actions. Preserve native widget geometry,
+  long-label wrapping, dark mode, inset menu focus and Back restoration. TV family menus retain
+  their separate 28px/80px readability scale; no administration is exposed to shared screens.
+- Consequences: Styling and menu composition only. No provider, schema, authentication, household
+  command, NAS configuration, automatic installation or deployment changes. Automated suites are
+  neither added nor run at the D-107 checkpoint; D-108 subsequently received separate test approval.
+  Build/source/manual rendered evidence
+  does not substitute for those release gates or actual iPhone/TCL acceptance.
+
 ## D-106 — Varied photo playback and compact paged removal selection
 
 - Date: 2026-10-13

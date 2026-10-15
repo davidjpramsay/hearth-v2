@@ -1392,7 +1392,7 @@
   min-height: 100dvh;
   margin: 0 auto;
   position: relative;
-  background: var(--warm-ivory);
+  background: var(--canvas);
   box-shadow: 0 0 48px rgb(53 42 48 / 10%);
 }
 .companion-main {
@@ -1438,9 +1438,9 @@
   height: 24px;
 }
 .companion-shell .phone-tab--active {
-  color: var(--plum);
-  background: var(--plum-soft);
-  font-weight: 720;
+  color: var(--sky);
+  background: transparent;
+  font-weight: 700;
 }
 
 @media (min-width: 901px) {
@@ -1449,7 +1449,7 @@
     display: grid;
     grid-template-columns: 238px minmax(0, 1fr);
     align-items: start;
-    background: var(--warm-ivory);
+    background: var(--canvas);
   }
   .companion-shell--admin .admin-desktop-rail {
     height: 100dvh;
@@ -1510,14 +1510,13 @@
   .admin-desktop-nav h2 {
     margin: 0 10px 3px;
     color: var(--muted);
-    font-size: 11px;
-    font-weight: 780;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: 0.02em;
   }
   .admin-desktop-link,
   .admin-desktop-exit {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 11px;
     border: 2px solid transparent;
     border-radius: 10px;
@@ -1525,8 +1524,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 15px;
-    font-weight: 680;
+    font-size: 16px;
+    font-weight: 650;
     text-decoration: none;
   }
   .admin-desktop-link svg,
@@ -1543,8 +1542,9 @@
   .admin-desktop-link:focus-visible,
   .admin-desktop-exit:focus-visible,
   .admin-desktop-brand:focus-visible {
-    outline: 3px solid var(--sky);
-    outline-offset: 1px;
+    outline: 0;
+    box-shadow: inset 0 0 0 3px var(--sky);
+    transform: none;
   }
   .admin-desktop-link--active {
     color: var(--eucalyptus);
@@ -1726,50 +1726,6 @@
   font-weight: 780;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-.admin-setting-list {
-  overflow: hidden;
-  border: 1px solid #e5ddd3;
-  border-radius: 14px;
-  background: rgb(255 255 255 / 80%);
-  box-shadow: 0 6px 18px rgb(61 48 50 / 5%);
-}
-.admin-setting-row {
-  min-height: 64px;
-  padding: 10px 13px;
-  border: 0;
-  border-bottom: 1px solid #e5ddd3;
-  color: #292329;
-  background: transparent;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.admin-setting-row:last-child {
-  border-bottom: 0;
-}
-.admin-setting-row:focus-visible,
-.admin-setting-row:hover {
-  position: relative;
-  z-index: 1;
-  background: var(--surface-raised);
-}
-.admin-setting-row:focus-visible {
-  border-radius: 12px;
-  outline: 0;
-  box-shadow: inset 0 0 0 3px var(--sky);
-  transform: none;
-}
-.admin-setting-row__copy {
-  min-width: 0;
-  flex: 1;
-}
-.admin-setting-row__copy {
-  font-size: 21px;
-}
-.admin-setting-row > svg {
-  color: #3d323b;
 }
 .admin-primary-action,
 .admin-submit,
@@ -2428,16 +2384,6 @@
   gap: 13px;
 }
 .device-row {
-  border-top: 1px solid #ddd5cd;
-}
-.connection-list {
-  overflow: hidden;
-  border: 1px solid #ddd5cd;
-  border-radius: 15px;
-  background: rgb(255 255 255 / 74%);
-  box-shadow: 0 6px 18px rgb(61 48 50 / 5%);
-}
-.connection-list .connection-row + .connection-row {
   border-top: 1px solid #ddd5cd;
 }
 .device-row > div,
@@ -3525,13 +3471,6 @@
     margin-top: 14px;
     gap: 16px;
   }
-  .admin-home .admin-setting-list {
-    border-radius: 14px;
-  }
-  .admin-home .admin-setting-row {
-    min-height: 58px;
-    padding: 8px 11px;
-  }
   .admin-home .admin-primary-action {
     min-height: 54px;
     margin-top: 14px;
@@ -3715,48 +3654,6 @@
   margin: 3px 0 0;
   line-height: 1.35;
 }
-.planning-area-list {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-}
-.planning-area-card {
-  min-height: 88px;
-  padding: 14px;
-  border: 1px solid #e2d9d0;
-  border-radius: 18px;
-  display: grid;
-  grid-template-columns: 52px 1fr 24px;
-  align-items: center;
-  gap: 14px;
-  color: var(--ink);
-  background: rgb(255 255 255 / 78%);
-  text-decoration: none;
-}
-.planning-area-card > span {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--plum);
-  background: var(--plum-soft);
-}
-.planning-area-card strong,
-.planning-area-card small {
-  display: block;
-}
-.planning-area-card strong {
-  font-size: 20px;
-}
-.planning-area-card small {
-  margin-top: 2px;
-  color: #746b72;
-  font-size: 15px;
-}
-.planning-area-card:focus-visible,
-.planning-area-card:hover,
 .routine-editor summary:focus-visible {
   border-color: #b495aa;
   outline: 3px solid rgb(85 50 74 / 18%);
@@ -4738,7 +4635,7 @@
 .money-input input {
   padding-left: 28px;
 }
-.pocket-money-settings-form .admin-secondary {
+.pocket-money-settings-form :is(.admin-secondary, .admin-primary) {
   min-height: 48px;
   white-space: nowrap;
 }
@@ -4947,9 +4844,6 @@
     width: 100%;
     margin: 6px 0 0;
   }
-  .planning-area-card {
-    min-height: 82px;
-  }
   .routine-fields__split {
     grid-template-columns: 1fr;
   }
@@ -5037,7 +4931,7 @@
   .pocket-money-settings-form {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .pocket-money-settings-form .admin-secondary {
+  .pocket-money-settings-form :is(.admin-secondary, .admin-primary) {
     grid-column: 1 / -1;
     width: 100%;
   }
@@ -5541,7 +5435,6 @@
 :root[data-theme='dark'] .event-detail__panel,
 :root[data-theme='dark'] .admin-actor,
 :root[data-theme='dark'] .admin-form,
-:root[data-theme='dark'] .planning-area-card,
 :root[data-theme='dark'] .routine-editor,
 :root[data-theme='dark'] .chore-management-row,
 :root[data-theme='dark'] .past-chore-list,
@@ -5555,15 +5448,6 @@
   background: var(--surface-glass);
 }
 :root[data-theme='dark'] .today-dashboard .summary-details {
-  background: transparent;
-}
-:root[data-theme='dark'] .admin-setting-list {
-  border-color: var(--hairline);
-  background: var(--surface-glass);
-  box-shadow: none;
-}
-:root[data-theme='dark'] .admin-setting-row {
-  border-color: var(--hairline);
   background: transparent;
 }
 :root[data-theme='dark'] .today-admin-section {
@@ -5587,20 +5471,12 @@
 :root[data-theme='dark'] .routine-editor > form {
   border-color: var(--hairline);
 }
-:root[data-theme='dark'] .connection-list {
-  border-color: var(--hairline);
-  background: var(--surface-glass);
-  box-shadow: none;
-}
-:root[data-theme='dark'] .connection-list .connection-row + .connection-row {
-  border-color: var(--hairline);
-}
 :root[data-theme='dark'] .calendar-connection-summary,
 :root[data-theme='dark'] .calendar-picker {
   color: var(--ink);
   background: var(--surface-glass);
 }
-:root[data-theme='dark'] .companion-shell .phone-tab,
+:root[data-theme='dark'] .companion-shell .phone-tab:not(.phone-tab--active),
 :root[data-theme='dark'] .admin-actor small,
 :root[data-theme='dark'] .admin-home__title p,
 :root[data-theme='dark'] .admin-page__header p,

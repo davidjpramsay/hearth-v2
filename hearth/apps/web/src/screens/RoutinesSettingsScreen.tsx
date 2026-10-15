@@ -397,7 +397,7 @@ function RoutineEditor({
             today={today}
           />
           <div className="routine-editor__actions">
-            <button className="admin-secondary routine-save" disabled={pending} type="submit">
+            <button className="admin-primary routine-save" disabled={pending} type="submit">
               {pending ? 'Saving…' : 'Save future schedule'}
             </button>
             <button

@@ -548,11 +548,16 @@ export class SqliteAdminRepository implements AdminRepository {
         audit.actorId,
         audit.source,
         audit.action,
-        audit.action === 'system.backup.create'
-          ? 'system-backup'
-          : audit.action === 'system.update.install' || audit.action === 'system.update.complete'
-            ? 'system-update'
-            : 'household',
+        audit.action === 'screen.navigate'
+          ? 'paired-device'
+          : audit.action.startsWith('home-assistant.bridge.')
+            ? 'home-assistant-bridge'
+            : audit.action === 'system.backup.create'
+              ? 'system-backup'
+              : audit.action === 'system.update.install' ||
+                  audit.action === 'system.update.complete'
+                ? 'system-update'
+                : 'household',
         audit.targetId,
         requestId,
         audit.result,
@@ -1036,6 +1041,10 @@ export class SqliteAdminRepository implements AdminRepository {
   reset(): void {
     this.database.exec(
       `DELETE FROM member_avatars;
+       DELETE FROM home_assistant_bridge_chore_receipts;
+       DELETE FROM home_assistant_bridge_commands;
+       DELETE FROM home_assistant_bridge_revocations;
+       DELETE FROM home_assistant_bridge_connections;
        DELETE FROM command_receipts;
        DELETE FROM audit_events;
        DELETE FROM pairing_requests;

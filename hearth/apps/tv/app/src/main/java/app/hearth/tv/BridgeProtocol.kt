@@ -3,6 +3,7 @@ package app.hearth.tv
 enum class NativeRequest {
     APP_IDENTITY,
     NETWORK_STATUS,
+    PRESENTATION_STATUS,
     EXIT_REQUEST,
 }
 
@@ -17,6 +18,7 @@ object BridgeProtocol {
         return when (typeOnlyMessage.matchEntire(payload)?.groupValues?.get(1)) {
             "app.identity" -> NativeRequest.APP_IDENTITY
             "network.status" -> NativeRequest.NETWORK_STATUS
+            "presentation.status" -> NativeRequest.PRESENTATION_STATUS
             "exit.request" -> NativeRequest.EXIT_REQUEST
             else -> null
         }

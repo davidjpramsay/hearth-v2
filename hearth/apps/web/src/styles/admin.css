@@ -1,0 +1,308 @@
+/* Shared companion scale. Family/TV screens retain their sofa-readable controls. */
+.admin-page,
+.admin-home {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.admin-page__header > div {
+  min-width: 0;
+}
+
+.admin-page .admin-page__header,
+.admin-home .admin-home__title {
+  margin-bottom: 24px;
+}
+
+.admin-page .admin-page__header {
+  min-height: 56px;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-page .admin-page__header h1,
+.admin-home .admin-home__title h1 {
+  color: var(--ink);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.admin-page .admin-page__header p,
+.admin-home .admin-home__title p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.admin-page .admin-back {
+  width: var(--admin-control-height);
+  height: var(--admin-control-height);
+  border-radius: var(--admin-control-radius);
+  background: var(--surface);
+}
+
+.admin-home .admin-setting-group h2 {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: var(--admin-label-font);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.admin-home .admin-session-controls {
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.companion-main .admin-page h2 {
+  font-size: var(--admin-section-title);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.companion-main .admin-page h3 {
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.admin-page :is(.admin-form, .member-editor) {
+  border-color: var(--hairline);
+  border-radius: var(--admin-panel-radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.admin-page :is(.admin-form, .member-editor) {
+  padding: var(--admin-space);
+}
+
+.admin-page :is(.admin-form, .member-editor, .routine-fields) > label,
+.admin-page :is(.notice-form, .notice-form__options) label {
+  color: var(--ink);
+  font-size: var(--admin-label-font);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+/* Exclude radios, checkboxes, hidden file pickers and image-crop interaction surfaces. */
+.admin-page
+  :is(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='file'],
+      [type='hidden'],
+      [type='range'],
+      [type='color']
+    ),
+    select,
+    textarea
+  ) {
+  min-width: 0;
+  min-height: var(--admin-control-height);
+  border-color: var(--line-strong);
+  border-radius: var(--admin-control-radius);
+  color: var(--ink);
+  background: var(--input-surface);
+  font-family: inherit;
+  font-size: var(--admin-control-font);
+  line-height: 1.4;
+}
+
+.admin-page textarea {
+  padding: 12px;
+}
+
+.admin-page
+  :is(
+    .admin-submit,
+    .admin-primary,
+    .admin-primary-action,
+    .admin-secondary,
+    .admin-danger,
+    .photo-source-refresh,
+    .photo-selection-toggle,
+    .photo-bulk-action,
+    .photo-curation-action,
+    .system-section-link,
+    .device-row button,
+    .pair-code-form button,
+    .notice-form .button,
+    .notice-card .button,
+    .system-update .button,
+    .system-advanced-recovery .button,
+    .phone-recovery__card a
+  ) {
+  min-height: var(--admin-control-height);
+  max-width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--admin-control-radius);
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: var(--admin-control-font);
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.admin-page
+  :is(.admin-submit, .admin-primary, .admin-secondary, .admin-danger, .photo-curation-action)
+  > svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.admin-page
+  :is(
+    .admin-submit,
+    .admin-primary,
+    .admin-primary-action,
+    .pair-code-form button,
+    .notice-form .button--primary,
+    .photo-upload-button,
+    .system-update .button--primary,
+    .system-advanced-recovery .button--primary
+  ) {
+  border-color: var(--eucalyptus);
+  color: var(--canvas);
+  background: var(--eucalyptus);
+}
+
+.admin-page
+  :is(
+    .admin-danger,
+    .notice-card .button--danger,
+    .photo-bulk-action--danger,
+    .photo-curation-action--delete
+  ) {
+  border-color: color-mix(in srgb, var(--brick) 40%, var(--hairline));
+  color: var(--brick);
+  background: var(--brick-soft);
+}
+
+.admin-page :is(button, a, summary):not(.settings-menu__row, .today-section-switch):focus-visible,
+.admin-page :is(input, select, textarea):focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: 3px;
+  box-shadow: none;
+  transform: none;
+}
+
+.admin-page
+  :is(
+    .admin-submit,
+    .admin-primary,
+    .admin-secondary,
+    .admin-danger,
+    .photo-source-refresh,
+    .photo-selection-toggle,
+    .photo-bulk-action
+  ):disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-page :is(.field-help, .device-setup-empty, .phone-connection small) {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.admin-page .admin-feedback {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: var(--admin-control-radius);
+  color: var(--eucalyptus);
+}
+
+.admin-page .admin-feedback--error {
+  color: var(--brick);
+}
+
+.admin-page .today-section-switch {
+  min-height: 64px;
+  padding: 12px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+}
+
+.admin-page .today-section-switch__icon {
+  width: 36px;
+  height: 36px;
+}
+
+/* Consistent compact secondary controls, still large enough for touch and keyboard. */
+.companion-main
+  .admin-page
+  :is(
+    .routine-order-controls button,
+    .pocket-money-history-row__void,
+    .activity-filter,
+    .system-section-link
+  ) {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.admin-page .routine-order-controls button {
+  height: 44px;
+}
+
+.admin-page .activity-filter[aria-pressed='true'] {
+  color: var(--eucalyptus);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.companion-main .admin-page .activity-group > h2 {
+  font-size: var(--admin-label-font);
+  letter-spacing: 0;
+}
+
+.admin-page .connection-badge {
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .admin-page,
+  .admin-home {
+    --admin-space: 16px;
+  }
+
+  .admin-page .admin-page__header {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .admin-page .admin-back {
+    width: 44px;
+    height: 44px;
+  }
+
+  .admin-page :is(.admin-form__split, .calendar-remove-confirmation) {
+    min-width: 0;
+  }
+}

@@ -778,7 +778,7 @@ function PhotoDeleteDialog({
             Keep photos
           </button>
           <button
-            className="admin-primary-action photo-delete-confirm focusable"
+            className="admin-danger photo-delete-confirm focusable"
             data-focus-id="photo-delete-confirm"
             data-focus-left="photo-delete-cancel"
             disabled={pending}

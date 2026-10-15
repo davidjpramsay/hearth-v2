@@ -86,6 +86,7 @@ const migrations = [
     version: 29,
     url: new URL('./migrations/0029_phone_recovery.sql', import.meta.url),
   },
+  { version: 30, url: new URL('./migrations/0030_home_assistant_bridge.sql', import.meta.url) },
 ] as const;
 
 const latestMigration = migrations.at(-1);

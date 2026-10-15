@@ -265,7 +265,7 @@
   flex: 0 0 auto;
   padding: 7px 9px;
   border-radius: 10px;
-  color: var(--plum);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
@@ -273,7 +273,7 @@
 
 .system-section-link:focus-visible,
 .system-section-link:hover {
-  background: var(--plum-soft);
+  background: var(--surface-muted);
 }
 
 .system-connection-list {
@@ -380,8 +380,8 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  color: var(--plum);
-  background: var(--plum-soft);
+  color: var(--eucalyptus);
+  background: var(--eucalyptus-soft);
   display: grid;
   place-items: center;
 }

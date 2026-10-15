@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 
 import { useAppearance } from './appearance/appearance';
 import { AppShell } from './components/AppShell';
@@ -9,6 +9,7 @@ import { useScenario } from './hooks/useScenario';
 import { useHostedReleaseRefresh } from './hooks/useHostedReleaseRefresh';
 import { useRealtimeInvalidation } from './hooks/useRealtimeInvalidation';
 import { useDraftNavigationGuard } from './hooks/useDraftNavigationGuard';
+import { useScreenPresentation } from './hooks/useScreenPresentation';
 import { TodayScreen } from './screens/TodayScreen';
 
 const AdminAuthBoundary = lazy(async () => ({
@@ -122,6 +123,7 @@ export function App() {
   useHostedReleaseRefresh();
   useDraftNavigationGuard();
   useRealtimeInvalidation();
+  const confirmPresentedPath = useScreenPresentation();
   const initialFocus =
     location.pathname === '/appearance'
       ? `appearance-${preferences.theme}`
@@ -222,9 +224,19 @@ export function App() {
           <Route path="/pair" element={<PairingScreen />} />
           <Route path="*" element={<Navigate replace to="/today" />} />
         </Routes>
+        <PresentedRouteObserver onPresented={confirmPresentedPath} />
       </Suspense>
     </AppShell>
   );
+}
+
+// Inside Suspense: a lazy route must commit before a navigation can be acknowledged.
+function PresentedRouteObserver({ onPresented }: { onPresented: (path: string) => void }) {
+  const location = useLocation();
+  useEffect(() => {
+    onPresented(location.pathname);
+  }, [location.key, location.pathname, onPresented]);
+  return null;
 }
 
 function LegacyCalendarRedirect({ view }: { view: 'week' | 'month' }) {

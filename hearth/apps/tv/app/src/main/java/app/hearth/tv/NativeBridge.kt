@@ -12,6 +12,7 @@ class NativeBridge(
     private val trustedOrigin: String,
     private val networkAvailable: () -> Boolean,
     private val exitApp: () -> Unit,
+    private val presentationStatus: () -> PresentationSnapshot,
 ) {
     fun install(): Boolean {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return false
@@ -35,6 +36,7 @@ class NativeBridge(
                         .put("online", networkAvailable())
                         .toString(),
                 )
+                NativeRequest.PRESENTATION_STATUS -> replyProxy.postMessage(presentationStatus().toMessage())
                 NativeRequest.EXIT_REQUEST -> exitApp()
                 null -> replyProxy.postMessage("{\"type\":\"error\",\"code\":\"UNSUPPORTED_MESSAGE\"}")
             }
@@ -50,5 +52,18 @@ class NativeBridge(
             Uri.parse(trustedOrigin),
         )
         return true
+    }
+
+    fun sendPresentation(snapshot: PresentationSnapshot): Boolean {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.POST_WEB_MESSAGE)) return false
+        // A lifecycle notification must never prevent pause/recovery if WebView is going away.
+        return runCatching {
+            WebViewCompat.postWebMessage(
+                webView,
+                WebMessageCompat(snapshot.toMessage()),
+                Uri.parse(trustedOrigin),
+            )
+            true
+        }.getOrDefault(false)
     }
 }

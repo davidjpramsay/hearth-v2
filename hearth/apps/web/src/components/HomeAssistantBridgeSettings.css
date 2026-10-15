@@ -1,0 +1,116 @@
+.ha-bridge-settings {
+  display: grid;
+  gap: 0.75rem;
+  padding-block: 0 1rem;
+  border-block-end: 1px solid var(--hairline);
+}
+
+.ha-bridge-settings > header h2,
+.ha-bridge-settings > .field-help {
+  margin: 0;
+}
+
+.ha-bridge-settings header p {
+  margin-block: 0.25rem 0;
+}
+
+.ha-bridge-key p {
+  margin-block: 0.5rem;
+}
+
+.ha-bridge-key,
+.ha-bridge-summary {
+  min-inline-size: 0;
+  padding: 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: 1rem;
+}
+
+.ha-bridge-settings .admin-form {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ha-bridge-settings .admin-submit {
+  margin-block-start: 0;
+}
+
+.ha-bridge-settings fieldset {
+  min-inline-size: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.ha-bridge-settings legend {
+  font-weight: 650;
+}
+
+.ha-bridge-settings .ha-bridge-choice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  min-block-size: 48px;
+}
+
+.ha-bridge-settings .ha-bridge-choice + .ha-bridge-choice {
+  margin-block-start: 0;
+}
+
+.ha-bridge-setup summary {
+  display: list-item;
+  align-content: center;
+  min-block-size: 48px;
+  cursor: pointer;
+}
+
+.ha-bridge-setup li + li {
+  margin-block-start: 0.5rem;
+}
+
+.ha-bridge-choice input[type='checkbox'] {
+  flex: 0 0 auto;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  min-block-size: 1.25rem;
+  padding: 0;
+  margin: 0;
+}
+
+.ha-bridge-key input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  margin-block: 0.5rem;
+  min-block-size: var(--admin-control-height);
+  padding-inline: 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--admin-control-radius);
+  color: var(--ink);
+  background: var(--input-surface);
+  font-family: monospace;
+}
+
+.ha-bridge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.ha-bridge-summary dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-block: 0.75rem;
+}
+
+.ha-bridge-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

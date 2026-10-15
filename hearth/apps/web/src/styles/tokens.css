@@ -30,6 +30,13 @@
   --radius-panel: 20px;
   --radius-photo: 17px;
   --radius-small: 12px;
+  --admin-control-height: 48px;
+  --admin-control-font: 16px;
+  --admin-control-radius: 12px;
+  --admin-panel-radius: 16px;
+  --admin-section-title: 22px;
+  --admin-label-font: 14px;
+  --admin-space: 20px;
   --shadow-rest: 0 8px 24px rgb(48 50 47 / 8%);
   --shadow-soft: 0 14px 36px rgb(48 50 47 / 10%);
   --shadow-focus: 0 12px 30px rgb(39 66 50 / 20%);

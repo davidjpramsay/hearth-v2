@@ -425,6 +425,98 @@ test('private calendar setup does not describe the live connection as a local de
   await expect(page.getByLabel('Apple Account email or CalDAV username')).toBeVisible();
 });
 
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
+]) {
+  test(`Home Assistant chore control requires explicit opt-in at ${viewport.width}px`, async ({
+    page,
+    request,
+  }, testInfo) => {
+    const problems: string[] = [];
+    page.on('console', (message) => {
+      if (['warning', 'error'].includes(message.type())) problems.push(message.text());
+    });
+    page.on('pageerror', (error) => problems.push(error.message));
+    await page.setViewportSize(viewport);
+    await page.goto('/admin/connections/home-assistant');
+    await expect(page).toHaveTitle(/Hearth/);
+    await expect(page.getByRole('heading', { name: 'Home Assistant', exact: true })).toBeVisible();
+    const control = page.getByLabel('Allow completing and reopening today’s chores');
+    const share = page.getByLabel('Share chores (read only)');
+    await expect(control).toBeDisabled();
+    await expect(control).not.toBeChecked();
+    await share.check();
+    await control.focus();
+    await page.keyboard.press('Space');
+    await expect(control).toBeChecked();
+    await share.uncheck();
+    await expect(control).toBeDisabled();
+    await expect(control).not.toBeChecked();
+    await share.check();
+    await control.check();
+    await expect(
+      page.getByText('Share chores first. Completion changes affect earned pocket money as usual.'),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Create Home Assistant key' }).click();
+    const field = page.getByLabel('One-time key', { exact: true });
+    await expect(field).toHaveAttribute('type', 'password');
+    // Disposable demo grant only; kept in memory, never logged or captured in a screenshot.
+    const key = await field.inputValue();
+    await page.getByRole('button', { name: 'Done, key saved in Home Assistant' }).click();
+    await expect(field).toHaveCount(0);
+    await expect(
+      page.getByText('Complete and reopen today’s chores', { exact: true }),
+    ).toBeVisible();
+    const headers = { authorization: `HearthAutomation ${key}` };
+    const state = await request.get('http://127.0.0.1:4310/api/v1/home-assistant/state', {
+      headers,
+    });
+    expect(state.status()).toBe(200);
+    const snapshot = await state.json();
+    expect(snapshot.permissions.controlChores).toBe(true);
+    const chore = snapshot.chores.items.find(
+      (item: { state: string; locked: boolean }) => item.state === 'pending' && !item.locked,
+    );
+    const url = `http://127.0.0.1:4310/api/v1/home-assistant/chores/${chore.id}/completion`;
+    const data = {
+      requestId: 'request_browser_chore',
+      localDate: snapshot.chores.localDate,
+      isCompleted: true,
+      completionId: null,
+    };
+    const done = await request.post(url, { headers, data });
+    expect(done.status()).toBe(200);
+    const receipt = await done.json();
+    expect(receipt.state).toBe('completed');
+    expect((await request.post(url, { headers, data })).status()).toBe(200);
+    const undo = await request.post(url, {
+      headers,
+      data: {
+        ...data,
+        requestId: 'request_browser_undo',
+        isCompleted: false,
+        completionId: receipt.completionId,
+      },
+    });
+    expect(undo.status()).toBe(200);
+    expect((await undo.json()).state).toBe('pending');
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    const a11y = await new AxeBuilder({ page }).analyze();
+    expect(
+      a11y.violations.filter((violation) =>
+        ['serious', 'critical'].includes(violation.impact ?? ''),
+      ),
+    ).toEqual([]);
+    await page
+      .locator('.ha-bridge-settings')
+      .screenshot({ path: testInfo.outputPath('chore-control-summary.png') });
+    expect(problems).toEqual([]);
+  });
+}
+
 test('adult can test, map, save and remove a tightly scoped Home Assistant connection', async ({
   page,
 }) => {
@@ -437,7 +529,7 @@ test('adult can test, map, save and remove a tightly scoped Home Assistant conne
   await page.goto('/admin/connections');
   await page.locator('[data-focus-id="connection-home-assistant"]').click();
   await expect(page).toHaveURL(/\/admin\/connections\/home-assistant$/);
-  await expect(page.getByRole('heading', { name: 'Home Assistant' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home Assistant', exact: true })).toBeVisible();
   await expect(page.getByText('Strictly limited')).toBeVisible();
 
   const token = 'private-home-assistant-token';
@@ -506,7 +598,7 @@ test('Home Assistant setup has family-safe authentication errors and keyboard Ba
   await page.goto('/admin/connections');
   await page.locator('[data-focus-id="connection-home-assistant"]').focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-focus-id="home-assistant-server-url"]')).toBeFocused();
+  await expect(page.locator('[data-focus-id="home-assistant-bridge-setup"]')).toBeFocused();
   await page.getByLabel('Long-lived access token').fill('wrong-home-assistant-token');
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(page.getByRole('alert')).toContainText(
@@ -539,7 +631,7 @@ test('adult sees concise system health and can create an advanced recovery copy'
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 29 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 30 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connections and photos' })).toBeVisible();
   const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });
@@ -926,7 +1018,7 @@ for (const viewport of [
       await expect(page.getByRole('radio')).toHaveCount(0);
       const first = palettes.first();
       const closedHeight = (await first.boundingBox())!.height;
-      expect(closedHeight).toBe(52);
+      expect(closedHeight).toBe(48);
       await page.screenshot({ path: testInfo.outputPath(`people-collapsed-${theme}.png`) });
       await first.locator('summary').click();
       await expect(first.getByRole('radio')).toHaveCount(12);
@@ -1153,7 +1245,7 @@ for (const viewport of [
   test(`@visual Home Assistant setup at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto('/admin/connections/home-assistant');
-    await expect(page.getByRole('heading', { name: 'Home Assistant' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Home Assistant', exact: true })).toBeVisible();
     await captureEvidence(page, {
       path: resolve(homeAssistantEvidence, `home-assistant-setup-${viewport.name}.png`),
       animations: 'disabled',

@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { BrowserAccess } from './browser-access.js';
+import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
 import { PHONE_PENDING_COOKIE, type PhoneConnectionService } from './phone-connections.js';
 import { z } from 'zod';
 
@@ -13,6 +14,15 @@ import {
 
 import {
   isTelevisionUserAgent,
+  BridgeCalendarQuerySchema,
+  BridgeChoreCompletionRequestSchema,
+  BridgeConnectionSchema,
+  BridgeGrantRequestSchema,
+  BridgeGrantResultSchema,
+  ScreenNavigationRequestSchema,
+  ScreenNavigationResultSchema,
+  ScreenPresentationRequestSchema,
+  ScreenPresentationResultSchema,
   OwnerPhoneClaimSchema,
   PhoneInvitationCreateSchema,
   PhoneInvitationClaimSchema,
@@ -306,6 +316,8 @@ export const LOGGER_REDACT_PATHS = [
   '*.setupCode',
   '*.recoveryCode',
   '*.pairingSecret',
+  '*.secret',
+  'req.body.secret',
   '*.ownerKey',
   '*.invitationSecret',
   '*.pendingToken',
@@ -332,6 +344,7 @@ export interface BuildServerOptions {
   reminderRepository?: ReminderRepository;
   calendarConnectionRepository?: CalendarConnectionRepository;
   homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
+  homeAssistantBridge?: HomeAssistantBridgeService;
   systemOperations?: SystemOperationsRepository;
   applianceUpdate?: ApplianceUpdateRepository;
   companionAuth?: CompanionAuthRepository;
@@ -473,9 +486,45 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     realtime,
     now: () => runtime.clock.now(),
   });
+  const homeAssistantBridge =
+    options.homeAssistantBridge ??
+    new HomeAssistantBridgeService(adminRepository, repository, { now: () => runtime.clock.now() });
+  const automationRoutes = new Set([
+    '/api/v1/home-assistant/state',
+    '/api/v1/home-assistant/calendar',
+    '/api/v1/home-assistant/screens/:deviceId/navigation',
+    '/api/v1/home-assistant/chores/:occurrenceId/completion',
+  ]);
+  const automationSecret = (request: FastifyRequest): string => {
+    const authorization = request.headers.authorization;
+    if (
+      request.headers.cookie !== undefined ||
+      typeof authorization !== 'string' ||
+      !/^HearthAutomation ha_[A-Za-z0-9_-]{43}$/.test(authorization)
+    )
+      throw new RepositoryError(
+        'UNAUTHENTICATED',
+        'Use the dedicated Home Assistant connection key.',
+      );
+    return authorization.slice('HearthAutomation '.length);
+  };
 
   server.addHook('preHandler', async (request, reply) => {
     const routeUrl = request.routeOptions.url;
+    // This branch must precede browser/device classification. Never fall back to mixed cookies.
+    const usesAutomation =
+      typeof request.headers.authorization === 'string' &&
+      /^\s*HearthAutomation(?:\s|$)/i.test(request.headers.authorization);
+    if (usesAutomation || (routeUrl !== undefined && automationRoutes.has(routeUrl))) {
+      return run(reply, async () => {
+        if (routeUrl === undefined || !automationRoutes.has(routeUrl))
+          throw new RepositoryError(
+            'FORBIDDEN',
+            'Home Assistant may use only its dedicated Hearth bridge endpoints.',
+          );
+        homeAssistantBridge.authenticate(automationSecret(request));
+      });
+    }
     if (
       options.phoneConnections &&
       (routeUrl?.includes('/auth/phones/') || routeUrl === '/api/v1/auth/sign-outs') &&
@@ -1733,6 +1782,119 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return run(reply, async () =>
       TvDeviceSessionSchema.parse(
         await adminRepository.getTvDeviceSession(deviceCredential(request.headers)),
+      ),
+    );
+  });
+
+  server.get('/api/v1/households/:householdId/home-assistant-bridge', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (params === null) return reply;
+    reply.header('Cache-Control', 'private, no-store');
+    return run(reply, async () =>
+      BridgeConnectionSchema.nullable().parse(
+        await homeAssistantBridge.get(params.householdId, actorId(request.headers, options)),
+      ),
+    );
+  });
+  server.post('/api/v1/households/:householdId/home-assistant-bridge', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(BridgeGrantRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    reply.header('Cache-Control', 'private, no-store');
+    return run(reply, async () => {
+      options.phoneConnections?.assertOrigin(
+        request.headers.origin,
+        request.headers['sec-fetch-site'],
+      );
+      return BridgeGrantResultSchema.parse(
+        await homeAssistantBridge.grant(
+          params.householdId,
+          actorId(request.headers, options),
+          body,
+        ),
+      );
+    });
+  });
+  server.post(
+    '/api/v1/households/:householdId/home-assistant-bridge/revocations',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(CommandRequestSchema.strict(), request.body, reply);
+      if (params === null || body === null) return reply;
+      reply.header('Cache-Control', 'private, no-store');
+      return run(reply, async () => {
+        options.phoneConnections?.assertOrigin(
+          request.headers.origin,
+          request.headers['sec-fetch-site'],
+        );
+        return homeAssistantBridge.revoke(
+          params.householdId,
+          actorId(request.headers, options),
+          body.requestId,
+        );
+      });
+    },
+  );
+  server.post('/api/v1/device-sessions/current/presentation', async (request, reply) => {
+    const body = parse(ScreenPresentationRequestSchema, request.body, reply);
+    if (body === null) return reply;
+    reply.header('Cache-Control', 'private, no-store');
+    return run(reply, async () =>
+      ScreenPresentationResultSchema.parse(
+        homeAssistantBridge.presentation(
+          adminRepository.getTvDeviceSession(deviceCredential(request.headers)),
+          body,
+        ),
+      ),
+    );
+  });
+  server.get('/api/v1/home-assistant/state', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    return run(reply, async () => homeAssistantBridge.state(automationSecret(request)));
+  });
+  server.get('/api/v1/home-assistant/calendar', async (request, reply) => {
+    const query = parse(BridgeCalendarQuerySchema, request.query, reply);
+    if (query === null) return reply;
+    reply.header('Cache-Control', 'private, no-store');
+    return run(reply, async () =>
+      homeAssistantBridge.calendar(automationSecret(request), query.start, query.end),
+    );
+  });
+  server.post('/api/v1/home-assistant/chores/:occurrenceId/completion', async (request, reply) => {
+    const params = parse(
+      z.object({ occurrenceId: OpaqueIdSchema }).strict(),
+      request.params,
+      reply,
+    );
+    const body = parse(BridgeChoreCompletionRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    reply.header('Cache-Control', 'private, no-store');
+    return run(reply, async () => {
+      const secret = automationSecret(request);
+      const householdId = homeAssistantBridge.authenticate(secret).householdId;
+      const result = await homeAssistantBridge.setChoreCompletion(
+        secret,
+        params.occurrenceId,
+        body,
+      );
+      realtime.publish(householdId, 'chore.changed', params.occurrenceId);
+      realtime.publish(householdId, 'pocket-money.changed', params.occurrenceId);
+      return result;
+    });
+  });
+  server.post('/api/v1/home-assistant/screens/:deviceId/navigation', async (request, reply) => {
+    const params = parse(z.object({ deviceId: OpaqueIdSchema }), request.params, reply);
+    const body = parse(ScreenNavigationRequestSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    reply.header('Cache-Control', 'private, no-store');
+    return run(reply, async () =>
+      ScreenNavigationResultSchema.parse(
+        await homeAssistantBridge.navigate(
+          automationSecret(request),
+          params.deviceId,
+          body.requestId,
+          body.tab,
+        ),
       ),
     );
   });
@@ -3006,6 +3168,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   if (demoMode) {
     server.post('/api/v1/demo/reset', async (_request, reply) => {
+      homeAssistantBridge.reset();
       planningRepository.reset();
       repository.reset();
       adminRepository.reset();

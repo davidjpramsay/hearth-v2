@@ -312,6 +312,24 @@ copyright notice. Official contract and usage conditions: <https://api.esv.org/d
 
 ## Home Assistant
 
+### Home Assistant controls Hearth (D-108)
+
+The optional custom integration under `hearth/integrations/home_assistant` implements the separate
+`HOME_ASSISTANT_BRIDGE_CONTRACT.md`: selected foreground-screen tab controls/observed state and
+explicitly approved read-only chores/calendar entities. It uses a distinct `HearthAutomation`
+credential, never the outbound HA access token, adult cookie or TV credential. Manual component
+installation, live pairing and physical TV proof require approval and are not implied by local
+builds. No MQTT broker, public discovery, media control or background app launch is added.
+An enabled data feed that cannot be read is unavailable/null, never a false zero/empty success;
+screen control remains independent of those feed failures. All-day wire dates have an exclusive
+end (converted from Hearth's inclusive internal local end date), preserving calendar semantics.
+D-109 adds a separately approved chore-control permission and standard **Today's chores** HA to-do
+entity. Tick/untick maps only to existing domain completion/undo on today's occurrences with exact
+retry and observed-completion protection. No creation, removal, reassignment, schedule, payment,
+calendar-edit or admin operations. Legacy/read-only grants never gain this capability automatically.
+
+### Hearth controls Home Assistant (existing outbound adapter)
+
 Hearth talks to Home Assistant from the server through its supported REST API. The television/web
 client never receives the Home Assistant long-lived token, root URL or raw entity IDs.
 
@@ -359,7 +377,11 @@ Reject arbitrary domain/service/entity input from clients.
 
 ### Home Assistant to Hearth
 
-Provide authenticated, narrowly scoped command endpoints for day summaries, list additions and chore completion. Support idempotency identifiers because automations and voice pipelines may retry.
+The existing `/assist` day-summary, list-addition and chore-completion routes are demonstrated in
+demo/tests; their private-mode service actor currently rejects access. They are not commissioned
+production voice write endpoints. Future activation needs its own typed/scoped authentication and
+acceptance; the D-108 read/navigation credential deliberately cannot call them. Preserve request
+idempotency because voice pipelines may retry.
 
 Recommended initial Home Assistant scripts:
 

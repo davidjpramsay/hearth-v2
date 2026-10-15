@@ -1,5 +1,27 @@
 # Hearth v2 implementation roadmap
 
+## Inbound Home Assistant integration — 2026-10-15 (D-108)
+
+Priority: approved foreground Hearth tab selection with observed active-tab feedback, then optional
+read-only chores/calendar entities. Implement the dedicated scoped contract/credential and migration,
+native foreground capability, web heartbeat/acknowledgement and manual HA custom integration.
+Focused automated tests are approved for this slice. Local implementation/checks do not authorize
+installation or commands on the home TV in use, HA restart, NAS deployment, Git publication or live
+network changes. Physical selected-TV/manual navigation, pause/resume without media interruption,
+real HA calendar/chores, revocation and recovery remain open until separately witnessed.
+The owner-approved D-109 extension adds optional completion/reopening of today's existing chores,
+not broader edits/admin rights. Verify opt-in defaults, grant isolation, exact/crash-safe retry,
+stale completion/date guards, earnings/audit preservation and HA to-do wiring locally; then perform
+an explicitly approved real HA chore tick/untick proof. No live installation is implied.
+
+## Administration consistency — 2026-10-15 (D-107)
+
+Share joined settings menus and a companion typography/control scale, preserve existing behavior
+and shared-screen boundaries, and inspect responsive light/dark layouts. Local build/source/
+interactive-browser evidence remains separate from automated release gates (not run under the
+current instruction), actual iPhone/TCL acceptance, publication and deployment. No NAS or access
+configuration change is part of this UI cleanup.
+
 ## Selected appliance access work — D-104 (2026-10-12)
 
 1. Future native QR/metadata contract, deterministic fixtures and advisory classification: locally

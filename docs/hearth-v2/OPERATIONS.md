@@ -1,5 +1,49 @@
 # Hearth v2 local environment and operations plan
 
+## Home Assistant inbound bridge installation (D-108)
+
+The component is validated against HA 2026.10.1/current config-flow APIs; verify the installed
+version before copying it. Older HA compatibility is unproved and does not authorize an automatic
+HA upgrade. Agree a compatibility change or upgrade separately if required.
+The 2026-10-15 read-only live UI preflight confirmed HA Core 2026.10.1 / HA OS 18.3, the enabled
+daily 06:30 **Good Morning - TV music and Hearth** automation, and no configured Hearth integration.
+No automation was executed or changed during that preflight. The owner subsequently approved
+finishing the connection/release. Keep that routine's existing music/wake/volume and native-player
+guards; after actual screen registration, append bounded ready → select stored option `today` →
+observed-ack verification, using the real selected-screen entity ID, never a guessed placeholder.
+
+Use the trusted Hearth **server** origin, not a television IP. HA's household/server device owns
+chore/calendar entities; its child screen devices own tab selectors. Server chore commands do not
+require the TV to be online. Android TV Remote/ADB still owns physical power and app launching.
+
+This local source change does not install anything on HA or the TV. Preserve the running TV while
+in use. After verified release and explicit live-change approval: back up HA, update Hearth using
+the existing verified private release workflow (preserving Synology networking), update the existing
+signed TV APK without uninstall/clearing its pairing, and manually copy only the bundled
+`hearth/integrations/home_assistant/custom_components/hearth` folder into HA's `custom_components`.
+Restart HA at an agreed quiet time. It is not built-in, HACS-published or auto-discovered.
+
+In Hearth's adult Connections → Home Assistant, select existing screens and desired read-only
+sharing, then create a private connection key. In HA Add integration → Hearth enter the trusted
+Hearth HTTPS root and that key. Never use an adult session, TV key or HA long-lived token for this
+direction. HTTPS certificate verification stays enabled; local test exceptions must remain loopback.
+The key appears only for setup and is protected by HA config-entry storage/backups; never copy it
+into chat, screenshots, sensor attributes, automation YAML or source control. Revoking in Hearth
+invalidates it immediately. Re-pair with a fresh key rather than restoring an old revoked key.
+For D-109 chore tick/untick, separately enable **Allow completing and reopening today’s chores**
+before issuing the key. Existing read-only grants must be revoked/replaced to change permissions;
+installing a new version never upgrades them. HA exposes **Today's chores** as a status-only to-do
+list. It needs no online TV. It is unavailable for denied, stale-day, truncated or failed chore data.
+Verify complete then reopen on one explicitly agreed test chore, with normal earnings/audit checks;
+do not use real household chores for a speculative smoke test. Calendar stays read-only; admin access
+remains blocked.
+
+Physical acceptance: identify the intended screen, open Hearth, change one allowed tab from HA,
+confirm observed feedback and manual remote navigation, then leave Hearth for another app and
+verify no wake/launch/navigation is performed. Check offline/expiry/revocation, read-only chore
+counts and timed/all-day calendar ranges without logging household contents. Retain private backups
+and use the existing rollback procedure; no compose/network reset, re-pair or public exposure.
+
 ## Appliance access — D-104 (local browser implementation, hardware pending)
 
 The selected product uses a private supplied QR, phone-assisted authenticated network setup,
@@ -740,7 +784,9 @@ Open Hearth pages compare the non-cacheable health release identifier when their
 reconnects, once per visible minute and when the app returns to the foreground or network. A
 successful replacement therefore reloads the page once without clearing a television pairing or
 adult session. The first deployment that introduces this behaviour still needs one ordinary page/app
-restart; later releases are automatic.
+restart; later client reloads are automatic. Server release installation still requires an
+explicit approved operator activation or the adult phone's Install update action; a GitHub push
+does not deploy to the NAS.
 
 `stage-private-release.sh` remains available when an operator deliberately wants to stage without
 restarting. Do not choose Container Manager **Build** for a normal update: production Compose has no

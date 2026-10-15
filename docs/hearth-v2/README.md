@@ -35,6 +35,13 @@ and voice. Native television media apps remain separate.
 Open acceptance work is tracked only in [`ACCEPTANCE.md`](ACCEPTANCE.md) and
 [`ROADMAP.md`](ROADMAP.md); this index intentionally avoids duplicating it.
 
+The opt-in, local Home Assistant integration follows
+[`HOME_ASSISTANT_BRIDGE_CONTRACT.md`](HOME_ASSISTANT_BRIDGE_CONTRACT.md) (D-108): selected
+foreground Hearth screen tabs and separately approved read-only chores/calendar feedback.
+The D-109 extension adds opt-in completion/reopening of today's existing chores only, not admin
+access or general chore/calendar editing.
+Its installation and physical acceptance are separate from local implementation.
+
 Adult phone setup and recovery follow the versioned
 [`PHONE_CONNECTIONS_CONTRACT.md`](PHONE_CONNECTIONS_CONTRACT.md) (D-102): protected owner key
 for the protected owner phone, QR approval for additional phones, no passwords or passkeys.
