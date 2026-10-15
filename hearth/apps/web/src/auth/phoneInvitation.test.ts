@@ -7,6 +7,9 @@ describe('private phone card fragments', () => {
       'recovery',
     );
     expect(privatePhoneIntentFromHash(`#recover-phone=${'a'.repeat(64)}`)).toBeNull();
+    expect(privatePhoneIntentFromHash(`#replace-owner=${'a'.repeat(64)}`)?.purpose).toBe(
+      'owner-replacement',
+    );
   });
   it('rejects query parameters, added destinations and oversized proof', () => {
     for (const text of [

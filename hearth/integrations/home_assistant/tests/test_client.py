@@ -9,7 +9,7 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta
 from itertools import pairwise
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
 from support import (
@@ -215,6 +215,69 @@ class SchemaTests(unittest.TestCase):
 
 
 class ClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_pairing_start_retries_exactly_without_authorization_or_code_as_secret(
+        self,
+    ):
+        pairing = {
+            "id": "pairing_fixture",
+            "code": "ABCDEF",
+            "expiresAt": datetime.now(UTC).isoformat(),
+            "interval": 3,
+        }
+        session = Session(TimeoutError(), Response(pairing))
+        self.assertEqual(
+            await make_client(session).async_start_pairing("request_fixture"), pairing
+        )
+        self.assertEqual(session.calls[0], session.calls[1])
+        self.assertNotIn("Authorization", session.calls[0][2]["headers"])
+        self.assertEqual(session.calls[0][2]["json"]["secret"], KEY)
+        self.assertFalse(session.calls[0][2]["allow_redirects"])
+        for change in [
+            {"code": "ABC123"},
+            {"interval": 0},
+            {"id": "../escape"},
+            {"expiresAt": "not-a-date"},
+        ]:
+            with self.assertRaises(client.HearthProtocolError):
+                await make_client(
+                    Session(Response({**pairing, **change}))
+                ).async_start_pairing("request_fixture")
+
+    async def test_pairing_poll_replays_lost_exchange_then_validates_real_state(self):
+        session = Session(
+            Response({"state": "waiting", "receipt": None}),
+            TimeoutError(),
+            Response({"state": "connected", "receipt": {"replayed": True}}),
+            Response(state()),
+        )
+        with patch.object(client.asyncio, "sleep", new=AsyncMock()) as sleep:
+            result = await make_client(session).async_wait_for_pairing(
+                "pairing_fixture"
+            )
+        self.assertEqual(result["household"]["id"], "household_demo")
+        self.assertEqual(sleep.await_count, 3)
+        self.assertEqual(session.calls[1], session.calls[2])
+        for call in session.calls[:3]:
+            self.assertNotIn("Authorization", call[2]["headers"])
+            self.assertEqual(call[2]["json"], {"secret": KEY})
+        self.assertEqual(
+            session.calls[3][2]["headers"]["Authorization"], f"HearthAutomation {KEY}"
+        )
+
+    async def test_pairing_denial_and_cancel_never_fetch_household_state(self):
+        for response in [
+            Response(status=403),
+            Response({"state": "connected", "receipt": None}),
+            asyncio.CancelledError(),
+        ]:
+            session = Session(response)
+            with (
+                patch.object(client.asyncio, "sleep", new=AsyncMock()),
+                self.assertRaises((client.HearthError, asyncio.CancelledError)),
+            ):
+                await make_client(session).async_wait_for_pairing("pairing_fixture")
+            self.assertEqual(len(session.calls), 1)
+
     async def test_chore_transport_retry_is_exact_and_response_is_bound(self):
         receipt = {
             "id": "chore_demo",

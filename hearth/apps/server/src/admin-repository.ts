@@ -1,4 +1,5 @@
-import { createHash, timingSafeEqual, randomInt, randomUUID } from 'node:crypto';
+import { createHash, timingSafeEqual, randomUUID } from 'node:crypto';
+import { createConnectionCode } from './connection-codes.js';
 
 import type Database from 'better-sqlite3';
 
@@ -838,7 +839,7 @@ export class SqliteAdminRepository implements AdminRepository {
       }
       attempt.count += 1;
       this.pairingAttempts.set(remoteAddress, attempt);
-      let code = pairingCodeForSequence(randomInt(2, 36 ** 5));
+      let code = createConnectionCode();
       let codeAttempts = 0;
       while (
         this.database.prepare('SELECT 1 FROM pairing_requests WHERE code = ?').get(code) !==
@@ -849,7 +850,7 @@ export class SqliteAdminRepository implements AdminRepository {
             'INTEGRATION_UNAVAILABLE',
             'A new pairing code is not available. Try again.',
           );
-        code = pairingCodeForSequence(randomInt(2, 36 ** 5));
+        code = createConnectionCode();
       }
       const pairing = PairingRequestSchema.parse({
         id: `pairing_${randomUUID()}`,
@@ -1447,14 +1448,21 @@ function pairingFromRow(row: PairingRow): PairingRequest {
 }
 
 function pairingCodeForSequence(sequence: number): string {
-  if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= 36 ** 5) {
+  if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= 24 ** 5) {
     throw new RepositoryError(
       'INTEGRATION_UNAVAILABLE',
       'Hearth cannot create another television pairing right now.',
     );
   }
   if (sequence === 1) return 'HEARTH';
-  return `P${sequence.toString(36).toUpperCase().padStart(5, '0')}`;
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let remainder = sequence;
+  let suffix = '';
+  for (let i = 0; i < 5; i += 1) {
+    suffix = alphabet[remainder % alphabet.length] + suffix;
+    remainder = Math.floor(remainder / alphabet.length);
+  }
+  return `P${suffix}`;
 }
 
 export function credentialHash(credential: string): string {

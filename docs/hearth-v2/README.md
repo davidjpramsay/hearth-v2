@@ -41,10 +41,13 @@ foreground Hearth screen tabs and separately approved read-only chores/calendar 
 The D-109 extension adds opt-in completion/reopening of today's existing chores only, not admin
 access or general chore/calendar editing.
 Its installation and physical acceptance are separate from local implementation.
+The D-110 setup uses six-letter adult-approved codes; the integration exchanges its strong
+private credential automatically. New setup requires matching HA component 1.1.0.
 
 Adult phone setup and recovery follow the versioned
 [`PHONE_CONNECTIONS_CONTRACT.md`](PHONE_CONNECTIONS_CONTRACT.md) (D-102): protected owner key
-for the protected owner phone, QR approval for additional phones, no passwords or passkeys.
+for the protected owner phone behind private QR setup/replacement, code or QR approval for
+additional phones, and no passwords/passkeys or typed long Hearth keys (D-110).
 Casual owner removal stays forbidden (D-103); the implemented D-104 extension adds deliberate
 saved-card or exact trusted-phone replacement while retaining private backend recovery.
 

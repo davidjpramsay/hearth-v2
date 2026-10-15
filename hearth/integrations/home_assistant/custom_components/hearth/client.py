@@ -431,6 +431,7 @@ class HearthClient:
         *,
         payload: JsonObject | None = None,
         params: JsonObject | None = None,
+        pairing: bool = False,
     ) -> Any:
         try:
             async with asyncio.timeout(REQUEST_TIMEOUT_SECONDS):
@@ -438,7 +439,11 @@ class HearthClient:
                     method,
                     self._url + path,
                     headers={
-                        "Authorization": f"HearthAutomation {self._key}",
+                        **(
+                            {}
+                            if pairing
+                            else {"Authorization": f"HearthAutomation {self._key}"}
+                        ),
                         "Accept": "application/json",
                         "Accept-Encoding": "identity",
                     },
@@ -489,6 +494,65 @@ class HearthClient:
             # Includes aiohttp disconnect/payload/protocol errors; these are
             # intentionally not retried. Never propagate request info/headers.
             raise HearthConnectionError("Could not read the Hearth bridge") from None
+
+    async def async_start_pairing(self, request_id: str) -> JsonObject:
+        payload = {"requestId": _identifier(request_id), "secret": self._key}
+        for attempt in range(2):
+            try:
+                response = await self._request(
+                    "POST",
+                    "/api/v1/home-assistant/pairing-requests",
+                    payload=payload,
+                    pairing=True,
+                )
+                break
+            except HearthTransportError:
+                if attempt:
+                    raise
+        result = _object(response, {"id", "code", "expiresAt", "interval"})
+        _identifier(result["id"])
+        if (
+            not isinstance(result["code"], str)
+            or not re.fullmatch(r"[A-HJ-NP-Z]{6}", result["code"])
+            or type(result["interval"]) is not int
+            or result["interval"] != 3
+        ):
+            _invalid()
+        _timestamp(result["expiresAt"])
+        return result
+
+    async def async_wait_for_pairing(
+        self, pairing_id: str, interval: int = 3
+    ) -> JsonObject:
+        """Cancellable bounded device flow. The user code never authorizes a request."""
+        _identifier(pairing_id)
+        if interval != 3:
+            _invalid()
+        try:
+            async with asyncio.timeout(300):
+                while True:
+                    await asyncio.sleep(interval)
+                    try:
+                        response = await self._request(
+                            "POST",
+                            f"/api/v1/home-assistant/pairing-requests/{pairing_id}/exchanges",
+                            payload={"secret": self._key},
+                            pairing=True,
+                        )
+                    except HearthTransportError:
+                        # A lost exchange response may already have created the grant.
+                        # Poll again with this exact proof, never generate a replacement secret.
+                        continue
+                    result = _object(response, {"state", "receipt"})
+                    if result["state"] == "waiting" and result["receipt"] is None:
+                        continue
+                    if result["state"] != "connected" or not isinstance(
+                        result["receipt"], dict
+                    ):
+                        _invalid()
+                    return await self.async_state()
+        except TimeoutError:
+            raise HearthProtocolError("Hearth connection request expired") from None
 
     async def async_state(self) -> JsonObject:
         state = validate_state(

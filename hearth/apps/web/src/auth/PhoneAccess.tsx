@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { phoneApi } from '../api/phoneConnections';
-import type { PasskeyAuthStatus } from '@hearth/shared';
+import { normalizeConnectionCode, type PasskeyAuthStatus } from '@hearth/shared';
 import './PhoneAccess.css';
 import { connectionNavigation } from './connectionNavigation';
 import {
@@ -39,7 +39,10 @@ export function PhoneAccess({
   );
   const client = useQueryClient();
   const disconnect = useMutation({ mutationFn: () => signOutAndClear(client) });
-  const [owner, setOwner] = useState(auth.requiresSetup);
+  const [owner, setOwner] = useState(
+    auth.requiresSetup || privateIntent?.purpose === 'owner-replacement',
+  );
+  const [code, setCode] = useState('');
   const pending = useQuery({
     queryKey: ['phone-pending'],
     queryFn: phoneApi.pending,
@@ -50,9 +53,11 @@ export function PhoneAccess({
     retry: false,
   });
   const claim = useMutation({
-    mutationFn: ({ name }: { name: string }) => phoneApi.claim(secret!, name),
+    mutationFn: ({ name }: { name: string }) =>
+      secret ? phoneApi.claim(secret, name) : phoneApi.claimCode(code, name),
     onSuccess: async () => {
       setSecret(null);
+      setCode('');
       await pending.refetch();
     },
   });
@@ -96,9 +101,9 @@ export function PhoneAccess({
     const form = new FormData(event.currentTarget);
     setup.mutate({
       ownerKey:
-        privateIntent?.purpose === 'setup'
+        privateIntent?.purpose === 'setup' || privateIntent?.purpose === 'owner-replacement'
           ? privateIntent.secret
-          : String(form.get('ownerKey') ?? ''),
+          : '',
       phoneName: String(form.get('phoneName') ?? ''),
       ...(auth.requiresSetup
         ? {
@@ -108,8 +113,6 @@ export function PhoneAccess({
           }
         : {}),
     });
-    const key = event.currentTarget.elements.namedItem('ownerKey');
-    if (key instanceof HTMLInputElement) key.value = '';
   }
 
   if (auth.authenticated)
@@ -173,7 +176,9 @@ export function PhoneAccess({
             Back to connection options
           </button>
         </section>
-      ) : privateIntent?.purpose === 'recovery' && auth.requiresSetup ? (
+      ) : (privateIntent?.purpose === 'recovery' ||
+          privateIntent?.purpose === 'owner-replacement') &&
+        auth.requiresSetup ? (
         <section>
           <h2>This Hearth has no household to recover</h2>
           <p>
@@ -254,12 +259,26 @@ export function PhoneAccess({
             {claim.isPending ? 'Requesting…' : 'Request connection'}
           </button>
         </form>
+      ) : owner &&
+        privateIntent?.purpose !== 'setup' &&
+        privateIntent?.purpose !== 'owner-replacement' ? (
+        <section>
+          <h2>Scan your private setup card</h2>
+          <p>
+            Open the private Hearth welcome display and scan its QR with this phone’s camera. No
+            long key to type.
+          </p>
+          <p>
+            Use the setup QR supplied with this Hearth. If you don’t have it, ask the person who
+            installed Hearth.
+          </p>
+        </section>
       ) : owner ? (
         <form onSubmit={submitOwner}>
           <p>
             {privateIntent?.purpose === 'setup'
               ? 'Setup card recognised. Name your home and connect this phone.'
-              : 'Use the one-time key from the private owner file. No password or passkey needed.'}
+              : 'Private replacement card recognised. Connect this as your new owner phone.'}
           </p>
           {!auth.requiresSetup ? (
             <p>This replaces the owner phone. Other phones and screens stay connected.</p>
@@ -284,19 +303,6 @@ export function PhoneAccess({
             Phone name
             <input name="phoneName" placeholder="David’s iPhone" maxLength={80} required />
           </label>
-          {privateIntent?.purpose === 'setup' ? null : (
-            <label>
-              Owner setup key
-              <input
-                name="ownerKey"
-                type="password"
-                autoComplete="off"
-                minLength={32}
-                maxLength={160}
-                required
-              />
-            </label>
-          )}
           <button
             className="button button--primary"
             disabled={setup.isPending || !auth.secureOrigin}
@@ -309,7 +315,14 @@ export function PhoneAccess({
                 : 'Connect as owner phone'}
           </button>
           {!auth.requiresSetup ? (
-            <button className="button button--quiet" type="button" onClick={() => setOwner(false)}>
+            <button
+              className="button button--quiet"
+              type="button"
+              onClick={() => {
+                setPrivateIntent(null);
+                setOwner(false);
+              }}
+            >
               Back
             </button>
           ) : null}
@@ -359,23 +372,49 @@ export function PhoneAccess({
         <>
           <p>
             On a connected adult phone, open <strong>Phones &amp; screens → Add phone</strong>. Scan
-            its QR with this phone’s camera.
+            its QR with this phone’s camera, or enter its six-letter code below.
           </p>
-          <details>
-            <summary>Owner phone setup or replacement</summary>
-            <p>
-              The NAS owner issues a private one-time key for the first owner phone or its
-              replacement. Other phones and screens stay connected.
-            </p>
-            <button className="button button--quiet" onClick={() => setOwner(true)} type="button">
-              Use owner setup key
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              claim.mutate({
+                name: String(new FormData(event.currentTarget).get('phoneName') ?? ''),
+              });
+            }}
+          >
+            <label>
+              Connection code
+              <input
+                value={code}
+                onChange={(event) => setCode(normalizeConnectionCode(event.target.value))}
+                placeholder="ABCDEF"
+                autoCapitalize="characters"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                pattern="[A-HJ-NP-Z]{6}"
+                maxLength={12}
+                required
+              />
+            </label>
+            <label>
+              Phone name
+              <input name="phoneName" placeholder="Rachael’s iPhone" maxLength={80} required />
+            </label>
+            <button
+              className="button button--primary"
+              type="submit"
+              disabled={claim.isPending || !auth.secureOrigin}
+            >
+              {claim.isPending ? 'Requesting…' : 'Request connection'}
             </button>
-          </details>
+          </form>
           <details>
             <summary>Lost the owner phone?</summary>
             <p>
               Scan your saved Hearth recovery card on the replacement phone, or ask an adult you
-              previously trusted for recovery to show a replacement QR.
+              previously trusted for recovery to show a replacement QR. If neither is available, the
+              server owner can issue a private replacement QR.
             </p>
           </details>
         </>

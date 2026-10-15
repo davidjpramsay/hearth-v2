@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { BrowserAccess } from './browser-access.js';
 import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
+import { HomeAssistantPairingService } from './home-assistant-pairings.js';
 import { PHONE_PENDING_COOKIE, type PhoneConnectionService } from './phone-connections.js';
 import { z } from 'zod';
 
@@ -19,6 +20,12 @@ import {
   BridgeConnectionSchema,
   BridgeGrantRequestSchema,
   BridgeGrantResultSchema,
+  BridgePairingStartSchema,
+  BridgePairingSchema,
+  BridgePairingApprovalSchema,
+  BridgePairingApprovalResultSchema,
+  BridgePairingExchangeSchema,
+  BridgePairingExchangeResultSchema,
   ScreenNavigationRequestSchema,
   ScreenNavigationResultSchema,
   ScreenPresentationRequestSchema,
@@ -318,6 +325,7 @@ export const LOGGER_REDACT_PATHS = [
   '*.pairingSecret',
   '*.secret',
   'req.body.secret',
+  'req.body.code',
   '*.ownerKey',
   '*.invitationSecret',
   '*.pendingToken',
@@ -345,6 +353,7 @@ export interface BuildServerOptions {
   calendarConnectionRepository?: CalendarConnectionRepository;
   homeAssistantConnectionRepository?: HomeAssistantConnectionRepository;
   homeAssistantBridge?: HomeAssistantBridgeService;
+  homeAssistantPairings?: HomeAssistantPairingService;
   systemOperations?: SystemOperationsRepository;
   applianceUpdate?: ApplianceUpdateRepository;
   companionAuth?: CompanionAuthRepository;
@@ -489,6 +498,20 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const homeAssistantBridge =
     options.homeAssistantBridge ??
     new HomeAssistantBridgeService(adminRepository, repository, { now: () => runtime.clock.now() });
+  const homeAssistantPairings =
+    options.homeAssistantPairings ??
+    new HomeAssistantPairingService(homeAssistantBridge, {
+      now: () => runtime.clock.now(),
+      assertApproval: (reference) => {
+        if (options.phoneConnections) options.phoneConnections.assertApprovalReference(reference);
+        else if (isPrivateMode(options))
+          throw new RepositoryError('FORBIDDEN', 'Connect an adult phone first.');
+      },
+    });
+  const machinePairingRoutes = new Set([
+    '/api/v1/home-assistant/pairing-requests',
+    '/api/v1/home-assistant/pairing-requests/:id/exchanges',
+  ]);
   const automationRoutes = new Set([
     '/api/v1/home-assistant/state',
     '/api/v1/home-assistant/calendar',
@@ -511,6 +534,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   server.addHook('preHandler', async (request, reply) => {
     const routeUrl = request.routeOptions.url;
+    if (routeUrl !== undefined && machinePairingRoutes.has(routeUrl)) {
+      return run(reply, async () => {
+        if (
+          request.headers.cookie !== undefined ||
+          request.headers.authorization !== undefined ||
+          request.headers.origin !== undefined
+        )
+          throw new RepositoryError(
+            'FORBIDDEN',
+            'Start this request in the Home Assistant integration, not a browser.',
+          );
+      });
+    }
     // This branch must precede browser/device classification. Never fall back to mixed cookies.
     const usesAutomation =
       typeof request.headers.authorization === 'string' &&
@@ -550,7 +586,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return run(reply, async () => {
         throw new RepositoryError(
           'FORBIDDEN',
-          'Passkey sign-in is retired. Connect this phone using an adult QR or the private owner key.',
+          'Passkey sign-in is retired. Use an adult connection code or scan a private setup or recovery card.',
         );
       });
     }
@@ -719,10 +755,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         );
       browserRequests.get(request)!.assertAllowed();
       const result = phoneService().claimInvitation(
-        body.invitationSecret,
+        'code' in body ? body.code : body.invitationSecret,
         body.phoneName,
         request.ip,
         pendingProof(request),
+        'code' in body,
       );
       reply
         .header('Cache-Control', 'no-store')
@@ -1786,6 +1823,60 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     );
   });
 
+  server.post('/api/v1/home-assistant/pairing-requests', async (request, reply) => {
+    const body = parse(BridgePairingStartSchema, request.body, reply);
+    if (body === null) return reply;
+    reply.header('Cache-Control', 'no-store');
+    return run(reply, async () =>
+      BridgePairingSchema.parse(homeAssistantPairings.start(body, request.ip)),
+    );
+  });
+  server.post('/api/v1/home-assistant/pairing-requests/:id/exchanges', async (request, reply) => {
+    const params = parse(z.object({ id: OpaqueIdSchema }), request.params, reply);
+    const body = parse(BridgePairingExchangeSchema, request.body, reply);
+    if (params === null || body === null) return reply;
+    reply.header('Cache-Control', 'no-store');
+    return run(reply, async () =>
+      BridgePairingExchangeResultSchema.parse(
+        await homeAssistantPairings.exchange(params.id, body.secret, request.ip),
+      ),
+    );
+  });
+  server.post(
+    '/api/v1/households/:householdId/home-assistant-bridge/pairing-approvals',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(BridgePairingApprovalSchema, request.body, reply);
+      if (params === null || body === null) return reply;
+      reply.header('Cache-Control', 'private, no-store');
+      return run(reply, async () => {
+        const memberId = actorId(request.headers, options);
+        assertControllerRequest(request.headers);
+        options.phoneConnections?.assertOrigin(
+          request.headers.origin,
+          request.headers['sec-fetch-site'],
+        );
+        const reference = options.phoneConnections
+          ? options.phoneConnections.approvalReference(
+              params.householdId,
+              companionCredential(request.headers),
+            )
+          : isPrivateMode(options)
+            ? (() => {
+                throw new RepositoryError('FORBIDDEN', 'Connect an adult phone first.');
+              })()
+            : {
+                householdId: params.householdId,
+                memberId,
+                connectionId: 'demo',
+                sessionHash: 'demo',
+              };
+        return BridgePairingApprovalResultSchema.parse(
+          await homeAssistantPairings.approve(body, reference, request.ip),
+        );
+      });
+    },
+  );
   server.get('/api/v1/households/:householdId/home-assistant-bridge', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     if (params === null) return reply;
@@ -1827,11 +1918,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           request.headers.origin,
           request.headers['sec-fetch-site'],
         );
-        return homeAssistantBridge.revoke(
+        const result = await homeAssistantBridge.revoke(
           params.householdId,
           actorId(request.headers, options),
           body.requestId,
+          () => homeAssistantPairings.cancelForHousehold(params.householdId),
         );
+        return result;
       });
     },
   );
@@ -3168,6 +3261,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   if (demoMode) {
     server.post('/api/v1/demo/reset', async (_request, reply) => {
+      homeAssistantPairings.reset();
       homeAssistantBridge.reset();
       planningRepository.reset();
       repository.reset();

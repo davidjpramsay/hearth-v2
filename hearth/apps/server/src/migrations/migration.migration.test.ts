@@ -11,6 +11,62 @@ import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
 
+describe('0031 additive connection codes', () => {
+  it('preserves phones, screens and existing automation grants without creating access', () => {
+    const database = new Database(':memory:');
+    for (const file of readdirSync(fileURLToPath(new URL('.', import.meta.url)))
+      .filter((file) => /^\d{4}_.*\.sql$/.test(file) && Number(file.slice(0, 4)) <= 30)
+      .sort())
+      database.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
+    database.exec(`INSERT INTO households VALUES ('household_kept','Kept','Australia/Perth','en-AU',1,'now','now');
+      INSERT INTO members (id,household_id,display_name,colour,role,created_at,updated_at,capabilities_json) VALUES ('member_kept','household_kept','Adult','#2f766d','adult','now','now','["household.admin"]');
+      INSERT INTO controller_phone_connections (id,household_id,member_id,label,source,created_at,last_seen_at,expires_at) VALUES ('phone_kept','household_kept','member_kept','Owner','owner','now','now','later');
+      INSERT INTO paired_devices (id,household_id,name,device_type,credential_reference,scopes_json,paired_at,capabilities_json) VALUES ('device_kept','household_kept','TV','television','sha256:fixture','["household.read"]','now','[]');`);
+    database
+      .prepare(
+        'INSERT INTO home_assistant_bridge_connections (id,household_id,request_id,secret_hash,input_hash,record_json) VALUES (?,?,?,?,?,?)',
+      )
+      .run(
+        'bridge_kept',
+        'household_kept',
+        'request_kept',
+        'a'.repeat(64),
+        'b'.repeat(64),
+        JSON.stringify({
+          id: 'bridge_kept',
+          screenIds: [],
+          shareChores: true,
+          shareCalendar: false,
+          controlChores: false,
+          createdAt: '2026-10-15T00:00:00Z',
+          revokedAt: null,
+        }),
+      );
+    const tables = [
+      'households',
+      'members',
+      'controller_phone_connections',
+      'paired_devices',
+      'home_assistant_bridge_connections',
+    ];
+    const before = tables.map((table) => database.prepare(`SELECT * FROM ${table}`).all());
+    applyMigrations(database);
+    applyMigrations(database);
+    expect(tables.map((table) => database.prepare(`SELECT * FROM ${table}`).all())).toEqual(before);
+    expect(
+      database.prepare('SELECT count(*) AS n FROM home_assistant_bridge_pairings').get(),
+    ).toEqual({ n: 0 });
+    expect(
+      database.prepare('SELECT count(*) AS n FROM controller_phone_invitation_codes').get(),
+    ).toEqual({ n: 0 });
+    expect(database.prepare('SELECT max(version) AS n FROM schema_migrations').get()).toEqual({
+      n: 31,
+    });
+    expect(database.pragma('foreign_key_check')).toEqual([]);
+    database.close();
+  });
+});
+
 describe('0030 opt-in Home Assistant bridge migration', () => {
   it('preserves paired-device and adult state and creates no grant automatically', () => {
     const database = new Database(':memory:');

@@ -2,6 +2,29 @@
 
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
+## D-110 — Six-letter invitations and invisible machine credentials
+
+- Date: 2026-10-15
+- Status: implemented and locally verified; hosted release and physical acceptance remain separate
+- Context: Manual HA key copying and the owner-file typing fallback made connection unusable.
+  D-108's key reveal and D-102/D-103's browser key entry are superseded, not their security
+  boundaries. A six-letter permanent password would be an unsafe replacement.
+- Choice: New human codes are six CSPRNG uppercase letters, omitting ambiguous I/O. Screens keep
+  ten-minute adult approval plus the existing private device secret; previously issued mixed codes
+  remain accepted. Additional phones use a five-minute code or QR, then the existing pending-cookie,
+  original-inviter approval and exchange. HA privately generates its 32-byte secret and displays a
+  five-minute code; an adult enters it in Hearth and approves explicit permissions. Exchange
+  rechecks that exact phone/session and capabilities at commit. A code alone is never authority.
+  Attempts, rows and lifetime are bounded; SQLite stores code/secret digests and safe metadata only.
+  Exact exchanges replay the same grant. No raw credential is reconstructed after restart.
+- Recovery: No normal long-key field. Initial setup, saved recovery and operator replacement use
+  separate strong private QR proofs. The backend file fallback is rendered locally into a
+  replacement QR, never shortened or exposed to anonymous screens. Owner protection, adult/screen
+  isolation, provider credentials, existing connections and networking are preserved.
+- Rollout: Additive migration 0031 leaves current phones/screens/grants intact. New HA setup needs
+  matching custom component 1.1.0 and server; existing HA config entries remain valid. Hearth
+  publication does not install the HA component. Live HA/TV/Safari proof remains separate.
+
 ## D-109 — Separately approved Home Assistant chore completion and reopening
 
 - Date: 2026-10-15

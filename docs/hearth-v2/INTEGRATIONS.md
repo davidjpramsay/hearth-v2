@@ -1,5 +1,14 @@
 # Hearth v2 integration contracts
 
+## Short human codes (D-110)
+
+The inbound HA component 1.1.0 displays a five-minute six-letter code and waits for approval in
+Hearth; it privately generates/exchanges its machine credential. Existing config entries/grants
+remain valid. The matching component must be installed separately; server publication does not
+install HA files. This changes no TV power/media/morning automation or outbound HA adapter.
+Provider-issued calendar app passwords and outbound HA tokens are external credentials, not
+Hearth-generated connection codes; their provider formats cannot be shortened.
+
 ## Future appliance network provisioning (D-104; not implemented)
 
 D-105's local operator presenter is a read-only client of the existing trusted HTTPS claim-status

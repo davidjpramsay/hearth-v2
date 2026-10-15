@@ -10,6 +10,7 @@ vi.mock('../api/phoneConnections', () => ({
     pending: vi.fn(),
     ownerClaim: vi.fn(),
     claim: vi.fn(),
+    claimCode: vi.fn(),
     exchange: vi.fn(),
     recoverWithCard: vi.fn(),
   },
@@ -155,9 +156,8 @@ describe('no-passkey phone access', () => {
     expect(await screen.findByText(/Scan its QR/)).toBeVisible();
     expect(screen.queryByText(/Sign in with a passkey/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Owner setup key')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Owner phone setup or replacement'));
-    fireEvent.click(screen.getByRole('button', { name: 'Use owner setup key' }));
-    expect(screen.getByLabelText('Owner setup key')).toHaveAttribute('type', 'password');
+    expect(screen.getByLabelText('Connection code')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use owner setup key' })).not.toBeInTheDocument();
   });
   it('removes an invitation fragment before sending a request, without using browser storage', async () => {
     const stored = vi.fn();
@@ -204,17 +204,34 @@ describe('no-passkey phone access', () => {
     expect(await screen.findByText(/QR is no longer available/)).toBeVisible();
     expect(phoneApi.exchange).not.toHaveBeenCalled();
   });
-  it('bootstraps with an owner key and clears the form secret immediately', async () => {
-    vi.mocked(phoneApi.ownerClaim).mockRejectedValue(new Error('Not accepted'));
+  it('never asks for a long bootstrap key when no private QR was scanned', async () => {
     show({ auth: { ...auth, requiresSetup: true } });
-    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'David' } });
-    fireEvent.change(screen.getByLabelText('Phone name'), { target: { value: 'David’s iPhone' } });
-    fireEvent.change(screen.getByLabelText('Owner setup key'), {
-      target: { value: 'b'.repeat(64) },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create household and connect' }));
-    await waitFor(() => expect(phoneApi.ownerClaim).toHaveBeenCalledOnce());
-    expect(screen.getByLabelText('Owner setup key')).toHaveValue('');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Not accepted');
+    expect(screen.getByText('Scan your private setup card')).toBeVisible();
+    expect(screen.queryByLabelText('Owner setup key')).not.toBeInTheDocument();
+    expect(phoneApi.ownerClaim).not.toHaveBeenCalled();
+  });
+  it('accepts six uppercase letters, then waits for the inviting adult', async () => {
+    vi.mocked(phoneApi.claimCode).mockResolvedValue({ ...state, state: 'scanned' });
+    show();
+    await screen.findByLabelText('Connection code');
+    fireEvent.change(screen.getByLabelText('Connection code'), { target: { value: 'abc-def' } });
+    fireEvent.change(screen.getByLabelText('Phone name'), { target: { value: 'New phone' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Request connection' }));
+    await waitFor(() => expect(phoneApi.claimCode).toHaveBeenCalledWith('ABCDEF', 'New phone'));
+    expect(phoneApi.exchange).not.toHaveBeenCalled();
+  });
+  it('keeps backend replacement separate from first setup and never displays its proof', async () => {
+    const key = 'b'.repeat(64);
+    show({ privateIntent: { purpose: 'owner-replacement', secret: key } });
+    expect(screen.getByText(/Private replacement card recognised/)).toBeVisible();
+    expect(screen.queryByDisplayValue(key)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Phone name'), { target: { value: 'Replacement' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Connect as owner phone' }));
+    await waitFor(() =>
+      expect(vi.mocked(phoneApi.ownerClaim).mock.calls[0]?.[0]).toEqual({
+        ownerKey: key,
+        phoneName: 'Replacement',
+      }),
+    );
   });
 });

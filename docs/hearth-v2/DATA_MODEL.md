@@ -1,5 +1,13 @@
 # Hearth v2 domain and data model
 
+## Human connection requests (D-110)
+
+Migration `0031_connection_codes.sql` is additive: digest-only phone invitation codes (FK cascade
+to existing invitations) and bounded HA pairing records with unique request/secret/code digests,
+expiry, permissions and exact approving connection/session-hash reference. No raw code, machine
+credential or adult cookie is persisted. Existing phones, screens, grants and household data are
+not rewritten. HA's raw credential belongs only in its protected config entry after exchange.
+
 ## Home Assistant inbound grants and screen commands (D-108)
 
 Migration `0030_home_assistant_bridge.sql` adds a digest-only connection per household (at most

@@ -27,14 +27,38 @@ function fixture() {
   writeFileSync(input, secret, { mode: 0o600 });
   return { folder, input, output };
 }
-function run(input: string, output: string, origin = 'https://hearth.example.test') {
+function run(
+  input: string,
+  output: string,
+  origin = 'https://hearth.example.test',
+  purpose?: string,
+) {
   return spawnSync(
     process.execPath,
-    [script, '--key-file', input, '--origin', origin, '--output', output],
+    [
+      script,
+      '--key-file',
+      input,
+      '--origin',
+      origin,
+      '--output',
+      output,
+      ...(purpose === undefined ? [] : ['--purpose', purpose]),
+    ],
     { encoding: 'utf8' },
   );
 }
 describe('private first-phone QR generator', () => {
+  it('creates an explicit replacement QR without printing its proof and rejects unknown purposes', () => {
+    const f = fixture();
+    const result = run(f.input, f.output, undefined, 'owner-replacement');
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Private owner replacement card created');
+    expect(result.stdout + result.stderr).not.toContain(secret);
+    expect(run(f.input, join(f.folder, 'bad.png'), undefined, 'anything')).toMatchObject({
+      status: 1,
+    });
+  });
   it('creates an owner-only PNG without printing the private proof or URL', async () => {
     const f = fixture();
     const result = run(f.input, f.output);

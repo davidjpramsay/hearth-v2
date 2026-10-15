@@ -4,9 +4,11 @@
 
 Connections → Home Assistant separates **Home Assistant controls Hearth** from the existing
 **Hearth controls Home Assistant** safety/script adapter. An adult chooses screen names and
-explicit read-only chore/calendar sharing before creating a connection key. Show the one-time
-key only for private setup; clear it when dismissed and never put it in query cache, storage,
-URLs, logs or clipboard automatically. Disconnection needs a clear confirmation and affects only
+explicit read-only chore/calendar sharing before approving the six-letter code displayed by HA.
+The integration creates/exchanges the long credential automatically; no key field/reveal appears
+in Hearth or HA setup (D-110). Normalise grouped/lowercase input to uppercase and show clear
+expired/retry/cancel states. No code enters query caches/storage. Disconnection needs a clear
+confirmation and affects only
 this integration, never the adult phone, TV pairing or outbound HA connection.
 In HA each approved screen has a tab selector showing the observed route and offline/unavailable
 state. Accepted/pending is not applied. No admin/setup destinations or automatic app takeover.
@@ -486,8 +488,8 @@ protection, cancellation and partial-failure behavior remain unchanged.
   restored, encoded, case-varied and history navigation to administration returns to Today before
   admin chrome or child screens mount. `/admin/appearance` remains a compatible alias to the
   harmless device-local Appearance screen. Phone/desktop controller navigation remains available.
-- Signed-out browsers clearly separate **Phone or computer** (QR-approved adult connection or
-  private owner-key setup, no password/passkey) from
+- Signed-out browsers clearly separate **Phone or computer** (code/QR-approved adult connection or
+  private owner setup QR, no typed key/password/passkey) from
   **Shared screen** (TV or wall tablet approved from an adult phone). Neither path starts
   automatically. **Connect shared screen** shows three short steps and a six-character code;
   phone More → **Phones & screens** contains the matching **Connect screen** action. Approval

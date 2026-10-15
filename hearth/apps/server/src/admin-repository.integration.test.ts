@@ -248,7 +248,7 @@ describe('SQLite admin repository', () => {
 
     expect(codes).toHaveLength(105);
     expect(new Set(codes).size).toBe(105);
-    expect(codes.every((code) => /^[A-Z0-9]{6}$/.test(code))).toBe(true);
+    expect(codes.every((code) => /^[A-HJ-NP-Z]{6}$/.test(code))).toBe(true);
     repository.close();
   });
 

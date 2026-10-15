@@ -96,6 +96,14 @@ plus explicit approval for the intended adult; the inviter's identity stays unch
 responsive administration stays in service. A future native phone client must not duplicate all
 household business logic or restore the retired Apple bridge.
 
+## Private operator replacement QR (D-110)
+
+The same protected-file PNG helper accepts `--purpose owner-replacement` and produces
+`#replace-owner=…` from a separately issued, one-use backend grant. The fragment is stripped before
+network requests and never displayed or stored. It cannot bootstrap an empty household; a setup
+card cannot replace an existing owner. No browser form requests a long Hearth key. Existing saved
+recovery cards and exact trusted-phone replacement retain their strong proofs and deliberate consent.
+
 ## Future native QR envelope — validation only
 
 Source: `hearth/packages/shared/src/appliance-onboarding.ts`. Two deterministic, non-secret

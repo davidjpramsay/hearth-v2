@@ -1,258 +1,190 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { BridgeConnection, BridgeGrantRequest } from '@hearth/shared';
-
+import {
+  ConnectionCodeSchema,
+  normalizeConnectionCode,
+  type BridgePairingApproval,
+} from '@hearth/shared';
 import { createRequestId } from '../api/core';
-import { homeAssistantBridgeApi } from '../api/homeAssistantBridge';
+import { HomeAssistantBridgeApiError, homeAssistantBridgeApi } from '../api/homeAssistantBridge';
 import { queryKeys } from '../api/queryKeys';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { AdminError, AdminLoading } from './AdminPage';
-
 import './HomeAssistantBridgeSettings.css';
 
 export function HomeAssistantBridgeSettings() {
   const admin = useAdminQuery();
   const queryClient = useQueryClient();
   const summaryKey = [...queryKeys.admin, 'home-assistant-bridge'];
-  const [savedConnection, setSavedConnection] = useState<BridgeConnection | null | undefined>();
+  const [code, setCode] = useState('');
   const [screenIds, setScreenIds] = useState<string[]>([]);
   const [shareChores, setShareChores] = useState(false);
-  const [controlChores, setControlChores] = useState(false);
   const [shareCalendar, setShareCalendar] = useState(false);
+  const [controlChores, setControlChores] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [waiting, setWaiting] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
-  const [secret, setSecret] = useState<string | null>(null);
-  const [showSecret, setShowSecret] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState(false);
-  const [uncertainIssue, setUncertainIssue] = useState(false);
-  const summary = useQuery({
-    queryKey: summaryKey,
-    queryFn: ({ signal }) => homeAssistantBridgeApi.getConnection(signal),
-    enabled: savedConnection === undefined && !busy && !uncertainIssue,
-    retry: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
-  const connection = savedConnection === undefined ? (summary.data ?? null) : savedConnection;
-  const loading = summary.isPending;
-  const loadError = summary.isError;
-  // Deliberately bypass Query mutations/caches: this request contains the one-time key.
-  const issueRequest = useRef<BridgeGrantRequest | null>(null);
-  const revokeRequestId = useRef<string | null>(null);
+  // Only an expiring approval request. No automation credential enters browser state/cache.
+  const approval = useRef<BridgePairingApproval | null>(null);
+  const revokeId = useRef<string | null>(null);
   const operation = useRef<AbortController | null>(null);
   const mounted = useRef(false);
-  const busyRef = useRef(false);
-
+  const running = useRef(false);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       operation.current?.abort();
-      issueRequest.current = null;
-      revokeRequestId.current = null;
+      approval.current = null;
     };
   }, []);
-
-  function setConnection(value: BridgeConnection | null) {
-    setSavedConnection(value);
-    queryClient.setQueryData(summaryKey, value);
-  }
-
+  const summary = useQuery({
+    queryKey: summaryKey,
+    queryFn: ({ signal }) => homeAssistantBridgeApi.getConnection(signal),
+    retry: false,
+    refetchInterval: (query) => (waiting && !timedOut && query.state.data === null ? 3000 : false),
+    refetchIntervalInBackground: false,
+  });
+  const connection = summary.data ?? null;
+  useEffect(() => {
+    if (!waiting || connection !== null) return;
+    const timeout = window.setTimeout(() => {
+      setTimedOut(true);
+      setConfirmation(
+        'The connection was not confirmed in time. Check Home Assistant, or cancel this request and start again.',
+      );
+    }, 5 * 60_000);
+    return () => window.clearTimeout(timeout);
+  }, [waiting, connection]);
   const screens = (admin.data?.pairedDevices ?? []).filter(
     (device) =>
       device.type === 'television' && device.status !== 'revoked' && device.revokedAt === null,
   );
-
-  function clearKey() {
-    issueRequest.current = null;
-    setSecret(null);
-    setShowSecret(false);
-    setUncertainIssue(false);
-  }
-
-  async function issue() {
-    if (busyRef.current) return;
-    busyRef.current = true;
+  const locked = busy || waiting || uncertain;
+  async function approve() {
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError(null);
     setConfirmation(null);
     const controller = new AbortController();
     operation.current = controller;
+    approval.current ??= {
+      requestId: createRequestId('ha_approval'),
+      code,
+      screenIds: screenIds.filter((id) => screens.some((screen) => screen.id === id)),
+      shareChores,
+      shareCalendar,
+      controlChores,
+    };
     try {
-      await queryClient.cancelQueries({ queryKey: summaryKey, exact: true });
+      await homeAssistantBridgeApi.approvePairing(approval.current, controller.signal);
       if (!mounted.current || controller.signal.aborted) return;
-      if (issueRequest.current === null) {
-        const bytes = crypto.getRandomValues(new Uint8Array(32));
-        try {
-          const encoded = btoa(String.fromCharCode(...bytes))
-            .replaceAll('+', '-')
-            .replaceAll('/', '_')
-            .replaceAll('=', '');
-          issueRequest.current = {
-            requestId: createRequestId('ha_bridge_issue'),
-            secret: `ha_${encoded}`,
-            screenIds: screenIds.filter((id) => screens.some((screen) => screen.id === id)),
-            shareChores,
-            shareCalendar,
-            controlChores,
-          };
-        } finally {
-          bytes.fill(0);
-        }
-      }
-      const result = await homeAssistantBridgeApi.issue(issueRequest.current, controller.signal);
+      approval.current = null;
+      setCode('');
+      setWaiting(true);
+      setTimedOut(false);
+      setUncertain(false);
+      setConfirmation(
+        'Approved. Home Assistant will finish connecting automatically. Keep its setup window open.',
+      );
+      await summary.refetch();
+    } catch (failure) {
       if (!mounted.current || controller.signal.aborted) return;
-      if (result.connection.revokedAt !== null) {
-        clearKey();
-        setConnection(null);
-        setConfirmation('This key has already been revoked. You can create a new connection.');
-        return;
-      }
-      setConnection(result.connection);
-      setSecret(issueRequest.current.secret);
-      // The successful response never contains the secret. It comes only from this component.
-      issueRequest.current = null;
-      setUncertainIssue(false);
-      setShowSecret(false);
-    } catch {
-      if (!mounted.current || controller.signal.aborted) return;
-      setUncertainIssue(issueRequest.current !== null);
+      const rejected =
+        failure instanceof HomeAssistantBridgeApiError && [400, 403, 409].includes(failure.status);
+      setUncertain(!rejected);
+      if (rejected) approval.current = null;
       setError(
-        'The connection could not be confirmed. Try again with the same key, or revoke access before starting again.',
+        rejected
+          ? 'Check the six letters shown in Home Assistant. If they expired, start again there. Disconnect existing access before replacing it.'
+          : 'Approval could not be confirmed. Retry the same request, or cancel access before starting again.',
       );
     } finally {
-      busyRef.current = false;
+      running.current = false;
       if (mounted.current && !controller.signal.aborted) setBusy(false);
     }
   }
-
   async function revoke() {
-    if (busyRef.current) return;
-    busyRef.current = true;
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError(null);
     const controller = new AbortController();
     operation.current = controller;
-    revokeRequestId.current ??= createRequestId('ha_bridge_revoke');
+    revokeId.current ??= createRequestId('ha_bridge_revoke');
     try {
       await queryClient.cancelQueries({ queryKey: summaryKey, exact: true });
+      await homeAssistantBridgeApi.revoke(revokeId.current, controller.signal);
       if (!mounted.current || controller.signal.aborted) return;
-      await homeAssistantBridgeApi.revoke(revokeRequestId.current, controller.signal);
-      if (!mounted.current || controller.signal.aborted) return;
-      clearKey();
-      revokeRequestId.current = null;
-      setConnection(null);
+      queryClient.setQueryData(summaryKey, null);
+      approval.current = null;
+      revokeId.current = null;
+      setCode('');
+      setWaiting(false);
+      setTimedOut(false);
+      setUncertain(false);
       setConfirmRevoke(false);
-      setScreenIds([]);
-      setShareChores(false);
-      setControlChores(false);
-      setShareCalendar(false);
-      setConfirmation('Home Assistant access to Hearth has been revoked.');
+      setConfirmation('Home Assistant access and pending approvals have been cancelled.');
     } catch {
       if (mounted.current && !controller.signal.aborted)
-        setError('Revocation could not be confirmed. Try revoking again.');
+        setError('Disconnection could not be confirmed. Try again.');
     } finally {
-      busyRef.current = false;
+      running.current = false;
       if (mounted.current && !controller.signal.aborted) setBusy(false);
     }
   }
-
-  const canCreate = !loading && !loadError && admin.isSuccess && secret === null;
   return (
     <section className="ha-bridge-settings" aria-labelledby="ha-bridge-title">
       <header>
         <h2 id="ha-bridge-title">Home Assistant controls Hearth</h2>
-        <p>Choose screens, shared information and optional chore control.</p>
+        <p>Connect with six letters. No key to copy or type.</p>
       </header>
-      <p className="field-help">
-        Only visible screens respond. Sharing information or changing chores does not need a screen.
-      </p>
       <details className="ha-bridge-setup">
         <summary data-focus-entry="true" data-focus-id="home-assistant-bridge-setup">
           How to connect Home Assistant
         </summary>
         <ol>
-          <li>Install Hearth’s custom integration in Home Assistant. It is not built in.</li>
-          <li>Native TV control requires an updated Hearth TV APK with foreground reporting.</li>
-          <li>
-            Choose permissions here, create a key, then save it in the integration’s protected key
-            field.
-          </li>
+          <li>Install the current Hearth custom integration in Home Assistant.</li>
+          <li>In Home Assistant, add Hearth and enter your private Hearth address.</li>
+          <li>Enter its six-letter code below, choose permissions, then approve.</li>
         </ol>
+        <p>
+          Only visible screens respond to tab changes. Native TVs need the updated Hearth APK.
+          Sharing data or changing chores does not need a screen.
+        </p>
       </details>
-
-      {loading ? <AdminLoading /> : null}
-      {loadError ? (
+      {summary.isPending ? <AdminLoading /> : null}
+      {summary.isError ? (
         <AdminError
           message="Could not load Home Assistant access."
           onRetry={() => void summary.refetch()}
         />
       ) : null}
-      {error === null ? null : <AdminError message={error} />}
-      {confirmation === null ? null : (
+      {error ? <AdminError message={error} /> : null}
+      {confirmation && connection === null ? (
         <p className="save-confirmation" role="status">
           {confirmation}
         </p>
-      )}
-
-      {secret === null ? null : (
-        <div className="ha-bridge-key" role="group" aria-label="One-time Home Assistant key">
-          <strong>Save this key in Home Assistant now</strong>
-          <p>
-            It is shown only during this setup. After closing this panel, revoke and reconnect if
-            you need a new key.
-          </p>
-          <label htmlFor="ha-bridge-key">One-time key</label>
-          <input
-            id="ha-bridge-key"
-            type={showSecret ? 'text' : 'password'}
-            value={secret}
-            readOnly
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            data-1p-ignore="true"
-            data-lpignore="true"
-            data-bwignore="true"
-            aria-describedby="ha-bridge-key-help"
-          />
-          <p className="field-help" id="ha-bridge-key-help">
-            Enter it only in Home Assistant’s protected key field.
-          </p>
-          <div className="ha-bridge-actions">
-            <button
-              type="button"
-              className="admin-secondary"
-              aria-pressed={showSecret}
-              onClick={() => setShowSecret((current) => !current)}
-            >
-              {showSecret ? 'Hide key' : 'Show key'}
-            </button>
-            <button type="button" className="admin-submit" onClick={clearKey}>
-              Done, key saved in Home Assistant
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!loading && !loadError && connection !== null ? (
+      ) : null}
+      {connection ? (
         <div className="ha-bridge-summary">
-          <h3>Home Assistant access is enabled</h3>
+          <h3>Home Assistant is connected</h3>
           <dl>
             <div>
               <dt>Allowed screens</dt>
               <dd>
-                {connection.screenIds.length === 0
-                  ? 'None'
-                  : connection.screenIds
-                      .map(
-                        (id) =>
-                          screens.find((screen) => screen.id === id)?.name ??
-                          'Previously selected screen',
-                      )
-                      .join(', ')}
+                {connection.screenIds
+                  .map(
+                    (id) =>
+                      screens.find((screen) => screen.id === id)?.name ??
+                      'Previously selected screen',
+                  )
+                  .join(', ') || 'None'}
               </dd>
             </div>
             <div>
@@ -271,19 +203,38 @@ export function HomeAssistantBridgeSettings() {
             </div>
           </dl>
           <p className="field-help">
-            Revoke this connection before creating a replacement key or changing its permissions.
+            Disconnect before replacing this connection or changing its permissions.
           </p>
         </div>
       ) : null}
-
-      {!loading && !loadError && connection === null && !uncertainIssue && secret === null ? (
+      {summary.isSuccess && connection === null && !waiting && !uncertain ? (
         <form
           className="admin-form"
           onSubmit={(event) => {
             event.preventDefault();
-            if (canCreate) void issue();
+            if (!locked && ConnectionCodeSchema.safeParse(code).success && admin.isSuccess)
+              void approve();
           }}
         >
+          <label htmlFor="ha-connection-code">Code shown in Home Assistant</label>
+          <input
+            id="ha-connection-code"
+            value={code}
+            onChange={(event) => setCode(normalizeConnectionCode(event.target.value))}
+            disabled={locked}
+            autoCapitalize="characters"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={12}
+            pattern="[A-HJ-NP-Z]{6}"
+            placeholder="ABCDEF"
+            required
+            aria-describedby="ha-code-help"
+          />
+          <p className="field-help" id="ha-code-help">
+            Six capital letters. Expires after five minutes. Approve only a setup you started.
+          </p>
           {admin.isPending ? <AdminLoading /> : null}
           {admin.isError ? (
             <AdminError
@@ -291,7 +242,7 @@ export function HomeAssistantBridgeSettings() {
               onRetry={() => void admin.refetch()}
             />
           ) : null}
-          <fieldset disabled={busy || !canCreate}>
+          <fieldset disabled={locked || !admin.isSuccess}>
             <legend>Allowed screens</legend>
             {screens.length === 0 ? (
               <p>No paired screens are available.</p>
@@ -315,7 +266,7 @@ export function HomeAssistantBridgeSettings() {
               ))
             )}
           </fieldset>
-          <fieldset disabled={busy || !canCreate}>
+          <fieldset disabled={locked}>
             <legend>Share information</legend>
             <label className="ha-bridge-choice">
               <input
@@ -337,55 +288,57 @@ export function HomeAssistantBridgeSettings() {
               <span>Share calendar (read only)</span>
             </label>
           </fieldset>
-          <fieldset disabled={busy || !canCreate}>
+          <fieldset disabled={locked}>
             <legend>Chore control (optional)</legend>
             <label className="ha-bridge-choice">
               <input
                 type="checkbox"
                 checked={controlChores}
                 disabled={!shareChores}
-                aria-describedby="ha-bridge-chore-control-help"
                 onChange={(event) => setControlChores(event.target.checked)}
               />
               <span>Allow completing and reopening today’s chores</span>
             </label>
-            <p className="field-help" id="ha-bridge-chore-control-help">
+            <p className="field-help">
               Share chores first. Completion changes affect earned pocket money as usual. This does
               not allow creating, deleting or reassigning chores, or opening admin.
             </p>
           </fieldset>
-          <button className="admin-submit" type="submit" disabled={busy || !canCreate}>
-            {busy ? 'Creating key…' : 'Create Home Assistant key'}
+          <button
+            className="admin-submit"
+            type="submit"
+            disabled={locked || !admin.isSuccess || !ConnectionCodeSchema.safeParse(code).success}
+          >
+            {busy ? 'Approving…' : 'Approve Home Assistant'}
           </button>
         </form>
       ) : null}
-
-      {uncertainIssue ? (
+      {uncertain && !connection ? (
         <button
           className="admin-submit"
           type="button"
           disabled={busy || confirmRevoke}
-          onClick={() => void issue()}
+          onClick={() => void approve()}
         >
-          {busy ? 'Confirming…' : 'Retry same key'}
+          Retry same approval
         </button>
       ) : null}
-      {connection !== null || uncertainIssue ? (
+      {connection || waiting || uncertain ? (
         confirmRevoke ? (
           <div
             className="calendar-remove-confirmation"
             role="group"
-            aria-label="Revoke Home Assistant access"
+            aria-label="Disconnect Home Assistant"
           >
-            <strong>Revoke Home Assistant access to Hearth?</strong>
-            <span>This key will stop working and pending screen commands will be cancelled.</span>
+            <strong>Disconnect Home Assistant?</strong>
+            <span>This cancels pending approvals and stops its access to Hearth.</span>
             <button
               className="admin-danger"
               type="button"
               disabled={busy}
               onClick={() => void revoke()}
             >
-              {busy ? 'Revoking…' : 'Yes, revoke access'}
+              Yes, disconnect
             </button>
             <button
               className="admin-secondary"
@@ -403,7 +356,7 @@ export function HomeAssistantBridgeSettings() {
             disabled={busy}
             onClick={() => setConfirmRevoke(true)}
           >
-            Revoke Home Assistant access
+            {connection ? 'Disconnect Home Assistant' : 'Cancel pending connection'}
           </button>
         )
       ) : null}

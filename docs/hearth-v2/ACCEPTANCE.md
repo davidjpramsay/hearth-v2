@@ -1,5 +1,67 @@
 # Hearth v2 acceptance and definition of done
 
+## Six-letter connections — D-110 local checkpoint (2026-10-15)
+
+Local implementation replaces manual HA key entry with machine-generated secret/short-code adult
+approval, adds code alternatives to phone invitations, generates letter-only screen codes and
+removes the browser owner-key form in favor of private setup/recovery/operator-replacement QR.
+Migration 0031 is additive; no live phones, screens, grants, runtime or networking were changed.
+Passed local checks on the final implementation:
+
+- `pnpm verify:code`: formatting, lint, workspace typecheck, **581 unit**, **217 API/integration**,
+  **28 migration** tests, ten protected Synology deployment-tool fixtures, deployment scaffold and
+  production web/server builds. Migration 0031 preserves existing owner/phone/screen/HA rows.
+- `pnpm verify:ci`: five release-policy tests and disjoint complete browser-shard enumeration.
+  `pnpm audit`: no known vulnerabilities.
+- `ANDROID_HOME=/opt/homebrew/share/android-commandlinetools pnpm verify:tv`: existing Kotlin
+  tests, Debug/Release lint and both APK builds. No TV source or installed package was changed.
+- `/tmp/hearth-ha-check.gSFK1s/venv/bin/python -B -m unittest discover
+-s hearth/integrations/home_assistant/tests`: **58 passed**. The environment is Python 3.14 with
+  actual HA 2026.10.1 installed; offline stand-ins do not prove HA lifecycle/rendering.
+  `ruff check hearth/integrations/home_assistant` passes. A separate actual-HA API smoke checks
+  the URL-only schema, progress task reuse, code placeholders, completion and cancellation.
+- Isolated real Python/aiohttp ↔ built Fastify round trip at literal loopback port 14310:
+  start, adult approval, automatic exchange/state, exact replay and revocation passed, using
+  synthetic demo data only. The disposable server was stopped; no live HA/TV/phone was connected.
+- Focused built-browser checks: **5/5 passed**, including short-code approval/exchange and phone
+  portrait/landscape keyboard entry, consent waiting, horizontal containment and accessibility.
+  CUA inspection confirms the final HA entry form and no warning/error console entries.
+  Browser plugin unavailable: used repository Playwright plus CUA for interactive inspection.
+- `git diff --check` passes. The full built-browser run finished **1,077/1,078 in 21.4 minutes**:
+  one unchanged static photo fixture threw `route already handled` during teardown, after its
+  layout assertions passed. Its demo album now loads once before navigation and is served as
+  fixed JSON; production playback randomness and afterEach route draining are unchanged.
+  The formerly failing case passed **20/20 consecutive repetitions**. All **395 Today/phone
+  affected checks passed in 4.0 minutes** on the frozen final build. Every case is covered by the
+  full run plus clean affected reruns; this is not claimed as a single clean 1,078-case run.
+  Fresh hosted CI remains required before release publication/deployment.
+
+Evidence is outside Git: `/tmp/hearth-short-codes-final-code.log`,
+`/tmp/hearth-short-codes-final-browser.log`, `/tmp/hearth-short-codes-tv-sdk.log`,
+`/tmp/hearth-short-codes-final-browser/` and `/tmp/hearth-six-letter-setup-preview.png`.
+The final code gate rerun is `/tmp/hearth-short-codes-post-fixture-code.log`; browser reruns are
+`/tmp/hearth-short-codes-photo-repeat.log` and `/tmp/hearth-short-codes-affected-final.log`.
+Exact browser commands:
+
+```sh
+pnpm test:e2e:built --max-failures=5 --reporter=line --output=/tmp/hearth-short-codes-final-browser
+pnpm test:e2e:built --grep 'Today reflows a portrait photo.*tv-1366' --repeat-each=20 --reporter=line --output=/tmp/hearth-short-codes-photo-repeat
+pnpm test:e2e:built today-polish.spec.ts phone-codes.spec.ts --reporter=line --output=/tmp/hearth-short-codes-affected-final
+```
+
+An intermediate affected-screen run overlapped a local production rebuild, causing hashed-asset
+404s; it is not counted as valid evidence. The serialized frozen-build rerun above passed.
+A standalone ad-hoc TypeScript invocation lacked workspace package resolution; the supported
+workspace typecheck passed in the complete code gate. Do not rebuild artifacts under an active
+built-browser run.
+Initial checks exposed the Mac's default Python 3.9 and unset Android SDK; reruns used the
+verified Python 3.14 environment and explicit existing SDK. Earlier complete browser runs were
+intentionally stopped while adding cancellation/audit hardening, not reported as completed.
+
+Still not run: matching component 1.1.0 live installation, physical Safari/code entry, real HA
+pairing/entities, screen commands and morning-automation changes. The old manual key-copy step
+below is superseded and paused, not a request for the owner to continue typing it.
+
 ## HA release and installed-device checkpoint — 2026-10-15
 
 Released software: `05130f051ea33a9f875562b4a9f3b97f7669a193`, pushed to main and
@@ -46,9 +108,9 @@ Evidence is outside Git at `/tmp/hearth-ha-live-release.9FD3XZ/`, including `hos
 `deploy.log`, `browser-final.log`, `tv-update-receipt.png` and `ha-connection-ready.png` (empty key).
 No key, household payload, reminder/provider identifier or private configuration was exported.
 
-**Blocked on owner action:** approve the chosen screens and data/chore permissions on the enrolled
-adult phone, then privately enter and submit that new key in HA. Do not read/copy the key through
-agent tools or chat. Still not run: live household entities/data, laptop or updated-TV navigation
+**Historical D-108 setup, superseded by D-110:** no key was submitted. New setup must use the
+matched short-code server/component after approved installation, not the old key field.
+Still not run: live household entities/data, laptop or updated-TV navigation
 acknowledgement, agreed test-chore complete/reopen, revocation/offline recovery and actual iPhone
 Safari/layout proof. The 06:30 automation remains enabled and unchanged; its Today-selection addition
 must wait for the real registered TV entity. No morning routine was triggered.

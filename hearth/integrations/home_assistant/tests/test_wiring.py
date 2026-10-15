@@ -4,6 +4,7 @@ These exercise our methods, not HA lifecycle, schemas, services or rendering.
 No Home Assistant/aiohttp/probatio installation or network access is required.
 """
 
+import asyncio
 import sys
 import unittest
 from dataclasses import dataclass
@@ -47,7 +48,7 @@ class ConfigFlow:
         pass
 
     def __init__(self):
-        self.hass = SimpleNamespace()
+        self.hass = SimpleNamespace(async_create_task=asyncio.create_task)
         self.existing_ids = set()
 
     async def async_set_unique_id(self, value):
@@ -73,6 +74,15 @@ class ConfigFlow:
 
     def async_show_form(self, **kwargs):
         return {"type": "form", **kwargs}
+
+    def async_show_progress(self, **kwargs):
+        return {"type": "progress", **kwargs}
+
+    def async_show_progress_done(self, **kwargs):
+        return {"type": "progress_done", **kwargs}
+
+    def async_abort(self, **kwargs):
+        return {"type": "abort", **kwargs}
 
     def add_suggested_values_to_schema(self, schema, suggested_values):
         self.suggestions = suggested_values
@@ -537,73 +547,136 @@ class WiringTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(entities[1].available)
 
     async def test_config_flow_uniqueness_and_reauth_household_check(self):
-        flow = self.flow_module.HearthConfigFlow()
         const = module("const")
         data = {
             const.CONF_URL: "https://hearth.invalid",
             const.CONF_AUTOMATION_KEY: KEY,
         }
-        flow._validate = AsyncMock(
-            return_value=({"id": "household_demo", "name": "Demo"}, data)
-        )
-        result = await flow.async_step_user(data)
+
+        async def completed():
+            return {"id": "household_demo", "name": "Demo"}, data
+
+        flow = self.flow_module.HearthConfigFlow()
+        flow._pairing_task = asyncio.create_task(completed())
+        await flow._pairing_task
+        result = await flow.async_step_finish()
         self.assertEqual(result["type"], "create_entry")
         self.assertEqual(flow.unique_id, "household_demo")
         flow.existing_ids.add("household_demo")
+        flow._pairing_task = asyncio.create_task(completed())
+        await flow._pairing_task
         with self.assertRaisesRegex(AbortFlow, "already_configured"):
-            await flow.async_step_user(data)
+            await flow.async_step_finish()
+        flow._reauth = True
         flow.entry = SimpleNamespace(unique_id="different_house", data=data)
+        flow._pairing_task = asyncio.create_task(completed())
+        await flow._pairing_task
         with self.assertRaisesRegex(AbortFlow, "unique_id_mismatch"):
-            await flow.async_step_reauth_confirm(data)
+            await flow.async_step_finish()
         self.assertFalse(hasattr(flow, "update"))
-        flow.entry.unique_id = "household_demo"
-        result = await flow.async_step_reauth_confirm(data)
-        self.assertEqual(result["reason"], "reauth_successful")
 
-    async def test_flow_errors_and_forms_do_not_echo_key(self):
+    async def test_flow_errors_and_forms_never_offer_or_echo_a_key(self):
         flow = self.flow_module.HearthConfigFlow()
         const = module("const")
-        data = {
-            const.CONF_URL: "https://hearth.invalid",
-            const.CONF_AUTOMATION_KEY: KEY,
-        }
+        data = {const.CONF_URL: "https://hearth.invalid"}
         for error, expected in (
-            (client.HearthAuthError(KEY), "invalid_auth"),
             (client.HearthConnectionError(KEY), "cannot_connect"),
             (client.HearthProtocolError(KEY), "invalid_bridge"),
         ):
-            flow._validate = AsyncMock(side_effect=error)
+            flow._start = AsyncMock(side_effect=error)
             result = await flow.async_step_user(data)
             self.assertEqual(result["errors"]["base"], expected)
             self.assertNotIn(KEY, repr(result))
+            self.assertNotIn(const.CONF_AUTOMATION_KEY, repr(result))
         flow.entry = SimpleNamespace(unique_id="household_demo", data=data)
         result = await flow.async_step_reauth_confirm()
-        self.assertNotIn(KEY, repr(result))
+        self.assertNotIn(const.CONF_AUTOMATION_KEY, repr(result))
         self.assertNotIn(const.CONF_AUTOMATION_KEY, flow.suggestions)
-        self.assertIn(
-            ("required", ("secret", const.CONF_AUTOMATION_KEY)), result["data_schema"]
-        )
 
-    async def test_flow_uses_tls_cookie_free_session_and_detaches(self):
+    async def test_flow_creates_hidden_random_credential_cookie_free_and_cleans_up(
+        self,
+    ):
         const = module("const")
         flow = self.flow_module.HearthConfigFlow()
-        session = Session(Response(state()))
+        pairing = {
+            "id": "pairing_fixture",
+            "code": "ABCDEF",
+            "expiresAt": datetime.now(UTC).isoformat(),
+            "interval": 3,
+        }
+        session = Session(Response(pairing))
         session.detach = lambda: setattr(session, "detached", True)
-        with patch.object(
-            self.flow_module, "async_create_clientsession", return_value=session
-        ) as factory:
-            household, saved = await flow._validate(
-                {
-                    const.CONF_URL: "https://hearth.invalid/",
-                    const.CONF_AUTOMATION_KEY: KEY,
-                }
+
+        async def wait(*args):
+            await asyncio.Future()
+
+        with (
+            patch.object(
+                self.flow_module, "async_create_clientsession", return_value=session
+            ) as factory,
+            patch.object(client.HearthClient, "async_wait_for_pairing", new=wait),
+        ):
+            result = await flow.async_step_user(
+                {const.CONF_URL: "https://hearth.invalid/"}
             )
-        self.assertEqual(household["id"], "household_demo")
-        self.assertEqual(saved[const.CONF_URL], "https://hearth.invalid")
-        self.assertTrue(factory.call_args.kwargs["verify_ssl"])
-        self.assertFalse(factory.call_args.kwargs["trust_env"])
-        self.assertIn("cookie_jar", factory.call_args.kwargs)
-        self.assertTrue(session.detached)
+            self.assertEqual(result["type"], "progress")
+            self.assertEqual(result["description_placeholders"], {"code": "ABCDEF"})
+            generated = session.calls[0][2]["json"]["secret"]
+            self.assertRegex(generated, r"^ha_[A-Za-z0-9_-]{43}$")
+            self.assertNotEqual(generated, KEY)
+            self.assertNotIn(generated, repr(result))
+            self.assertNotIn("Authorization", session.calls[0][2]["headers"])
+            self.assertTrue(factory.call_args.kwargs["verify_ssl"])
+            self.assertFalse(factory.call_args.kwargs["trust_env"])
+            self.assertIn("cookie_jar", factory.call_args.kwargs)
+            task = flow._pairing_task
+            await asyncio.sleep(0)
+            again = await flow.async_step_pair()
+            self.assertIs(again["progress_task"], task)
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            self.assertTrue(session.detached)
+            result = await flow.async_step_finish()
+            self.assertEqual(result["reason"], "pairing_failed")
+
+    async def test_flow_finishes_progress_and_detaches_after_approval_or_failure(self):
+        for failure in (False, True):
+            flow = self.flow_module.HearthConfigFlow()
+            session = Session(
+                Response(
+                    {
+                        "id": "pairing_fixture",
+                        "code": "ABCDEF",
+                        "expiresAt": datetime.now(UTC).isoformat(),
+                        "interval": 3,
+                    }
+                )
+            )
+            session.detach = lambda owned=session: setattr(owned, "detached", True)
+            with (
+                patch.object(
+                    self.flow_module, "async_create_clientsession", return_value=session
+                ),
+                patch.object(
+                    client.HearthClient,
+                    "async_wait_for_pairing",
+                    new=AsyncMock(
+                        side_effect=client.HearthProtocolError("Failed")
+                        if failure
+                        else None,
+                        return_value=state(),
+                    ),
+                ),
+            ):
+                await flow.async_step_user({"url": "https://hearth.invalid"})
+                await asyncio.gather(flow._pairing_task, return_exceptions=True)
+                self.assertEqual(
+                    (await flow.async_step_pair())["type"], "progress_done"
+                )
+                result = await flow.async_step_finish()
+                self.assertEqual(result["type"], "abort" if failure else "create_entry")
+                self.assertTrue(session.detached)
 
 
 if __name__ == "__main__":

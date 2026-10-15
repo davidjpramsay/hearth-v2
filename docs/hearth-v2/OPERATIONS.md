@@ -19,7 +19,7 @@ restore remains untested. The exact custom-component files were manually install
 HA configuration checked, Core restarted with no running routines, and the real Hearth config flow
 is available. File editor is stopped, autostart disabled, and the HA staging installers removed.
 No key has been entered by the agent and no household entities or navigation/chore actions are
-claimed yet. Await the owner's private phone grant/key submission; the morning automation is
+claimed yet. Setup is paused for D-110; do not ask the owner to copy a long key. The morning automation is
 still unchanged. See [the acceptance checkpoint](ACCEPTANCE.md) for commands, results and open gates.
 
 Use the trusted Hearth **server** origin, not a television IP. HA's household/server device owns
@@ -33,15 +33,15 @@ signed TV APK without uninstall/clearing its pairing, and manually copy only the
 `hearth/integrations/home_assistant/custom_components/hearth` folder into HA's `custom_components`.
 Restart HA at an agreed quiet time. It is not built-in, HACS-published or auto-discovered.
 
-In Hearth's adult Connections → Home Assistant, select existing screens and desired read-only
-sharing, then create a private connection key. In HA Add integration → Hearth enter the trusted
-Hearth HTTPS root and that key. Never use an adult session, TV key or HA long-lived token for this
-direction. HTTPS certificate verification stays enabled; local test exceptions must remain loopback.
-The key appears only for setup and is protected by HA config-entry storage/backups; never copy it
-into chat, screenshots, sensor attributes, automation YAML or source control. Revoking in Hearth
-invalidates it immediately. Re-pair with a fresh key rather than restoring an old revoked key.
+After verifying/releasing D-110 and installing matching HA component 1.1.0, add Hearth in HA using
+only the trusted private HTTPS root. It displays six letters. On the adult Hearth phone, open
+Connections → Home Assistant, enter those letters, choose screens/data permissions and approve.
+HA completes automatically. Never copy its hidden credential or use an adult session, TV key or
+HA long-lived token for this direction. TLS verification stays enabled; test HTTP stays loopback-only.
+HA protects its credential in config entries/backups. Disconnect to revoke it, then start a fresh
+six-letter request. Existing working grants need not be replaced.
 For D-109 chore tick/untick, separately enable **Allow completing and reopening today’s chores**
-before issuing the key. Existing read-only grants must be revoked/replaced to change permissions;
+before approving the code. Existing read-only grants must be revoked/replaced to change permissions;
 installing a new version never upgrades them. HA exposes **Today's chores** as a status-only to-do
 list. It needs no online TV. It is unavailable for denied, stale-day, truncated or failed chore data.
 Verify complete then reopen on one explicitly agreed test chore, with normal earnings/audit checks;
@@ -91,6 +91,11 @@ show it only to the intended first owner, scan using that phone and destroy the 
 after verified setup. Hearth must already be reachable over its trusted HTTPS origin. There is no
 anonymous first-QR endpoint or phone network-join command. Existing households use separate recovery,
 not a retained first-use QR. A private owner **replacement grant** is not a first-setup card.
+
+For an existing household, after separately issuing a protected one-use replacement grant, use the
+same helper with `--purpose owner-replacement` and a different private PNG. Scan on the replacement
+phone; no long key is typed. Never reuse a first-setup card for replacement. Keep the grant expiry,
+backup and owner-consent checks below; this helper does not issue authority.
 
 ### Private first-start display (D-105)
 
@@ -298,17 +303,17 @@ owner phone is physically connected and verified. Rachael's fresh QR connection 
 Do not issue a live key against a pre-0028 database or remove working legacy access before
 actual-phone acceptance.
 
-1. Connect the first phone with the private one-time owner key. Check **Connected as David** and
+1. Scan the private first-use setup QR on the first phone. Check **Connected as David** and
    **owner phone · Protected**. No app Remove/Sign out is available for this main phone (D-103).
 2. On David's connected phone, open **Phones & screens → Add phone**, choose **Rachael**, and
-   show the QR. Rachael scans with her phone camera, names her phone and requests connection.
+   show the QR/code. Rachael scans it or enters its six letters, names her phone and requests connection.
 3. David confirms **Rachael · Rachael's iPhone** and approves. Rachael taps **Connect as Rachael**.
    Check both identities independently; David is not signed out or switched to Rachael.
 4. **Remove** affects only a selected secondary connection; the owner, other phone and TV remain.
    If a secondary phone is lost, a remaining adult controller approves its QR replacement.
-   If the owner phone is lost/replaced, use a fresh protected backend key even when another adult
-   phone still works. That key retires only the previous owner. If all phones are lost, recover
-   the owner with that key, then remove lost secondary connections. No household reset.
+   If the owner phone is lost, use a saved recovery QR, an explicitly trusted exact phone, or a
+   fresh backend grant rendered into a private replacement QR. Ordinary connected adults cannot
+   promote themselves. Successful replacement retires only the previous owner. No household reset.
 
 QRs expire in five minutes and require final approval; a QR alone is not an administrator sign-in.
 Use one consistent Safari/Home Screen browser path on each iPhone; separate browser profiles may
@@ -398,9 +403,9 @@ Resolve exact paths and the named active adult from safe metadata first. This re
 administrators-group membership plus existing private database access, not a web session. The tool
 rejects missing/linked database paths, creates a checked private SQLite online backup and issues a
 256-bit one-time key valid for 15 minutes and bound to an existing adult controller. Output contains
-only private file locations and expiry. Read the key privately; never capture it in chat, tool
-output or logs. On the intended phone choose **Owner phone setup or replacement → Use owner setup
-key**, enter a phone name and the key. No password/passkey prompt. Issuance does not disconnect
+only private file locations and expiry. Never capture the key in chat, tool output or logs.
+Use the private PNG helper with `--purpose owner-replacement` and this protected file, then scan
+on the intended phone and enter its name. No long-key/password/passkey prompt. Issuance does not disconnect
 anything. Successful claim atomically replaces the prior protected
 owner phone and invalidates its sessions/invitations; secondary phones, permissions, content and
 the TV are unchanged. A newer issued key supersedes earlier unused owner grants household-wide.

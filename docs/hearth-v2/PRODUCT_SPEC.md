@@ -1,5 +1,12 @@
 # Hearth v2 product specification
 
+## Human connection codes (D-110)
+
+Ordinary Hearth connection must not require typing a machine secret. New screen, phone and HA
+invitations use six uppercase letters; QR remains available for phones. Codes expire and require
+explicit adult approval plus separate private device/browser proof. Powerful first-owner/recovery
+proof remains a private QR, never a six-letter password. Existing phones/screens keep their access.
+
 ## Appliance direction and local access extension (D-104)
 
 The consumer appliance must support phone-only first setup: private device-specific QR,

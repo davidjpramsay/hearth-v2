@@ -1,5 +1,13 @@
 # Hearth v2 implementation roadmap
 
+## Short-code connection usability — D-110 (2026-10-15)
+
+Replace manual Hearth key entry with six uppercase invitation letters or private QR. Preserve
+strong machine/recovery proof and all existing connections. Verify typed contracts, additive
+migration, expiry/replay/revocation races, origin/screen isolation, HA config-flow task lifecycle
+and mobile/TV rendering before publication. Install matching HA 1.1.0 separately with approval.
+Physical phone/HA/TV acceptance and the morning Today-selection change remain separate open gates.
+
 ## Inbound Home Assistant integration — 2026-10-15 (D-108)
 
 Priority: approved foreground Hearth tab selection with observed active-tab feedback, then optional

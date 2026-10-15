@@ -13,17 +13,46 @@ chores and/or calendar sharing in Connections → Home Assistant. A separate `co
 permission, off by default and requiring `shareChores`, permits completing/reopening today's
 existing chores. It grants no chore creation, deletion, assignment, schedule, exception, account,
 calendar-edit or pocket-money management rights. Ordinary completion changes still affect earned
-pocket money through Hearth's existing domain rules. The phone generates a random
-32-byte `ha_` key in memory, displays it only for setup, and submits it over the trusted origin.
+pocket money through Hearth's existing domain rules. Under D-110 the HA integration generates a random
+32-byte `ha_` key privately and exchanges it automatically after adult approval. The phone never
+generates, displays or asks the adult to copy that credential.
 The server stores only its SHA-256 digest. One active grant per home; revoke before replacing it.
 The key belongs in Home Assistant's protected config entry, never in chat, URLs, entities or logs.
 Installing the included custom integration and changing live HA/NAS configuration require approval.
 This is not a built-in/automatically discovered HA integration and needs no MQTT broker.
 
+### Six-letter device approval (D-110)
+
+HA accepts the trusted private HTTPS root, displays six letters and waits. The adult enters those
+letters in Hearth Connections → Home Assistant, selects permissions and approves a setup they
+initiated. Closing HA's dialog cancels its task/session. Unexchanged requests expire without access.
+
+- Machine `POST /api/v1/home-assistant/pairing-requests`: strict `{requestId,secret}` →
+  `{id,code,expiresAt,interval:3}`; no Cookie, Origin or Authorization accepted.
+- Adult `POST .../home-assistant-bridge/pairing-approvals`: strict
+  `{requestId,code,screenIds,shareChores,shareCalendar,controlChores}` →
+  `{approved:true,expiresAt}`; normal controller/household/origin checks. Binds the exact
+  approving connection and session hash, not an adult name.
+- Machine `POST /api/v1/home-assistant/pairing-requests/{id}/exchanges`: strict `{secret}` →
+  `{state:"waiting",receipt:null}` or `{state:"connected",receipt:{connection,replayed}}`.
+  Only the original secret can exchange. Commit rechecks phone/session expiry and revocation,
+  capabilities, selected screens, request expiry and cancellation. The immutable machine request
+  ID binds one grant; changed approval fails.
+- Five-minute lifetime, 64 retained requests, 10 starts/approvals and 240 exchanges per IP/action
+  per five minutes, 2,000 total requests per five minutes and bounded IP tracking. Poll every three
+  seconds. CSPRNG alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ`; migration 0031 stores code/secret digests.
+- Start-response retry reveals the same code only in the same server process. After restart,
+  start a new request; approval/exchange metadata survives until expiry. Exact exchanges replay one
+  durable grant. Revocation cancels approved pending requests; an old revocation retry must not
+  cancel newer approvals. Never accept a short code as a device credential or owner/adult proof.
+  Approval and its secret-free `home-assistant.bridge.approve` audit event commit together;
+  exact approval retries do not duplicate that event. Disconnecting pending approval is audited
+  without falsely claiming a grant was enabled. An approval in flight cannot outrun disconnect.
+
 Admin endpoints (normal adult authority, no shared-screen fallback):
 
 - `GET /api/v1/households/{householdId}/home-assistant-bridge`: safe grant summary or null.
-- `POST` same path: `{requestId,secret,screenIds,shareChores,shareCalendar,controlChores}`. Missing
+- Legacy compatibility `POST` same path: `{requestId,secret,screenIds,shareChores,shareCalendar,controlChores}`. Missing
   `controlChores` in legacy grants defaults to false; existing grants are never upgraded. Request IDs are
   idempotent; changed reuse conflicts. Response `{connection,replayed}` never echoes the key.
 - `POST .../home-assistant-bridge/revocations`: `{requestId}`; immediately disables all grants/commands.

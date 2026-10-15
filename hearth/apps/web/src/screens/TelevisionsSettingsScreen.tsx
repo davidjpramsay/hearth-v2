@@ -218,7 +218,7 @@ export function TelevisionsSettingsScreen() {
                 maxLength={16}
                 name="code"
                 pattern="[A-Z0-9]{6}"
-                placeholder="ABC123"
+                placeholder="ABCDEF"
                 required
                 value={code}
                 onChange={(event) => {

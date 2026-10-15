@@ -7,6 +7,275 @@ import { applyMigrations } from './database.js';
 import { buildServer } from './app.js';
 import { SqliteAdminRepository } from './admin-repository.js';
 import { FixedClock } from './runtime-context.js';
+import { HomeAssistantPairingService } from './home-assistant-pairings.js';
+import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
+import { InMemoryHearthRepository } from './repository.js';
+
+async function bridgeHarness() {
+  const h = await harness();
+  const admin = new SqliteAdminRepository(h.db, { seedDemo: false, now: h.now });
+  const bridge = new HomeAssistantBridgeService(admin, new InMemoryHearthRepository(), {
+    database: h.db,
+    now: h.now,
+  });
+  const options = {
+    database: h.db,
+    now: h.now,
+    assertApproval: (ref: Parameters<PhoneConnectionService['assertApprovalReference']>[0]) =>
+      h.phones.assertApprovalReference(ref),
+  };
+  const pairings = new HomeAssistantPairingService(bridge, options);
+  const reference = h.phones.approvalReference(h.home, h.first.token);
+  const secret = `ha_${'B'.repeat(43)}`;
+  const start = pairings.start({ requestId: 'request_ha_start', secret }, 'ha');
+  const approval = {
+    requestId: 'request_ha_approve',
+    code: start.code,
+    screenIds: [],
+    shareChores: false,
+    shareCalendar: false,
+    controlChores: false,
+  };
+  return { ...h, bridge, pairings, reference, secret, start, approval, options, admin };
+}
+
+describe('adult-approved HA device codes', () => {
+  it('an approval in flight cannot outrun disconnect, and an old disconnect retry cannot cancel a newer approval', async () => {
+    const h = await bridgeHarness();
+    const original = h.admin.getOverview.bind(h.admin);
+    vi.spyOn(h.admin, 'getOverview').mockImplementationOnce(async (...args) => {
+      h.pairings.cancelForHousehold(h.home);
+      return original(...args);
+    });
+    await expect(h.pairings.approve(h.approval, h.reference, 'adult')).rejects.toThrow();
+    await h.bridge.revoke(h.home, h.reference.memberId, 'request_disconnect', () =>
+      h.pairings.cancelForHousehold(h.home),
+    );
+    const newerSecret = `ha_${'E'.repeat(43)}`;
+    const newer = h.pairings.start({ requestId: 'request_newer', secret: newerSecret }, 'ha');
+    await h.pairings.approve(
+      { ...h.approval, requestId: 'request_newer_approval', code: newer.code },
+      h.reference,
+      'adult',
+    );
+    const repeatedCancellation = vi.fn(() => h.pairings.cancelForHousehold(h.home));
+    await h.bridge.revoke(h.home, h.reference.memberId, 'request_disconnect', repeatedCancellation);
+    expect(repeatedCancellation).not.toHaveBeenCalled();
+    expect(await h.pairings.exchange(newer.id, newerSecret, 'ha')).toMatchObject({
+      state: 'connected',
+    });
+  });
+  it('separates code, approving phone and original machine proof; exact exchange replays one grant', async () => {
+    const h = await bridgeHarness();
+    expect(h.start.code).toMatch(/^[A-HJ-NP-Z]{6}$/);
+    expect(await h.pairings.exchange(h.start.id, h.secret, 'ha')).toEqual({
+      state: 'waiting',
+      receipt: null,
+    });
+    await expect(
+      h.pairings.exchange(h.start.id, `ha_${'C'.repeat(43)}`, 'wrong'),
+    ).rejects.toThrow();
+    await h.pairings.approve(h.approval, h.reference, 'adult');
+    const otherRequest = h.pairings.start(
+      { requestId: 'request_second_ha', secret: `ha_${'D'.repeat(43)}` },
+      'ha',
+    );
+    await expect(
+      h.pairings.approve({ ...h.approval, code: otherRequest.code }, h.reference, 'adult'),
+    ).rejects.toThrow();
+    const first = await h.pairings.exchange(h.start.id, h.secret, 'ha');
+    expect(first).toMatchObject({ state: 'connected', receipt: { replayed: false } });
+    expect(await h.pairings.exchange(h.start.id, h.secret, 'ha')).toMatchObject({
+      receipt: { replayed: true, connection: first.receipt!.connection },
+    });
+    expect(h.bridge.authenticate(h.secret).householdId).toBe(h.home);
+    expect(
+      h.db.prepare('SELECT count(*) AS n FROM home_assistant_bridge_connections').get(),
+    ).toEqual({ n: 1 });
+    const persisted = JSON.stringify(
+      h.db.prepare('SELECT * FROM home_assistant_bridge_pairings').all(),
+    );
+    for (const privateValue of [h.secret, h.start.code, h.first.token])
+      expect(persisted).not.toContain(privateValue);
+    await expect(
+      h.pairings.approve({ ...h.approval, shareCalendar: true }, h.reference, 'adult'),
+    ).rejects.toThrow();
+  });
+  it('durably retains approval/exact exchange but never reconstructs a lost short-code reveal after restart', async () => {
+    const h = await bridgeHarness();
+    expect(h.pairings.start({ requestId: 'request_ha_start', secret: h.secret }, 'ha')).toEqual(
+      h.start,
+    );
+    await h.pairings.approve(h.approval, h.reference, 'adult');
+    const restarted = new HomeAssistantPairingService(h.bridge, h.options);
+    expect(() =>
+      restarted.start({ requestId: 'request_ha_start', secret: h.secret }, 'ha'),
+    ).toThrow();
+    expect(await restarted.approve(h.approval, h.reference, 'adult')).toMatchObject({
+      approved: true,
+    });
+    expect(
+      h.db
+        .prepare(
+          "SELECT count(*) AS n FROM audit_events WHERE action_type='home-assistant.bridge.approve'",
+        )
+        .get(),
+    ).toEqual({ n: 1 });
+    expect(await restarted.exchange(h.start.id, h.secret, 'ha')).toMatchObject({
+      receipt: { replayed: false },
+    });
+    const again = new HomeAssistantPairingService(
+      new HomeAssistantBridgeService(h.admin, new InMemoryHearthRepository(), {
+        database: h.db,
+        now: h.now,
+      }),
+      h.options,
+    );
+    expect(await again.exchange(h.start.id, h.secret, 'ha')).toMatchObject({
+      receipt: { replayed: true },
+    });
+  });
+  it('expiry, removal of approving session, permission loss and cancellation fail closed', async () => {
+    for (const scenario of ['expiry', 'session', 'permission', 'cancel'] as const) {
+      const h = await bridgeHarness();
+      await h.pairings.approve(h.approval, h.reference, 'adult');
+      if (scenario === 'expiry') h.advance(300_001);
+      if (scenario === 'session') h.auth.invalidateBrowserSession(h.first.token);
+      if (scenario === 'permission')
+        h.db
+          .prepare("UPDATE members SET capabilities_json='[]' WHERE id=?")
+          .run(h.reference.memberId);
+      if (scenario === 'cancel') h.pairings.cancelForHousehold(h.home);
+      await expect(h.pairings.exchange(h.start.id, h.secret, 'ha')).rejects.toThrow();
+      expect(
+        h.db.prepare('SELECT count(*) AS n FROM home_assistant_bridge_connections').get(),
+      ).toEqual({ n: 0 });
+    }
+  });
+  it('bounds creation, guessing and pending state without echoing supplied credentials', async () => {
+    const h = await bridgeHarness();
+    for (let n = 0; n < 10; n += 1)
+      expect(() =>
+        h.pairings.start(
+          { requestId: 'request_ha_start', secret: `ha_${'C'.repeat(43)}` },
+          'guess',
+        ),
+      ).toThrow();
+    expect(() => h.pairings.start({ requestId: 'request_new', secret: h.secret }, 'guess')).toThrow(
+      /unavailable/,
+    );
+    for (let n = 0; n < 10; n += 1)
+      await expect(
+        h.pairings.approve({ ...h.approval, code: 'ABCDEF' }, h.reference, 'guess'),
+      ).rejects.toThrow();
+    await expect(h.pairings.approve(h.approval, h.reference, 'guess')).rejects.toThrow(
+      /unavailable/,
+    );
+    h.advance(300_001);
+    expect(h.pairings.start({ requestId: 'request_new', secret: h.secret }, 'guess').code).toMatch(
+      /^[A-HJ-NP-Z]{6}$/,
+    );
+  });
+  it('rechecks the approving phone after an asynchronous repository read and cannot overwrite approval concurrently', async () => {
+    const h = await bridgeHarness();
+    const other = await secondary(h);
+    const otherRef = h.phones.approvalReference(h.home, other.token);
+    const competing = await Promise.allSettled([
+      h.pairings.approve(h.approval, h.reference, 'owner'),
+      h.pairings.approve({ ...h.approval, requestId: 'request_competing' }, otherRef, 'other'),
+    ]);
+    expect(competing.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const original = h.admin.getOverview.bind(h.admin);
+    vi.spyOn(h.admin, 'getOverview').mockImplementation(async (...args) => {
+      const result = await original(...args);
+      h.auth.invalidateBrowserSession(h.first.token);
+      return result;
+    });
+    await expect(h.pairings.exchange(h.start.id, h.secret, 'ha')).rejects.toThrow();
+    expect(
+      h.db.prepare('SELECT count(*) AS n FROM home_assistant_bridge_connections').get(),
+    ).toEqual({ n: 0 });
+  });
+  it('machine routes reject browser/mixed credentials, and adult approval rejects screen/cross-origin/anonymous requests', async () => {
+    const h = await bridgeHarness();
+    const app = buildServer({
+      logger: false,
+      demoMode: false,
+      companionAuth: h.auth,
+      phoneConnections: h.phones,
+      adminRepository: h.admin,
+      homeAssistantBridge: h.bridge,
+      homeAssistantPairings: h.pairings,
+      runtime: { mode: 'private', householdId: h.home, clock: { now: h.now } },
+    });
+    servers.push(app);
+    const machine = '/api/v1/home-assistant/pairing-requests';
+    for (const headers of [
+      { cookie: 'hearth_device=fixture' },
+      { origin },
+      { authorization: `HearthAutomation ${h.secret}` },
+    ]) {
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: machine,
+            headers,
+            payload: { requestId: 'request_route', secret: h.secret },
+          })
+        ).statusCode,
+      ).toBe(403);
+    }
+    const url = `/api/v1/households/${h.home}/home-assistant-bridge/pairing-approvals`;
+    const cookie = h.phones.cookie(h.first.token).split(';')[0]!;
+    expect(
+      (await app.inject({ method: 'POST', url, headers: { origin, cookie }, payload: h.approval }))
+        .statusCode,
+    ).toBe(200);
+    const exchangeUrl = `${machine}/${h.start.id}/exchanges`;
+    expect(
+      (
+        await app.inject({ method: 'POST', url: exchangeUrl, payload: { secret: h.secret } })
+      ).json(),
+    ).toMatchObject({ state: 'connected', receipt: { replayed: false } });
+    expect(
+      (
+        await app.inject({ method: 'POST', url: exchangeUrl, payload: { secret: h.secret } })
+      ).json(),
+    ).toMatchObject({ receipt: { replayed: true } });
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `${url.replace('/pairing-approvals', '')}/revocations`,
+          headers: { origin, cookie },
+          payload: { requestId: 'request_route_revoke' },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (await app.inject({ method: 'POST', url: exchangeUrl, payload: { secret: h.secret } }))
+        .statusCode,
+    ).toBe(403);
+    for (const headers of [
+      { origin },
+      { origin: 'https://evil.example.test', cookie },
+      { origin, cookie: `${cookie}; hearth_device=fixture` },
+    ]) {
+      expect(
+        (await app.inject({ method: 'POST', url, headers, payload: h.approval })).statusCode,
+      ).not.toBe(200);
+    }
+    const result = await app.inject({
+      method: 'POST',
+      url,
+      headers: { origin, cookie },
+      payload: h.approval,
+    });
+    // A mixed screen attempt intentionally invalidates retained adult authority. A fresh owner grant is needed.
+    expect(result.statusCode).not.toBe(200);
+  });
+});
 
 const databases: Database.Database[] = [];
 const servers: ReturnType<typeof buildServer>[] = [];
@@ -118,6 +387,54 @@ function ownerGrant(
 }
 
 describe('owner-key and QR-approved adult phones', () => {
+  it('six-letter invitations require original adult approval and a separate pending cookie', async () => {
+    const h = await harness();
+    const invite = h.phones.createInvitation(
+      h.home,
+      h.first.token,
+      'member_rachael',
+      'request_code',
+    );
+    expect(invite.code).toMatch(/^[A-HJ-NP-Z]{6}$/);
+    const claim = h.phones.claimInvitation(invite.code!, 'New phone', 'new', null, true);
+    expect(() => h.phones.exchange(invite.code!, () => undefined)).toThrow();
+    expect(() => h.phones.exchange(claim.pendingToken, () => undefined)).toThrow(/Waiting/);
+    expect(() => h.phones.claimInvitation(invite.code!, 'Imposter', 'other', null, true)).toThrow(
+      /already/,
+    );
+    h.phones.approve(h.home, h.first.token, invite.id, 'request_code_approve');
+    expect(
+      h.auth.session(h.phones.exchange(claim.pendingToken, () => undefined).token).displayName,
+    ).toBe('Rachael');
+    expect(
+      JSON.stringify(h.db.prepare('SELECT * FROM controller_phone_invitation_codes').all()),
+    ).not.toContain(invite.code);
+    expect(h.auth.session(h.first.token).displayName).toBe('David');
+  });
+  it('expired and cancelled codes cannot be claimed and code guessing is bounded', async () => {
+    const h = await harness();
+    const invite = h.phones.createInvitation(
+      h.home,
+      h.first.token,
+      'member_rachael',
+      'request_expiring',
+    );
+    h.advance(300_001);
+    expect(() => h.phones.claimInvitation(invite.code!, 'New', 'new', null, true)).toThrow();
+    for (let n = 0; n < 20; n += 1)
+      expect(() => h.phones.claimInvitation('ABCDEF', 'New', 'guess', null, true)).toThrow();
+    expect(() => h.phones.claimInvitation('ABCDEF', 'New', 'guess', null, true)).toThrow(
+      /Too many/,
+    );
+    const other = h.phones.createInvitation(
+      h.home,
+      h.first.token,
+      'member_rachael',
+      'request_cancelcode',
+    );
+    h.phones.approve(h.home, h.first.token, other.id, 'request_cancelcode_command', true);
+    expect(() => h.phones.claimInvitation(other.code!, 'New', 'cancelled', null, true)).toThrow();
+  });
   it('bootstraps atomically with no passkey and consumes the setup file', async () => {
     const h = await harness();
     expect(h.consume).toHaveBeenCalledOnce();

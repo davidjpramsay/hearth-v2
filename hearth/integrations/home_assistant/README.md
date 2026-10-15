@@ -13,20 +13,23 @@ and launching the Hearth app; this bridge does not replace it.
 
 1. With approval to change your HA instance, copy `custom_components/hearth/`
    into its configuration directory as `custom_components/hearth/`, then restart HA.
-2. In Hearth's adult phone **Connections → Home Assistant**, approve existing
-   screens and optionally share chores/calendar. Optionally enable **Allow completing and
-   reopening today’s chores** as a separate permission. Generate the automation key.
-3. In HA **Settings → Devices & services → Add integration → Hearth**, enter
-   Hearth's private HTTPS origin and the key. HA must trust the certificate.
+2. In HA **Settings → Devices & services → Add integration → Hearth**, enter only
+   Hearth's private HTTPS origin. HA displays six uppercase letters and waits.
+3. On the connected adult Hearth phone, open **Connections → Home Assistant**, enter those letters,
+   choose screens and optional data/chore permissions, then **Approve Home Assistant**.
+   HA completes automatically. No long key to type. HA must trust the certificate.
    The explicit HTTP exception accepts literal loopback IPs for local tests only.
 
 Uses HA config-entry, `probatio` config-flow and coordinator APIs; imports,
-secret-selector schema and calendar values were smoke-checked with HA 2026.10.1.
+config-flow/progress APIs and calendar values are checked with HA 2026.10.1.
 Check the installed HA version before live installation: older-version compatibility is not
 proved. Do not upgrade HA automatically; agree a compatibility fix or upgrade separately.
 Protect HA's config entries/backups: they retain the automation key. Revoke it
 in Hearth to stop access; HA requests reauthentication after a 401. Replacement
-keys must identify the same household. No credentials belong in URLs or YAML.
+connections must identify the same household. Existing config entries remain compatible.
+New short-code setup needs matching Hearth server migration 0031 and custom component 1.1.0.
+Codes expire after five minutes; close/restart setup if expired. Approve only a setup you started.
+No credentials belong in URLs or YAML.
 
 The household has read-only open/completed chore counts (bounded items and
 `truncated` on the open-count attributes) and a read-only calendar. Sharing disabled

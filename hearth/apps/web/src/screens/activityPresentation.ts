@@ -73,6 +73,7 @@ const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> 
   'home-assistant.connection.save': connections('Home Assistant connected', 'home'),
   'home-assistant.connection.remove': connections('Home Assistant disconnected', 'home'),
   'home-assistant.bridge.grant': connections('Home Assistant access enabled', 'home'),
+  'home-assistant.bridge.approve': connections('Home Assistant connection approved', 'home'),
   'home-assistant.bridge.revoke': connections('Home Assistant access disconnected', 'home'),
   'screen.navigate': connections('Hearth screen change requested', 'television'),
   'system.backup.create': system('Recovery copy created', 'refresh'),

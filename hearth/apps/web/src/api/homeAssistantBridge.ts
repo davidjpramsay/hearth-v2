@@ -2,10 +2,13 @@ import {
   BridgeConnectionSchema,
   BridgeGrantRequestSchema,
   BridgeGrantResultSchema,
+  BridgePairingApprovalSchema,
+  BridgePairingApprovalResultSchema,
   ScreenPresentationRequestSchema,
   ScreenPresentationResultSchema,
   TvDeviceSessionSchema,
   type BridgeGrantRequest,
+  type BridgePairingApproval,
   type ScreenPresentationRequest,
 } from '@hearth/shared';
 import { z } from 'zod';
@@ -48,6 +51,20 @@ async function bridgeRequest<T>(url: string, schema: z.ZodType<T>, init: Request
 }
 
 export const homeAssistantBridgeApi = {
+  approvePairing: (input: BridgePairingApproval, signal?: AbortSignal) => {
+    if (!BridgePairingApprovalSchema.safeParse(input).success)
+      return Promise.reject(new HomeAssistantBridgeApiError(400));
+    return bridgeRequest(
+      `${householdApiBase()}/home-assistant-bridge/pairing-approvals`,
+      BridgePairingApprovalResultSchema,
+      {
+        method: 'POST',
+        headers: demoAdminHeaders,
+        body: JSON.stringify(input),
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+  },
   getConnection: (signal?: AbortSignal) =>
     bridgeRequest(
       `${householdApiBase()}/home-assistant-bridge`,

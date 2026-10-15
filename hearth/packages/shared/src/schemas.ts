@@ -1215,6 +1215,7 @@ export const AuditSummarySchema = z.object({
     'home-assistant.connection.save',
     'home-assistant.connection.remove',
     'home-assistant.bridge.grant',
+    'home-assistant.bridge.approve',
     'home-assistant.bridge.revoke',
     'screen.navigate',
     'system.backup.create',

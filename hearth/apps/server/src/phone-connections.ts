@@ -18,6 +18,14 @@ import {
 import type { CompanionAuthConfiguration, CompanionAuthRepository } from './companion-auth.js';
 import { RepositoryError } from './repository.js';
 import { OWNER_PHONE_PROTECTED } from './owner-phone.js';
+import { createConnectionCode } from './connection-codes.js';
+
+export interface PhoneApprovalReference {
+  householdId: string;
+  memberId: string;
+  connectionId: string;
+  sessionHash: string;
+}
 
 const INVITATION_MS = 5 * 60_000;
 const SESSION_MS = 180 * 24 * 60 * 60_000;
@@ -70,6 +78,7 @@ interface RecoveryCard {
 export class PhoneConnectionService {
   private readonly now: () => Date;
   private readonly attempts = new Map<string, { count: number; until: number }>();
+  private codeAttempts = { count: 0, until: 0 };
   // Only a short process-local retry receipt holds a raw cookie, never SQLite or logs.
   private readonly exchanges = new Map<string, SessionResult & { until: number }>();
   private readonly cardReveals = new Map<string, PhoneRecoveryCardReveal & { until: number }>();
@@ -255,6 +264,20 @@ export class PhoneConnectionService {
       if (count.total >= 50 || (count.own ?? 0) >= 5)
         throw new RepositoryError('FORBIDDEN', 'Cancel an earlier QR before creating another.');
       const secret = randomBytes(32).toString('base64url');
+      let code = createConnectionCode();
+      let collisions = 0;
+      while (
+        this.db
+          .prepare('SELECT 1 FROM controller_phone_invitation_codes WHERE code_hash=?')
+          .get(hash(code))
+      ) {
+        if (++collisions >= 10)
+          throw new RepositoryError(
+            'INTEGRATION_UNAVAILABLE',
+            'Try creating a new connection code.',
+          );
+        code = createConnectionCode();
+      }
       const invite = id('phone_invitation');
       const expiry = new Date(this.now().getTime() + INVITATION_MS).toISOString();
       this.db
@@ -274,6 +297,11 @@ export class PhoneConnectionService {
           purpose,
           replacing?.id ?? null,
         );
+      this.db
+        .prepare(
+          'INSERT INTO controller_phone_invitation_codes (invitation_id,code_hash) VALUES (?,?)',
+        )
+        .run(invite, hash(code));
       this.audit(
         home,
         actor.member_id,
@@ -284,6 +312,7 @@ export class PhoneConnectionService {
       return {
         ...this.invitationState(this.invitation(invite)),
         qrUrl: `${this.configuration.origin}/#connect-phone=${secret}`,
+        code,
       };
     })();
   }
@@ -293,14 +322,32 @@ export class PhoneConnectionService {
     phoneName: string,
     address: string,
     pending: string | null,
+    byCode = false,
   ): { state: PhoneInvitationState; pendingToken: string } {
     this.limit(address);
+    if (byCode) {
+      const now = this.now().getTime();
+      if (this.codeAttempts.until <= now)
+        this.codeAttempts = { count: 0, until: now + INVITATION_MS };
+      if (++this.codeAttempts.count > 200)
+        throw new RepositoryError(
+          'FORBIDDEN',
+          'Too many connection attempts. Try again in five minutes.',
+        );
+    }
     return this.db.transaction(() => {
       const row = this.db
-        .prepare('SELECT id FROM controller_phone_invitations WHERE secret_hash=?')
+        .prepare(
+          byCode
+            ? 'SELECT invitation_id AS id FROM controller_phone_invitation_codes WHERE code_hash=?'
+            : 'SELECT id FROM controller_phone_invitations WHERE secret_hash=?',
+        )
         .get(hash(secret)) as { id: string } | undefined;
       if (!row)
-        throw new RepositoryError('FORBIDDEN', 'This QR is not available. Ask for a new QR.');
+        throw new RepositoryError(
+          'FORBIDDEN',
+          'This connection code or QR is unavailable. Ask for a new one.',
+        );
       const invite = this.invitation(row.id);
       this.liveInvitation(invite);
       if (invite.claim_hash !== null) {
@@ -1020,6 +1067,46 @@ export class PhoneConnectionService {
         'SELECT c.id,c.household_id,c.member_id,c.label,c.source,c.expires_at,m.display_name FROM companion_sessions s JOIN controller_phone_connections c ON c.id=s.phone_connection_id JOIN members m ON m.id=c.member_id WHERE s.token_hash=?',
       )
       .get(hash(token)) as ConnectionActor;
+  }
+
+  approvalReference(home: string, token: string): PhoneApprovalReference {
+    const actor = this.controller(home, token);
+    return {
+      householdId: home,
+      memberId: actor.member_id,
+      connectionId: actor.id,
+      sessionHash: hash(token),
+    };
+  }
+
+  /** Recheck the exact approving phone/session immediately before granting machine authority. */
+  assertApprovalReference(reference: PhoneApprovalReference): void {
+    const live = this.db
+      .prepare(
+        `SELECT 1 FROM companion_sessions s
+      JOIN controller_phone_connections c ON c.id=s.phone_connection_id AND c.member_id=s.member_id AND c.household_id=s.household_id
+      JOIN members m ON m.id=c.member_id AND m.household_id=c.household_id
+      LEFT JOIN passkey_credentials p ON p.credential_id=s.credential_id
+      WHERE s.token_hash=? AND c.id=? AND s.household_id=? AND m.id=?
+      AND s.revoked_at IS NULL AND c.revoked_at IS NULL AND s.expires_at>? AND c.expires_at>? AND s.last_seen_at>?
+      AND (s.credential_id IS NULL OR (p.credential_id IS NOT NULL AND p.revoked_at IS NULL))
+      AND m.archived_at IS NULL AND m.role='adult'
+      AND EXISTS(SELECT 1 FROM json_each(m.capabilities_json) WHERE value='household.admin')`,
+      )
+      .get(
+        reference.sessionHash,
+        reference.connectionId,
+        reference.householdId,
+        reference.memberId,
+        this.now().toISOString(),
+        this.now().toISOString(),
+        new Date(this.now().getTime() - PHONE_IDLE_MS).toISOString(),
+      );
+    if (!live)
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'The approving phone is no longer connected. Start again.',
+      );
   }
 
   private adult(home: string, member: string): void {

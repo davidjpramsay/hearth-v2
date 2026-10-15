@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConnectionCodeSchema } from './connection-codes.js';
 import { OpaqueIdSchema, TimestampSchema, TimezoneSchema } from './schemas.js';
 
 const PhoneName = z.string().trim().min(1).max(80);
@@ -18,12 +19,16 @@ export const PhoneInvitationCreateSchema = z
     requestId: OpaqueIdSchema,
   })
   .strict();
-export const PhoneInvitationClaimSchema = z
+const PhoneInvitationQrClaimSchema = z
   .object({
     invitationSecret: PhoneSecretSchema,
     phoneName: PhoneName,
   })
   .strict();
+export const PhoneInvitationClaimSchema = z.union([
+  PhoneInvitationQrClaimSchema,
+  z.object({ code: ConnectionCodeSchema, phoneName: PhoneName }).strict(),
+]);
 export const PhoneCommandSchema = z.object({ requestId: OpaqueIdSchema }).strict();
 export const PhoneConnectionSchema = z.object({
   id: OpaqueIdSchema,
@@ -50,6 +55,7 @@ export const PhoneInvitationStateSchema = z.object({
 });
 export const PhoneInvitationRevealSchema = PhoneInvitationStateSchema.extend({
   qrUrl: z.string().url(),
+  code: ConnectionCodeSchema.optional(),
 });
 export const PhonePendingSchema = PhoneInvitationStateSchema.nullable();
 export const PhoneConfirmationSchema = z.object({

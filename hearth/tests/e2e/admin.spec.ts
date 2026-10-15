@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type APIRequestContext } from '@playwright/test';
@@ -439,6 +440,15 @@ for (const viewport of [
     });
     page.on('pageerror', (error) => problems.push(error.message));
     await page.setViewportSize(viewport);
+    const key = `ha_${randomBytes(32).toString('base64url')}`;
+    const pending = await request.post(
+      'http://127.0.0.1:4310/api/v1/home-assistant/pairing-requests',
+      {
+        data: { requestId: 'request_browser_ha_pair', secret: key },
+      },
+    );
+    expect(pending.status()).toBe(200);
+    const pairing = await pending.json();
     await page.goto('/admin/connections/home-assistant');
     await expect(page).toHaveTitle(/Hearth/);
     await expect(page.getByRole('heading', { name: 'Home Assistant', exact: true })).toBeVisible();
@@ -446,6 +456,9 @@ for (const viewport of [
     const share = page.getByLabel('Share chores (read only)');
     await expect(control).toBeDisabled();
     await expect(control).not.toBeChecked();
+    await page
+      .locator('.ha-bridge-settings')
+      .screenshot({ path: testInfo.outputPath('six-letter-setup.png') });
     await share.check();
     await control.focus();
     await page.keyboard.press('Space');
@@ -458,13 +471,17 @@ for (const viewport of [
     await expect(
       page.getByText('Share chores first. Completion changes affect earned pocket money as usual.'),
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Create Home Assistant key' }).click();
-    const field = page.getByLabel('One-time key', { exact: true });
-    await expect(field).toHaveAttribute('type', 'password');
-    // Disposable demo grant only; kept in memory, never logged or captured in a screenshot.
-    const key = await field.inputValue();
-    await page.getByRole('button', { name: 'Done, key saved in Home Assistant' }).click();
-    await expect(field).toHaveCount(0);
+    await page.getByLabel('Code shown in Home Assistant').fill(pairing.code.toLowerCase());
+    await page.getByRole('button', { name: 'Approve Home Assistant' }).click();
+    await expect(page.getByText(/Approved. Home Assistant will finish/)).toBeVisible();
+    const exchange = await request.post(
+      `http://127.0.0.1:4310/api/v1/home-assistant/pairing-requests/${pairing.id}/exchanges`,
+      { data: { secret: key } },
+    );
+    expect(exchange.status()).toBe(200);
+    expect((await exchange.json()).receipt.replayed).toBe(false);
+    await expect(page.getByRole('heading', { name: 'Home Assistant is connected' })).toBeVisible();
+    await expect(page.getByLabel('One-time key', { exact: true })).toHaveCount(0);
     await expect(
       page.getByText('Complete and reopen today’s chores', { exact: true }),
     ).toBeVisible();
@@ -631,7 +648,7 @@ test('adult sees concise system health and can create an advanced recovery copy'
   await page.getByRole('link', { name: /System health/ }).click();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hearth is protected' })).toBeVisible();
-  await expect(page.getByText('Migration 30 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
+  await expect(page.getByText('Migration 31 · checked 3 Aug 2026, 7:42 am')).toBeVisible();
   await expect(page.getByText(/Last backup 3 Aug 2026, 1:00 pm · 2.5 MB/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connections and photos' })).toBeVisible();
   const calendar = page.locator('.system-connection-row').filter({ hasText: 'Calendar' });

@@ -1,5 +1,15 @@
 # Hearth v2 architecture
 
+## Human-code authority boundary (D-110)
+
+`HomeAssistantPairingService` separates machine initiation/exchange from same-origin adult approval.
+The HA config flow generates a private 32-byte credential; the phone handles only an expiring
+six-letter locator and permissions. Digest-only migration 0031 retains metadata across restart.
+Commit rechecks the exact approving phone/session/capabilities, including after asynchronous reads.
+Phone codes reuse existing invitation/pending-cookie/approval transactions. Screen credentials
+stay unchanged. Owner/operator proof is scanned from purpose-specific private QR cards, never
+shortened. See the phone and HA contracts for bounds, restart behavior and compatibility.
+
 ## Opt-in inbound Home Assistant bridge — D-108
 
 The separate `HomeAssistantBridgeService` authenticates digest-only Hearth automation grants,

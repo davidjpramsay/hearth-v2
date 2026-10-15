@@ -14,11 +14,6 @@
   margin-block: 0.25rem 0;
 }
 
-.ha-bridge-key p {
-  margin-block: 0.5rem;
-}
-
-.ha-bridge-key,
 .ha-bridge-summary {
   min-inline-size: 0;
   padding: 1rem;
@@ -82,7 +77,7 @@
   margin: 0;
 }
 
-.ha-bridge-key input {
+.ha-bridge-settings #ha-connection-code {
   box-sizing: border-box;
   inline-size: 100%;
   min-inline-size: 0;
@@ -94,6 +89,9 @@
   color: var(--ink);
   background: var(--input-surface);
   font-family: monospace;
+  font-size: max(1.25rem, 20px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .ha-bridge-actions {

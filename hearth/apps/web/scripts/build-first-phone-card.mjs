@@ -13,7 +13,7 @@ const args = process.argv.slice(2);
 const values = new Map();
 for (let index = 0; index < args.length; index += 2) {
   if (
-    !['--key-file', '--origin', '--output'].includes(args[index]) ||
+    !['--key-file', '--origin', '--output', '--purpose'].includes(args[index]) ||
     !args[index + 1] ||
     values.has(args[index])
   ) {
@@ -25,14 +25,18 @@ for (let index = 0; index < args.length; index += 2) {
   values.set(args[index], args[index + 1]);
 }
 try {
-  if (values.size !== 3) throw new Error('Missing arguments');
+  if (!['--key-file', '--origin', '--output'].every((key) => values.has(key)))
+    throw new Error('Missing arguments');
+  const purpose = values.get('--purpose') ?? 'setup';
+  if (!['setup', 'owner-replacement'].includes(purpose)) throw new Error('Invalid purpose');
   const origin = privateHearthOrigin(values.get('--origin'));
   const keyPath = resolve(values.get('--key-file'));
   const outputPath = resolve(values.get('--output'));
   if (extname(outputPath).toLowerCase() !== '.png') throw new Error('PNG required');
   await assertPrivateStaging(outputPath);
   const secret = await readPrivateSetupProof(keyPath);
-  const image = await QRCode.toBuffer(`${origin}/#setup-phone=${secret}`, {
+  const fragment = purpose === 'setup' ? 'setup-phone' : 'replace-owner';
+  const image = await QRCode.toBuffer(`${origin}/#${fragment}=${secret}`, {
     type: 'png',
     width: 512,
     margin: 4,
@@ -48,7 +52,11 @@ try {
   } finally {
     await output.close();
   }
-  console.log('Private setup card created. Keep it private; it is for first setup only.');
+  console.log(
+    purpose === 'setup'
+      ? 'Private setup card created. Keep it private; it is for first setup only.'
+      : 'Private owner replacement card created. Keep it private; it replaces the owner phone.',
+  );
 } catch {
   // Never print a secret, URL, library error or private file contents.
   console.error(

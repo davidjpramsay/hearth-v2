@@ -222,6 +222,18 @@ export function PhoneConnectionsPanel() {
           {state.state === 'waiting' ? (
             <>
               <p>Scan with {state.adultName}’s phone camera.</p>
+              {invite?.code ? (
+                <p>
+                  Or open Hearth on that phone and enter{' '}
+                  <strong
+                    className="connection-code"
+                    aria-label={`Connection code ${invite.code.split('').join(' ')}`}
+                  >
+                    {invite.code}
+                  </strong>
+                  . Expires in five minutes; approve the request here.
+                </p>
+              ) : null}
               {qr ? (
                 <img
                   alt={`Connection QR for ${state.adultName}; expires in five minutes`}

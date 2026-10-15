@@ -21,24 +21,28 @@ export async function useSinglePhotoAlbum(
     alt?: string;
   },
 ) {
-  await page.route('**/api/v1/households/*/photos', async (route) => {
-    const response = await route.fetch();
-    const data = (await response.json()) as PhotoGallery;
-    const base = data.photos.find((asset) => asset.id === data.featuredPhotoId) ?? data.photos[0];
-    if (base) {
-      data.photos = [
-        {
-          ...base,
-          orientation: photo.orientation,
-          width: photo.width,
-          height: photo.height,
-          displayUrl: photo.url ?? base.displayUrl,
-          alt: photo.alt ?? base.alt,
-        },
-      ];
-      data.featuredPhotoId = base.id;
-      data.collection.photoCount = 1;
-    }
-    await route.fulfill({ response, json: data });
-  });
+  // This is a static demo geometry fixture, not a test of gallery refresh behavior.
+  // Read once before navigation; screenshot/focus refreshes must not leave route.fetch()
+  // running after the last assertion. Keep the existing afterEach route-draining checks.
+  const response = await page.request.get('/api/v1/households/household_hearth_demo/photos');
+  if (!response.ok()) throw new Error('The demo photo fixture could not load its album.');
+  const data = (await response.json()) as PhotoGallery;
+  const base = data.photos.find((asset) => asset.id === data.featuredPhotoId) ?? data.photos[0];
+  if (base) {
+    data.photos = [
+      {
+        ...base,
+        orientation: photo.orientation,
+        width: photo.width,
+        height: photo.height,
+        displayUrl: photo.url ?? base.displayUrl,
+        alt: photo.alt ?? base.alt,
+      },
+    ];
+    data.featuredPhotoId = base.id;
+    data.collection.photoCount = 1;
+  }
+  await page.route('**/api/v1/households/household_hearth_demo/photos', (route) =>
+    route.fulfill({ json: data }),
+  );
 }

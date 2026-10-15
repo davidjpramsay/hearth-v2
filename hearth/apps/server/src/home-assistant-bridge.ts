@@ -118,6 +118,22 @@ export class HomeAssistantBridgeService {
     return this.active(householdId)?.connection ?? null;
   }
 
+  recordPairingApproval(
+    householdId: string,
+    actorId: string,
+    pairingId: string,
+    requestId: string,
+  ) {
+    this.audit(
+      householdId,
+      actorId,
+      'member',
+      'home-assistant.bridge.approve',
+      pairingId,
+      requestId,
+    );
+  }
+
   /** Called only by the existing demo reset route, never by private household APIs. */
   reset() {
     this.options.database?.transaction(() => {
@@ -132,8 +148,14 @@ export class HomeAssistantBridgeService {
     this.choreReceipts.clear();
   }
 
-  async grant(householdId: string, actorId: string, input: BridgeGrantRequest) {
+  async grant(
+    householdId: string,
+    actorId: string,
+    input: BridgeGrantRequest,
+    assertCommit: () => void = () => {},
+  ) {
     const overview = await this.admin.getOverview(householdId, actorId);
+    assertCommit();
     const inputHash = digest(JSON.stringify(input));
     const previous = [...this.connections.values()].find(
       (row) => row.householdId === householdId && row.requestId === input.requestId,
@@ -174,6 +196,7 @@ export class HomeAssistantBridgeService {
     if ([...this.connections.values()].some((existing) => existing.secretHash === row.secretHash))
       this.conflict();
     this.atomic(() => {
+      assertCommit();
       this.saveConnection(row);
       this.audit(
         householdId,
@@ -188,7 +211,12 @@ export class HomeAssistantBridgeService {
     return { connection: structuredClone(connection), replayed: false };
   }
 
-  async revoke(householdId: string, actorId: string, requestId: string) {
+  async revoke(
+    householdId: string,
+    actorId: string,
+    requestId: string,
+    onCommit: () => void = () => {},
+  ) {
     await this.admin.getOverview(householdId, actorId);
     const receipt = `${householdId}:${requestId}`;
     if (this.revocations.has(receipt)) return { revoked: true as const };
@@ -207,18 +235,19 @@ export class HomeAssistantBridgeService {
         command: { ...command.command, status: 'cancelled' as const },
       }));
     this.atomic(() => {
+      onCommit();
       if (revoked !== undefined) {
         this.saveConnection(revoked);
-        this.audit(
-          householdId,
-          actorId,
-          'member',
-          'home-assistant.bridge.revoke',
-          revoked.connection.id,
-          requestId,
-        );
         for (const command of cancelled) this.saveCommand(command);
       }
+      this.audit(
+        householdId,
+        actorId,
+        'member',
+        'home-assistant.bridge.revoke',
+        revoked?.connection.id ?? householdId,
+        requestId,
+      );
       this.options.database
         ?.prepare(
           'INSERT INTO home_assistant_bridge_revocations (household_id,request_id) VALUES (?,?)',
@@ -695,7 +724,11 @@ export class HomeAssistantBridgeService {
     householdId: string,
     actorId: string,
     actorType: 'member' | 'service',
-    action: 'home-assistant.bridge.grant' | 'home-assistant.bridge.revoke' | 'screen.navigate',
+    action:
+      | 'home-assistant.bridge.grant'
+      | 'home-assistant.bridge.approve'
+      | 'home-assistant.bridge.revoke'
+      | 'screen.navigate',
     targetId: string,
     requestId: string,
   ) {

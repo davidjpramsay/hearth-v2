@@ -51,6 +51,12 @@ export const phoneApi = {
       PhoneInvitationStateSchema,
       post({ invitationSecret, phoneName }),
     ),
+  claimCode: (code: string, phoneName: string) =>
+    request(
+      `${API_BASE}/auth/phones/invitation-claims`,
+      PhoneInvitationStateSchema,
+      post({ code, phoneName }),
+    ),
   pending: () => request(`${API_BASE}/auth/phones/pending`, PhonePendingSchema),
   exchange: () => request(`${API_BASE}/auth/phones/exchanges`, PasskeySessionSchema, post({})),
   confirm: () =>

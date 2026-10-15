@@ -55,6 +55,7 @@ import {
 } from './integrations/weather-provider.js';
 import { HomeService } from './home-repository.js';
 import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
+import { HomeAssistantPairingService } from './home-assistant-pairings.js';
 import { PhotoService } from './photo-repository.js';
 import { SqlitePlanningRepository } from './planning-repository.js';
 import { PocketMoneyService } from './pocket-money-repository.js';
@@ -280,6 +281,22 @@ const companionAuth =
   companionAuthConfiguration === null
     ? undefined
     : new CompanionAuthService(database, companionAuthConfiguration);
+const phoneConnections =
+  companionAuth === undefined || companionAuthConfiguration === null
+    ? undefined
+    : new PhoneConnectionService(database, companionAuth, companionAuthConfiguration);
+const homeAssistantBridge = new HomeAssistantBridgeService(adminRepository, repository, {
+  database,
+  now: () => clock.now(),
+});
+const homeAssistantPairings = new HomeAssistantPairingService(homeAssistantBridge, {
+  database,
+  now: () => clock.now(),
+  assertApproval: (reference) => {
+    if (phoneConnections) phoneConnections.assertApprovalReference(reference);
+    else if (!demoMode) throw new Error('Adult phone approval is not configured.');
+  },
+});
 
 const server = buildServer({
   gamesArchive: new GamesArchive(process.env.HEARTH_GAMES_ARCHIVE_PATH, demoMode),
@@ -298,21 +315,15 @@ const server = buildServer({
   reminderRepository,
   calendarConnectionRepository,
   homeAssistantConnectionRepository,
-  homeAssistantBridge: new HomeAssistantBridgeService(adminRepository, repository, {
-    database,
-    now: () => clock.now(),
-  }),
+  homeAssistantBridge,
+  homeAssistantPairings,
   systemOperations,
   applianceUpdate,
   ...(companionAuth === undefined || companionAuthConfiguration === null
     ? {}
     : {
         companionAuth,
-        phoneConnections: new PhoneConnectionService(
-          database,
-          companionAuth,
-          companionAuthConfiguration,
-        ),
+        ...(phoneConnections === undefined ? {} : { phoneConnections }),
       }),
   trustedProxyAddresses,
   readiness: () => {

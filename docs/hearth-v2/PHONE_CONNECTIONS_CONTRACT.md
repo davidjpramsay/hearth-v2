@@ -1,4 +1,4 @@
-# Adult phone connections — v1 (D-102, D-103, D-104)
+# Adult phone connections — v1 (D-102, D-103, D-104, D-110)
 
 This is the locally implemented HTTP contract. D-104 extends owner protection with explicit
 saved-card and exact trusted-phone recovery, plus scanned first-use cards for an already reachable
@@ -7,8 +7,9 @@ Native Bluetooth, Wi-Fi provisioning and trusted HDMI remain
 [future appliance work](APPLIANCE_ONBOARDING_CONTRACT.md). Live access has not changed.
 
 Private HTTPS only. No passwords or passkeys are required. The owner bootstraps the first
-controller using a privately supplied setup QR derived from the external first-use file (or the
-operator file fallback). Subsequent browsers scan a QR invitation
+controller using a privately supplied setup QR derived from the external first-use file.
+The operator fallback renders a separate replacement QR from its protected file; no long-key form.
+Subsequent browsers scan a QR invitation or type its six-letter uppercase code
 created by a connected controller, then wait for that controller's explicit approval.
 An adult and a connection are separate identities; browsers/profiles are not hardware-attested.
 
@@ -38,6 +39,13 @@ Legacy access is never guessed to be the main phone; the first authorized owner-
 
 ## Authority and lifecycle
 
+D-110 adds an optional `code` to invitation reveals and a strict alternative
+`{code,phoneName}` to invitation claims. QR and code locate the same five-minute invitation,
+pending-cookie binding and original-inviter approval; neither skips consent or grants ownership.
+New codes use six CSPRNG uppercase letters without I/O and are stored only as digests in migration 0031. Existing QR responses remain compatible. Anonymous claims are capped at 20/IP/five minutes;
+code claims additionally share a 200-attempt/five-minute service budget. The five-live/50-retained
+invitation bounds still apply. Wrong, expired, used and cancelled codes fail closed.
+
 - A connected adult with `household.admin` can invite an existing active adult with that capability.
 - QR invitation secrets contain 256 random bits, expire after five minutes, and are stored only
   as SHA-256 digests. Their link uses `#connect-phone=…`, never a query parameter. The recipient
@@ -61,6 +69,22 @@ Legacy access is never guessed to be the main phone; the first authorized owner-
   invitations, bounded anonymous attempts and periodic removal of expired invitation rows.
 
 ## Typed endpoints
+
+### Code-generation inventory (D-110)
+
+| Surface                                        | Human handling                                                | Authority retained                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| TV / browser screen                            | Six uppercase letters, ten minutes                            | Existing adult approval plus separate random device secret                |
+| Additional / trusted-recovery phone invitation | QR or six uppercase letters, five minutes                     | Original inviter approval, pending browser proof and exchange-time checks |
+| Home Assistant inbound                         | Six uppercase letters, five minutes                           | Exact adult phone approval plus HA-generated 32-byte secret               |
+| First owner                                    | Private setup QR, initial-use only                            | Existing strong protected-file verifier                                   |
+| All-phone / operator recovery                  | Saved private recovery QR or separately issued replacement QR | Existing strong one-use recovery proof, never a short password            |
+
+Opaque request/entity IDs, browser cookies, QR capabilities, native device secrets, backup/recovery
+proof and TLS keys are not human connection codes and retain their entropy. Retired passkey recovery
+generators are legacy-only and their production ceremonies remain blocked when phone access is
+configured; they are not shortened. Calendar app passwords and outbound HA tokens are issued by
+those providers, not Hearth. No external credential format or live credential was changed.
 
 `hearth/packages/shared/src/phone-connections.ts` defines request/response schemas.
 
@@ -93,9 +117,9 @@ persisted raw credential. Expiry timers remove receipts even when no new request
 
 ## Owner recovery and migration
 
-D-104's private browser path uses `#setup-phone` and `#recover-phone` purpose-specific fragments;
+D-110's private browser path uses `#setup-phone`, `#recover-phone` and `#replace-owner` purpose-specific fragments;
 these are stripped before network requests and held only in memory. Scanning a setup card hides
-the copied-key input, but does not bypass the existing first-use verifier. A used first-use card
+all copied-key inputs, but does not bypass the existing first-use verifier. A used first-use card
 cannot recover an existing household. No unauthenticated route reveals any setup/recovery QR.
 
 Only the exact current owner may designate already connected adult **connections** for recovery
