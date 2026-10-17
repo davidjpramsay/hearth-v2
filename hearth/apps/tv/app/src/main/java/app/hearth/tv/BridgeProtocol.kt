@@ -10,7 +10,8 @@ enum class NativeRequest {
 object BridgeProtocol {
     const val bridgeName = "hearthNative"
     const val backMessage = "{\"type\":\"back\"}"
-    private val typeOnlyMessage = Regex("^\\{\\s*\"type\"\\s*:\\s*\"([a-z.]+)\"\\s*}$")
+    // Android's ICU rejects an unescaped closing brace, even though desktop JVMs accept it.
+    private val typeOnlyMessage = Regex("^\\{\\s*\"type\"\\s*:\\s*\"([a-z.]+)\"\\s*\\}$")
 
     fun parse(payload: String?): NativeRequest? {
         if (payload == null) return null

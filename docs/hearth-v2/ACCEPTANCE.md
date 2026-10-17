@@ -1,5 +1,47 @@
 # Hearth v2 acceptance and definition of done
 
+## Android native-bridge startup crash — 2026-10-17
+
+Read-only inspection through the TCL's already-authorized HA Android Debug Bridge connection
+confirmed `APP CRASH(EXCEPTION)`. Android's retained `data_app_crash` report identifies
+`ExceptionInInitializerError` in `NativeBridge` caused by `PatternSyntaxException` in
+`BridgeProtocol`: its type-only-message regex escaped the opening JSON brace but not the closing
+one. Desktop JVM tests accepted this pattern; Android's ICU engine rejected it on the first bridge
+message. No credential, private household content or full device diagnostic export was read.
+
+The narrow fix escapes that closing brace without changing the four-message allowlist, 256-character
+bound, exact-origin/main-frame checks or any pairing/household contract. The APK becomes version
+`0.1.2` / code 3. An Android-test-only, dependency-free platform instrumentation runner now exercises
+the real regex engine, first-message initialization and malformed/extended-message rejection.
+It is excluded from normal Debug/Release APKs. Do not install the test APK on a household TV.
+
+Passed local verification:
+
+- `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ANDROID_HOME=/opt/homebrew/share/android-commandlinetools ./hearth/apps/tv/gradlew -p hearth/apps/tv testDebugUnitTest lintDebug lintRelease assembleDebug assembleRelease assembleDebugAndroidTest`:
+  **22 JVM tests**, both lint variants, Debug/minified Release APKs and the Android test APK passed.
+- On the API 36 Google TV ARM64 emulator, installing the original app plus the new test APK and
+  running `adb -s emulator-5554 shell am instrument -w app.hearth.tv.debug.test/app.hearth.tv.BridgeProtocolInstrumentation`
+  first reproduced the TCL's exact initializer/regex exception. Reinstalling the fixed app and
+  test APK returned **OK (4 Android bridge tests)** with four success statuses. This is Android
+  emulator evidence, not a fixed-TCL installation or full rendered-dashboard launch proof.
+- `apksigner verify --print-certs hearth/apps/tv/app/build/outputs/apk/debug/app-debug.apk` passed.
+- Focused built-browser verification of `native-tv-viewport`, `production-bootstrap` and `remote`
+  passed **23 cases**, including 1080p/4K native-script startup/reload, strict CSP, bounded
+  launcher/fern assets, phone/TV navigation, Back and offline/cached content. Browser plugin was
+  unavailable; repository Playwright supplies isolated demo/browser evidence, CUA supplies real HA
+  inspection. These browser cases do not execute Android's native bridge parser.
+- `git diff --check` passed. No server/web/HA component or dependency was changed.
+
+The private NAS health/readiness remain ready on exact `35c7bb7...`; this Mac's direct HTTPS request
+received 403 and is not evidence of working remote ingress. The Mac's ADB key remains unapproved:
+no prompt was bypassed and no key copied. HA's existing ADB connection provided the scoped persisted
+crash report while the TV remained off. File editor remains stopped, with its four automatic/sidebar
+switches off. Remote upload/install was requested separately and is **not yet approved or run**.
+Physical update, preserved pairing, repeated cold launch, Back/resume and real dashboard rendering
+remain open. No TV power/media, HA configuration/automation, access grant, Synology networking or
+household data was changed. Full hosted/workspace verification and overnight recovery were not run
+for this TV-only repair. Safe diagnostic screenshot: `/tmp/hearth-tv-crash-check.EzBYpc/ha-crash-summary.png`.
+
 ## D-112 household Modules — 2026-10-15
 
 The requested simple **More → Modules** page has eleven household-wide switches. Off removes

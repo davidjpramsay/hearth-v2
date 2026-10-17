@@ -45,6 +45,26 @@ signing key outside this repository.
 
 Update an existing signed installation with `adb install -r`; do not uninstall or clear pairing.
 
+### Android-runtime bridge regression
+
+Desktop JVM tests do not use Android's ICU regex engine. Run the dependency-free platform
+instrumentation against an explicitly selected disposable Android emulator as well:
+
+```sh
+./apps/tv/gradlew -p apps/tv assembleDebug assembleDebugAndroidTest
+adb -s EMULATOR_SERIAL install -r apps/tv/app/build/outputs/apk/debug/app-debug.apk
+adb -s EMULATOR_SERIAL install -r apps/tv/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s EMULATOR_SERIAL shell am instrument -w \
+  app.hearth.tv.debug.test/app.hearth.tv.BridgeProtocolInstrumentation
+```
+
+Require `OK (4 Android bridge tests)` with no failing status, not merely a successful ADB shell
+exit. This checks first-message initialization, the four existing message types, JSON whitespace,
+malformed/extended/oversized rejection and the original Android-only closing-brace failure.
+It adds nothing to the production APK, no bridge capability and no external test dependency.
+Do not install the test APK on a paired household TV: instrumentation can stop its target app.
+Hosted verification still runs JVM tests/lint/builds; it does not run these emulator cases.
+
 ## Pair
 
 1. Start Hearth with `pnpm dev`.

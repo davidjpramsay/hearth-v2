@@ -1,5 +1,22 @@
 # Hearth v2 local environment and operations plan
 
+## Prepared TV startup repair — 2026-10-17
+
+TV shell `0.1.2` / code 3 fixes an Android-only bridge-regex initialization crash. The original
+TCL exception was retrieved through HA's **existing** authorized ADB integration while the TV was
+off; the Mac's unapproved ADB prompt was neither bypassed nor granted remotely. The same fault
+was reproduced on Android API 36 and the fixed parser passes four Android-runtime regressions
+plus the JVM/lint/build and focused browser gates. See ACCEPTANCE for exact evidence.
+
+This APK is prepared locally, not yet installed/published. Before remote installation, obtain
+explicit permission to temporarily start the existing HA File editor for upload, use HA's authorized
+ADB transport, preserve signing/package identity with an in-place update, and stop File editor
+again without changing its automatic/sidebar switches. Never uninstall, clear data, copy private
+ADB keys or use remote key events to approve a new debugging trust prompt. Keep the original APK
+available until cold launch/pairing/Back/resume pass, and restore the television's original off state
+without playing media. Do not install the separate Android test APK on the paired TCL.
+No NAS server/web update, networking change, HA component restart or new pairing is required.
+
 ## Current Modules release — D-112 (2026-10-15)
 
 After explicit owner approval, verified source `35c7bb7578179b810215540bceb09b61e4d414dc` was

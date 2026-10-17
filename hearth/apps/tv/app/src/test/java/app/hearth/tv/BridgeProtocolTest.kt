@@ -36,4 +36,19 @@ class BridgeProtocolTest {
     fun `rejects oversized messages before parsing`() {
         assertNull(BridgeProtocol.parse("x".repeat(257)))
     }
+
+    @Test
+    fun `requires exactly one literal opening and closing brace`() {
+        assertEquals(
+            NativeRequest.APP_IDENTITY,
+            BridgeProtocol.parse("{\n\t\"type\" : \"app.identity\"\r\n}"),
+        )
+        for (message in listOf(
+            "{\"type\":\"app.identity\"",
+            "\"type\":\"app.identity\"}",
+            "{\"type\":\"app.identity\"}}",
+            "{{\"type\":\"app.identity\"}",
+            "{\"type\":\"app.identity\"} trailing",
+        )) assertNull(BridgeProtocol.parse(message))
+    }
 }
