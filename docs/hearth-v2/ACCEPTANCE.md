@@ -32,15 +32,61 @@ Passed local verification:
   inspection. These browser cases do not execute Android's native bridge parser.
 - `git diff --check` passed. No server/web/HA component or dependency was changed.
 
+### Approved physical TCL installation and smoke test
+
+The owner explicitly approved temporarily starting the already-installed HA File editor, updating
+the TV through HA's existing authorized ADB connection, testing without music and restoring TV off.
+No Mac ADB key was approved or copied, and the separate Android test APK was not installed on the TCL.
+
+- File editor 6.2.0 was started with autostart, watchdog, auto-update and sidebar switches left off.
+  `androidtv.download` retained the exact original installed APK before replacement. Original and
+  fixed APKs are protected under HA's `/config/.hearth-tv-rollback-20261017/` (directory 0700,
+  files 0600), not a public web directory. Original SHA-256:
+  `5cff7a7a45dc7d107a6f0fb69ded58d35995ddcb5d3d4e0d4112d5c997be2bc5`.
+- Fixed debug APK SHA-256
+  `29e7356d61c3d0de8c5c99b833125bd4866527809abcb37fa2b596c933633288`
+  matched independently on Mac, HA and TV. HA's `androidtv.upload` staged it at
+  `/data/local/tmp/hearth-tv-0.1.2-debug.apk`; `pm install -r` returned **Success**. No uninstall,
+  clear-data, re-pair or permission expansion. `dumpsys package app.hearth.tv.debug` confirmed
+  **0.1.2-debug / code 3**, updated at 10:09:29 Perth on 2026-10-17.
+- SHA-256 of the encrypted `shared_prefs/hearth_secure_device.xml` was identical before updating,
+  after updating and after cold launch/resume. No preference contents, decrypted secret or cookie
+  was read. The existing signed-in household dashboard rendered without a pairing prompt.
+- `input keyevent KEYCODE_WAKEUP` followed immediately by `am start -W` returned COLD/ok, but the
+  TV's wake launcher subsequently took foreground while Hearth's process remained alive. A second
+  `am start -W -n app.hearth.tv.debug/app.hearth.tv.MainActivity` returned HOT/ok and showed Today.
+  This wake/launcher handoff is recorded separately, not mislabeled as another app crash or a
+  proven automatic morning-launch fix.
+- Remote D-pad key events opened the read-only daily-verse dialog; native `KEYCODE_BACK` closed
+  it and restored Today with focus intact. This was not a Calendar navigation test. An explicit
+  `am force-stop app.hearth.tv.debug` followed by `am start -W` returned COLD/ok (977 ms);
+  the new process remained foreground. Home moved to the normal launcher, then another start
+  returned HOT/ok (236 ms). Private physical screenshots confirmed the final Today dashboard.
+  The retained exit report still identifies the earlier 2026-10-16 APP CRASH; the deliberate
+  force-stop is USER REQUESTED. No new startup exception was observed during these checks.
+- Only non-secret APKs used temporary `/config/www` staging. That directory was created for this
+  transfer, then its files were moved privately and the empty directory removed. Screenshots
+  transferred through private `/media`, then moved to the protected evidence folder; none used
+  public web staging. File editor's command field does not implicitly invoke a shell: an initial
+  staging command created five empty temporary directories. Those exact empty directories were
+  inspected and removed with `rmdir`, then the explicit `sh -c` move/chmod/checksum succeeded.
+  No existing file was overwritten by that failed staging attempt.
+- `KEYCODE_SLEEP` and removal of the five known TV temporary APK/capture files were sent at the
+  end. The action returned without output, then the TV's ADB entity became unavailable. A final
+  `dumpsys power` call could not run. Thus sleep was commanded, but independent final Asleep
+  readback and TV-side temporary-file absence are **unverified**, not passed. HA-side staging
+  absence/private rollback retention passed. No unrelated remote or media entity was controlled.
+- File editor was stopped: Start available, Stop absent, all four switches still off. Its known
+  controlled-stop Error badge recurred. HA Core was not restarted; no configuration, automation,
+  permission, network, module flag, chore or household content was edited and no music played.
+
 The private NAS health/readiness remain ready on exact `35c7bb7...`; this Mac's direct HTTPS request
-received 403 and is not evidence of working remote ingress. The Mac's ADB key remains unapproved:
-no prompt was bypassed and no key copied. HA's existing ADB connection provided the scoped persisted
-crash report while the TV remained off. File editor remains stopped, with its four automatic/sidebar
-switches off. Remote upload/install was requested separately and is **not yet approved or run**.
-Physical update, preserved pairing, repeated cold launch, Back/resume and real dashboard rendering
-remain open. No TV power/media, HA configuration/automation, access grant, Synology networking or
-household data was changed. Full hosted/workspace verification and overnight recovery were not run
-for this TV-only repair. Safe diagnostic screenshot: `/tmp/hearth-tv-crash-check.EzBYpc/ha-crash-summary.png`.
+received 403 and is not evidence of working remote ingress. No server/web/NAS deployment occurred.
+TV source fix is local commit `8c80652` on `codex/tv-native-bridge-crash`, not pushed or hosted-verified.
+Full hosted/workspace verification, overnight/morning wake, forced network loss, physical-handset
+navigation and the final standby/TV-temp readback remain open. Evidence is private under
+`/tmp/hearth-tv-crash-check.EzBYpc/` and the protected HA folder. Safe local screenshots include
+`ha-crash-summary.png` and `file-editor-stopped.png`; household screenshots are not committed.
 
 ## D-112 household Modules — 2026-10-15
 

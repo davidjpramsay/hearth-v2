@@ -1,6 +1,6 @@
 # Hearth v2 local environment and operations plan
 
-## Prepared TV startup repair — 2026-10-17
+## Installed TV startup repair — 2026-10-17
 
 TV shell `0.1.2` / code 3 fixes an Android-only bridge-regex initialization crash. The original
 TCL exception was retrieved through HA's **existing** authorized ADB integration while the TV was
@@ -8,14 +8,33 @@ off; the Mac's unapproved ADB prompt was neither bypassed nor granted remotely. 
 was reproduced on Android API 36 and the fixed parser passes four Android-runtime regressions
 plus the JVM/lint/build and focused browser gates. See ACCEPTANCE for exact evidence.
 
-This APK is prepared locally, not yet installed/published. Before remote installation, obtain
-explicit permission to temporarily start the existing HA File editor for upload, use HA's authorized
-ADB transport, preserve signing/package identity with an in-place update, and stop File editor
-again without changing its automatic/sidebar switches. Never uninstall, clear data, copy private
-ADB keys or use remote key events to approve a new debugging trust prompt. Keep the original APK
-available until cold launch/pairing/Back/resume pass, and restore the television's original off state
-without playing media. Do not install the separate Android test APK on the paired TCL.
-No NAS server/web update, networking change, HA component restart or new pairing is required.
+After explicit owner approval, fixed debug APK from local source commit `8c80652` was installed
+in place through HA's existing ADB connection. The Mac/HA/TV artifact hashes matched, `pm install -r`
+returned Success, and the TCL reports **0.1.2-debug / code 3**. Encrypted pairing-file digest stayed
+identical before/after installation and after cold launch/resume; no secret contents were read.
+The real paired Today dashboard, read-only verse dialog, native Back, explicit awake cold launch,
+Home and warm resume passed. On the first combined wake/start, the wake launcher took foreground;
+reopening Hearth worked. Overnight automatic launch has not been proved by this manual test.
+
+Exact original and fixed signed APKs plus private screenshots are retained in HA's protected
+`/config/.hearth-tv-rollback-20261017/` (File editor path `/homeassistant/...`, directory 0700/files
+0600). HA's temporary `www` APK staging and private-media transfer files were moved/removed and
+their absence checked. No household screenshot was put in public staging. File editor shell
+commands require explicit `sh -c` for operators; the initial wrapper mistake created only five
+empty directories, inspected and removed with exact `rmdir` targets before retrying successfully.
+
+TV sleep and deletion of its five known temporary APK/capture paths were sent at the end, but ADB
+then became unavailable. Do not claim final Asleep readback or TV temporary-file absence until
+checked when the TV is next reachable. File editor is stopped with all four automatic/sidebar
+switches off; its known controlled-stop Error badge recurred. No HA Core restart, automation,
+credential, pairing, household data, music, NAS server/web release or networking change.
+Source is committed locally, not pushed or hosted-verified. See ACCEPTANCE for exact commands,
+hashes, passed physical checks and outstanding overnight/network-loss/standby gates.
+
+For a future repair, obtain explicit installation/power permission and preserve signing/package
+identity. Never uninstall, clear data, copy private ADB keys or approve a debugging trust prompt
+remotely. Do not install the separate Android test APK on the paired TCL. Retain the original APK;
+it reproduces this crash and is not a preferred fallback unless the fixed build has a worse fault.
 
 ## Current Modules release — D-112 (2026-10-15)
 
