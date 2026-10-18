@@ -257,7 +257,7 @@ describe('household modules: retention, scoped control and consistent availabili
     expect(snapshot()).toEqual(before);
     expect(
       db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action_type='module.update'").get(),
-    ).toEqual({ n: 22 });
+    ).toEqual({ n: MODULE_IDS.length * 2 });
   });
 
   it('redacts notices from unrelated Today saves and older exact receipts while off', async () => {

@@ -21,11 +21,13 @@ const icons: Record<ModuleId, IconName> = {
   games: 'games',
   notices: 'bell',
   dailyVerse: 'book-open',
+  nba: 'basketball',
 };
 const help: Partial<Record<ModuleId, string>> = {
   chores: 'Includes routines',
   home: 'Scenes and screen actions',
   dailyVerse: 'Visibility on Today is set separately',
+  nba: 'Standings, this week and next week',
 };
 export function ModulesSettingsScreen() {
   const enabled = useModules();

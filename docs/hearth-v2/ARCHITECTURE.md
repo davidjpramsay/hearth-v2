@@ -1,5 +1,15 @@
 # Hearth v2 architecture
 
+## NBA provider and preferences (D-113)
+
+`NbaService` owns bounded read-through cache and household preferences/command receipts.
+`NbaProvider` separates deterministic demo from server-only ESPN HTTPS reads. Shared Zod DTOs
+validate projections/responses; views never call providers directly. Coalesce reads, cache 15
+minutes, keep at most two fortnight/timezone projections and retry failed feeds after one minute.
+Module leases gate before I/O; no sports job, timer, browser third-party assets or credential.
+Settings/receipt/audit commit atomically. Existing HA grants freeze original module IDs, preventing
+implicit future scope. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
+
 ## Household availability boundary (D-112)
 
 The fixed shared module schema drives a persisted `ModulesService`, authenticated GET/adult PUT,

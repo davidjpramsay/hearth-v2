@@ -25,12 +25,14 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
         path: '/photos',
       },
       { title: 'Games', icon: 'games', path: '/games' },
+      { title: 'NBA', icon: 'basketball', path: '/nba' },
     ],
   },
   {
     title: 'Manage Hearth',
     links: [
       { title: 'Modules', icon: 'leaf', path: '/admin/modules' },
+      { title: 'NBA teams', icon: 'basketball', path: '/admin/nba' },
       {
         title: 'Manage photos',
         icon: 'image',

@@ -313,6 +313,13 @@ class WiringTests(unittest.IsolatedAsyncioTestCase):
             callback()
         self.assertEqual(len(entities), 11)
         self.assertEqual(len({entity._attr_unique_id for entity in entities}), 11)
+        self.assertTrue(all(entity.module_id != "nba" for entity in entities))
+        coord.data["permissions"]["moduleIds"] = list(client.MODULE_LABELS)
+        for callback in coord.listeners:
+            callback()
+            callback()
+        self.assertEqual(len(entities), 12)
+        self.assertEqual(len({entity._attr_unique_id for entity in entities}), 12)
         coord.data["permissions"]["controlModules"] = False
         self.assertTrue(all(not entity.available for entity in entities))
 

@@ -302,6 +302,9 @@ const homeAssistantPairings = new HomeAssistantPairingService(homeAssistantBridg
 });
 
 const server = buildServer({
+  nba: new NbaService(demoMode ? new DemoNbaProvider() : new EspnNbaProvider(), database, () =>
+    clock.now(),
+  ),
   modules,
   gamesArchive: new GamesArchive(process.env.HEARTH_GAMES_ARCHIVE_PATH, demoMode),
   realtimeHub,
@@ -436,3 +439,5 @@ async function readOptionalSecret(path: string | undefined): Promise<string | nu
     throw error;
   }
 }
+import { NbaService } from './nba-service.js';
+import { DemoNbaProvider, EspnNbaProvider } from './integrations/nba-provider.js';

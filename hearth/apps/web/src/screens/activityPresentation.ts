@@ -20,6 +20,7 @@ export const activityFilters: Array<{ id: ActivityFilter; label: string }> = [
 
 const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> = {
   'module.update': system('Module setting changed', 'leaf'),
+  'nba.settings.update': family('NBA standout teams updated', 'basketball'),
   'chore.complete': planning('Chore marked done', 'chores'),
   'chore.undo': planning('Chore completion undone', 'chores'),
   'chore.skip': planning('Chore skipped', 'chores'),

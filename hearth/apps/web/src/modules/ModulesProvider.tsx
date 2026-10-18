@@ -15,6 +15,7 @@ const domains: Partial<Record<ModuleId, readonly string[]>> = {
   home: ['home', 'home-assistant-connection'],
   photos: ['photos', 'photo-source'],
   games: ['games', 'word-groups'],
+  nba: ['nba', 'nba-settings'],
 };
 export function ModulesProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient();

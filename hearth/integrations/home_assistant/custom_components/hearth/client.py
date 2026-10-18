@@ -26,6 +26,7 @@ from .const import (
     MAX_CALENDAR_DAYS,
     MAX_CALENDAR_EVENTS,
     MODULE_LABELS,
+    LEGACY_MODULE_IDS,
     REQUEST_TIMEOUT_SECONDS,
     TAB_LABELS,
 )
@@ -277,8 +278,15 @@ def validate_state(value: Any) -> JsonObject:
     )
     if result["permissions"]["controlModules"] and "modules" not in item:
         _invalid()
-    modules = item.get("modules", dict.fromkeys(MODULE_LABELS, True))
-    modules = _object(modules, set(MODULE_LABELS))
+    module_ids = [
+        _enum(name, MODULE_LABELS)
+        for name in _array(permissions.get("moduleIds", list(LEGACY_MODULE_IDS)), 12)
+    ]
+    if len(set(module_ids)) != len(module_ids):
+        _invalid()
+    result["permissions"]["moduleIds"] = module_ids
+    modules = item.get("modules", dict.fromkeys(LEGACY_MODULE_IDS, True))
+    modules = {**_object(modules, set(LEGACY_MODULE_IDS)), "nba": modules.get("nba", False)}
     result["modules"] = {name: _boolean(modules[name]) for name in MODULE_LABELS}
     seen: set[str] = set()
     for screen in _array(item["screens"], 20):
@@ -658,7 +666,8 @@ class HearthClient:
         household_id = _identifier(configuration["householdId"])
         if self._household_id is not None and household_id != self._household_id:
             raise HearthAuthError("Hearth household changed; reauthenticate") from None
-        flags = _object(configuration["enabled"], set(MODULE_LABELS))
+        flags = _object(configuration["enabled"], set(LEGACY_MODULE_IDS))
+        flags = {**flags, "nba": flags.get("nba", False)}
         flags = {name: _boolean(flags[name]) for name in MODULE_LABELS}
         if flags[module_id] != enabled:
             _invalid()

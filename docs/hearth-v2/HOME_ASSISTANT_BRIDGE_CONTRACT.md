@@ -1,5 +1,14 @@
 # Home Assistant → Hearth bridge v1 (D-108)
 
+## NBA catalogue extension (D-113)
+
+Module control carries an immutable approved `moduleIds` list. Missing means the original eleven,
+not the evolving catalogue. Fresh adult approval includes today's twelve IDs and may grant NBA's
+switch; `controlModules` is still required. Old grants/persisted pairings/retries retain their scope.
+No HA NBA statistics or screen-navigation command in this slice. Component 1.3.0 validates the
+optional field and only creates approved switches. A local source update is not live installation,
+restart or reconnection. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
+
 This opt-in local integration is separate from Hearth's existing outbound Home Assistant
 safety/script adapter. It grants no adult login, provider access or general household write authority.
 The D-109 extension permits only today's chore completion/reopening. D-111 includes this in one

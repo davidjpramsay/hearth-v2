@@ -6,6 +6,7 @@ import {
   BridgeChoreCompletionRequestSchema,
   BridgeGrantRequestSchema,
   BridgeStateSchema,
+  LEGACY_BRIDGE_MODULE_IDS,
   SCREEN_TAB_PATHS,
   ScreenNavigationRequestSchema,
   ScreenPresentationRequestSchema,
@@ -17,7 +18,11 @@ describe('Home Assistant bridge v1 boundary', () => {
     expect(BridgeStateSchema.parse(stateFixture)).toEqual({
       ...stateFixture,
       modules: DEFAULT_MODULE_FLAGS,
-      permissions: { ...stateFixture.permissions, controlModules: false },
+      permissions: {
+        ...stateFixture.permissions,
+        controlModules: false,
+        moduleIds: LEGACY_BRIDGE_MODULE_IDS,
+      },
     });
   });
   it('maps only explicit public routes, not admin, external URLs, fragments or path prefixes', () => {

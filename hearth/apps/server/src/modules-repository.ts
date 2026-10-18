@@ -219,6 +219,7 @@ export function moduleForApiRoute(route: string): ModuleId | null {
   if (/^(home(?:\/|$)|home-assistant-connection)/.test(suffix)) return 'home';
   if (/^photo/.test(suffix)) return 'photos';
   if (/^games(?:\/|$)/.test(suffix)) return 'games';
+  if (/^nba(?:\/|$)/.test(suffix)) return 'nba';
   if (/^notices(?:\/|$)/.test(suffix)) return 'notices';
   return null;
 }

@@ -7,9 +7,9 @@ availability, never a substitute for authentication or household authorization.
 ## Fixed modules and core
 
 `calendar`, `weather`, `reminders`, `chores`, `lists`, `meals`, `home`, `photos`, `games`, `notices`,
-`dailyVerse`. Chores includes routines, occurrences and pocket money. Home means the outbound Home
-controls feature, not inbound HA pairing/module management. All flags default true for existing and
-new households, preserving current behavior. The existing Today visibility preferences remain
+`dailyVerse`, `nba` (D-113). Chores includes routines, occurrences and pocket money. Home means the outbound Home
+controls feature, not inbound HA pairing/module management. The original eleven flags default true;
+NBA defaults off, including missing legacy wire fields. Existing Today visibility preferences remain
 independent and retained (notably Bible verse still defaults hidden on Today).
 
 Today/clock, More, Modules, household/people, phones/screens, pairing/recovery, connections to the
@@ -21,14 +21,15 @@ or an arbitrary layout system.
 
 Source of truth: `hearth/packages/shared/src/modules.ts`.
 
-- `GET /api/v1/households/{householdId}/modules` → `{householdId,enabled:{all eleven booleans}}`.
+- `GET /api/v1/households/{householdId}/modules` → `{householdId,enabled:{all twelve booleans}}`.
   Same normal household-read authorization as Today, including paired screens; no module content.
 - Adult `PUT /api/v1/households/{householdId}/modules/{moduleId}`: strict `{requestId,enabled}` →
   `{configuration,audit,replayed}`. Administrator/controller/origin checks remain in force.
 - HA `PUT /api/v1/home-assistant/modules/{moduleId}`: identical input/result, dedicated automation
-  auth and new `controlModules` grant required. Household/actor come from the credential, not input.
+  auth and `controlModules` plus the module in approved `moduleIds` required. Legacy grants retain
+  their frozen eleven IDs. Household/actor come from the credential, not input.
 - Append-only migration 0032 stores explicit overrides and durable actor-scoped request receipts.
-  Missing overrides mean enabled; toggling never deletes feature records, provider config or grants.
+  Missing legacy overrides mean enabled; NBA means off. Toggling never deletes feature records, provider config or grants.
   Exact retry returns its original receipt without reapplying an older state; changed reuse conflicts.
   Each accepted new command audits `module.update`, with the module ID and actor/source but no
   private content/credentials. Emit `modules.changed` after commit; cap HA new commands at 30/minute.
@@ -68,7 +69,8 @@ HA module switches use only this capability. They cannot manage people, phones, 
 provider configuration, financial settings or arbitrary admin endpoints. Revocation still blocks
 all actions, including exact retries. Existing current-feature scopes keep their original meaning.
 
-The matching manual HA component adds eleven household Switch entities using observed state,
+The matching manual HA component adds only approved household Switch entities (eleven legacy,
+up to twelve after D-113 approval), using observed state,
 bounded exact-retry requests and coordinator refresh; no optimistic state. Older server responses
 without module fields mean all enabled and no module-control authority. Updating code alone does
 not install HA files or authorize live switches, pairing, data changes or deployment.

@@ -1,6 +1,31 @@
 import { z } from 'zod';
 import { ConnectionCodeSchema } from './connection-codes.js';
-import { DEFAULT_MODULE_FLAGS, ModuleFlagsSchema } from './modules.js';
+import {
+  DEFAULT_MODULE_FLAGS,
+  ModuleFlagsSchema,
+  ModuleIdSchema,
+  type ModuleId,
+} from './modules.js';
+
+// Frozen v1 scope: adding a future module never widens an old adult approval.
+export const LEGACY_BRIDGE_MODULE_IDS: ModuleId[] = [
+  'calendar',
+  'weather',
+  'reminders',
+  'chores',
+  'lists',
+  'meals',
+  'home',
+  'photos',
+  'games',
+  'notices',
+  'dailyVerse',
+];
+const BridgeModuleIdsSchema = z
+  .array(ModuleIdSchema)
+  .max(12)
+  .refine((ids) => new Set(ids).size === ids.length)
+  .default(LEGACY_BRIDGE_MODULE_IDS);
 
 import {
   ChoreStateSchema,
@@ -51,6 +76,7 @@ const BridgeGrantFieldsSchema = z
     shareCalendar: z.boolean(),
     controlChores: z.boolean().default(false),
     controlModules: z.boolean().default(false),
+    moduleIds: BridgeModuleIdsSchema,
   })
   .strict();
 export const BridgeGrantRequestSchema = BridgeGrantFieldsSchema.refine(
@@ -59,8 +85,8 @@ export const BridgeGrantRequestSchema = BridgeGrantFieldsSchema.refine(
 );
 export type BridgeGrantRequest = Omit<
   z.infer<typeof BridgeGrantRequestSchema>,
-  'controlModules'
-> & { controlModules?: boolean };
+  'controlModules' | 'moduleIds'
+> & { controlModules?: boolean; moduleIds?: ModuleId[] };
 // The integration generates the secret. The adult sees/types only the expiring code.
 export const BridgePairingStartSchema = BridgeGrantFieldsSchema.pick({
   requestId: true,
@@ -82,8 +108,8 @@ export const BridgePairingApprovalSchema = BridgeGrantFieldsSchema.omit({ secret
   );
 export type BridgePairingApproval = Omit<
   z.infer<typeof BridgePairingApprovalSchema>,
-  'controlModules'
-> & { controlModules?: boolean };
+  'controlModules' | 'moduleIds'
+> & { controlModules?: boolean; moduleIds?: ModuleId[] };
 export const BridgePairingApprovalResultSchema = z.object({
   approved: z.literal(true),
   expiresAt: TimestampSchema,
@@ -182,6 +208,7 @@ export const BridgeStateSchema = z.object({
     shareCalendar: z.boolean(),
     controlChores: z.boolean().default(false),
     controlModules: z.boolean().default(false),
+    moduleIds: BridgeModuleIdsSchema,
   }),
   modules: ModuleFlagsSchema.default(DEFAULT_MODULE_FLAGS),
   screens: z

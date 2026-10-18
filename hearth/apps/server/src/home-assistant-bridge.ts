@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { LEGACY_BRIDGE_MODULE_IDS } from '@hearth/shared';
 import type Database from 'better-sqlite3';
 import { addLocalDays, localDateInTimezone } from '@hearth/core';
 import {
@@ -69,6 +70,11 @@ export class HomeAssistantBridgeService {
       throw new RepositoryError(
         'FORBIDDEN',
         'Reconnect Home Assistant from an adult phone to allow module switches.',
+      );
+    if (!row.connection.moduleIds.includes(module))
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Reconnect Home Assistant on an adult phone to approve this new module.',
       );
     const result = this.modules.update(
       row.householdId,
@@ -210,11 +216,19 @@ export class HomeAssistantBridgeService {
       (row) => row.householdId === householdId && row.requestId === input.requestId,
     );
     if (previous !== undefined) {
-      const { controlModules: _newPermission, ...legacyInput } = input;
+      const { moduleIds: _moduleScope, ...previousInput } = input;
+      const { controlModules: _newPermission, ...legacyInput } = previousInput;
       if (
         previous.inputHash !== inputHash &&
         !(
+          JSON.stringify(input.moduleIds ?? LEGACY_BRIDGE_MODULE_IDS) ===
+            JSON.stringify(LEGACY_BRIDGE_MODULE_IDS) &&
+          previous.inputHash === digest(JSON.stringify(previousInput))
+        ) &&
+        !(
           input.controlModules !== true &&
+          JSON.stringify(input.moduleIds ?? LEGACY_BRIDGE_MODULE_IDS) ===
+            JSON.stringify(LEGACY_BRIDGE_MODULE_IDS) &&
           previous.inputHash === digest(JSON.stringify(legacyInput))
         )
       )
@@ -242,6 +256,7 @@ export class HomeAssistantBridgeService {
       shareCalendar: input.shareCalendar,
       controlChores: input.controlChores,
       controlModules: input.controlModules ?? false,
+      moduleIds: [...(input.moduleIds ?? LEGACY_BRIDGE_MODULE_IDS)],
     };
     const row: ConnectionRow = {
       connection,
@@ -366,6 +381,7 @@ export class HomeAssistantBridgeService {
         shareCalendar: row.connection.shareCalendar,
         controlChores: row.connection.controlChores,
         controlModules: row.connection.controlModules === true,
+        moduleIds: row.connection.moduleIds,
       },
       modules: latest,
       screens: devices

@@ -1,5 +1,15 @@
 # Hearth v2 local environment and operations plan
 
+## NBA local addition — D-113
+
+No key/environment variable is required. After an approved future release/migration 0033, enable
+More → Modules → NBA, then More → NBA teams → Save teams. Off retains preferences; provider
+traffic is request-driven, never a background task. A failed feed shows unavailable or dated stale
+data, not an empty successful schedule. Cache resets on server restart. HA source component
+1.3.0 adds an approval-scoped NBA switch; a web update does not install it. Old approvals retain
+eleven-module scope until deliberate reconnect. This local feature request authorizes no live
+container change, network change, TV APK installation or HA restart.
+
 ## Installed TV startup repair — 2026-10-17
 
 TV shell `0.1.2` / code 3 fixes an Android-only bridge-regex initialization crash. The original

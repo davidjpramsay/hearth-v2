@@ -1,5 +1,13 @@
 # Hearth v2 product specification
 
+## Optional NBA (D-113)
+
+An adult may enable NBA and choose up to five standout teams for the home. Browse all teams,
+this week's results/games, next week's games, conference standings and the current week's best
+single-game points/rebounds/assists (ties retained). Label season/phase and freshness; never
+misrepresent preseason records or single-game marks as regular-season/weekly aggregates.
+NBA starts off without changing existing modules. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
+
 ## Household Modules (D-112)
 
 Adults can turn Calendar, Weather, Reminders, Chores & pocket money, Lists, Meals, Home controls,

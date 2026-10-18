@@ -1,5 +1,20 @@
 # Hearth v2 decision record
 
+## D-113 — Optional NBA, standout teams and honest weekly highlights
+
+- Date: 2026-10-18
+- Status: local implementation; release/physical acceptance separate.
+- Context: David requested season overview, this/next week's games, selected standout teams and
+  interesting weekly performers.
+- Choice: initially-off NBA, household-persisted up-to-five standout teams, paged local-week
+  schedules and conference standings. Narrow keyless public ESPN adapter, deterministic demo,
+  bounded/coalesced read-through cache, explicit source/phase/freshness. Best single-game
+  points/rebounds/assists, not unsupported weekly totals/averages. Full league remains accessible.
+- Consequences: additive migration 0033; no existing module/data/access changes. HA approvals
+  freeze `moduleIds` (legacy eleven by default); fresh approval may add NBA's module switch,
+  not sports-data/navigation scope. No odds, logos, streams or credentials. Public feed has no
+  SLA; commercial distribution requires a supported/appropriately licensed source. See NBA_CONTRACT.
+
 Record durable choices here. New decisions should include date, status, context, choice and consequences.
 
 ## D-112 — Household Modules with retained data and scoped HA switches

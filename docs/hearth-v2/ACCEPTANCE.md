@@ -1,5 +1,59 @@
 # Hearth v2 acceptance and definition of done
 
+## D-113 optional NBA — local implementation, 2026-10-18
+
+Implemented on `codex/nba-module`, based on the TV-startup-repair checkpoint `5fa860e`.
+No live Synology, TV, HA, network or household data was changed. The older iOS worktree was not
+used for implementation. NBA starts off; adult Modules enablement and NBA teams settings are
+separate from publication/deployment. Binding scope: [NBA_CONTRACT.md](NBA_CONTRACT.md).
+
+### Local code/provider evidence
+
+- `pnpm verify:code` — PASS: formatting, lint (two existing upstream JSX-parser diagnostic lines,
+  no lint failures), workspace type checks, 93 shared + 40 core + 78 server + 416 web unit tests,
+  261 server API/integration tests, 29 migration tests, deployment scaffold checks and both
+  production builds. Migration 0033 is copied into the server build.
+- `pnpm verify:ci` — PASS: five policy checks and complete/non-overlapping inventory of 1,101
+  browser tests. This verifies inventory, not execution of all 1,101 cases.
+- `python3.12 -B -m unittest discover -s integrations/home_assistant/tests -q` from `hearth/`
+  — PASS, 68 fake-transport/entity/config-flow checks. macOS's default `python3` is 3.9 and cannot
+  run the existing 3.12+ suite; it was not treated as an application regression.
+- `git diff --check` — PASS.
+- Public provider smoke: `pnpm --filter @hearth/server exec tsx -e 'import { EspnNbaProvider }
+  from "./src/integrations/nba-provider.ts"; new EspnNbaProvider().read("2026-10-12",
+  "Australia/Perth").then(data => console.log(JSON.stringify({season:data.season,phase:data.phase,
+  standings:data.standings.length,games:data.games.length,highlights:data.highlights.length})))'`
+  — PASS, season 2026–27 / Preseason, 30 standings entries, 69 club games, four tied/category
+  weekly-high marks. No household/API credentials involved. A January monthly feed also returned
+  HTTP 200 / 237 games / 3,178,400 bytes, below the four-MiB response bound.
+- Regression cases cover local midnight/month boundaries and DST, next-week exclusion from weekly
+  highlights, ties, unknown/truncated/oversized feeds and timeout, coalescing/stale recovery, safe
+  first-read failure, setting validation/exact retry/conflict/audit/service recreation, module-off
+  no-fetch/retention, and legacy/fresh HA module scope. New changed-scope replay conflicts.
+
+### Browser evidence and remaining gates
+
+The Browser plugin is unavailable, so the repository's Playwright runner was used against isolated
+built demo processes, not the private home server. The final command is:
+
+```sh
+HEARTH_NBA_EVIDENCE_DIR=/tmp/hearth-nba-proof.FqSSQk pnpm test:e2e:built tests/e2e/nba.spec.ts tests/e2e/modules.spec.ts tests/e2e/screen-admin-isolation.spec.ts
+```
+
+The NBA cases exercise 320px/390px phone, 1080p/4K TV, light/dark, all four views, conference/page
+and filter state, reload, retained team settings, module off/on, empty/unavailable/stale screens,
+remote Enter/arrows/Back, and paired-screen read-versus-admin isolation. Axe checks cover NBA
+content/settings; happy paths also check page/console errors and horizontal/TV vertical overflow.
+Rendered week, standings and highlights were manually inspected. Screenshots/logs are local,
+ephemeral evidence in `/tmp/hearth-nba-proof.FqSSQk/`, not committed assets or real household data.
+
+- Final combined browser result: **32 passed (1.7m)**. No failed or skipped cases in that run.
+- Not run: actual TV/iPhone browser installation, installed HA 1.3.0 switch/reconnect, all 1,101
+  browser cases, Android Gradle/emulator/device tests (no native code changed), GitHub publication,
+  release images or live migration/deployment. Sports-feed availability is not a commercial licence.
+- Recommended next step: approve GitHub/release publication, then the normal private server update;
+  enable NBA in More → Modules and choose NBA teams. Physical device checks follow that update.
+
 ## Android native-bridge startup crash — 2026-10-17
 
 Read-only inspection through the TCL's already-authorized HA Android Debug Bridge connection

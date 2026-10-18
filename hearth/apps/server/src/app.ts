@@ -1,5 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { BrowserAccess } from './browser-access.js';
+import { NbaService } from './nba-service.js';
+import { DemoNbaProvider, EspnNbaProvider } from './integrations/nba-provider.js';
 import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
 import { HomeAssistantPairingService } from './home-assistant-pairings.js';
 import { ModuleRequestLeases, ModulesService, moduleForApiRoute } from './modules-repository.js';
@@ -8,6 +10,9 @@ import {
   ModulesConfigurationSchema,
   UpdateModuleRequestSchema,
   ModuleCommandResultSchema,
+  NbaOverviewSchema,
+  NbaSettingsSchema,
+  UpdateNbaSettingsSchema,
 } from '@hearth/shared';
 import { PHONE_PENDING_COOKIE, type PhoneConnectionService } from './phone-connections.js';
 import { z } from 'zod';
@@ -374,6 +379,7 @@ export interface BuildServerOptions {
   trustedProxyAddresses?: string[];
   readiness?: () => Promise<void> | void;
   gamesArchive?: GamesArchive;
+  nba?: NbaService;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -394,6 +400,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         });
   const demoMode = runtime.mode !== 'private';
   const gamesArchive = options.gamesArchive ?? new GamesArchive(undefined, demoMode);
+  const nba =
+    options.nba ??
+    new NbaService(demoMode ? new DemoNbaProvider() : new EspnNbaProvider(), undefined, () =>
+      runtime.clock.now(),
+    );
   const releaseVersion =
     options.releaseVersion?.trim() || process.env.HEARTH_VERSION?.trim() || 'development';
   const modules = options.modules ?? new ModulesService(undefined, () => runtime.clock.now());
@@ -2327,6 +2338,38 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
+  server.get('/api/v1/households/:householdId/nba', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (!params) return reply;
+    return run(reply, async () => {
+      const household = await adminRepository.getHousehold(params.householdId);
+      return NbaOverviewSchema.parse(await nba.overview(params.householdId, household.timezone));
+    });
+  });
+  server.get('/api/v1/households/:householdId/nba/settings', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (!params) return reply;
+    return run(reply, async () => {
+      await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
+      return NbaSettingsSchema.parse(nba.getSettings(params.householdId));
+    });
+  });
+  server.put('/api/v1/households/:householdId/nba/settings', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(UpdateNbaSettingsSchema, request.body, reply);
+    if (!params || !body) return reply;
+    return run(reply, async () => {
+      const actor = commandActor(request.headers, options, adminRepository);
+      await adminRepository.getOverview(params.householdId, actor.id);
+      const result = nba.update(params.householdId, body, actor);
+      if (!result.replayed) realtime.publish(params.householdId, 'nba.changed', params.householdId);
+      return result;
+    });
+  });
+
   server.get('/api/v1/households/:householdId/week', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     const query = parse(WeekQuerySchema, request.query, reply);
@@ -3428,6 +3471,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   if (demoMode) {
     server.post('/api/v1/demo/reset', async (_request, reply) => {
       modules.reset();
+      nba.reset();
       homeAssistantPairings.reset();
       homeAssistantBridge.reset();
       planningRepository.reset();

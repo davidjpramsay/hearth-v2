@@ -1,9 +1,18 @@
 # Hearth v2 domain and data model
 
+## NBA preferences and additive catalogue (D-113)
+
+Migration 0033 rebuilds only the `household_modules` fixed-ID check to admit `nba`, preserving
+all overrides. It adds household-owned `nba_settings` and actor-scoped `nba_settings_receipts`;
+audited saves are atomic and exact retries do not reapply old settings. No game/player history
+is persisted. NBA defaults off when an override/old wire field is missing; the original eleven
+still default on. Access/device records are untouched. HA connection JSON gains approved
+`moduleIds`, defaulting to the frozen eleven for legacy grants.
+
 ## Retained household Modules (D-112)
 
 Migration `0032_household_modules.sql` adds fixed-ID boolean overrides keyed by household/module,
-and durable exact-retry receipts keyed by household/actor-scope/request. Missing override means on.
+and durable exact-retry receipts keyed by household/actor-scope/request. Missing legacy override means on (NBA is off under D-113).
 The setting, receipt and `module.update` audit commit atomically. Exact retry returns the original
 receipt without restoring an older flag over a later command; changed reuse conflicts. Feature
 tables, independent Today preferences, provider settings and device grants are not deleted or rewritten.

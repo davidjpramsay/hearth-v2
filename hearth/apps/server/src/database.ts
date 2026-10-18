@@ -89,6 +89,7 @@ const migrations = [
   { version: 30, url: new URL('./migrations/0030_home_assistant_bridge.sql', import.meta.url) },
   { version: 31, url: new URL('./migrations/0031_connection_codes.sql', import.meta.url) },
   { version: 32, url: new URL('./migrations/0032_household_modules.sql', import.meta.url) },
+  { version: 33, url: new URL('./migrations/0033_nba_module.sql', import.meta.url) },
 ] as const;
 
 const latestMigration = migrations.at(-1);

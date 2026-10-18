@@ -81,7 +81,7 @@ function receipt(enabled: ModuleFlags): ModuleCommandResult {
 describe('simple Modules settings', () => {
   it('has eleven switches, preserves core controls and sends nothing until asked', async () => {
     show();
-    expect(await screen.findAllByRole('switch')).toHaveLength(11);
+    expect(await screen.findAllByRole('switch')).toHaveLength(12);
     expect(screen.getByText(/Your data stays saved/)).toBeVisible();
     expect(screen.getByText('Photos available / Core available')).toBeVisible();
     expect(modulesApi.update).not.toHaveBeenCalled();
@@ -148,6 +148,6 @@ describe('simple Modules settings', () => {
     ).toBeVisible();
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findAllByRole('switch')).toHaveLength(11);
+    expect(await screen.findAllByRole('switch')).toHaveLength(12);
   });
 });

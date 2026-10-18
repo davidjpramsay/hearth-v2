@@ -32,7 +32,7 @@ for (const viewport of [
         .getByRole('link', { name: 'Modules', exact: true })
         .click();
       await expect(page.getByRole('heading', { name: 'Modules', exact: true })).toBeVisible();
-      await expect(page.getByRole('switch')).toHaveCount(11);
+      await expect(page.getByRole('switch')).toHaveCount(MODULE_IDS.length);
       await page.screenshot({
         path: info.outputPath(`modules-first-view-${viewport.name}-${theme}.png`),
       });

@@ -1,6 +1,13 @@
 import { getHearthRuntime, householdId } from './core';
 
 export const queryKeys = {
+  get nba() {
+    const runtime = getHearthRuntime();
+    return [householdId(runtime), 'nba', runtime.weekStart] as const;
+  },
+  get nbaSettings() {
+    return [householdId(getHearthRuntime()), 'nba-settings'] as const;
+  },
   get modules() {
     return [householdId(getHearthRuntime()), 'modules'] as const;
   },

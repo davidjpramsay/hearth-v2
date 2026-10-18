@@ -54,6 +54,7 @@ describe('Home Assistant connection direction summary', () => {
   it('shows approved inbound access rather than misleading Set up for an enabled bridge', async () => {
     vi.mocked(homeAssistantBridgeApi.getConnection).mockResolvedValue({
       id: 'bridge_fixture',
+      moduleIds: [],
       createdAt: '2026-10-15T00:00:00Z',
       revokedAt: null,
       screenIds: ['screen_fixture'],

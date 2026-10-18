@@ -20,7 +20,9 @@ MODULE_LABELS = {
     "games": "Games",
     "notices": "Notices",
     "dailyVerse": "Daily Bible verse",
+    "nba": "NBA",
 }
+LEGACY_MODULE_IDS = tuple(key for key in MODULE_LABELS if key != "nba")
 TAB_MODULES = {
     "calendar": "calendar",
     "calendar_week": "calendar",

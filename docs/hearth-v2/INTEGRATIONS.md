@@ -1,5 +1,16 @@
 # Hearth v2 integration contracts
 
+## NBA (D-113)
+
+The keyless server adapter reads fixed ESPN NBA standings and monthly scoreboard HTTPS feeds.
+Filter complete months into the household's Monday–Sunday fortnight with timezone-edge padding.
+Eight-second timeout, four-MiB decoded-byte bound per response, no redirects, schema validation;
+reject limit-sized/truncated feeds. No odds, logos, headshots, streams, ads or browser requests.
+Highlights use completed current-week game leaders. Public feeds are undocumented/no-SLA;
+outages retain explicitly stale data. No commercial licence is claimed: review terms and select a
+supported/licensed provider before commercial use. HA gets only an explicitly approved module
+switch, not NBA stats access/navigation. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
+
 ## Module availability and HA control (D-112)
 
 The household Modules flags govern direct and aggregate access, including existing HA grants and

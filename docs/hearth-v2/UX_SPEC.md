@@ -1,8 +1,18 @@
 # Hearth v2 television and companion UX specification
 
+## NBA (D-113)
+
+Enable in More → Modules; NBA appears on the TV rail and phone More. Adult More → NBA teams
+saves up to five standout teams with checkboxes and Save teams. None means equal focus.
+This week, Next week, Standings and Weekly best views have a standout/all filter, conference
+switch and pagination (six games/highlights or eight standings rows). TV content fits 1080p;
+phone cards reflow. Remote/keyboard escape to navigation stays available. Empty, unavailable,
+stale and loading differ. Show source, phase, fetch time and household timezone. No shared-screen
+admin entry is added. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
+
 ## Modules (D-112)
 
-**More → Modules** (also Hearth settings → Modules) is one adult-only page of eleven labelled
+**More → Modules** (also Hearth settings → Modules) is one adult-only page of twelve labelled
 On/Off switches, shared styles, large targets and short retained-data copy. No confirmation maze,
 per-screen picker or data deletion. Show confirmed state, Saving, a readable failure and safe exact
 retry; do not present an unconfirmed optimistic switch. Disabled feature destinations disappear from

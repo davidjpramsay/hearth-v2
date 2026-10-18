@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import MODULE_LABELS
+from .const import LEGACY_MODULE_IDS, MODULE_LABELS
 from .coordinator import HearthCoordinator
 from .entity import HearthEntity
 
@@ -20,15 +20,20 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator = entry.runtime_data
-    added = False
+    added: set[str] = set()
 
     @callback
     def add_switches() -> None:
-        nonlocal added
-        if not added and coordinator.data["permissions"].get("controlModules", False):
-            added = True
+        permissions = coordinator.data["permissions"]
+        if permissions.get("controlModules", False):
+            new = [
+                module
+                for module in permissions.get("moduleIds", LEGACY_MODULE_IDS)
+                if module in MODULE_LABELS and module not in added
+            ]
+            added.update(new)
             async_add_entities(
-                [HearthModuleSwitch(coordinator, module) for module in MODULE_LABELS]
+                [HearthModuleSwitch(coordinator, module) for module in new]
             )
 
     add_switches()
@@ -49,8 +54,11 @@ class HearthModuleSwitch(HearthEntity, SwitchEntity):
 
     @property
     def available(self) -> bool:
-        return super().available and self.coordinator.data["permissions"].get(
-            "controlModules", False
+        permissions = self.coordinator.data["permissions"]
+        return (
+            super().available
+            and permissions.get("controlModules", False)
+            and self.module_id in permissions.get("moduleIds", LEGACY_MODULE_IDS)
         )
 
     @property

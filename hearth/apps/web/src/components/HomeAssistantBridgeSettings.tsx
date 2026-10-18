@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ConnectionCodeSchema,
+  MODULE_IDS,
   normalizeConnectionCode,
   type BridgePairingApproval,
 } from '@hearth/shared';
@@ -93,6 +94,7 @@ export function HomeAssistantBridgeSettings() {
       shareCalendar: true,
       controlChores: true,
       controlModules: true,
+      moduleIds: [...MODULE_IDS],
     };
     try {
       await homeAssistantBridgeApi.approvePairing(approval.current, controller.signal);

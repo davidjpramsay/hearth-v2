@@ -82,3 +82,8 @@ Patterns follow the official [coordinator](https://developers.home-assistant.io/
 and [calendar](https://developers.home-assistant.io/docs/core/entity/calendar/) docs.
 Module switches follow the official [Switch entity](https://developers.home-assistant.io/docs/core/entity/switch/)
 API and configuration entity category; properties read coordinator memory only.
+
+Component 1.3.0 adds the optional NBA module switch. A fresh adult approval freezes the current
+`moduleIds`; old grants remain scoped to the original eleven modules. No NBA sports data or NBA
+screen navigation is shared. Upgrade/install/restart and adult reconnection are separate from
+the local source change. Backward-compatible old-server responses default NBA off and unapproved.

@@ -7,6 +7,7 @@ import { getRealtimeUrl } from '../api/realtime';
 import { hostedReleaseMonitor } from '../runtime/hostedRelease';
 
 export const REALTIME_QUERY_DOMAINS: Record<string, readonly string[]> = {
+  'nba.changed': ['nba', 'nba-settings', 'activity'],
   'modules.changed': [
     'modules',
     'today',

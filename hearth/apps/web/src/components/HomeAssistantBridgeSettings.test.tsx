@@ -1,4 +1,5 @@
 import type { AdminOverview, BridgeConnection } from '@hearth/shared';
+import { MODULE_IDS } from '@hearth/shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,6 +15,7 @@ vi.mock('../api/homeAssistantBridge', async (original) => ({
   homeAssistantBridgeApi: { getConnection: vi.fn(), approvePairing: vi.fn(), revoke: vi.fn() },
 }));
 const summary: BridgeConnection = {
+  moduleIds: [...MODULE_IDS],
   id: 'bridge_test',
   createdAt: '2026-10-15T00:00:00Z',
   revokedAt: null,
@@ -127,6 +129,7 @@ describe('short-code Home Assistant connection', () => {
         shareCalendar: true,
         controlChores: true,
         controlModules: true,
+        moduleIds: [...MODULE_IDS],
       },
       expect.any(AbortSignal),
     );

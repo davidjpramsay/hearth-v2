@@ -31,7 +31,9 @@ class SchemaTests(unittest.TestCase):
     def test_old_module_defaults_and_disabled_data_are_never_projected(self):
         old = client.validate_state(state())
         self.assertFalse(old["permissions"]["controlModules"])
-        self.assertTrue(all(old["modules"].values()))
+        self.assertTrue(all(old["modules"][key] for key in client.LEGACY_MODULE_IDS))
+        self.assertFalse(old["modules"]["nba"])
+        self.assertNotIn("nba", old["permissions"]["moduleIds"])
         raw = state()
         raw["modules"] = dict.fromkeys(client.MODULE_LABELS, True)
         raw["modules"].update(chores=False, calendar=False)
@@ -87,8 +89,8 @@ class SchemaTests(unittest.TestCase):
         validated = client.validate_state(fixture)
         expected = {
             **fixture,
-            "permissions": {**fixture["permissions"], "controlModules": False},
-            "modules": dict.fromkeys(client.MODULE_LABELS, True),
+            "permissions": {**fixture["permissions"], "controlModules": False, "moduleIds": list(client.LEGACY_MODULE_IDS)},
+            "modules": {**dict.fromkeys(client.LEGACY_MODULE_IDS, True), "nba": False},
         }
         self.assertEqual(validated, expected)
 

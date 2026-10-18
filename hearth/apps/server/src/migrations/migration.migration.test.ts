@@ -11,6 +11,32 @@ import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
 
+describe('0033 NBA catalogue extension', () => {
+  it('preserves prior flags, receipts and access while adding no enabled NBA override', () => {
+    const database = new Database(':memory:');
+    try {
+      for (const file of readdirSync(fileURLToPath(new URL('.', import.meta.url)))
+        .filter((file) => /^\d{4}_.*\.sql$/.test(file) && Number(file.slice(0, 4)) <= 32)
+        .sort())
+        database.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
+      database.exec(
+        "INSERT INTO households VALUES ('household_kept','Kept','Australia/Perth','en-AU',1,'now','now'); INSERT INTO household_modules VALUES ('household_kept','photos',0,'now'); INSERT INTO household_module_receipts VALUES ('household_kept','member:test','request_kept','hash','{}','now');",
+      );
+      const modules = database.prepare('SELECT * FROM household_modules').all();
+      const receipts = database.prepare('SELECT * FROM household_module_receipts').all();
+      applyMigrations(database);
+      applyMigrations(database);
+      expect(database.prepare('SELECT * FROM household_modules').all()).toEqual(modules);
+      expect(database.prepare('SELECT * FROM household_module_receipts').all()).toEqual(receipts);
+      expect(database.prepare('SELECT * FROM nba_settings').all()).toEqual([]);
+      expect(database.prepare('SELECT * FROM controller_phone_connections').all()).toEqual([]);
+      expect(database.pragma('foreign_key_check')).toEqual([]);
+    } finally {
+      database.close();
+    }
+  });
+});
+
 describe('0031 additive connection codes', () => {
   it('preserves phones, screens and existing automation grants without creating access', () => {
     const database = new Database(':memory:');
@@ -60,7 +86,7 @@ describe('0031 additive connection codes', () => {
       database.prepare('SELECT count(*) AS n FROM controller_phone_invitation_codes').get(),
     ).toEqual({ n: 0 });
     expect(database.prepare('SELECT max(version) AS n FROM schema_migrations').get()).toEqual({
-      n: 32,
+      n: 33,
     });
     expect(database.pragma('foreign_key_check')).toEqual([]);
     database.close();

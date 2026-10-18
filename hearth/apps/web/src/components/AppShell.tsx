@@ -36,6 +36,7 @@ const baseNavigation: NavigationItem[] = [
   { label: 'Home', path: '/home', icon: 'home', enabled: true },
   { label: 'Photos', path: '/photos', icon: 'image', enabled: true },
   { label: 'Games', path: '/games', icon: 'games', enabled: true },
+  { label: 'NBA', path: '/nba', icon: 'basketball', enabled: true },
 ];
 
 const phoneNavigation = baseNavigation.filter((item) =>
@@ -50,6 +51,7 @@ const adminNavigationGroups: Array<{ label: string; items: AdminNavigationItem[]
       { label: 'Modules', path: '/admin/modules', icon: 'leaf' },
       { label: 'Today', path: '/admin/today', icon: 'today' },
       { label: 'Photos', path: '/admin/photos', icon: 'image' },
+      { label: 'NBA teams', path: '/admin/nba', icon: 'basketball' },
       {
         label: 'Planning',
         path: '/admin/planning',
@@ -274,7 +276,7 @@ function PhoneNavigation() {
     pathname === '/more' ||
     pathname === '/appearance' ||
     pathname.startsWith('/admin') ||
-    ['/lists', '/meals', '/home', '/photos', '/reminders', '/games'].includes(pathname);
+    ['/lists', '/meals', '/home', '/photos', '/reminders', '/games', '/nba'].includes(pathname);
   return (
     <nav
       className="phone-tabs"

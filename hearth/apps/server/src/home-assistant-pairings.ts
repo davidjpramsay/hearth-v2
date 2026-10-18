@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type { BridgePairingApproval } from '@hearth/shared';
+import { LEGACY_BRIDGE_MODULE_IDS } from '@hearth/shared';
 import { createConnectionCode } from './connection-codes.js';
 import type { HomeAssistantBridgeService } from './home-assistant-bridge.js';
 import type { PhoneApprovalReference } from './phone-connections.js';
@@ -41,6 +42,7 @@ export class HomeAssistantPairingService {
       .all() as { record_json: string }[]) ?? []) {
       const parsed = JSON.parse(row.record_json) as Pairing;
       if (parsed.approval) parsed.approval.input.controlModules ??= false;
+      if (parsed.approval) parsed.approval.input.moduleIds ??= [...LEGACY_BRIDGE_MODULE_IDS];
       this.rows.set(parsed.id, parsed);
     }
     this.clean();
@@ -98,6 +100,7 @@ export class HomeAssistantPairingService {
       shareCalendar: input.shareCalendar,
       controlChores: input.controlChores,
       controlModules: input.controlModules ?? false,
+      moduleIds: input.moduleIds ?? [...LEGACY_BRIDGE_MODULE_IDS],
     };
     if (row.approval) {
       if (JSON.stringify(row.approval) !== JSON.stringify({ input: permissions, reference }))

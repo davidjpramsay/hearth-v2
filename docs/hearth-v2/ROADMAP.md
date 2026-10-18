@@ -1,5 +1,12 @@
 # Hearth v2 implementation roadmap
 
+## Optional NBA — D-113 (2026-10-18)
+
+Implement retained standout teams, this/next local week, phase-labelled standings and weekly
+single-game highlights behind an initially-off module. Evidence belongs in ACCEPTANCE.
+Publication/deployment, installed HA 1.3.0, physical TV/iPhone checks, and a supported commercial
+feed remain separate gates. No TV power/pairing, reminders writeback, media or networking work.
+
 ## Household Modules — D-112 (2026-10-15)
 
 The eleven retained-data switches, enforcement, responsive menus/routes and all-off recovery passed

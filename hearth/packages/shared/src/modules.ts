@@ -13,6 +13,7 @@ export const MODULE_IDS = [
   'games',
   'notices',
   'dailyVerse',
+  'nba',
 ] as const;
 export const ModuleIdSchema = z.enum(MODULE_IDS);
 export type ModuleId = z.infer<typeof ModuleIdSchema>;
@@ -28,6 +29,7 @@ export const MODULE_LABELS: Record<ModuleId, string> = {
   games: 'Games',
   notices: 'Notices',
   dailyVerse: 'Daily Bible verse',
+  nba: 'NBA',
 };
 export const DEFAULT_MODULE_FLAGS: Record<ModuleId, boolean> = {
   calendar: true,
@@ -41,6 +43,7 @@ export const DEFAULT_MODULE_FLAGS: Record<ModuleId, boolean> = {
   games: true,
   notices: true,
   dailyVerse: true,
+  nba: false,
 };
 export const ModuleFlagsSchema = z.object({
   calendar: z.boolean(),
@@ -54,6 +57,7 @@ export const ModuleFlagsSchema = z.object({
   games: z.boolean(),
   notices: z.boolean(),
   dailyVerse: z.boolean(),
+  nba: z.boolean().default(false),
 });
 export type ModuleFlags = z.infer<typeof ModuleFlagsSchema>;
 export const ModulesConfigurationSchema = z.object({
@@ -96,6 +100,7 @@ export function moduleForPath(path: string): ModuleId | null {
     [/^\/home(?:\/|$)/, 'home'],
     [/^\/(photos|admin\/photos)(?:\/|$)/, 'photos'],
     [/^\/games(?:\/|$)/, 'games'],
+    [/^\/(nba|admin\/nba)(?:\/|$)/, 'nba'],
     [/^\/admin\/connections\/calendar(?:\/|$)/, 'calendar'],
   ];
   return roots.find(([pattern]) => pattern.test(clean))?.[1] ?? null;

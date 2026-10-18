@@ -1,0 +1,296 @@
+.nba-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+.nba-screen .button,
+.nba-save {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 10px 22px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+  /* Keep selected text/background contrast stable while focus moves. */
+  transition: outline-color 160ms ease;
+}
+.nba-screen .button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.nba-save {
+  background: var(--eucalyptus);
+  color: var(--surface);
+}
+.nba-toolbar,
+.nba-controls,
+.nba-footer,
+.nba-pager,
+.nba-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.nba-toolbar .button[aria-pressed='true'] {
+  background: var(--eucalyptus);
+  color: var(--surface);
+}
+.nba-filter-row,
+.nba-footer {
+  justify-content: space-between;
+}
+.nba-filter-row p {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.nba-filter-row p span,
+.nba-note,
+.nba-source {
+  color: var(--muted);
+}
+.nba-body {
+  flex: 1;
+  min-height: 0;
+}
+.nba-warning {
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--surface-muted);
+  border-left: 4px solid var(--ochre);
+  color: var(--ink);
+  font-size: 18px;
+}
+.nba-games {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.nba-game,
+.nba-highlight {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  padding: 18px 22px;
+  min-width: 0;
+}
+.nba-game[data-standout='true'],
+.nba-table tr[data-standout='true'] {
+  background: var(--eucalyptus-soft);
+}
+.nba-game header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.nba-game-team {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 25px;
+  font-weight: 650;
+}
+.nba-game-team small {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--muted);
+  display: inline-block;
+  min-width: 44px;
+}
+.nba-game-team strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 29px;
+}
+.nba-game footer {
+  font-size: 16px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.nba-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.nba-highlight {
+  padding: 28px;
+}
+.nba-highlight p {
+  margin: 8px 0;
+}
+.nba-highlight strong {
+  font-size: 72px;
+  line-height: 1.2;
+  color: var(--eucalyptus);
+  font-variant-numeric: tabular-nums;
+}
+.nba-highlight h2 {
+  font-size: 30px;
+  margin: 4px 0;
+}
+.nba-note,
+.nba-source {
+  font-size: 17px;
+  margin: 0;
+}
+.nba-source a {
+  color: inherit;
+}
+.nba-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.nba-table caption {
+  text-align: left;
+  font-size: 19px;
+  padding-bottom: 8px;
+  color: var(--muted);
+}
+.nba-table th,
+.nba-table td {
+  text-align: right;
+  padding: 7px 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+.nba-table th:first-child {
+  text-align: left;
+}
+.nba-table th small {
+  display: inline;
+  margin-left: 16px;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.nba-table tbody th > span:first-child {
+  color: var(--muted);
+  display: inline-block;
+  min-width: 30px;
+}
+.nba-team-picker {
+  border: 0;
+  padding: 0;
+  margin: 24px 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.nba-team-picker legend {
+  font-size: 20px;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+.nba-team-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+.nba-team-choice input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  accent-color: var(--eucalyptus);
+}
+.nba-team-choice:has(input:checked) {
+  background: var(--eucalyptus-soft);
+}
+@media (max-width: 900px) {
+  .nba-screen .button,
+  .nba-save {
+    min-height: 48px;
+    font-size: 16px;
+  }
+  .nba-screen {
+    gap: 16px;
+  }
+  .nba-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .nba-toolbar .button {
+    min-width: 0;
+    padding: 10px 12px;
+  }
+  .nba-games,
+  .nba-highlights,
+  .nba-team-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nba-game {
+    padding: 16px;
+  }
+  .nba-game-team {
+    font-size: 19px;
+  }
+  .nba-game-team small {
+    min-width: 36px;
+    font-size: 13px;
+  }
+  .nba-game-team strong {
+    font-size: 23px;
+  }
+  .nba-game header {
+    font-size: 15px;
+  }
+  .nba-filter-row p {
+    font-size: 17px;
+  }
+  .nba-filter-row p span {
+    display: block;
+    font-size: 14px;
+  }
+  .nba-footer {
+    gap: 16px;
+  }
+  .nba-pager {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .nba-pager .button {
+    padding: 10px 12px;
+    min-width: 0;
+  }
+  .nba-note,
+  .nba-source {
+    font-size: 14px;
+  }
+  .nba-table {
+    font-size: 15px;
+  }
+  .nba-table th,
+  .nba-table td {
+    padding: 10px 5px;
+  }
+  .nba-table th small {
+    display: none;
+  }
+  .nba-table caption {
+    font-size: 15px;
+  }
+  .nba-table tbody th > span:first-child {
+    min-width: 18px;
+  }
+}
