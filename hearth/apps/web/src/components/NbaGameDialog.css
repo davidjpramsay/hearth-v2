@@ -1,0 +1,250 @@
+.nba-detail-panel {
+  width: min(1560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.nba-detail-header,
+.nba-detail-controls,
+.nba-detail-pager,
+.nba-detail-footnote,
+.nba-team-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.nba-detail-header h2 {
+  margin: 0;
+  font-size: 28px;
+}
+.nba-detail-header p,
+.nba-detail-footnote p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+}
+.nba-detail .button {
+  min-width: 0;
+  width: auto;
+  flex-shrink: 0;
+}
+.nba-detail-header > div {
+  min-width: 0;
+  flex: 1;
+}
+.nba-team-tabs .button[aria-pressed='true'] {
+  color: var(--surface);
+  background: var(--eucalyptus);
+}
+.nba-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.nba-score-team {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-muted);
+  border-radius: 14px;
+  font-size: 24px;
+  font-weight: 650;
+}
+.nba-score-team .nba-team-mark {
+  width: 56px;
+  height: 56px;
+}
+.nba-score-team > span:nth-child(2) {
+  flex: 1;
+}
+.nba-score-team small {
+  display: block;
+  font-size: 16px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.nba-score-team strong {
+  font-size: 48px;
+  font-variant-numeric: tabular-nums;
+}
+.nba-box-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.nba-box-table caption {
+  text-align: left;
+  color: var(--muted);
+  font-size: 16px;
+  padding-bottom: 10px;
+}
+.nba-box-table th,
+.nba-box-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--hairline);
+  text-align: right;
+}
+.nba-box-table thead th {
+  font-size: 17px;
+  font-weight: 650;
+}
+.nba-box-table th:first-child {
+  text-align: left;
+  width: 24%;
+}
+.nba-box-table small {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.nba-box-table tfoot {
+  background: var(--surface-muted);
+  font-weight: 700;
+}
+.nba-detail-pager {
+  justify-content: center;
+  font-size: 18px;
+}
+.nba-detail-footnote {
+  border-top: 1px solid var(--hairline);
+  padding-top: 10px;
+}
+.nba-detail-message h3 {
+  margin: 12px 0 6px;
+}
+.nba-detail-message p {
+  color: var(--muted);
+}
+.nba-detail .nba-warning {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 500;
+}
+@media (max-width: 900px) {
+  .nba-detail {
+    padding: 12px;
+  }
+  .nba-detail-panel {
+    padding: 16px;
+    gap: 16px;
+    border-radius: 18px;
+    max-height: calc(100dvh - 24px);
+  }
+  .nba-detail-header {
+    align-items: flex-start;
+  }
+  .nba-detail-header h2 {
+    font-size: 22px;
+  }
+  .nba-detail-header p,
+  .nba-detail-footnote p {
+    font-size: 13px;
+  }
+  .nba-detail .button {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  .nba-scoreboard {
+    gap: 8px;
+  }
+  .nba-score-team {
+    padding: 12px 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 14px;
+  }
+  .nba-score-team .nba-team-mark {
+    width: 28px;
+    height: 28px;
+  }
+  .nba-score-team > span:nth-child(2) {
+    flex-basis: calc(100% - 34px);
+  }
+  .nba-score-team small {
+    font-size: 12px;
+  }
+  .nba-score-team strong {
+    font-size: 36px;
+    width: 100%;
+    text-align: center;
+  }
+  .nba-detail-controls,
+  .nba-detail-footnote {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .nba-team-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .nba-team-tabs .button {
+    white-space: normal;
+  }
+  .nba-box-table,
+  .nba-box-table tbody,
+  .nba-box-table tfoot {
+    display: block;
+  }
+  .nba-box-table caption {
+    display: block;
+    font-size: 13px;
+  }
+  .nba-box-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .nba-box-table tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline);
+    gap: 10px 6px;
+  }
+  .nba-box-table th:first-child {
+    grid-column: 1 / -1;
+    width: auto;
+    padding: 0 4px 6px;
+    text-align: left;
+  }
+  .nba-box-table td {
+    border: 0;
+    padding: 0 4px;
+    text-align: left;
+    font-size: 19px;
+  }
+  .nba-box-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .nba-box-table tfoot {
+    padding: 0 8px;
+    border-radius: 10px;
+  }
+  .nba-detail-pager {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .nba-detail-pager span {
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+}

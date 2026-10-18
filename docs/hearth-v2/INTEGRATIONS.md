@@ -17,6 +17,12 @@ pixels, processing, concurrent work and retained memory; serve metadata-free res
 No browser egress/CSP change or persisted images. Missing artwork falls back to text independently
 of score availability. Demo never downloads artwork or attaches real faces to fictional people.
 
+D-115 permits fixed public ESPN summary reads only for a known current-fortnight game, after
+household/module checks. Eight-second/four-MiB/redirect bounds and a 16-entry/four-pending,
+one-minute read-through cache apply. Validate event/teams, map named stat keys, and expose only
+bounded box-score DTOs. Missing stats/DNP are not zero. No odds, provider URLs, new HA scope,
+credentials, background fetches or persistent sports history; see NBA_CONTRACT for full fields.
+
 ## Module availability and HA control (D-112)
 
 The household Modules flags govern direct and aggregate access, including existing HA grants and

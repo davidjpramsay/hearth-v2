@@ -8,7 +8,10 @@ single-game points/rebounds/assists (ties retained). Label season/phase and fres
 misrepresent preseason records or single-game marks as regular-season/weekly aggregates.
 NBA starts off without changing existing modules. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
 Team crests and optional weekly-player portraits (D-114) improve recognition without extra
-navigation or TV scrolling. Artwork failure must not hide scores or change layout geometry.
+navigation or TV scrolling. Artwork failure must not hide revealed scores or change layout geometry.
+D-115 makes the game lists spoiler-free: reveal scores only after opening a game, with both
+team totals above team-specific player box scores. Points, assists and rebounds come first;
+include shooting, personal fouls and the remaining standard box-score statistics without TV overflow.
 
 ## Household Modules (D-112)
 

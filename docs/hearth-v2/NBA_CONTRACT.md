@@ -24,6 +24,51 @@ means equal focus, not an empty league. Shared screens can read, never edit.
 
 ## Provider boundary
 
+### Spoiler-free games and on-demand box scores (D-115)
+
+Game cards show teams, date, phase and game status, **not scores or winner styling**.
+No hidden/ARIA/title score values are rendered. Open a game to reveal both team totals
+at the top, with a separate player list for each team. Closing returns focus to the same
+card without changing browse filters/page. This is spoiler prevention in the interface,
+not a confidentiality boundary: the backwards-compatible overview DTO still includes scores.
+Standings and Weekly best remain explicit league views, not a global spoiler-free mode.
+
+- `GET /api/v1/households/{householdId}/nba/games/{gameId}` is read-only, household-authenticated,
+  module-gated before I/O, `private, no-store`, and varies on Cookie/Authorization. Numeric IDs
+  (1–20 digits) must already belong to that household's current local fortnight projection.
+  Unknown games return 404 before summary I/O; this is not an arbitrary/history proxy.
+- `NbaBoxScoreProvider` has real ESPN and deterministic fictional adapters. The fixed server-only
+  summary endpoint is `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={id}`.
+  No caller URL, provider links, odds, commentary, advertisements or media enter the typed DTO.
+  The eight-second timeout includes body consumption; decoded responses are bounded at four MiB,
+  redirects rejected. Verify event identity, exact home/away team identity, unique players/teams,
+  columns and reported team totals before publishing. Map by provider **keys**, never array position.
+- `NbaGameService` coalesces exact reads; retain at most 16 entries (including negative/pending),
+  at most four concurrent summary requests, and cache/retry for one minute. Fetch only on opening
+  a game or Check stats; no timer/background job or eager summary/roster fan-out. Retain last-good
+  data with explicit stale state after failure; unknown/new games cannot borrow another box score.
+- Detail DTO: `{game,teams,status,source,fetchedAt}`. Teams contain `teamId`, bounded (1–40)
+  `players` and reported `totals`; players contain numeric public `id`, name, starter, didNotPlay,
+  nullable DNP reason and named stats. Stats are nullable points, assists, rebounds, steals, blocks,
+  turnovers, personal fouls, minutes, plusMinus, offensive/defensive rebounds and shooting pairs
+  (`fieldGoals`, `threePointers`, `freeThrows`: made/attempted). No missing value becomes zero.
+  DNP stats are all null; no spurious provider reason is shown for a player who participated.
+  Percentages are computed from each reported pair; zero attempts show a dash, not 0% accuracy.
+- Primary columns: Player, **Points, Assists, Rebounds**, Steals, Blocks, Turnovers, Fouls, Minutes,
+  +/−. Shooting view keeps Points/Assists/Rebounds first, then field goals, 3-pointers, free throws,
+  offensive and defensive rebounds. Starters precede bench, with DNP last; eight players/page on TV,
+  full-game team totals on every page. Both team scores remain above the selected team's table.
+  Phone tables reflow to labelled stat grids, not a squeezed horizontal desktop sheet.
+- Loading, not-started/postponed/cancelled, unavailable, saved/stale and successful stats are distinct.
+  Back/Close restores the opener; arrows/Tab stay inside the modal. No migration, credential,
+  provider persistence, HA grant/navigation expansion, APK or live-device change is required.
+
+Stat terminology follows the [official NBA glossary](https://www.nba.com/stats/help/glossary).
+Player-stat and shooting views are a readability choice, not a claim that points/assists/rebounds
+is the league's official column order. Public-feed/commercial-source limitations below still apply.
+
+### Overview feed
+
 The server alone reads ESPN's public NBA standings and monthly scoreboard feeds
 over fixed HTTPS URLs. Month requests (not unsupported date ranges) cover the
 local fortnight, with UTC-edge padding. Requests are coalesced and cached for

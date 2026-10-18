@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { NBA_TEAMS, NBA_TEAM_COLOURS, type NbaGame, type NbaOverview } from '@hearth/shared';
 import { addLocalDays } from '@hearth/core';
@@ -9,6 +9,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState } from '../components/Status';
 import { Icon } from '../components/Icon';
 import { NbaPlayerPortrait, NbaTeamMark } from '../components/NbaArtwork';
+import { NbaGameDialog } from '../components/NbaGameDialog';
 import { useHearthRuntime } from '../runtime/context';
 import './NbaScreen.css';
 
@@ -78,6 +79,7 @@ function NbaContent({
   onRefresh: () => void;
 }) {
   const [params, setParams] = useSearchParams();
+  const [selectedGame, setSelectedGame] = useState<NbaGame | null>(null);
   const runtime = useHearthRuntime();
   const requested = params.get('view');
   const view: View =
@@ -265,6 +267,7 @@ function NbaContent({
                 favourites={favourites}
                 timezone={overview.timezone}
                 locale={runtime.locale}
+                onOpen={() => setSelectedGame(game)}
               />
             ))}
           </div>
@@ -326,6 +329,13 @@ function NbaContent({
           : ''}{' '}
         · Cached 15 min, not live play-by-play.
       </p>
+      {selectedGame ? (
+        <NbaGameDialog
+          game={selectedGame}
+          timezone={overview.timezone}
+          onClose={() => setSelectedGame(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -334,19 +344,24 @@ function GameCard({
   favourites,
   timezone,
   locale,
+  onOpen,
 }: {
   game: NbaGame;
   favourites: string[];
   timezone: string;
   locale: string;
+  onOpen: () => void;
 }) {
   return (
-    <article
-      className="nba-game"
+    <button
+      type="button"
+      className="nba-game focusable"
+      data-focus-id={`nba-game-${game.id}`}
+      onClick={onOpen}
       data-standout={favourites.includes(game.homeTeamId) || favourites.includes(game.awayTeamId)}
       style={nbaTeamStyle(favourites.includes(game.awayTeamId) ? game.awayTeamId : game.homeTeamId)}
     >
-      <header>
+      <span className="nba-game-meta">
         <span>{day(game.localDate)}</span>
         <span className="nba-game-state" data-final={game.status === 'final'}>
           {game.status === 'scheduled'
@@ -355,20 +370,19 @@ function GameCard({
                 minute: '2-digit',
                 timeZone: timezone,
               }).format(new Date(game.startsAt))
-            : game.detail}
+            : {
+                final: 'Final',
+                'in-progress': 'In progress',
+                postponed: 'Postponed',
+                cancelled: 'Cancelled',
+              }[game.status]}
         </span>
-      </header>
+      </span>
       {[
-        { id: game.awayTeamId, score: game.awayScore, location: 'Away', opponent: game.homeScore },
-        { id: game.homeTeamId, score: game.homeScore, location: 'Home', opponent: game.awayScore },
-      ].map(({ id, score, location, opponent }) => (
-        <div
-          className="nba-game-team"
-          key={id}
-          data-winner={
-            game.status === 'final' && score !== null && opponent !== null && score > opponent
-          }
-        >
+        { id: game.awayTeamId, location: 'Away' },
+        { id: game.homeTeamId, location: 'Home' },
+      ].map(({ id, location }) => (
+        <span className="nba-game-team" key={id}>
           <NbaTeamMark teamId={id} />
           <span className="nba-game-name">
             <span>
@@ -377,13 +391,12 @@ function GameCard({
             </span>
             <small>{location}</small>
           </span>
-          <strong>{score ?? '—'}</strong>
-        </div>
+        </span>
       ))}
-      <footer>
-        {game.phase}
+      <span className="nba-game-footer">
+        {game.phase} · Scores hidden · Open game
         {game.status === 'in-progress' ? ' · In progress at last fetch' : ''}
-      </footer>
-    </article>
+      </span>
+    </button>
   );
 }

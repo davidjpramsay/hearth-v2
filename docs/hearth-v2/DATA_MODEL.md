@@ -14,6 +14,12 @@ null default for legacy/demo data. It identifies only available optional artwork
 do not invalidate scores. No provider URL, image, player history or new household row is stored.
 Team accent colours are fixed presentation metadata. No additional migration is required.
 
+D-115 adds validated ephemeral `NbaGameDetail`/team/player/named-stat DTOs, not database tables.
+Player IDs remain public numeric provider identities; no private household data is sent to ESPN.
+Totals are reported by the feed, not reconstructed from partial rosters. Missing stats and DNP
+remain null; shooting made/attempted pairs obey made ≤ attempted. No SQL migration or existing
+household/source/access record change. The original overview score fields remain compatible.
+
 ## Retained household Modules (D-112)
 
 Migration `0032_household_modules.sql` adds fixed-ID boolean overrides keyed by household/module,

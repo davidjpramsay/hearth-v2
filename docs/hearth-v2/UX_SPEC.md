@@ -11,11 +11,19 @@ stale and loading differ. Show source, phase, fetch time and household timezone.
 admin entry is added. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
 
 D-114 keeps this exact information hierarchy and page size. Fixed-size team crests, large
-unambiguous scores and optional weekly-player portraits add recognition without a hero/banner
+unambiguous revealed scores and optional weekly-player portraits add recognition without a hero/banner
 or extra controls. Thin team-colour rules are ornamental. Full names remain visible and images
 are decorative for assistive technology. Missing images reveal stable initials/abbreviations;
 ivory crest backplates preserve dark-logo legibility in both themes. Six tied highlights must
 still fit the TV canvas; phone cards reflow rather than squeezing the desktop layout.
+
+D-115 supersedes scores on game cards: no score text, winner emphasis or accessible-name spoilers.
+Open a card to reveal both totals at the top of a wide TV / reflowed phone dialog. Named team
+buttons choose separate rosters; Points → Assists → Rebounds lead both stat views. Personal fouls,
+minutes, steals, blocks, turnovers and +/− are on Player stats; shooting made/attempted/percentages
+and offensive/defensive rebounds are on Shooting & rebounds. Eight players/page, labelled
+starters/bench/DNP, reported whole-game totals, explicit missing/stale states and Back to the
+same card. No horizontal phone table, tiny TV spreadsheet or extra shared-screen administration.
 
 ## Modules (D-112)
 

@@ -1,5 +1,70 @@
 # Hearth v2 acceptance and definition of done
 
+## D-115 spoiler-free games and player box scores — local implementation, 2026-10-18
+
+Built on `3b4226e` in the existing clean `codex/nba-module` worktree, not the historical iOS
+checkout. Binding detail/field/cache boundaries are in [NBA_CONTRACT.md](NBA_CONTRACT.md).
+Game cards omit scores/winner emphasis, including accessible text and provider status copy;
+deliberate open reveals both totals and a named player list for each team. Points, assists and
+rebounds lead both Player stats and Shooting & rebounds. Personal fouls, minutes, +/−, steals,
+blocks, turnovers, made/attempted shooting/percentages and offensive/defensive rebounds are
+available. Eight-player pagination, reported full-game totals and DNP/null semantics are explicit.
+
+### Verification
+
+- `pnpm verify:code` — PASS: format, lint (same two upstream JSX-parser diagnostics, no lint
+  failures), workspace type checks, **93 shared + 40 core + 101 server + 418 web unit tests**,
+  **265 server API/integration tests**, **29 migration tests**, Synology deployment scaffold
+  verification and web/server production builds. No dependency or migration was added.
+- `pnpm verify:ci` — PASS: five policy checks and complete, non-overlapping inventory of
+  **1,115 browser tests** across four shards. Inventory is not execution of all 1,115 cases.
+- Adapter/service/API tests exercise reordered named columns, nullable missing values, DNP,
+  made/attempted bounds, identity/duplicate/score mismatch, unavailable/pregame rosters, invalid
+  IDs, fixed URL/redirect options, decoded-byte/time limits, coalescing, bounded cache/concurrency,
+  stale recovery, module-off no summary I/O and household/auth rejection.
+- Browser plugin unavailable; use repository Playwright against isolated **built local demo**
+  processes. Exact command (final run recorded below):
+
+```sh
+HEARTH_NBA_EVIDENCE_DIR=/tmp/hearth-nba-box-proof.8ziONQ pnpm test:e2e:built tests/e2e/nba-box-score.spec.ts tests/e2e/nba.spec.ts tests/e2e/modules.spec.ts tests/e2e/screen-admin-isolation.spec.ts --max-failures=1
+```
+
+Final built-app run — **PASS, 46/46 (1.8 min)**. No failures or skipped cases. Logs:
+`/tmp/hearth-nba-box-code-final.log`, `/tmp/hearth-nba-box-ci.log`,
+`/tmp/hearth-nba-box-browser-final.log`. `git diff --check` and explicit formatting checks on
+all ten changed authoritative documents also pass.
+
+The focused suite covers 320/390px phone, 1080p/4K TV, light/dark, no summary prefetch, no DOM/
+accessible/winner-style spoilers (even if provider status text contains scores), totals and column
+order, each team's roster, DNP, shooting, paging, Tab/arrows/Enter/remote Back and opener focus,
+filter/page retention, module-off route exit/cache removal, explicit loading/unavailable/stale/
+not-started states, saved-box TV fit, unchanged NBA views and shared-screen/admin isolation.
+It checks meaningful rendered content, horizontal/TV overflow, page errors and axe accessibility.
+Initial runs caught a shared phone dialog button-width rule, shooting-table vertical overflow and
+an extra list hint that made the stale TV overview too tall. These were fixed, not waived; hints
+stay on cards and the saved-detail warning has scoped compact styling.
+
+### Public feed and visual proof
+
+`node /tmp/hearth-nba-box-proof.8ziONQ/public-proof.mjs` — **PASS**; uses an isolated in-memory local demo
+household with the **real** ESPN overview, summary and artwork adapters and a fixed
+`2026-10-18T10:30:00Z` clock (local week of 12 October). It reads public sports data only, not the
+private server or any real household records. Checks: current validated ESPN detail, two teams,
+20/21 roster entries, reported totals matching scores, explicit DNP, both stat views and loaded
+crests; TV/phone light/dark fit, no browser third-party requests/errors and scores hidden again
+after Close. Screenshots were visually inspected; evidence includes:
+
+- `/tmp/hearth-nba-box-proof.8ziONQ/nba-public-tv-light-hidden.png` — spoiler-free game cards.
+- `/tmp/hearth-nba-box-proof.8ziONQ/nba-public-tv-light-players.png` — revealed totals/player list.
+- `/tmp/hearth-nba-box-proof.8ziONQ/nba-public-tv-dark-shooting.png` — shooting/percentages.
+- `/tmp/hearth-nba-box-proof.8ziONQ/nba-public-phone-light-players.png` — labelled phone stat grid.
+
+**Release boundary:** local implementation only. No new push, merge, image publication, NAS/HA
+change, device control, module toggle, data/credential/pairing/network modification or APK install.
+No EventKit or retired native bridge work. Actual iPhone Safari/VoiceOver and physical TV viewing,
+Android suspend/network recovery, the full 1,115-case browser execution, hosted release and new
+private deployment are **not run** for this slice. Public-feed/licensing limitations remain open.
+
 ## NBA approved release preflight — 2026-10-18
 
 David approved merging, pushing and updating the existing private server while retaining networking
@@ -122,9 +187,9 @@ separate from publication/deployment. Binding scope: [NBA_CONTRACT.md](NBA_CONTR
   run the existing 3.12+ suite; it was not treated as an application regression.
 - `git diff --check` — PASS.
 - Public provider smoke: `pnpm --filter @hearth/server exec tsx -e 'import { EspnNbaProvider }
-  from "./src/integrations/nba-provider.ts"; new EspnNbaProvider().read("2026-10-12",
-  "Australia/Perth").then(data => console.log(JSON.stringify({season:data.season,phase:data.phase,
-  standings:data.standings.length,games:data.games.length,highlights:data.highlights.length})))'`
+from "./src/integrations/nba-provider.ts"; new EspnNbaProvider().read("2026-10-12",
+"Australia/Perth").then(data => console.log(JSON.stringify({season:data.season,phase:data.phase,
+standings:data.standings.length,games:data.games.length,highlights:data.highlights.length})))'`
   — PASS, season 2026–27 / Preseason, 30 standings entries, 69 club games, four tied/category
   weekly-high marks. No household/API credentials involved. A January monthly feed also returned
   HTTP 200 / 237 games / 3,178,400 bytes, below the four-MiB response bound.

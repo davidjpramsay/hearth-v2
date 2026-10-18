@@ -29,6 +29,8 @@ this/next local week, phase-labelled standings and weekly best single-game highl
 off; local implementation is not publication, deployment or physical acceptance.
 D-114 adds bounded same-origin team/player artwork and one-screen TV polish; browser third-party
 requests remain forbidden, and missing artwork leaves useful text/score fallbacks.
+D-115 hides scores on game cards, revealing both totals and team player box scores only on open;
+named stats, bounded on-demand reads and TV/phone reflow keep the same private/module boundary.
 
 - Apple Reminders/EventKit is retired. Its proof is archived under
   `hearth/archive/apple-reminders-bridge/` and excluded from builds and deployment.

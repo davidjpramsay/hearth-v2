@@ -145,3 +145,92 @@ export const NbaOverviewSchema = z.object({
   data: NbaDataSchema.nullable(),
 });
 export type NbaOverview = z.infer<typeof NbaOverviewSchema>;
+
+const count = z.number().int().min(0).max(500).nullable();
+const shooting = z
+  .object({
+    made: z.number().int().min(0).max(500),
+    attempted: z.number().int().min(0).max(500),
+  })
+  .refine((value) => value.made <= value.attempted)
+  .nullable();
+/** Missing values are not zeroes. Never forward the provider's positional arrays. */
+export const NbaBoxStatsSchema = z.object({
+  points: count,
+  assists: count,
+  rebounds: count,
+  steals: count,
+  blocks: count,
+  turnovers: count,
+  fouls: count,
+  minutes: z
+    .string()
+    .regex(/^\d{1,3}(:[0-5]\d)?$/)
+    .nullable(),
+  plusMinus: z.number().int().min(-500).max(500).nullable(),
+  fieldGoals: shooting,
+  threePointers: shooting,
+  freeThrows: shooting,
+  offensiveRebounds: count,
+  defensiveRebounds: count,
+});
+export type NbaBoxStats = z.infer<typeof NbaBoxStatsSchema>;
+export const NbaBoxPlayerSchema = z
+  .object({
+    id: NbaPlayerIdSchema,
+    name: z.string().trim().min(1).max(100),
+    starter: z.boolean(),
+    didNotPlay: z.boolean(),
+    reason: z.string().max(100).nullable(),
+    stats: NbaBoxStatsSchema,
+  })
+  .refine(
+    ({ didNotPlay, stats }) => !didNotPlay || Object.values(stats).every((value) => value === null),
+  );
+export type NbaBoxPlayer = z.infer<typeof NbaBoxPlayerSchema>;
+export const NbaBoxTeamSchema = z.object({
+  teamId: NbaTeamIdSchema,
+  players: z
+    .array(NbaBoxPlayerSchema)
+    .min(1)
+    .max(40)
+    .refine((players) => new Set(players.map((player) => player.id)).size === players.length),
+  totals: NbaBoxStatsSchema,
+});
+export type NbaBoxTeam = z.infer<typeof NbaBoxTeamSchema>;
+export const NbaGameBoxSchema = z
+  .object({
+    game: NbaGameSchema,
+    teams: z.array(NbaBoxTeamSchema).length(2).nullable(),
+  })
+  .refine(
+    ({ game, teams }) =>
+      teams === null ||
+      (game.homeTeamId !== game.awayTeamId &&
+        new Set(teams.map((team) => team.teamId)).size === 2 &&
+        teams.every((team) => team.teamId === game.homeTeamId || team.teamId === game.awayTeamId)),
+  )
+  .refine(
+    ({ game, teams }) =>
+      teams === null ||
+      (game.homeScore !== null &&
+        game.awayScore !== null &&
+        teams.every(
+          (team) =>
+            team.totals.points ===
+            (team.teamId === game.homeTeamId ? game.homeScore : game.awayScore),
+        ) &&
+        new Set(teams.flatMap((team) => team.players.map((player) => player.id))).size ===
+          teams.reduce((total, team) => total + team.players.length, 0)),
+  );
+export type NbaGameBox = z.infer<typeof NbaGameBoxSchema>;
+export const NbaGameDetailSchema = z
+  .object({
+    game: NbaGameSchema,
+    status: z.enum(['current', 'stale', 'unavailable']),
+    source: z.enum(['ESPN', 'Fictional demo']),
+    fetchedAt: TimestampSchema.nullable(),
+    teams: z.array(NbaBoxTeamSchema).length(2).nullable(),
+  })
+  .refine((value) => NbaGameBoxSchema.safeParse(value).success);
+export type NbaGameDetail = z.infer<typeof NbaGameDetailSchema>;

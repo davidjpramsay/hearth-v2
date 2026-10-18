@@ -17,6 +17,13 @@ optional images from becoming an unbounded proxy or a dependency for score avail
 React owns fixed artwork slots and fallbacks; no new navigation, state store, chart layer or
 browser third-party origin is introduced.
 
+D-115 adds `NbaGameService` and a narrow `NbaBoxScoreProvider`, separate from overview and artwork.
+Only an authenticated/module-enabled, current-fortnight game ID can trigger the fixed summary
+read. Named typed stats replace provider arrays. Coalesce, bound to 16 cache entries/four concurrent
+reads/one-minute TTL and eight-second/four-MiB responses. No eager fan-out or persistent game store.
+React fetches detail only while the selected-game dialog is mounted and restores opener focus;
+household NBA query-prefix eviction also removes detail data when the module becomes unavailable.
+
 ## Household availability boundary (D-112)
 
 The fixed shared module schema drives a persisted `ModulesService`, authenticated GET/adult PUT,

@@ -11,6 +11,12 @@ D-114 adds optional team/player artwork and restrained score/card polish without
 four views or TV pagination. Prove loaded/missing artwork, light/dark, narrow phone, TV fit and
 D-pad escape locally; keep publication, physical-device acceptance and licensing gates separate.
 
+D-115: spoiler-free game cards and individual game box scores. On-demand fixed-origin summary
+adapter, bounded cache, two team lists, points/assists/rebounds-first columns, shooting and personal
+fouls, reported totals, eight-player TV pagination and labelled phone grids. Verify provider failure,
+identity/schema bounds, no prefetch/spoilers, Back/focus, a11y and light/dark TV/phone fit. This change
+is local; publication/deployment and actual TV/iPhone viewing remain separate approval/proof gates.
+
 ## Household Modules — D-112 (2026-10-15)
 
 The eleven retained-data switches, enforcement, responsive menus/routes and all-off recovery passed

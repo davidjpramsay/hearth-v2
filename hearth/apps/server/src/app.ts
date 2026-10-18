@@ -1,6 +1,12 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { BrowserAccess } from './browser-access.js';
 import { NbaService } from './nba-service.js';
+import { NbaGameService } from './nba-game-service.js';
+import {
+  DemoNbaBoxScore,
+  EspnNbaBoxScore,
+  type NbaBoxScoreProvider,
+} from './integrations/nba-box-score.js';
 import { DemoNbaProvider, EspnNbaProvider } from './integrations/nba-provider.js';
 import { EspnNbaMedia, NoNbaMedia, type NbaMediaProvider } from './integrations/nba-media.js';
 import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
@@ -383,6 +389,7 @@ export interface BuildServerOptions {
   readiness?: () => Promise<void> | void;
   gamesArchive?: GamesArchive;
   nba?: NbaService;
+  nbaBoxScore?: NbaBoxScoreProvider;
   nbaMedia?: NbaMediaProvider;
 }
 
@@ -412,6 +419,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     );
   const releaseVersion =
     options.releaseVersion?.trim() || process.env.HEARTH_VERSION?.trim() || 'development';
+  const nbaGames = new NbaGameService(
+    nba,
+    options.nbaBoxScore ?? (demoMode ? new DemoNbaBoxScore() : new EspnNbaBoxScore()),
+    () => runtime.clock.now(),
+  );
   const modules = options.modules ?? new ModulesService(undefined, () => runtime.clock.now());
   const moduleLeases = new ModuleRequestLeases();
   const moduleRequests = new WeakMap<
@@ -2352,6 +2364,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return NbaOverviewSchema.parse(await nba.overview(params.householdId, household.timezone));
     });
   });
+  server.get('/api/v1/households/:householdId/nba/games/:gameId', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+    const params = parse(
+      HouseholdParamsSchema.extend({ gameId: z.string().regex(/^\d{1,20}$/) }),
+      request.params,
+      reply,
+    );
+    if (!params) return reply;
+    return run(reply, async () => {
+      const household = await adminRepository.getHousehold(params.householdId);
+      return nbaGames.detail(params.householdId, household.timezone, params.gameId);
+    });
+  });
   server.get('/api/v1/households/:householdId/nba/settings', async (request, reply) => {
     reply.header('Cache-Control', 'private, no-store');
     const params = parse(HouseholdParamsSchema, request.params, reply);
@@ -3501,6 +3526,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     server.post('/api/v1/demo/reset', async (_request, reply) => {
       modules.reset();
       nba.reset();
+      nbaGames.reset();
       homeAssistantPairings.reset();
       homeAssistantBridge.reset();
       planningRepository.reset();

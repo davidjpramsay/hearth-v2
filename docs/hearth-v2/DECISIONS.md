@@ -1,5 +1,21 @@
 # Hearth v2 decision record
 
+## D-115 — Reveal NBA results only inside a readable individual-game box score
+
+- Date: 2026-10-18
+- Status: local implementation; verification evidence in ACCEPTANCE; not deployment approval.
+- Context: David wants to browse games without seeing final scores, then open a game for both
+  totals and team player lists with points, assists and rebounds first, including personal fouls.
+- Choice: remove scores/winner styling from cards and accessible names. On deliberate open,
+  reveal both totals above two selectable team rosters. Two stat views and eight-player pagination
+  keep TV fit; labelled phone stat grids preserve readability. Back closes/restores the same card.
+- Boundary: separate typed box-score provider/service, current-fortnight known IDs, fixed ESPN
+  summary origin, bounded/coalesced memory/time/bytes/concurrency and explicit stale/unavailable
+  states. Named keys, reported totals, nullable missing stats and distinct DNP avoid invented data.
+- Consequences: supersedes D-114 card-score presentation, not weekly-best/standings views. Overview
+  API scores remain backward-compatible (spoiler UI, not confidentiality). No migration, credentials,
+  native APK, HA scope, live settings or networking change. See NBA_CONTRACT for exact bounds.
+
 ## D-114 — Bounded NBA artwork, without sacrificing the one-screen TV surface
 
 - Date: 2026-10-18

@@ -86,13 +86,21 @@
   min-width: 0;
   box-shadow: 0 2px 6px rgb(0 0 0 / 3%);
 }
+.nba-game {
+  display: block;
+  width: 100%;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 .nba-game[data-standout='true'] {
   border-inline-start: 3px solid var(--team-accent);
 }
 .nba-table tr[data-standout='true'] {
   background: var(--eucalyptus-soft);
 }
-.nba-game header {
+.nba-game-meta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -106,7 +114,7 @@
 }
 .nba-game-team {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   min-height: 48px;
@@ -126,15 +134,8 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.nba-game-team strong {
-  font-variant-numeric: tabular-nums;
-  font-size: 32px;
-  font-weight: 550;
-}
-.nba-game-team[data-winner='true'] strong {
-  font-weight: 800;
-}
-.nba-game footer {
+.nba-game-footer {
+  display: block;
   font-size: 16px;
   color: var(--muted);
   margin-top: 4px;
@@ -357,7 +358,7 @@
   }
   .nba-game-team {
     font-size: 18px;
-    grid-template-columns: 32px minmax(0, 1fr) auto;
+    grid-template-columns: 32px minmax(0, 1fr);
     gap: 9px;
   }
   .nba-game-team .nba-team-mark {
@@ -367,10 +368,7 @@
   .nba-game-team small {
     font-size: 11px;
   }
-  .nba-game-team strong {
-    font-size: 26px;
-  }
-  .nba-game header {
+  .nba-game-meta {
     font-size: 15px;
   }
   .nba-filter-row p {

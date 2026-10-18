@@ -1,9 +1,16 @@
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MODULE_IDS, NbaOverviewSchema, UpdateNbaSettingsSchema } from '@hearth/shared';
+import {
+  MODULE_IDS,
+  NbaGameDetailSchema,
+  NbaOverviewSchema,
+  UpdateNbaSettingsSchema,
+} from '@hearth/shared';
 import { buildServer } from './app.js';
 import { NbaService } from './nba-service.js';
 import { DemoNbaProvider } from './integrations/nba-provider.js';
+import { DemoNbaBoxScore } from './integrations/nba-box-score.js';
+import { NbaGameService } from './nba-game-service.js';
 import { ModulesService } from './modules-repository.js';
 import { applyMigrations } from './database.js';
 import { InMemoryAdminRepository, SqliteAdminRepository } from './admin-repository.js';
@@ -19,6 +26,112 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
 describe('NBA module and saved standout teams', () => {
+  it('gates individual games before provider I/O, rejects unknown IDs and keeps detail reads private', async () => {
+    const provider = new DemoNbaBoxScore();
+    const read = vi.spyOn(provider, 'read');
+    const modules = new ModulesService();
+    const app = buildServer({ logger: false, modules, nbaBoxScore: provider });
+    apps.push(app);
+    const url = `${home}/nba/games/1000`;
+    expect((await app.inject(url)).statusCode).toBe(403);
+    expect(read).not.toHaveBeenCalled();
+    modules.update(DEMO_HOUSEHOLD_ID, 'nba', { requestId: 'request_box_on', enabled: true }, actor);
+    expect((await app.inject(`${home}/nba`)).statusCode).toBe(200);
+    expect(read).not.toHaveBeenCalled(); // Never prefetch spoilers/box scores with the listing.
+    expect((await app.inject(`${home}/nba/games/999999`)).statusCode).toBe(404);
+    expect((await app.inject(`${home}/nba/games/not-an-id`)).statusCode).toBe(400);
+    expect(read).not.toHaveBeenCalled();
+    const result = await app.inject(url);
+    expect(result.statusCode).toBe(200);
+    expect(NbaGameDetailSchema.parse(result.json()).teams?.[0]?.players).toHaveLength(13);
+    expect(result.headers['cache-control']).toBe('private, no-store');
+    expect(result.headers.vary).toBe('Cookie, Authorization');
+    const privateApp = buildServer({
+      logger: false,
+      demoMode: false,
+      modules,
+      nbaBoxScore: provider,
+    });
+    apps.push(privateApp);
+    expect([401, 403]).toContain((await privateApp.inject(url)).statusCode);
+    modules.update(
+      DEMO_HOUSEHOLD_ID,
+      'nba',
+      { requestId: 'request_box_off', enabled: false },
+      actor,
+    );
+    expect((await app.inject(url)).statusCode).toBe(403);
+    expect(
+      (await app.inject(`${home.replace(DEMO_HOUSEHOLD_ID, 'household_other')}/nba/games/1000`))
+        .statusCode,
+    ).toBe(403);
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+  it('coalesces detail reads, caches one minute, retains last good stats on failure and recovers', async () => {
+    let time = Date.parse(DEMO_NOW);
+    const now = () => new Date(time);
+    const provider = new DemoNbaBoxScore();
+    const read = vi.spyOn(provider, 'read');
+    const service = new NbaGameService(
+      new NbaService(new DemoNbaProvider(), undefined, now),
+      provider,
+      now,
+    );
+    const first = await Promise.all([
+      service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1000'),
+      service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1000'),
+    ]);
+    expect(first[0]).toEqual(first[1]);
+    expect(read).toHaveBeenCalledTimes(1);
+    time += 60_000;
+    read.mockRejectedValueOnce(new Error('must not expose provider errors'));
+    const stale = await service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1000');
+    expect(stale.status).toBe('stale');
+    expect(stale.teams).toEqual(first[0]?.teams);
+    expect(stale.fetchedAt).toBe(first[0]?.fetchedAt);
+    await service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1000');
+    expect(read).toHaveBeenCalledTimes(2);
+    time += 60_000;
+    expect((await service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1000')).status).toBe(
+      'current',
+    );
+    service.reset();
+    read.mockRejectedValueOnce(new Error('offline'));
+    const unavailable = await service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1000');
+    expect(unavailable.status).toBe('unavailable');
+    expect(unavailable.teams).toBeNull();
+  });
+  it('bounds concurrent box-score reads and retained entries, without arbitrary-game fallback', async () => {
+    const provider = new DemoNbaBoxScore();
+    const original = provider.read.bind(provider);
+    const releases: (() => void)[] = [];
+    const read = vi.spyOn(provider, 'read').mockImplementation(async (game) => {
+      await new Promise<void>((resolve) => releases.push(resolve));
+      return original(game);
+    });
+    const service = new NbaGameService(
+      new NbaService(new DemoNbaProvider(), undefined, () => new Date(DEMO_NOW)),
+      provider,
+      () => new Date(DEMO_NOW),
+    );
+    const pending = Array.from({ length: 4 }, (_, i) =>
+      service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', String(1000 + i)),
+    );
+    await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(4));
+    expect((await service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1004')).status).toBe(
+      'unavailable',
+    );
+    for (const release of releases) release();
+    await Promise.all(pending);
+    read.mockImplementation(original);
+    for (let i = 4; i < 22; i++)
+      await service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', String(1000 + i));
+    await service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '1000');
+    expect(read).toHaveBeenCalledTimes(23); // Oldest entry evicted, not retained without bound.
+    await expect(service.detail(DEMO_HOUSEHOLD_ID, 'Australia/Perth', '999999')).rejects.toThrow(
+      'current NBA schedule',
+    );
+  });
   it('gates artwork before I/O, permits only known highlighted players and keeps it same-origin/private', async () => {
     const provider = new DemoNbaProvider();
     const original = provider.read.bind(provider);
