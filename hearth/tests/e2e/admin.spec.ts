@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto';
 
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { LEGACY_BRIDGE_MODULE_IDS } from '../../packages/shared/src/home-assistant-bridge';
+import { MODULE_IDS } from '../../packages/shared/src/modules';
 
 import { captureEvidence } from './visualEvidence';
 
@@ -494,6 +496,7 @@ for (const viewport of [
       shareCalendar: true,
       controlChores: true,
       controlModules: true,
+      moduleIds: [...MODULE_IDS],
     });
     const admin = await request.get(
       'http://127.0.0.1:4310/api/v1/households/household_hearth_demo/admin',
@@ -599,6 +602,7 @@ test('a limited HA connection requires confirmed reconnect instead of a silent p
     shareCalendar: false,
     controlChores: false,
     controlModules: false,
+    moduleIds: [...LEGACY_BRIDGE_MODULE_IDS],
   });
   await page.getByRole('button', { name: 'Reconnect Home Assistant', exact: true }).click();
   await page

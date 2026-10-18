@@ -48,9 +48,11 @@ Closing HA's dialog cancels its task/session. Unexchanged requests expire withou
 - Machine `POST /api/v1/home-assistant/pairing-requests`: strict `{requestId,secret}` →
   `{id,code,expiresAt,interval:3}`; no Cookie, Origin or Authorization accepted.
 - Adult `POST .../home-assistant-bridge/pairing-approvals`: strict
-  `{requestId,code,screenIds,shareChores,shareCalendar,controlChores,controlModules}` →
+  `{requestId,code,screenIds,shareChores,shareCalendar,controlChores,controlModules,moduleIds}` →
   `{approved:true,expiresAt}`; normal controller/household/origin checks. Binds the exact
   approving connection and session hash, not an adult name.
+  Omitted `moduleIds` retains the frozen eleven-module legacy scope; the current UI explicitly
+  approves twelve. The state response exposes the approved list, never an inferred future scope.
 - Machine `POST /api/v1/home-assistant/pairing-requests/{id}/exchanges`: strict `{secret}` →
   `{state:"waiting",receipt:null}` or `{state:"connected",receipt:{connection,replayed}}`.
   Only the original secret can exchange. Commit rechecks phone/session expiry and revocation,
@@ -83,7 +85,7 @@ cookie is also supplied. TV Bearer and adult cookies are not accepted on automat
 Responses are private/no-store. Version 1 exposes:
 
 - `GET /api/v1/home-assistant/state`: `{version:1,generatedAt,household:{id,name,timezone},
-permissions:{shareChores,shareCalendar,controlChores,controlModules},modules,screens,chores,calendar}`.
+permissions:{shareChores,shareCalendar,controlChores,controlModules,moduleIds},modules,screens,chores,calendar}`.
 - `PUT /api/v1/home-assistant/modules/{moduleId}`: strict `{requestId,enabled}` →
   `{configuration,audit,replayed}`; requires `controlModules`, not data sharing. Fixed module IDs
   and all flags follow MODULES_CONTRACT.md. Exact retry is durable/actor-scoped; changed reuse conflicts;

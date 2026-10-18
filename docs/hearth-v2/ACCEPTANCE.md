@@ -1,5 +1,28 @@
 # Hearth v2 acceptance and definition of done
 
+## NBA approved release preflight — 2026-10-18
+
+David approved merging, pushing and updating the existing private server while retaining networking
+and household state. Main was fast-forwarded to `986a169`. Hosted run `39115839175` passed code/API/
+migrations, Android and both container builds, then correctly blocked publication on an outdated
+exact HA browser assertion: the existing D-113 DTO includes its approved `moduleIds` list.
+
+The test-only correction retains exact equality: new approval must expose all twelve explicitly
+approved IDs; keeping a legacy limited grant must expose only the frozen eleven. It changes no
+application permission, grant, feature flag or live HA configuration. The HA contract's response/
+approval field lists now include that already-implemented field instead of contradicting D-113.
+Browser plugin not available; repository Playwright was used against isolated built demo processes.
+
+- `pnpm exec prettier --check tests/e2e/admin.spec.ts` — PASS.
+- `pnpm verify:ci` — PASS, five policy tests / 1,103 fully inventoried browser cases.
+- `pnpm test:e2e:built tests/e2e/admin.spec.ts --grep 'Home Assistant connects all Hearth features|a limited HA connection'`
+  — PASS, **4 tests (21.0s)** at 390/1440/1920px plus legacy reconnect/cancel. Entry → approve a
+  test six-letter setup → connected summary/exact scope → chore complete/reopen; cancellation
+  preserves the old limited scope and deliberate disconnection revokes only that test grant.
+  These cases also check rendered content, screenshots, console/page errors, overflow and axe.
+- `git diff --check` — PASS. No live deployment was attempted after the failed run; activation
+  still requires a new fully green hosted run with both immutable images published.
+
 ## D-114 NBA visual polish — local implementation, 2026-10-18
 
 Built on local `557db74` on `codex/nba-module`, not the older iOS checkout. Retains the four views,
