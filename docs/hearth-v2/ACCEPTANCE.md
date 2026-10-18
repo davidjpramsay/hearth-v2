@@ -23,6 +23,12 @@ Browser plugin not available; repository Playwright was used against isolated bu
 - `git diff --check` — PASS. No live deployment was attempted after the failed run; activation
   still requires a new fully green hosted run with both immutable images published.
 
+The broader local `admin.spec.ts --max-failures=0` sweep subsequently passed 71/72 and found one
+additional stale display expectation: System health correctly reports migration 33, not 32.
+The exact rendered expectation was updated to 33; the isolated System health/recovery-copy case
+then passed. This is also test-only, not a weakened migration check or a changed live backup.
+The intermediate hosted run `39116332331` was cancelled as obsolete before publication/deployment.
+
 ## D-114 NBA visual polish — local implementation, 2026-10-18
 
 Built on local `557db74` on `codex/nba-module`, not the older iOS checkout. Retains the four views,
