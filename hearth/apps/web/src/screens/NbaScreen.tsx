@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import type { CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { NBA_TEAMS, type NbaGame, type NbaOverview } from '@hearth/shared';
+import { NBA_TEAMS, NBA_TEAM_COLOURS, type NbaGame, type NbaOverview } from '@hearth/shared';
 import { addLocalDays } from '@hearth/core';
 import { nbaApi } from '../api/nba';
 import { queryKeys } from '../api/queryKeys';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, FailureState, LoadingState } from '../components/Status';
 import { Icon } from '../components/Icon';
+import { NbaPlayerPortrait, NbaTeamMark } from '../components/NbaArtwork';
 import { useHearthRuntime } from '../runtime/context';
 import './NbaScreen.css';
 
@@ -17,6 +19,8 @@ const views = {
   highlights: 'Weekly best',
 } as const;
 type View = keyof typeof views;
+const nbaTeamStyle = (teamId: string): CSSProperties =>
+  ({ '--team-accent': NBA_TEAM_COLOURS[teamId] ?? '#3f7251' }) as CSSProperties;
 const teamName = (id: string) => NBA_TEAMS.find(([team]) => team === id)?.[1] ?? 'Team';
 const teamShort = (id: string) => NBA_TEAMS.find(([team]) => team === id)?.[2] ?? id;
 function day(date: string) {
@@ -204,11 +208,15 @@ function NbaContent({
                 {rows.slice((page - 1) * pageSize, page * pageSize).map((row) => (
                   <tr key={row.teamId} data-standout={favourites.includes(row.teamId)}>
                     <th scope="row" aria-label={`${row.rank}. ${teamName(row.teamId)}`}>
-                      <span>{row.rank}</span> {teamShort(row.teamId)}
-                      {favourites.includes(row.teamId) ? (
-                        <span aria-label="Standout team"> ★</span>
-                      ) : null}
-                      <small>{teamName(row.teamId)}</small>
+                      <span className="nba-standing-team">
+                        <span className="nba-rank">{row.rank}</span>
+                        <NbaTeamMark teamId={row.teamId} />
+                        <span>{teamShort(row.teamId)}</span>
+                        <small>{teamName(row.teamId)}</small>
+                        {favourites.includes(row.teamId) ? (
+                          <span aria-label="Standout team">★</span>
+                        ) : null}
+                      </span>
                     </th>
                     <td>{row.wins}</td>
                     <td>{row.losses}</td>
@@ -226,11 +234,18 @@ function NbaContent({
               <article
                 className="nba-highlight"
                 key={`${mark.category}-${mark.gameId}-${mark.player}`}
+                style={nbaTeamStyle(mark.teamId)}
               >
-                <p>Most {mark.category} · single game</p>
-                <strong>{mark.value}</strong>
+                <p className="nba-highlight-category">Most {mark.category} · single game</p>
+                <div className="nba-highlight-hero">
+                  <strong>{mark.value}</strong>
+                  <NbaPlayerPortrait playerId={mark.playerId} name={mark.player} />
+                </div>
                 <h2>{mark.player}</h2>
-                <p>{teamName(mark.teamId)}</p>
+                <p className="nba-highlight-team">
+                  <NbaTeamMark teamId={mark.teamId} />
+                  {teamName(mark.teamId)}
+                </p>
                 <small>
                   {day(mark.localDate)}
                   {overview.data!.highlights.filter((other) => other.category === mark.category)
@@ -300,7 +315,7 @@ function NbaContent({
           'Fictional demo · not actual NBA results'
         ) : (
           <>
-            Data:{' '}
+            Data &amp; images:{' '}
             <a href="https://www.espn.com/nba/" target="_blank" rel="noreferrer">
               ESPN
             </a>
@@ -329,10 +344,11 @@ function GameCard({
     <article
       className="nba-game"
       data-standout={favourites.includes(game.homeTeamId) || favourites.includes(game.awayTeamId)}
+      style={nbaTeamStyle(favourites.includes(game.awayTeamId) ? game.awayTeamId : game.homeTeamId)}
     >
       <header>
         <span>{day(game.localDate)}</span>
-        <span>
+        <span className="nba-game-state" data-final={game.status === 'final'}>
           {game.status === 'scheduled'
             ? new Intl.DateTimeFormat(locale, {
                 hour: 'numeric',
@@ -343,13 +359,23 @@ function GameCard({
         </span>
       </header>
       {[
-        [game.awayTeamId, game.awayScore, 'Away'],
-        [game.homeTeamId, game.homeScore, 'Home'],
-      ].map(([id, score, location]) => (
-        <div className="nba-game-team" key={id}>
-          <span>
-            <small>{location}</small> {teamName(String(id))}
-            {favourites.includes(String(id)) ? <span aria-label="Standout team"> ★</span> : null}
+        { id: game.awayTeamId, score: game.awayScore, location: 'Away', opponent: game.homeScore },
+        { id: game.homeTeamId, score: game.homeScore, location: 'Home', opponent: game.awayScore },
+      ].map(({ id, score, location, opponent }) => (
+        <div
+          className="nba-game-team"
+          key={id}
+          data-winner={
+            game.status === 'final' && score !== null && opponent !== null && score > opponent
+          }
+        >
+          <NbaTeamMark teamId={id} />
+          <span className="nba-game-name">
+            <span>
+              {teamName(id)}
+              {favourites.includes(id) ? <span aria-label="Standout team"> ★</span> : null}
+            </span>
+            <small>{location}</small>
           </span>
           <strong>{score ?? '—'}</strong>
         </div>

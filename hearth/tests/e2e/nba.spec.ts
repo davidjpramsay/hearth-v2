@@ -6,6 +6,78 @@ const api = 'http://127.0.0.1:4310/api/v1';
 const home = `${api}/households/household_hearth_demo`;
 const adult = { 'X-Hearth-Demo-Actor': 'member_maya' };
 
+test('loaded artwork preserves the TV geometry and decorative accessible names', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  // Original generated 16px solid-colour PNG, not a real logo or a fictional player's face.
+  const image = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAHUlEQVQ4jWNwLUn9TwlmGDXg/2gYpI6GQcmwCAMAHOYdH77eVLYAAAAASUVORK5CYII=',
+    'base64',
+  );
+  await page.route('**/nba/media/**', (route) =>
+    route.fulfill({ body: image, contentType: 'image/png' }),
+  );
+  await page.route('**/households/*/nba', async (route) => {
+    const body = await (await route.fetch()).json();
+    body.data.highlights = body.data.highlights.map((highlight: object, index: number) => ({
+      ...highlight,
+      playerId: String(1000 + index),
+    }));
+    await route.fulfill({ json: body });
+  });
+  await page.goto('/nba');
+  for (const label of ['This week', 'Standings', 'Weekly best']) {
+    await page.getByRole('button', { name: label, exact: true }).click();
+    const images = page.locator('.nba-screen img');
+    await expect(images).toHaveCount(label === 'This week' ? 12 : label === 'Standings' ? 8 : 6);
+    await expect
+      .poll(() =>
+        images.evaluateAll((items) =>
+          items.every((item) => (item as HTMLImageElement).naturalWidth > 0),
+        ),
+      )
+      .toBe(true);
+    for (const img of await images.all()) await expect(img).toHaveAttribute('alt', '');
+    expect(
+      await page
+        .locator('.app-content')
+        .evaluate((element) => element.scrollHeight <= element.clientHeight + 2),
+    ).toBe(true);
+    expect((await new AxeBuilder({ page }).include('.nba-screen').analyze()).violations).toEqual(
+      [],
+    );
+  }
+});
+
+test('six tied highlights and delayed/missing artwork stay within the TV canvas', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.route('**/households/*/nba', async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.data.highlights = Array.from({ length: 6 }, (_, i) => ({
+      ...body.data.highlights[i % 3],
+      player: `Alexandros Antetokounmpo ${i}`,
+      gameId: String(1000 + i),
+    }));
+    await route.fulfill({ json: body });
+  });
+  await page.goto('/nba?view=highlights');
+  await expect(page.locator('.nba-highlight')).toHaveCount(6);
+  await expect(page.locator('.nba-team-mark[data-fallback="true"]')).toHaveCount(6);
+  expect(
+    await page
+      .locator('.app-content')
+      .evaluate((element) => element.scrollHeight <= element.clientHeight + 2),
+  ).toBe(true);
+  if (process.env.HEARTH_NBA_EVIDENCE_DIR)
+    await page.screenshot({
+      path: join(process.env.HEARTH_NBA_EVIDENCE_DIR, 'nba-six-highlights.png'),
+    });
+});
+
 test('TV remote changes NBA views and Back returns to Today', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');

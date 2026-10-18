@@ -40,7 +40,12 @@ const event = (id: string, date: string, completed = true, value = 42) => ({
         team: { id: String(i + 1) },
         score: completed ? String(110 + i) : '0',
         leaders: [
-          { name: 'points', leaders: [{ value, athlete: { displayName: `Example Player ${i}` } }] },
+          {
+            name: 'points',
+            leaders: [
+              { value, athlete: { displayName: `Example Player ${i}`, id: String(1966 + i) } },
+            ],
+          },
         ],
       })),
     },
@@ -59,6 +64,20 @@ function harness(events: ReturnType<typeof event>[]) {
   return { fetcher, provider: new EspnNbaProvider(fetcher) };
 }
 describe('bounded ESPN NBA adapter', () => {
+  it('missing or malformed optional artwork identity cannot break the score projection', async () => {
+    const h = harness([]);
+    const raw = board([event('1', '2026-10-20T01:00:00Z')]);
+    const invalid = JSON.parse(JSON.stringify(raw));
+    invalid.events[0].competitions[0].competitors[0].leaders[0].leaders[0].athlete.id =
+      'https://untrusted.invalid/image';
+    invalid.events[0].competitions[0].competitors[1].leaders[0].leaders[0].athlete.id = null;
+    h.fetcher.mockImplementation(async (url) =>
+      Response.json(String(url).endsWith('/standings') ? table() : invalid),
+    );
+    const data = await h.provider.read('2026-10-19', 'UTC');
+    expect(data.games).toHaveLength(1);
+    expect(data.highlights.every((mark) => mark.playerId === null)).toBe(true);
+  });
   it('aborts stalled provider requests at eight seconds', async () => {
     vi.useFakeTimers();
     try {
@@ -99,6 +118,7 @@ describe('bounded ESPN NBA adapter', () => {
     expect(data.phase).toBe('Preseason');
     expect(data.standings).toHaveLength(30);
     expect(data.highlights).toHaveLength(2);
+    expect(data.highlights.map((mark) => mark.playerId)).toEqual(['1966', '1967']);
   });
   it('respects the DST Sunday boundary, not a fixed 14×24h window', async () => {
     const h = harness([event('1', '2026-11-02T04:59:00Z'), event('2', '2026-11-02T05:00:00Z')]);

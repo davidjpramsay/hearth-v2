@@ -7,6 +7,8 @@ this week's results/games, next week's games, conference standings and the curre
 single-game points/rebounds/assists (ties retained). Label season/phase and freshness; never
 misrepresent preseason records or single-game marks as regular-season/weekly aggregates.
 NBA starts off without changing existing modules. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
+Team crests and optional weekly-player portraits (D-114) improve recognition without extra
+navigation or TV scrolling. Artwork failure must not hide scores or change layout geometry.
 
 ## Household Modules (D-112)
 

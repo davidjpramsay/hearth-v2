@@ -10,6 +10,13 @@ Module leases gate before I/O; no sports job, timer, browser third-party assets 
 Settings/receipt/audit commit atomically. Existing HA grants freeze original module IDs, preventing
 implicit future scope. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
 
+D-114 adds a separate optional `NbaMediaProvider`: `EspnNbaMedia` for private runtime,
+`NoNbaMedia` for network-free demo. Authenticated/module-gated same-origin raster routes validate
+current highlight identity before fixed-CDN reads. Finite coalescing/cache/processing bounds keep
+optional images from becoming an unbounded proxy or a dependency for score availability.
+React owns fixed artwork slots and fallbacks; no new navigation, state store, chart layer or
+browser third-party origin is introduced.
+
 ## Household availability boundary (D-112)
 
 The fixed shared module schema drives a persisted `ModulesService`, authenticated GET/adult PUT,

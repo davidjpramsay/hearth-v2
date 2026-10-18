@@ -10,6 +10,13 @@ phone cards reflow. Remote/keyboard escape to navigation stays available. Empty,
 stale and loading differ. Show source, phase, fetch time and household timezone. No shared-screen
 admin entry is added. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
 
+D-114 keeps this exact information hierarchy and page size. Fixed-size team crests, large
+unambiguous scores and optional weekly-player portraits add recognition without a hero/banner
+or extra controls. Thin team-colour rules are ornamental. Full names remain visible and images
+are decorative for assistive technology. Missing images reveal stable initials/abbreviations;
+ivory crest backplates preserve dark-logo legibility in both themes. Six tied highlights must
+still fit the TV canvas; phone cards reflow rather than squeezing the desktop layout.
+
 ## Modules (D-112)
 
 **More → Modules** (also Hearth settings → Modules) is one adult-only page of twelve labelled

@@ -1,5 +1,78 @@
 # Hearth v2 acceptance and definition of done
 
+## D-114 NBA visual polish — local implementation, 2026-10-18
+
+Built on local `557db74` on `codex/nba-module`, not the older iOS checkout. Retains the four views,
+six-card/eight-row pagination and existing auth/module/HA boundaries. No live system, TV state,
+household data, network, credential or installed integration was changed. The artwork boundary
+is [NBA_CONTRACT.md](NBA_CONTRACT.md); commercial terms review remains open.
+
+### Code, adapter and asset evidence
+
+- `pnpm verify:code` from `hearth/` — PASS: formatting, lint (the same two upstream JSX-parser
+  diagnostics, no lint failures), workspace type checks, **93 shared + 40 core + 85 server +
+  418 web unit tests**, **262 server API/integration tests**, **29 migration tests**, deployment
+  scaffold verification and both production builds. No new migration or dependency is required.
+- `pnpm verify:ci` — PASS: five policy checks and complete/non-overlapping inventory of **1,103**
+  browser tests; inventory is not execution of every case.
+- `python3.12 -B -m unittest discover -s integrations/home_assistant/tests -q` — PASS, **68**
+  fake-transport/config/entity checks; HA source/installed state is unchanged by this polish.
+- Adapter regressions cover fixed CDN paths, raster validation/resizing, byte/pixel/timeout bounds,
+  download-body cancellation, concurrent request coalescing/caps, cache eviction/negative retries,
+  optional malformed player identity, and module/auth/known-player rejection before artwork I/O.
+  Component tests cover missing pictures, decorative labels and identity-change recovery.
+- Initial verification caught a missing accent-token default and two test ordering assumptions
+  (concurrent cache completion and React view changes); these were corrected before the final run,
+  not waived. `.nba-screen` supplies a real default token; tests await the requested view and
+  deterministically exhaust the cache. No unrelated test or design-token rule was weakened.
+
+### Rendered and public-artwork evidence
+
+Browser plugin unavailable: used repository Playwright against isolated built local demo services,
+never the private server. Exact regression command:
+
+```sh
+HEARTH_NBA_EVIDENCE_DIR=/tmp/hearth-nba-polish.Bl8yb9 pnpm test:e2e:built tests/e2e/nba.spec.ts tests/e2e/modules.spec.ts tests/e2e/screen-admin-isolation.spec.ts
+```
+
+Result: **34 passed (2.1m)**, no failed/skipped cases in the final run. Includes 320px/390px phones,
+1080p/4K TV, both themes, all four views, loaded/missing artwork, six tied highlights, stale/empty/
+unavailable states, settings retention/module changes, scoped axe checks, console/page errors,
+horizontal/TV vertical overflow, D-pad/Back and screen-versus-adult isolation.
+
+Separately, `node /tmp/hearth-nba-polish.Bl8yb9/public-proof.mjs` — PASS. This ephemeral local
+harness injects the real public ESPN adapters into an in-memory demo server (test clock 18 October;
+local week 12 October 2026), not fictional names with real faces. It returned 69 fortnight club
+games and four weekly marks; all visible team crests/player portraits decoded successfully in
+12 captures (week/standings/highlights × TV/phone × light/dark), with zero external browser
+requests, page errors or console errors. Every TV capture fits 1920×1080 without content scrolling;
+phones reflow and intentionally scroll vertically, never horizontally. This is public-data/local
+browser proof, not private deployment or physical-device proof.
+
+Manual comparison against `/tmp/hearth-nba-proof.FqSSQk/nba-tv-light-3.png` checked:
+
+1. Copy/meaning: full labels and single-game qualification remain; only attribution adds images.
+2. Layout/density: same four views and page sizes, no extra banner/controls; six tied cards fit.
+3. Palette: original warm/charcoal/eucalyptus system, with thin ornamental team accents only.
+4. Typography: stable tabular scores and bold winners; compact names/rows preserve scan order.
+5. Asset framing: contained portraits, ivory-backed black crests, no stretched/cropped faces;
+   stable initials/abbreviations when unavailable. Fictional demo portraits stay fictional initials.
+6. Interaction/responsiveness: retained focus rings, remote escape, phone stacked cards and
+   independent footer navigation; no image carries the only accessible team/player name.
+
+Local screenshots/logs are ephemeral under `/tmp/hearth-nba-polish.Bl8yb9/`; no provider artwork
+or private household content is committed. Representative images: `nba-public-tv-light-highlights.png`,
+`nba-public-tv-dark-week.png`, `nba-public-tv-light-standings.png` and `nba-six-highlights.png`.
+Full-page phone captures include the fixed navigation at its viewport position; they are not
+evidence of navigation scrolling into the content during normal use. The separate public-artwork
+phone captures use the actual viewport rather than full-page compositing.
+
+`git diff --check` — PASS.
+
+Not run: all 1,103 browser cases, actual TV/iPhone Safari, native Android builds/device checks (no
+native change), hosted GitHub gates, publication, release images, live migration or deployment.
+Next: owner-approved publication/normal private update, then physical TV/iPhone acceptance.
+
 ## D-113 optional NBA — local implementation, 2026-10-18
 
 Implemented on `codex/nba-module`, based on the TV-startup-repair checkpoint `5fa860e`.

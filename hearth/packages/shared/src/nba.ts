@@ -39,6 +39,40 @@ export const NBA_TEAMS = [
   ['26', 'Utah Jazz', 'UTAH'],
   ['27', 'Washington Wizards', 'WSH'],
 ] as const;
+/** Restrained ornamental accents, never the sole score/focus/status encoding. */
+export const NBA_TEAM_COLOURS: Record<string, string> = {
+  '1': '#c8102e',
+  '2': '#008348',
+  '17': '#343434',
+  '30': '#008ca8',
+  '4': '#ce1141',
+  '5': '#860038',
+  '6': '#0064b1',
+  '7': '#0e2240',
+  '8': '#1d428a',
+  '9': '#fdb927',
+  '10': '#ce0e2d',
+  '11': '#0c2340',
+  '12': '#12173f',
+  '13': '#552583',
+  '29': '#5d76a9',
+  '14': '#98002e',
+  '15': '#00471b',
+  '16': '#266092',
+  '3': '#0a2240',
+  '18': '#1d428a',
+  '25': '#007ac1',
+  '19': '#0150b5',
+  '20': '#1d428a',
+  '21': '#29127a',
+  '22': '#e03a3e',
+  '23': '#5a2d81',
+  '24': '#343434',
+  '28': '#d91244',
+  '26': '#4e008e',
+  '27': '#e31837',
+};
+export const NbaPlayerIdSchema = z.string().regex(/^\d{1,10}$/);
 export const NbaTeamIdSchema = z
   .string()
   .refine((id) => NBA_TEAMS.some(([team]) => team === id), 'Choose a current NBA team');
@@ -86,6 +120,7 @@ export const NbaHighlightSchema = z.object({
   category: z.enum(['points', 'rebounds', 'assists']),
   value: z.number().int().min(0).max(200),
   player: z.string().min(1).max(100),
+  playerId: NbaPlayerIdSchema.nullable().default(null),
   teamId: NbaTeamIdSchema,
   gameId: z.string().regex(/^\d{1,20}$/),
   localDate: LocalDateSchema,

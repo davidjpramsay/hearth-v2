@@ -7,6 +7,8 @@ import {
 import { demoAdminHeaders, getHearthRuntime, householdApiBase, request } from './core';
 const headers = () => (getHearthRuntime().mode === 'private' ? {} : demoAdminHeaders);
 export const nbaApi = {
+  media: (kind: 'teams' | 'players', id: string) =>
+    `${householdApiBase()}/nba/media/${kind}/${encodeURIComponent(id)}`,
   get: (signal?: AbortSignal) =>
     request(`${householdApiBase()}/nba`, NbaOverviewSchema, { ...(signal ? { signal } : {}) }),
   settings: (signal?: AbortSignal) =>

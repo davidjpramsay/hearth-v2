@@ -27,6 +27,8 @@ and voice. Native television media apps remain separate.
 Optional NBA follows [NBA_CONTRACT.md](NBA_CONTRACT.md) (D-113): standout-team settings,
 this/next local week, phase-labelled standings and weekly best single-game highlights. It starts
 off; local implementation is not publication, deployment or physical acceptance.
+D-114 adds bounded same-origin team/player artwork and one-screen TV polish; browser third-party
+requests remain forbidden, and missing artwork leaves useful text/score fallbacks.
 
 - Apple Reminders/EventKit is retired. Its proof is archived under
   `hearth/archive/apple-reminders-bridge/` and excluded from builds and deployment.

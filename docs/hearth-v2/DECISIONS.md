@@ -1,5 +1,23 @@
 # Hearth v2 decision record
 
+## D-114 — Bounded NBA artwork, without sacrificing the one-screen TV surface
+
+- Date: 2026-10-18
+- Status: local implementation; release/physical acceptance separate.
+- Context: David requested a slicker but clean NBA presentation, team logos and weekly-player
+  portraits while keeping the existing one-screen TV layout.
+- Choice: retain the four views and six-card/eight-row pagination. Add fixed-size crests, optional
+  portraits, ornamental team-colour rules and clearer score hierarchy. Text, scores and focus
+  remain authoritative; missing artwork uses initials/abbreviations without layout shift.
+- Boundary: optional server-only `NbaMediaProvider`, fixed ESPN CDN paths, validated team IDs and
+  numeric player IDs already in the current highlights. Raster-only, timeout/byte/pixel bounded,
+  resized WebP with finite in-memory cache/concurrency; no arbitrary URLs or browser CDN access.
+  Module/auth gates precede I/O. Demo is network-free and never maps real faces onto fictional names.
+- Consequences: supersedes only D-113's original artwork exclusion. No database migration, new
+  dependency, credentials, CSP relaxation, HA scope, native APK or live-system change. Public image
+  availability grants no commercial rights; the existing supported/licensed-source gate remains.
+  See NBA_CONTRACT and ACCEPTANCE for exact bounds and evidence.
+
 ## D-113 — Optional NBA, standout teams and honest weekly highlights
 
 - Date: 2026-10-18

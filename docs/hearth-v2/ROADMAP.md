@@ -7,6 +7,10 @@ single-game highlights behind an initially-off module. Evidence belongs in ACCEP
 Publication/deployment, installed HA 1.3.0, physical TV/iPhone checks, and a supported commercial
 feed remain separate gates. No TV power/pairing, reminders writeback, media or networking work.
 
+D-114 adds optional team/player artwork and restrained score/card polish without changing the
+four views or TV pagination. Prove loaded/missing artwork, light/dark, narrow phone, TV fit and
+D-pad escape locally; keep publication, physical-device acceptance and licensing gates separate.
+
 ## Household Modules — D-112 (2026-10-15)
 
 The eleven retained-data switches, enforcement, responsive menus/routes and all-off recovery passed

@@ -5,11 +5,17 @@
 The keyless server adapter reads fixed ESPN NBA standings and monthly scoreboard HTTPS feeds.
 Filter complete months into the household's Monday–Sunday fortnight with timezone-edge padding.
 Eight-second timeout, four-MiB decoded-byte bound per response, no redirects, schema validation;
-reject limit-sized/truncated feeds. No odds, logos, headshots, streams, ads or browser requests.
+reject limit-sized/truncated feeds. No odds, streams, ads or browser third-party requests.
 Highlights use completed current-week game leaders. Public feeds are undocumented/no-SLA;
 outages retain explicitly stale data. No commercial licence is claimed: review terms and select a
 supported/licensed provider before commercial use. HA gets only an explicitly approved module
 switch, not NBA stats access/navigation. See [NBA_CONTRACT.md](NBA_CONTRACT.md).
+
+D-114 adds optional server-proxied team crests and current-highlight portraits from fixed
+`a.espncdn.com` PNG paths, not caller URLs. Validate identity/auth/module before I/O; bound downloads,
+pixels, processing, concurrent work and retained memory; serve metadata-free resized WebP only.
+No browser egress/CSP change or persisted images. Missing artwork falls back to text independently
+of score availability. Demo never downloads artwork or attaches real faces to fictional people.
 
 ## Module availability and HA control (D-112)
 

@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { BrowserAccess } from './browser-access.js';
 import { NbaService } from './nba-service.js';
 import { DemoNbaProvider, EspnNbaProvider } from './integrations/nba-provider.js';
+import { EspnNbaMedia, NoNbaMedia, type NbaMediaProvider } from './integrations/nba-media.js';
 import { HomeAssistantBridgeService } from './home-assistant-bridge.js';
 import { HomeAssistantPairingService } from './home-assistant-pairings.js';
 import { ModuleRequestLeases, ModulesService, moduleForApiRoute } from './modules-repository.js';
@@ -13,6 +14,8 @@ import {
   NbaOverviewSchema,
   NbaSettingsSchema,
   UpdateNbaSettingsSchema,
+  NbaTeamIdSchema,
+  NbaPlayerIdSchema,
 } from '@hearth/shared';
 import { PHONE_PENDING_COOKIE, type PhoneConnectionService } from './phone-connections.js';
 import { z } from 'zod';
@@ -380,6 +383,7 @@ export interface BuildServerOptions {
   readiness?: () => Promise<void> | void;
   gamesArchive?: GamesArchive;
   nba?: NbaService;
+  nbaMedia?: NbaMediaProvider;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -400,6 +404,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         });
   const demoMode = runtime.mode !== 'private';
   const gamesArchive = options.gamesArchive ?? new GamesArchive(undefined, demoMode);
+  const nbaMedia = options.nbaMedia ?? (demoMode ? new NoNbaMedia() : new EspnNbaMedia());
   const nba =
     options.nba ??
     new NbaService(demoMode ? new DemoNbaProvider() : new EspnNbaProvider(), undefined, () =>
@@ -2354,6 +2359,30 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return run(reply, async () => {
       await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
       return NbaSettingsSchema.parse(nba.getSettings(params.householdId));
+    });
+  });
+  server.get('/api/v1/households/:householdId/nba/media/:kind/:id', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+    const params = parse(
+      HouseholdParamsSchema.extend({ kind: z.enum(['teams', 'players']), id: z.string() }),
+      request.params,
+      reply,
+    );
+    if (!params) return reply;
+    return run(reply, async () => {
+      const valid = (params.kind === 'teams' ? NbaTeamIdSchema : NbaPlayerIdSchema).safeParse(
+        params.id,
+      );
+      if (!valid.success) throw new RepositoryError('NOT_FOUND', 'NBA image unavailable.');
+      const household = await adminRepository.getHousehold(params.householdId);
+      if (params.kind === 'players') {
+        const overview = await nba.overview(params.householdId, household.timezone);
+        if (!overview.data?.highlights.some((mark) => mark.playerId === params.id))
+          throw new RepositoryError('NOT_FOUND', 'NBA image unavailable.');
+      }
+      const image = await nbaMedia.read(params.kind, params.id);
+      if (!image) return reply.code(204).send();
+      return reply.type('image/webp').header('X-Content-Type-Options', 'nosniff').send(image);
     });
   });
   server.put('/api/v1/households/:householdId/nba/settings', async (request, reply) => {

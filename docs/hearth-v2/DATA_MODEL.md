@@ -9,6 +9,11 @@ is persisted. NBA defaults off when an override/old wire field is missing; the o
 still default on. Access/device records are untouched. HA connection JSON gains approved
 `moduleIds`, defaulting to the frozen eleven for legacy grants.
 
+D-114 adds optional nullable public numeric `playerId` to the projected highlight DTO, with a
+null default for legacy/demo data. It identifies only available optional artwork; malformed IDs
+do not invalidate scores. No provider URL, image, player history or new household row is stored.
+Team accent colours are fixed presentation metadata. No additional migration is required.
+
 ## Retained household Modules (D-112)
 
 Migration `0032_household_modules.sql` adds fixed-ID boolean overrides keyed by household/module,

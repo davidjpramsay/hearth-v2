@@ -19,6 +19,59 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
 describe('NBA module and saved standout teams', () => {
+  it('gates artwork before I/O, permits only known highlighted players and keeps it same-origin/private', async () => {
+    const provider = new DemoNbaProvider();
+    const original = provider.read.bind(provider);
+    vi.spyOn(provider, 'read').mockImplementation(async (...args) => {
+      const data = await original(...args);
+      data.highlights[0]!.playerId = '1966';
+      return data;
+    });
+    const media = { read: vi.fn().mockResolvedValue(Buffer.from('test-webp')) };
+    const modules = new ModulesService();
+    const app = buildServer({
+      logger: false,
+      modules,
+      nbaMedia: media,
+      nba: new NbaService(provider, undefined, () => new Date(DEMO_NOW)),
+    });
+    apps.push(app);
+    const image = `${home}/nba/media/teams/2`;
+    expect((await app.inject(image)).statusCode).toBe(403);
+    expect(media.read).not.toHaveBeenCalled();
+    modules.update(DEMO_HOUSEHOLD_ID, 'nba', { requestId: 'request_art_on', enabled: true }, actor);
+    const team = await app.inject(image);
+    expect(team.statusCode).toBe(200);
+    expect(team.headers['content-type']).toBe('image/webp');
+    expect(team.headers['cache-control']).toBe('private, no-store');
+    expect(team.headers.vary).toBe('Cookie, Authorization');
+    expect((await app.inject(`${home}/nba/media/players/999`)).statusCode).toBe(404);
+    expect((await app.inject(`${home}/nba/media/teams/999`)).statusCode).toBe(404);
+    expect(media.read).toHaveBeenCalledTimes(1);
+    expect((await app.inject(`${home}/nba/media/players/1966`)).statusCode).toBe(200);
+    const privateApp = buildServer({ logger: false, demoMode: false, modules, nbaMedia: media });
+    apps.push(privateApp);
+    for (const headers of [{}, { authorization: 'Bearer invalid-test-only-credential' }]) {
+      expect([401, 403]).toContain((await privateApp.inject({ url: image, headers })).statusCode);
+    }
+    expect(media.read).toHaveBeenCalledTimes(2);
+    expect(
+      (
+        await app.inject(
+          `${home.replace(DEMO_HOUSEHOLD_ID, 'household_missing')}/nba/media/teams/2`,
+        )
+      ).statusCode,
+    ).toBe(403); // Other homes default NBA off; the gate runs before any media I/O.
+    expect(media.read).toHaveBeenCalledTimes(2);
+    modules.update(
+      DEMO_HOUSEHOLD_ID,
+      'nba',
+      { requestId: 'request_art_off', enabled: false },
+      actor,
+    );
+    expect((await app.inject(image)).statusCode).toBe(403);
+    expect(media.read).toHaveBeenCalledTimes(2);
+  });
   it('treats changed new scope as conflict even when replaying a pre-module legacy grant', async () => {
     const bridge = new HomeAssistantBridgeService(
       new InMemoryAdminRepository(),

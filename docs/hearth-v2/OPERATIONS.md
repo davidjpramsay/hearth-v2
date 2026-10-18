@@ -10,6 +10,14 @@ data, not an empty successful schedule. Cache resets on server restart. HA sourc
 eleven-module scope until deliberate reconnect. This local feature request authorizes no live
 container change, network change, TV APK installation or HA restart.
 
+D-114 artwork requires optional outbound HTTPS from the server to `a.espncdn.com`; no key,
+environment variable, inbound port or browser CSP origin is added. Do not weaken networking if
+that origin is unavailable: scores remain useful with initials/abbreviations. Raster processing
+uses the existing Sharp dependency. Memory is bounded to 64 entries / eight MiB, with 16 in-flight
+operations; successful/missing artwork caches last six hours/one minute. Download and processing
+bounds are documented in NBA_CONTRACT. Cache is in-memory only and resets on restart. This web/
+server polish needs no new TV APK or HA integration version, and does not itself authorize release.
+
 ## Installed TV startup repair — 2026-10-17
 
 TV shell `0.1.2` / code 3 fixes an Android-only bridge-regex initialization crash. The original

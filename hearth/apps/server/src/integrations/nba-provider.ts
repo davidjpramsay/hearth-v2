@@ -1,5 +1,5 @@
 import { addLocalDays, localDateInTimezone } from '@hearth/core';
-import { NbaDataSchema, NbaTeamIdSchema, type NbaData } from '@hearth/shared';
+import { NbaDataSchema, NbaTeamIdSchema, NbaPlayerIdSchema, type NbaData } from '@hearth/shared';
 import { z } from 'zod';
 import { boundResponse } from './bounded-response.js';
 
@@ -12,7 +12,12 @@ const team = z.object({ id: z.string().max(20) });
 const leader = z.object({
   name: text,
   leaders: z
-    .array(z.object({ value: z.number().finite(), athlete: z.object({ displayName: text }) }))
+    .array(
+      z.object({
+        value: z.number().finite(),
+        athlete: z.object({ displayName: text, id: z.unknown().optional() }),
+      }),
+    )
     .max(30),
 });
 const scoreboard = z.object({
@@ -182,9 +187,11 @@ export class EspnNbaProvider implements NbaProvider {
           for (const category of ['points', 'rebounds', 'assists'] as const) {
             for (const mark of side.leaders?.find((item) => item.name === category)?.leaders ??
               []) {
+              const playerId = NbaPlayerIdSchema.safeParse(mark.athlete.id);
               performances.push({
                 category,
                 player: mark.athlete.displayName,
+                playerId: playerId.success ? playerId.data : null,
                 teamId: side.team.id,
                 value: mark.value,
                 gameId: event.id,
