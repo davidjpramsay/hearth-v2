@@ -1,5 +1,28 @@
 # Hearth v2 decision record
 
+## D-116 — Today fills bounded tracks and follows the visible composition
+
+- Date: 2026-10-19
+- Status: accepted; local implementation, not publication/deployment or physical-device proof
+- Context: Photo dimensions based on viewport height could escape the actual remaining rail,
+  while shrink-wrapped, bottom-anchored summary cards left available reading space unused.
+  The existing 384-case inventory checked outer scrolling, not sibling intersections.
+- Choice: Put Chores left/before Upcoming in the DOM. Own Today layout in a scoped stylesheet;
+  use remaining logical-canvas tracks with zero minimums and intrinsic, contained images rather
+  than photo `vh` sizing. Stretch enabled summaries into balanced rows with no reserved disabled
+  track. Portrait photos share the upper core rail; other photos share the lower summary rail.
+  With neither core module, summaries/photo take the full dashboard. With no summaries, only
+  enabled content allocates tracks. Very short TV canvases show two core rows and honest overflow.
+  The phone scrolls naturally, uses Chores first and bounds tall photos; a landscape companion
+  uses paired columns only when wide enough. Existing spatial navigation follows actual geometry.
+- Verification policy: Retain all 384 named summary/photo combinations and add sibling/slot bounds,
+  decoded extreme-aspect pixel fixtures, core-module combinations, both themes, phone/tablet/4K,
+  resize, error/stale and remote reachability checks. Small existing focus-scale overscan is
+  measured in logical pixels, not mistaken for a structural intersection.
+- Boundaries: No layout editor, API/schema/migration, feature preference, photo rotation cadence,
+  authentication, provider, HA, TV-shell or live runtime/network change. Supersedes the old
+  shrink-wrap/viewport-photo sizing detail of D-058/D-063, not their bounded appliance direction.
+
 ## D-115 — Reveal NBA results only inside a readable individual-game box score
 
 - Date: 2026-10-18

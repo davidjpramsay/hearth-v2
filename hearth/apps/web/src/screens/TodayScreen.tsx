@@ -24,6 +24,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { getTodayRailCapacity, useTodayViewportClass } from '../layout/todayRailCapacity';
 import { useHearthRuntime } from '../runtime/context';
 import { useModules } from '../modules/context';
+import './TodayScreen.css';
 
 export function TodayScreen({
   scenario,
@@ -98,40 +99,6 @@ export function TodayScreen({
     eventOverflowCount > 0 || choreOverflowCount > 0 || visibleSummaryCount >= 3
       ? 'dense'
       : 'relaxed';
-  const summaryFocusIds = [
-    today.sections.dinner ? 'today-summary-dinner' : null,
-    today.sections.listSummary ? 'today-summary-list' : null,
-    today.sections.notice && today.notice !== null ? 'today-summary-notice' : null,
-    today.sections.dailyVerse && today.dailyVerse !== null ? 'today-summary-daily-verse' : null,
-    showReminderSummary ? 'today-summary-reminders' : null,
-  ].filter((focusId): focusId is string => focusId !== null);
-  const portraitSummaryShelf = photoOrientation === 'portrait' && summaryFocusIds.length > 0;
-  const portraitChoreSummaryIndex = Math.min(
-    Math.max(Math.ceil(summaryFocusIds.length / 2), 1),
-    summaryFocusIds.length - 1,
-  );
-  const portraitChoreSummaryFocusId =
-    summaryFocusIds[portraitChoreSummaryIndex] ?? summaryFocusIds[0];
-  const lastEventFocusId = visibleEvents.at(-1)
-    ? `today-event-${visibleEvents.at(-1)!.id}`
-    : 'nav-today';
-  const lastChoreFocusId = visibleChores.at(-1)
-    ? `today-chore-${visibleChores.at(-1)!.id}`
-    : 'nav-today';
-  const firstBottomFocusId = summaryFocusIds[0] ?? (showPhoto ? 'today-photo' : 'nav-today');
-  const choreBottomFocusId = portraitSummaryShelf
-    ? (portraitChoreSummaryFocusId ?? 'today-photo')
-    : showPhoto
-      ? 'today-photo'
-      : (summaryFocusIds[0] ?? lastChoreFocusId);
-  const eventAfterRowsFocusId =
-    eventOverflowCount > 0
-      ? 'today-event-overflow'
-      : firstBottomFocusId === 'nav-today'
-        ? lastEventFocusId
-        : firstBottomFocusId;
-  const choreAfterRowsFocusId =
-    choreOverflowCount > 0 ? 'today-chore-overflow' : choreBottomFocusId;
   const hasVisibleSummaryContent =
     (today.sections.dinner && today.dinner !== null) ||
     (today.sections.listSummary && today.listSummary !== null) ||
@@ -160,35 +127,8 @@ export function TodayScreen({
   }
 
   function summaryFocus(focusId: string) {
-    const index = summaryFocusIds.indexOf(focusId);
-    if (portraitSummaryShelf) {
-      const horizontalPosition = (index + 0.5) / summaryFocusIds.length;
-      const upTarget =
-        horizontalPosition < 0.5
-          ? lastEventFocusId
-          : horizontalPosition < 0.78
-            ? lastChoreFocusId
-            : 'today-photo';
-      return {
-        'data-focus-id': focusId,
-        'data-focus-up': upTarget,
-        'data-focus-down': focusId,
-        'data-focus-left': summaryFocusIds[index - 1] ?? 'nav-today',
-        'data-focus-right': summaryFocusIds[index + 1] ?? focusId,
-      };
-    }
-    return {
-      'data-focus-id': focusId,
-      'data-focus-up':
-        index === 0
-          ? eventOverflowCount > 0
-            ? 'today-event-overflow'
-            : lastEventFocusId
-          : (summaryFocusIds[index - 1] ?? focusId),
-      'data-focus-down': summaryFocusIds[index + 1] ?? focusId,
-      'data-focus-left': 'nav-today',
-      'data-focus-right': showPhoto ? 'today-photo' : focusId,
-    };
+    // Spatial navigation follows the actual grid after resize, photo rotation and toggles.
+    return { 'data-focus-id': focusId };
   }
 
   return (
@@ -219,6 +159,7 @@ export function TodayScreen({
       <div
         className={`today-dashboard today-dashboard--photo-${photoOrientation}`}
         data-density={dashboardDensity}
+        data-core-count={Number(modules.chores) + Number(modules.calendar)}
         data-photo-orientation={photoOrientation}
         data-rail-capacity={railCapacity}
         data-summary-count={visibleSummaryCount}
@@ -227,55 +168,6 @@ export function TodayScreen({
           className={`today-columns${!modules.calendar || !modules.chores ? ' today-columns--single' : ''}`}
           hidden={!modules.calendar && !modules.chores}
         >
-          {modules.calendar ? (
-            <section className="today-section upcoming-section">
-              <div className="section-heading">
-                <h2>Upcoming</h2>
-                {eventOverflowCount > 0 ? (
-                  <Link
-                    aria-label={`View ${eventOverflowCount} more ${eventOverflowCount === 1 ? 'plan' : 'plans'} in Calendar`}
-                    className="today-section-more focusable"
-                    data-focus-down={firstBottomFocusId}
-                    data-focus-id="today-event-overflow"
-                    data-focus-left="nav-today"
-                    data-focus-right={
-                      choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId
-                    }
-                    data-focus-up={lastEventFocusId}
-                    to="/calendar/agenda"
-                  >
-                    +{eventOverflowCount} more <Icon name="chevron-right" />
-                  </Link>
-                ) : (
-                  <span>{today.events.length} plans</span>
-                )}
-              </div>
-              <div className="event-list">
-                {visibleEvents.map((event, index, events) => (
-                  <EventRow
-                    event={event}
-                    focus={{
-                      'data-focus-id': `today-event-${event.id}`,
-                      'data-focus-up':
-                        index === 0
-                          ? `today-event-${event.id}`
-                          : `today-event-${events[index - 1]?.id}`,
-                      'data-focus-down':
-                        index === events.length - 1
-                          ? eventAfterRowsFocusId
-                          : `today-event-${events[index + 1]?.id}`,
-                      'data-focus-left': 'nav-today',
-                      'data-focus-right': visibleChores[Math.min(index, visibleChores.length - 1)]
-                        ? `today-chore-${visibleChores[Math.min(index, visibleChores.length - 1)]!.id}`
-                        : 'nav-today',
-                    }}
-                    key={event.id}
-                    onSelect={setSelectedEvent}
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null}
           {modules.chores ? (
             <section className="today-section chores-due-section">
               <div className="section-heading">
@@ -284,13 +176,7 @@ export function TodayScreen({
                   <Link
                     aria-label={`View ${choreOverflowCount} more ${choreOverflowCount === 1 ? 'chore' : 'chores'}`}
                     className="today-section-more focusable"
-                    data-focus-down={choreBottomFocusId}
                     data-focus-id="today-chore-overflow"
-                    data-focus-left={
-                      eventOverflowCount > 0 ? 'today-event-overflow' : lastEventFocusId
-                    }
-                    data-focus-right="today-chore-overflow"
-                    data-focus-up={lastChoreFocusId}
                     to="/chores"
                   >
                     +{choreOverflowCount} more <Icon name="chevron-right" />
@@ -300,27 +186,46 @@ export function TodayScreen({
                 )}
               </div>
               <div className="chore-list">
-                {visibleChores.map((occurrence, index, chores) => (
+                {visibleChores.map((occurrence) => (
                   <ChoreRow
                     focus={{
                       'data-focus-id': `today-chore-${occurrence.id}`,
                       'data-focus-entry': occurrence.id === primaryChoreId ? 'true' : undefined,
-                      'data-focus-up':
-                        index === 0
-                          ? `today-chore-${occurrence.id}`
-                          : `today-chore-${chores[index - 1]?.id}`,
-                      'data-focus-down':
-                        index === chores.length - 1
-                          ? choreAfterRowsFocusId
-                          : `today-chore-${chores[index + 1]?.id}`,
-                      'data-focus-left':
-                        index < visibleEvents.length
-                          ? `today-event-${visibleEvents[index]?.id}`
-                          : 'nav-today',
                     }}
                     key={occurrence.id}
                     mutation={mutation}
                     occurrence={occurrence}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {modules.calendar ? (
+            <section className="today-section upcoming-section">
+              <div className="section-heading">
+                <h2>Upcoming</h2>
+                {eventOverflowCount > 0 ? (
+                  <Link
+                    aria-label={`View ${eventOverflowCount} more ${eventOverflowCount === 1 ? 'plan' : 'plans'} in Calendar`}
+                    className="today-section-more focusable"
+                    data-focus-id="today-event-overflow"
+                    to="/calendar/agenda"
+                  >
+                    +{eventOverflowCount} more <Icon name="chevron-right" />
+                  </Link>
+                ) : (
+                  <span>{today.events.length} plans</span>
+                )}
+              </div>
+              <div className="event-list">
+                {visibleEvents.map((event) => (
+                  <EventRow
+                    event={event}
+                    focus={{
+                      'data-focus-id': `today-event-${event.id}`,
+                    }}
+                    key={event.id}
+                    onSelect={setSelectedEvent}
                   />
                 ))}
               </div>
@@ -426,15 +331,7 @@ export function TodayScreen({
               <Link
                 aria-label="Open family photos"
                 className="today-photo-action focusable"
-                data-focus-down={
-                  portraitSummaryShelf ? (summaryFocusIds.at(-1) ?? 'today-photo') : 'today-photo'
-                }
                 data-focus-id="today-photo"
-                data-focus-left={
-                  portraitSummaryShelf ? lastChoreFocusId : (summaryFocusIds.at(-1) ?? 'nav-today')
-                }
-                data-focus-right="today-photo"
-                data-focus-up={choreOverflowCount > 0 ? 'today-chore-overflow' : lastChoreFocusId}
                 to="/photos"
               >
                 <TodayPhoto photo={rotatingPhoto} />

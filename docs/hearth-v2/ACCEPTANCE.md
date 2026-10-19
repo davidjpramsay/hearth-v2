@@ -1,5 +1,83 @@
 # Hearth v2 acceptance and definition of done
 
+## D-116 adaptive Today layout — local evidence, 2026-10-19
+
+Prepared on `codex/today-adaptive-layout` from verified release `e58c48c`, in the clean
+`phone-access-release` worktree, not the historical dirty iOS checkout. Chores is left/before
+Upcoming. Photos are bounded by their allocated track in both axes; enabled summary tiles fill
+the remaining space. Portrait, landscape/square, photo-only, no-photo and zero/one/two core-module
+layouts collapse unused tracks. The scoped stylesheet replaces the former overlapping TV rules;
+very short TV canvases retain two rows and honest overflow. No API, migration, domain command,
+preference, photo-rotation cadence, authentication or live-runtime change was made.
+
+### Checks and rendered scope
+
+- `pnpm verify:code` — PASS: formatting, lint, workspace types, **93 shared + 40 core + 101 server
+  - 419 web unit tests**, **265 API/integration tests**, **29 migration tests**, deployment scaffold
+    verification and production web/server builds. Two existing upstream JSX-parser diagnostics
+    remain, with no lint failure. The final three-card CSS adjustment was then rebuilt and retested
+    in all 60 affected matrix cases. Final changed-file formatting and lint checks also pass.
+- `pnpm verify:ci` — PASS: five policy checks; **1,135** browser cases partitioned without
+  duplication/omission. This is inventory, not execution of all 1,135 tests.
+- Browser plugin unavailable: used repository Playwright, Chromium, isolated built demo API on
+  `127.0.0.1:4310` and preview on `127.0.0.1:4320`, never the private household.
+- **640 layout scenarios:** all 32 summary subsets × six typed photo shapes × two TV sizes
+  (**384**), plus **256** decoded-pixel stress layouts across 320×740, 390×844, 844×390,
+  1024×1366, 1200×620, 1366×768, 1920×1080 and 3840×2160, both themes and all four core-module
+  combinations. Stress fixtures include no photo, 4:1 panorama, square and 1:3 portrait; sparse
+  Verse/Reminders and full shelves. This is a bounded matrix, not every possible text/viewport.
+- Geometry assertions check sibling intersections, photo-slot containment, readable minimum tile
+  height, row-content containment, full remaining summary height, no horizontal overflow and
+  no TV/main scrolling. Focus-scale overscan is allowed only within six logical pixels.
+- Remote traversal reaches every Today control across photo compositions; dialogs restore opener
+  focus, resize retains focus, and visible-time rotation/pause/reduced-motion behavior remains.
+  Phone settings/notice edits, offline/stale states, failed chore/retry, module hiding, themes and
+  serious/critical axe checks are exercised. Screenshots were inspected at phone, compact/full TV,
+  portrait-photo reading shelf and short-TV stale/error layouts.
+
+### Exact browser runs and corrections
+
+From `hearth/`:
+
+```sh
+pnpm test:e2e:built tests/e2e/today-polish.spec.ts tests/e2e/today-adaptive.spec.ts tests/e2e/today-photo-rotation.spec.ts tests/e2e/today-settings.spec.ts
+```
+
+**418 passed**, including the entire 384-case matrix, 256 stress states, remote reachability,
+rotation and error layouts. One pre-existing settings test expected the former arrow route;
+it was updated to four Down presses from the now-left Chores rail, then Right/Down to Verse.
+Two later settings tests were not run in that stopped invocation; all five settings tests pass
+in the final adjacent run below. Earlier partial runs also caught an obsolete sizing expectation,
+short-TV text spill and a 30-second budget for 16 full navigations. Those were corrected, not
+waived: the batched stress case has a 60-second budget, while assertion timeouts stay unchanged.
+
+After the final three-tile full-width adjustment and a fresh production build:
+
+```sh
+pnpm test:e2e:built tests/e2e/today-polish.spec.ts --grep 'Today composition (1920x1080|1366x768) (none|portrait-2-3|portrait-9-16) mask (7|11|13|14|19|21|22|25|26|28)$'
+```
+
+**60/60 PASS (44.1 seconds)**, including equal top rails for all affected three-card configurations.
+
+```sh
+pnpm test:e2e:built tests/e2e/today-settings.spec.ts tests/e2e/visual.spec.ts tests/e2e/appearance.spec.ts tests/e2e/modules.spec.ts tests/e2e/remote.spec.ts
+```
+
+**87/87 PASS (1.9 minutes)** on the final build, including the corrected remote path, all settings
+tests, Today at 4K/1080p/1366px/phone portrait/landscape, actual intrinsic image sizing, dark surfaces,
+module access and adjacent calendar/chore flows. No skipped tests in these two final runs.
+
+Logs and screenshots are preserved outside source at `/tmp/hearth-today-layout-proof.bzR63f/`;
+source tests remain the repeatable evidence. `git diff --check` and explicit root-doc formatting pass.
+
+### Unchanged and open
+
+No publication, push, merge, deployment, installed APK update, pairing, calendar connection,
+HA command/restart, private content read or Synology/network change. Android/HA-specific gates and
+the entire 1,135-case release suite were not rerun for this web-only local change. Actual household
+TV and iPhone Safari viewing remain **not run** and distinct from browser emulation. The next step
+is review/release approval, then the normal hosted release gate and a physical-device check.
+
 ## D-115 spoiler-free games and player box scores — local implementation, 2026-10-18
 
 Built on `3b4226e` in the existing clean `codex/nba-module` worktree, not the historical iOS

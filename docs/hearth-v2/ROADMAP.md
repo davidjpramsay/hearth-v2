@@ -1,5 +1,13 @@
 # Hearth v2 implementation roadmap
 
+## Today adaptive composition — D-116 (2026-10-19)
+
+Swap Chores left/before Upcoming; bound photos by remaining track height and let enabled summary
+cards use that space. Retain the 384 named composition cases, strengthen intersection/containment
+checks and cover extreme image ratios, core module combinations, light/dark, phones/tablet/short
+TV/4K, stale/error states and D-pad/Back. Local evidence belongs in ACCEPTANCE. Publication,
+deployment and actual household TV/iPhone viewing remain separate gates; no live update is implied.
+
 ## Optional NBA — D-113 (2026-10-18)
 
 Implement retained standout teams, this/next local week, phase-labelled standings and weekly

@@ -3,6 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { getTodayRailCapacity } from './todayRailCapacity';
 
 describe('getTodayRailCapacity', () => {
+  it('reserves a readable lower rail on short logical TV canvases', () => {
+    for (const photoOrientation of ['none', 'landscape', 'square', 'portrait'] as const) {
+      for (let summaryCount = 0; summaryCount <= 5; summaryCount += 1)
+        expect(
+          getTodayRailCapacity({ photoOrientation, summaryCount, viewportClass: 'short-tv' }),
+        ).toBe(2);
+    }
+  });
   it('keeps the scrolling companion presentation concise', () => {
     for (const photoOrientation of ['none', 'landscape', 'square', 'portrait'] as const) {
       expect(getTodayRailCapacity({ photoOrientation, viewportClass: 'companion' })).toBe(3);

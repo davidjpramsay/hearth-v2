@@ -198,17 +198,21 @@ an unexplained empty column. Television Today is a single non-scrolling dashboar
 vertical document. It selects a bounded composition from the enabled band count and the featured
 photo's typed orientation: portrait photos use a substantial right-side rail, landscape and square
 photos use a shorter wide panel, and no-photo layouts return the full lower width to summary bands.
+Chores occupies the left column and Upcoming the right; that is also their document/phone order.
 The two core columns remain equal and share heading and first-card rails. Portrait media begins at
 that core upper rail; landscape/square media and the enabled summary bands share one lower rail.
-Collapsed modules reserve no track, and the lower content follows the actual core height rather than
-floating at the bottom of a taller display.
-The Today photo contract carries source dimensions when available, and the image itself sizes from that
-native ratio with no persistent frame, crop, shadow or backing panel.
+Collapsed modules reserve no track. Summary cards stretch through the remaining lower rail instead
+of shrink-wrapping at its bottom; the Verse/Reminders pair can use the available reading area.
+With neither core module, the optional content takes the whole dashboard rather than preserving an
+empty upper row. The Today photo contract carries source dimensions when available. The image fits
+its allocated width **and remaining height**, preserves its intrinsic ratio and has no persistent
+frame, crop, shadow or backing panel; a transparent sizing slot is not a decorative photo frame.
 Landscape media receives a band-count-aware share of the lower rail: it grows when fewer summaries
 need horizontal room and remains height-bounded on shorter televisions. Square media stays compact
 enough to preserve the core dashboard, while portrait media continues to use the upper right rail.
-One to four bands become compact tiles without reserving empty rows. The phone keeps its natural
-single-column scroll because it is an editing and companion surface rather than a wall appliance.
+Enabled bands become balanced tiles without reserving empty rows. The phone keeps its natural
+single-column scroll; sufficiently wide landscape companions can pair columns. Tall phone photos
+are height-bounded so one preview cannot dominate the whole document.
 When more than one approved family photo is available, the Today preview advances after about five
 minutes of visible screen time. The Photos screen Pause/Resume control governs this preview for the
 current display session as well as the gallery. A hidden document does not consume the interval, and
@@ -224,7 +228,8 @@ Today derives the visible event/chore capacity from the rendered composition. Fu
 landscape-photo television layouts may use four rows, while their compact-height counterpart and
 compact-square television layouts retain three. Portrait, full-height square and no-photo television
 layouts may use up to five when the complete dashboard remains inside one viewport. The phone keeps
-three. A deterministic, focusable `+N more` action reports the complete hidden count and
+three; TV canvases below 720 pixels high use two core rows to preserve the lower content.
+A deterministic, focusable `+N more` action reports the complete hidden count and
 opens the Calendar agenda or Chores screen. Event rows open the same detail dialog as the calendar
 views. Dinner, List summary and the photo preview link to Meals, Lists and Photos; an active Notice
 opens its full text in a Back-safe dialog. Back restores the exact originating row, overflow action

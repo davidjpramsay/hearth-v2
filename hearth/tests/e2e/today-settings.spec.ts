@@ -81,9 +81,6 @@ test('@visual @a11y daily verse is optional and Back restores its television foc
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowUp');
   await expect(page.locator('[data-focus-id="today-summary-dinner"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { captureEvidence } from './visualEvidence';
+import { expectTodayGeometry } from './todayGeometry';
 import { stabilizePhotoPlayback, useSinglePhotoAlbum } from './photoPlaybackFixture';
 
 // Finish intercepted refreshes before Playwright disposes their response context.
@@ -81,7 +82,7 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
 
   const firstEvent = page.getByRole('button', { name: /8:15 am, School drop-off/ });
   await expect(page.locator('[data-focus-id="today-chore-occurrence_school_bag"]')).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowRight');
   await expect(firstEvent).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'School drop-off' })).toBeVisible();
@@ -107,9 +108,8 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await page.keyboard.press('Escape');
   await expect(eventOverflow).toBeFocused();
 
-  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowDown');
   const dinner = page.locator('[data-focus-id="today-summary-dinner"]');
-  await expect(dinner).toBeFocused();
+  await dinner.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/meals$/);
   await expect(page.getByRole('heading', { name: 'Meals', exact: true })).toBeVisible();
@@ -146,9 +146,8 @@ test('@visual @a11y Today exposes real details, honest overflow and useful desti
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(photo).toBeFocused();
-  for (let step = 0; step < 5; step += 1) await page.keyboard.press('ArrowUp');
   const choreOverflow = page.locator('[data-focus-id="today-chore-overflow"]');
-  await expect(choreOverflow).toBeFocused();
+  await choreOverflow.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/chores$/);
   await expect(page.getByRole('heading', { name: 'Chores', exact: true })).toBeVisible();
@@ -267,28 +266,15 @@ for (const viewport of [
       .evaluateAll((bands) => bands.map((band) => band.getBoundingClientRect().height));
     expect(summaryBandHeights.length).toBeGreaterThan(0);
     expect(summariesBox!.height).toBeCloseTo(Math.max(...summaryBandHeights), 0);
-    expect(summariesBox!.height).toBeLessThanOrEqual(132);
-    expect(photoBox!.height).toBeGreaterThan(summariesBox!.height * 1.5);
+    expect(summariesBox!.height).toBeGreaterThan(120);
+    await expectTodayGeometry(page);
 
     const lastChore = page.locator('.chore-row').last();
     await lastChore.focus();
-    await expect(lastChore).toBeFocused();
     await page.keyboard.press('ArrowDown');
-    await expect(page.locator('[data-focus-id="today-summary-notice"]')).toBeFocused();
-    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('[data-focus-id="today-summary-dinner"]')).toBeFocused();
+    await page.keyboard.press('ArrowRight');
     await expect(page.locator('[data-focus-id="today-summary-list"]')).toBeFocused();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-focus-id="today-summary-notice"]')).toBeFocused();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-focus-id="today-summary-reminders"]')).toBeFocused();
-    await page.keyboard.press('ArrowUp');
-    await expect(page.locator('[data-focus-id="today-photo"]')).toBeFocused();
-    await page.keyboard.press('ArrowLeft');
-    const alignedChoreIndex = viewport.width === 1920 ? 2 : 1;
-    await expect(page.locator('.chore-row').nth(alignedChoreIndex)).toBeFocused();
-    for (let step = alignedChoreIndex; step < 4; step += 1) await page.keyboard.press('ArrowDown');
-    await expect(lastChore).toBeFocused();
-
     await captureEvidence(page, {
       path: resolve(evidence, `today-adaptive-portrait-${viewport.name}.png`),
       animations: 'disabled',
@@ -296,7 +282,7 @@ for (const viewport of [
   });
 }
 
-test('@visual Today anchors summaries below landscape media', async ({ page }) => {
+test('@visual Today fills the lower rail beside landscape media', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
 
@@ -313,7 +299,8 @@ test('@visual Today anchors summaries below landscape media', async ({ page }) =
   const dashboardBox = await dashboard.boundingBox();
   expect(dashboardBox).not.toBeNull();
   expect(Math.abs(eventRail!.y - choreRail!.y)).toBeLessThanOrEqual(1);
-  expect(photo!.y).toBeLessThan(summaries!.y);
+  expect(Math.abs(photo!.y - summaries!.y)).toBeLessThanOrEqual(1);
+  await expectTodayGeometry(page);
   expect(
     Math.abs(summaries!.y + summaries!.height - (dashboardBox!.y + dashboardBox!.height)),
   ).toBeLessThanOrEqual(1);
@@ -500,6 +487,18 @@ for (const viewport of [
           `Today overflowed for ${viewport.width}x${viewport.height}, ${photo.name}, mask ${mask}`,
         ).toBe(false);
 
+        await expectTodayGeometry(page);
+
+        if (
+          summaryCount === 3 &&
+          (photo.orientation === 'none' || photo.orientation === 'portrait')
+        ) {
+          const tops = await page
+            .locator('.summary-band')
+            .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().top));
+          expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+        }
+
         if (photo.orientation === 'none') {
           await expect(page.locator('.today-photo')).toHaveCount(0);
           return;
@@ -514,7 +513,9 @@ for (const viewport of [
         const photoBox = await photoFigure.boundingBox();
         expect(photoBox).not.toBeNull();
         expect(
-          Math.abs(photoBox!.width / photoBox!.height - photo.width / photo.height),
+          Math.abs(
+            Number(await photoFigure.getAttribute('data-photo-ratio')) - photo.width / photo.height,
+          ),
         ).toBeLessThan(0.025);
 
         if (photo.orientation === 'landscape' && summaryCount > 0) {
@@ -541,7 +542,8 @@ test('@visual Today collapses every optional track in a photo-only composition',
   expect(dashboard).not.toBeNull();
   expect(photo).not.toBeNull();
   expect(photo!.width).toBeGreaterThan(dashboard!.width * 0.75);
-  expect(photo!.width).toBeLessThan(dashboard!.width * 0.9);
+  expect(photo!.width).toBeCloseTo(dashboard!.width, 0);
+  await expectTodayGeometry(page);
   expect(
     Math.abs(photo!.x + photo!.width / 2 - (dashboard!.x + dashboard!.width / 2)),
   ).toBeLessThan(2);

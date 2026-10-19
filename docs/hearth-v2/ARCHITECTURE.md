@@ -1,5 +1,16 @@
 # Hearth v2 architecture
 
+## Bounded Today composer (D-116)
+
+`TodayScreen` derives enabled content from the existing typed summary and module flags. Its scoped
+stylesheet allocates the remaining logical canvas: Chores precedes Upcoming; portrait photos share
+the upper rail and landscape/square photos share a stretch-filled lower rail with summary cards.
+Image intrinsic sizes cannot grow the allocated track. Zero/one core module and absent optional
+content collapse their tracks. The viewport subscription selects two rows on very short TV canvases;
+normal three/four/five-row policies and honest overflow remain. The shared spatial resolver reads
+current geometry after reflow, with stable control IDs for focus restoration. No extra measurements,
+resize observer, layout state store, timer, API or persistence layer is introduced.
+
 ## NBA provider and preferences (D-113)
 
 `NbaService` owns bounded read-through cache and household preferences/command receipts.

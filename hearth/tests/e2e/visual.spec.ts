@@ -60,7 +60,7 @@ for (const viewport of viewports) {
 test('Today photo remains substantial and orientation-safe on TV and phone', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
-  const tvFrame = page.locator('.today-photo');
+  const tvFrame = page.locator('.today-photo__image');
   await expect(tvFrame).toBeVisible();
   const tvBox = await tvFrame.boundingBox();
   expect(tvBox?.width).toBeGreaterThan(450);
