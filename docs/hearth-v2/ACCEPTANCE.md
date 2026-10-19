@@ -1,5 +1,27 @@
 # Hearth v2 acceptance and definition of done
 
+## D-116 release focus correction — 2026-10-19
+
+Publishing `110635b` triggered hosted run **39245179396**. Its code/API/migration, dependency,
+Android and container gates passed, but the 1920×1080 light adaptive case failed after 80 browser
+passes in shard 3. Other shards were cancelled and image publication was skipped; the private
+server remained on `e58c48c`. The same failure reproduced on the third local repetition.
+
+The generic focus transform scales/translates a filled summary card beyond its allocated track
+once its transition settles. Today TV summary/photo cards now keep their geometry while retaining
+the existing focus outline/halo. No geometry tolerance, assertion timeout, release filter or data
+boundary is weakened. Six regression cases cover settled focus in both themes at compact TV,
+1080p and 4K, with all photo shapes and sparse full-height cards. Release checks must pass again
+before deployment; physical TV/iPhone viewing remains separate acceptance evidence.
+
+Local correction checks: production rebuild, changed-file lint/format and `git diff --check` pass.
+`pnpm test:e2e:built tests/e2e/today-adaptive.spec.ts --grep '1920x1080 light|filled cards'
+--repeat-each=3` passes **21/21 (45.4 seconds)**, including three complete executions of the
+previously intermittent case and three repetitions of each new focus case. `pnpm verify:ci` passes
+five policy tests and accounts for **1,148** browser cases, 287 per shard; full execution still
+requires the subsequent hosted run. Evidence is outside source in
+`/tmp/hearth-today-games-release.pJnAyc/`.
+
 ## D-117 Word groups resume — local evidence, 2026-10-19
 
 Built on local Today commit `f08aa1a`; no live deployment is implied. Returning to `/games`

@@ -203,6 +203,8 @@ The two core columns remain equal and share heading and first-card rails. Portra
 that core upper rail; landscape/square media and the enabled summary bands share one lower rail.
 Collapsed modules reserve no track. Summary cards stretch through the remaining lower rail instead
 of shrink-wrapping at its bottom; the Verse/Reminders pair can use the available reading area.
+Filled Today summary/photo cards keep their allocated geometry under television focus; retain the
+visible outline and halo, without scaling or lifting the whole card beyond its track.
 With neither core module, the optional content takes the whole dashboard rather than preserving an
 empty upper row. The Today photo contract carries source dimensions when available. The image fits
 its allocated width **and remaining height**, preserves its intrinsic ratio and has no persistent

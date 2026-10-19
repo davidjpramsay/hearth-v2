@@ -140,6 +140,11 @@
     box-shadow: var(--shadow-rest);
     gap: 14px;
   }
+  /* Large filled tracks must not grow past the canvas when remote focus settles. */
+  .today-screen .summary-band.focusable:focus-visible,
+  .today-screen .today-photo-action:focus-visible {
+    transform: none;
+  }
   .today-screen .summary-band__icon {
     width: 29px;
     height: 29px;

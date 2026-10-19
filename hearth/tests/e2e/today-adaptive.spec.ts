@@ -95,6 +95,51 @@ for (const viewport of viewports) {
   }
 }
 
+for (const viewport of [viewports[4], viewports[6], viewports[7]]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Today filled cards keep settled focus inside ${viewport.width}x${viewport.height} ${theme}`, async ({
+      page,
+      request,
+    }, info) => {
+      await request.post('/api/v1/demo/reset');
+      await stabilizePhotoPlayback(page);
+      await page.setViewportSize(viewport);
+      await page.addInitScript(
+        (theme) =>
+          localStorage.setItem(
+            'hearth.appearance.v1',
+            JSON.stringify({ theme, eveningDimming: false }),
+          ),
+        theme,
+      );
+      const fixture = await installAdaptiveFixture(page);
+      fixture.core = 0;
+      fixture.sparse = true;
+      for (const photo of shapes) {
+        fixture.photo = photo;
+        await page.goto('/today');
+        await expect(page.locator('.today-dashboard')).toHaveAttribute('data-core-count', '0');
+        await expect(page.locator('.today-dashboard')).toHaveAttribute(
+          'data-photo-orientation',
+          photo.orientation,
+        );
+        await expect(page.locator('.summary-band')).toHaveCount(2);
+        for (const target of await page
+          .locator('.summary-band.focusable, .today-photo-action')
+          .all()) {
+          await target.focus();
+          await expect(target).toBeFocused();
+          await expect(target).toHaveCSS('transform', 'none');
+          await expect(target).toHaveCSS('outline-style', 'solid');
+          await expect(target).toHaveCSS('outline-width', '3px');
+          await expectTodayGeometry(page);
+        }
+      }
+      await page.screenshot({ path: info.outputPath(`today-settled-focus-${theme}.png`) });
+    });
+  }
+}
+
 test('Today remote can reach and leave every tile after reflow without losing opener focus', async ({
   page,
   request,
