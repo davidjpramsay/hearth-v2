@@ -131,6 +131,11 @@ Actual Safari/TCL rendering and remote acceptance remain open; see the release e
 
 ## Requested addition — Family word-grouping game
 
+D-117 (2026-10-19) retains the last successfully loaded board on each device, including untouched
+choices and finished results, without clearing existing guesses/completions. Verify normal entry,
+reload/fresh document, explicit links, missing/failed reads, old-v2 compatibility, blocked storage
+and D-pad Next/Replay focus. No cross-device sync or live update is implied by local evidence.
+
 Add Games using the household-supplied local puzzle archive, with original Hearth styling and
 TV/phone controls. Verify rules, safe imports, authenticated reads, per-device progress, archive
 selection, dark mode and D-pad-only use. Do not publish the supplied puzzle data or claim live

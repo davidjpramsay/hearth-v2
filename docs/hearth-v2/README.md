@@ -28,6 +28,8 @@ Today composition follows D-116: Chores left/before Upcoming, bounded orientatio
 stretch-filled enabled summaries and natural companion scrolling. Local layout evidence is
 separate from release and actual TV/phone acceptance in ACCEPTANCE.
 
+Games reopens the last successfully loaded puzzle on each device (D-117), preserving existing saves.
+
 Optional NBA follows [NBA_CONTRACT.md](NBA_CONTRACT.md) (D-113): standout-team settings,
 this/next local week, phase-labelled standings and weekly best single-game highlights. It starts
 off; local implementation is not publication, deployment or physical acceptance.

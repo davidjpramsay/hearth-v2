@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WordGroupsPuzzle } from '@hearth/shared';
 import { newWordGroupsProgress } from '@hearth/core';
-import { readGameOutcomes, readGameProgress, saveGameProgress } from './gameProgress';
+import {
+  readGameOutcomes,
+  readGameProgress,
+  readLastGamePuzzle,
+  rememberGamePuzzle,
+  saveGameProgress,
+} from './gameProgress';
 
 const board = Array.from({ length: 16 }, (_, index) => `TILE ${index}`);
 const puzzle: WordGroupsPuzzle = {
@@ -32,6 +38,69 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('device-local game progress', () => {
+  it('remembers untouched puzzle choices without replacing progress or completion markers', () => {
+    const progress = { ...newWordGroupsProgress(), attempts: [[0, 1, 2, 3]] };
+    saveGameProgress('demo.home_a', puzzle, progress);
+    expect(rememberGamePuzzle('demo.home_a', 'word_groups_other')).toBe(true);
+    expect(readLastGamePuzzle('demo.home_a')).toBe('word_groups_other');
+    expect(readGameProgress('demo.home_a', puzzle)).toEqual(progress);
+    expect(readLastGamePuzzle('private.home_a')).toBeNull();
+    expect(readLastGamePuzzle('demo.home_b')).toBeNull();
+    expect(readGameOutcomes('demo.home_a').word_groups_other).toBeUndefined();
+    expect(localStorage.getItem('hearth.word-groups.v2.demo.home_a')).not.toContain('TILE');
+    saveGameProgress('demo.home_a', puzzle, progress);
+    expect(readLastGamePuzzle('demo.home_a')).toBe(puzzle.id);
+  });
+  it('uses the most recent old v2 attempt without resetting existing saves', () => {
+    localStorage.setItem(
+      'hearth.word-groups.v2.home_a',
+      JSON.stringify({
+        version: 2,
+        completedIds: ['word_groups_complete'],
+        entries: [
+          {
+            id: puzzle.id,
+            progress: newWordGroupsProgress(),
+            outcome: 'in-progress',
+          },
+        ],
+      }),
+    );
+    expect(readLastGamePuzzle('home_a')).toBe(puzzle.id);
+    rememberGamePuzzle('home_a', 'word_groups_other');
+    expect(readGameOutcomes('home_a').word_groups_complete).toBe('completed');
+    expect(readGameProgress('home_a', puzzle)).toEqual(newWordGroupsProgress());
+  });
+  it('ignores an invalid optional pointer without losing valid v2 progress', () => {
+    const progress = { ...newWordGroupsProgress(), attempts: [[0, 1, 2, 3]] };
+    saveGameProgress('home_a', puzzle, progress);
+    const store = JSON.parse(localStorage.getItem('hearth.word-groups.v2.home_a')!);
+    localStorage.setItem(
+      'hearth.word-groups.v2.home_a',
+      JSON.stringify({ ...store, lastPuzzleId: { bad: true } }),
+    );
+    expect(readLastGamePuzzle('home_a')).toBe(puzzle.id);
+    expect(readGameProgress('home_a', puzzle)).toEqual(progress);
+    expect(rememberGamePuzzle('home_a', '')).toBe(false);
+    expect(readGameProgress('home_a', puzzle)).toEqual(progress);
+  });
+  it('safely handles missing, corrupt, oversized and blocked selection storage', () => {
+    expect(readLastGamePuzzle('home_a')).toBeNull();
+    for (const value of ['broken', 'x'.repeat(2_000_001)]) {
+      localStorage.setItem('hearth.word-groups.v2.home_a', value);
+      expect(readLastGamePuzzle('home_a')).toBeNull();
+      expect(rememberGamePuzzle('home_a', puzzle.id)).toBe(true);
+      expect(readLastGamePuzzle('home_a')).toBe(puzzle.id);
+    }
+    vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('Blocked');
+    });
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('Quota');
+    });
+    expect(readLastGamePuzzle('home_a')).toBeNull();
+    expect(rememberGamePuzzle('home_a', puzzle.id)).toBe(false);
+  });
   it('restores valid numeric guesses/order without storing answers or crossing homes/puzzles', () => {
     const progress = {
       ...newWordGroupsProgress(),

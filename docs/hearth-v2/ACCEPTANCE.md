@@ -1,5 +1,56 @@
 # Hearth v2 acceptance and definition of done
 
+## D-117 Word groups resume — local evidence, 2026-10-19
+
+Built on local Today commit `f08aa1a`; no live deployment is implied. Returning to `/games`
+now selects the last successfully loaded catalogue identity on this device, whether opened from
+Archive, Earlier/later, Next puzzle or an explicit link. Guesses, solved groups, remaining mistakes,
+shuffled order and completion badges are preserved. A finished result stays visible until explicit
+navigation/replay, with Next/Replay as the remote entry action. Untouched choices save too; invalid
+links or failed detail reads cannot overwrite the last playable board. Missing archive identities
+fall back to the earliest uncompleted board, then the first. Older v2 records recover their most
+recent detailed attempt without resetting guesses/completions. The new optional pointer ignores
+malformed values independently of otherwise valid progress. No server/API/migration or sync change.
+
+### Verification
+
+- `pnpm --filter @hearth/web exec vitest run src/utils/gameProgress.test.ts` — **10/10 PASS**,
+  including untouched choices, legacy v2, corrupt/oversized/blocked storage, runtime/household
+  isolation and completion retention. No answer text or unrelated preference is added to the store.
+- `pnpm verify:code` — **PASS**: formatting, lint, workspace type checks, **93 shared + 40 core +
+  101 server + 423 web unit tests**, **265 API/integration tests**, **29 migration tests**, deployment
+  scaffold checks and both production builds. Same two existing JSX-parser diagnostics; no lint
+  failure. No dependency added.
+- `pnpm verify:ci` — **PASS**: five policy checks and a complete, non-overlapping **1,142-case**
+  browser inventory. This is not execution of the entire release suite.
+- Browser plugin not available. Used repository Playwright/Chromium against isolated built demo
+  API `127.0.0.1:4310` and web `127.0.0.1:4320`, with original demo boards only. Target flow:
+  Games → choose puzzle #3 → solve/miss/shuffle → Today → Games → reload → fresh document;
+  puzzle identity, guesses and order remain. Fresh tabs exercise durable localStorage, not the
+  original page's React Query cache.
+
+```sh
+HEARTH_GAMES_RESUME_EVIDENCE_DIR=/tmp/hearth-games-resume-proof.fJU5RE pnpm test:e2e:built tests/e2e/games.spec.ts tests/e2e/games-remote.spec.ts tests/e2e/games-progression.spec.ts tests/e2e/games-resume.spec.ts
+```
+
+**28/28 PASS (53.3 seconds)**, no failures/skips. Covers phone portrait/landscape, tablet,
+1366px/1080p/4K, light/dark, remote-only play/Back, archive search/paging, completed-game reopen,
+explicit Next/replay, untouched choices, deep-link precedence, failed/missing reads, old saves,
+offline/blocked storage, no horizontal/TV action clipping, console health and serious/critical axe
+checks. Screenshots were inspected at TV and phone; resumed #3 shows one solved group and three
+mistakes remaining. Logs/screenshots are outside source at `/tmp/hearth-games-resume-proof.fJU5RE/`.
+`git diff --check` and explicit root-doc formatting checks pass.
+
+### Remaining gates and boundaries
+
+No push, merge, publication, deployment, private archive read/import, TV navigation/power command,
+HA restart, calendar/authentication change or Synology/network mutation. Android source is unchanged;
+its existing WebView enables DOM storage, but actual TV process termination/relaunch and iPhone
+Safari/PWA checks remain **not run**. Android-specific checks and the full hosted release suite
+were not rerun. Progress remains per browser/device and is lost if its app/site storage is cleared;
+this is not household-wide or cross-device resume. Review/publish approval and a physical reopen
+check are the next steps.
+
 ## D-116 adaptive Today layout — local evidence, 2026-10-19
 
 Prepared on `codex/today-adaptive-layout` from verified release `e58c48c`, in the clean
@@ -2634,8 +2685,9 @@ unverified, as do a full unattended TV idle interval and overnight/manual-standb
 - Progress survives reload and puzzle switching on the same device; malformed/blocked storage
   remains playable. Another household or changed board cannot inherit that progress.
 - The requested v1-only reset starts at #1 without changing unrelated storage. Persisted completions
-  appear in ascending Archive, survive replay/attempt eviction, and resume the earliest uncompleted
-  puzzle on a later visit. A win stays visible until **Next puzzle** or replay is chosen.
+  appear in ascending Archive and survive replay/attempt eviction. Later visits resume the last
+  successfully loaded board (D-117), including untouched choices and finished results; absent saved
+  boards fall back safely. A win stays visible until **Next puzzle** or replay is chosen.
 - Private reads require the existing household passkey/display authority; failed imports expose no
   source paths and cannot slow startup, reveal household data or take down other modules.
 - Test mobile, tablet, 1080p/4K, light/dark, keyboard/D-pad/Back, focus restoration and accessibility.

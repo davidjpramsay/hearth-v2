@@ -17,6 +17,8 @@ import {
   gameOutcome,
   readGameOutcomes,
   readGameProgress,
+  readLastGamePuzzle,
+  rememberGamePuzzle,
   saveGameProgress,
   type GameOutcome,
 } from '../utils/gameProgress';
@@ -32,8 +34,9 @@ function GamesContent({ home }: { home: string }) {
   const [params, setParams] = useSearchParams();
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [outcomes, setOutcomes] = useState(() => readGameOutcomes(home));
-  // Keep the entry choice stable while showing a win. A later visit resumes the next puzzle.
+  // Freeze the entry choice so saving a win does not switch the board underneath the player.
   const [entryOutcomes] = useState(outcomes);
+  const [entryPuzzleId] = useState(() => readLastGamePuzzle(home));
   const catalogue = useQuery({
     queryKey: ['games', home, 'catalogue'],
     queryFn: ({ signal }) => gamesApi.catalogue(signal),
@@ -43,7 +46,9 @@ function GamesContent({ home }: { home: string }) {
   const ordered = [...(catalogue.data?.puzzles ?? [])].sort((a, b) => a.number - b.number);
   const selected =
     requested === null
-      ? (ordered.find((item) => entryOutcomes[item.id] !== 'completed') ?? ordered[0])
+      ? (ordered.find((item) => item.id === entryPuzzleId) ??
+        ordered.find((item) => entryOutcomes[item.id] !== 'completed') ??
+        ordered[0])
       : ordered.find((item) => String(item.number) === requested);
   const puzzle = useQuery({
     queryKey: ['games', home, selected?.id],
@@ -51,6 +56,11 @@ function GamesContent({ home }: { home: string }) {
     enabled: selected !== undefined,
     staleTime: Infinity,
   });
+  const loadedPuzzleId = puzzle.data?.id;
+  useEffect(() => {
+    // Persist only a successfully loaded board, including untouched archive choices and deep links.
+    if (loadedPuzzleId !== undefined) rememberGamePuzzle(home, loadedPuzzleId);
+  }, [home, loadedPuzzleId]);
   const position = ordered.findIndex((item) => item.id === selected?.id);
   function choose(number: number) {
     setArchiveOpen(false);
@@ -302,6 +312,7 @@ function WordGroupsBoard({
               <button
                 className="button button--primary focusable games-next-puzzle"
                 data-focus-id="games-next-puzzle"
+                data-focus-entry="true"
                 onClick={onNext}
               >
                 Next puzzle
@@ -310,6 +321,7 @@ function WordGroupsBoard({
             <button
               className="button focusable games-replay"
               data-focus-id="games-replay"
+              data-focus-entry={summary.won && onNext !== null ? undefined : 'true'}
               onClick={restart}
             >
               Play again

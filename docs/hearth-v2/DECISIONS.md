@@ -1,5 +1,23 @@
 # Hearth v2 decision record
 
+## D-117 — Reopen the last successfully loaded Word groups puzzle
+
+- Date: 2026-10-19
+- Status: accepted; local implementation, not publication/deployment or physical-device proof
+- Context: Guesses survived, but returning to `/games` deliberately chose the earliest uncompleted
+  puzzle instead of the archive puzzle the family had been playing. Query parameters alone did
+  not survive normal Games navigation.
+- Choice: Add one validated, optional `lastPuzzleId` to the existing device-local v2 store; do
+  not reset guesses/completions or bump to a clearing store. Remember only a successfully loaded
+  board, including untouched choices. Explicit links win; otherwise resume the stored catalogue
+  ID, using the most recent old-v2 attempt when no pointer exists. Missing/removed identities fall
+  back to the earliest uncompleted puzzle, then the first. Invalid/failed loads cannot replace the
+  saved choice. Preserve completion badges/replays; a finished board remains visible on reopen
+  until an explicit navigation action. Next/Replay receive sensible remote entry focus.
+- Boundaries: Per device, runtime and household; no server command, migration, credential, answer
+  storage, archive import, cross-device sync or live setting change. Blocked storage remains playable
+  with the existing progress-save warning. Supersedes only D-092's later-visit entry policy.
+
 ## D-116 — Today fills bounded tracks and follows the visible composition
 
 - Date: 2026-10-19
@@ -532,7 +550,8 @@ casual removal/sign-out, owner People protection and ordinary-QR restrictions re
   household-isolated numeric progress on each device; importing a changed board changes its ID.
 - Progress refinement: At the owner's request, start at #1 and discard prior v1 Games progress on
   each browser loading this version. Keep a separate v2 completion index through replays and recent
-  attempt eviction. Resume the earliest uncompleted puzzle on a later visit and browse ascending.
+  attempt eviction. The original earliest-uncompleted entry policy is superseded by D-117's
+  last-played resume; browse ascending and retain earliest-uncompleted as a safe fallback.
   This does not clear other browser storage, credentials, the archive or household data.
 - Consequences: The fixed snapshot does not update itself; supplied text substitutes for any
   special visual edition. Device progress is not shared or a household audit record. Source/data

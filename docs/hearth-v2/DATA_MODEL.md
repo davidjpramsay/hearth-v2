@@ -83,6 +83,12 @@ household mutation, token or passkey enters this store. Progress is not synced b
 is not included in household database backups. The external archive is included when the complete
 Hearth data directory is backed up, not by a SQLite-only recovery copy.
 
+The additive v2 `lastPuzzleId` (D-117) is one nullable opaque catalogue identifier, not a puzzle
+number or answer payload. Older records without it remain valid; their most recent attempt is
+the best-effort entry choice. Invalid pointer data is ignored without discarding valid attempts
+or completion IDs. Opening an untouched board updates only this pointer; loading failures and
+invalid explicit links leave it unchanged. The same runtime/household scope and storage bounds apply.
+
 ## Identity and tenancy
 
 ### Household

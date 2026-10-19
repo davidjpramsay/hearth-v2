@@ -178,6 +178,14 @@ attempt does not forget a completion. The owner's 2026-10-06 reset discards only
 on each device when it loads this version. Other browser storage and all household state are left
 alone. V2 progress is not reset on subsequent visits or ordinary releases.
 
+D-117 adds an optional, validated `lastPuzzleId` to that same v2 store without resetting it.
+The loaded board identity is remembered only after a successful read, independently of making
+a guess. Explicit URL selection takes precedence, followed by the saved catalogue identity;
+old v2 saves use their most recent detailed attempt. An absent/removed saved identity falls back
+to the earliest uncompleted board, then the first. Entry selection stays stable while a win is
+shown; Next puzzle remains explicit. Missing/invalid pointer data does not invalidate otherwise
+valid guesses or completions. This adds no API, household write, timer or cross-device sync.
+
 ## System topology
 
 ```text

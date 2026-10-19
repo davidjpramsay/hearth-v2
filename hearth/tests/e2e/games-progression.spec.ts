@@ -38,7 +38,7 @@ test('the requested reset starts at puzzle one and clears only legacy game progr
   await expect(page.locator('.games-archive-list button').first()).toContainText('#1');
 });
 
-test('completion is saved, visible in the archive, survives replay and resumes the next puzzle', async ({
+test('completion survives reopen and replay; advancing to the next puzzle is explicit', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -59,14 +59,28 @@ test('completion is saved, visible in the archive, survives replay and resumes t
   await expect(page.locator('[data-focus-id="games-choose-1"]')).toContainText('Completed');
   await expect(page.getByRole('dialog')).toContainText('1 completed');
   await page.keyboard.press('Escape');
+  await page.reload();
+  await expect(page.locator('.games-toolbar')).toContainText('#1');
+  await expect(page.getByRole('button', { name: 'Next puzzle' })).toBeFocused();
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  await expect(page.locator('.games-toolbar')).toContainText('#2');
+  await page.goto('/games');
+  await expect(page.locator('.games-toolbar')).toContainText('#2');
+  await page.getByRole('button', { name: 'Earlier puzzle' }).click();
+  await expect(page.locator('.games-toolbar')).toContainText('#1');
   await page.getByRole('button', { name: 'Play again' }).click();
   await expect(page.locator('.games-word')).toHaveCount(16);
   await page.getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(page.locator('[data-focus-id="games-choose-1"]')).toContainText('Completed');
   await page.keyboard.press('Escape');
   await page.reload();
-  await expect(page.locator('.games-toolbar')).toContainText('#2');
+  await expect(page.locator('.games-toolbar')).toContainText('#1');
   await expect(page.locator('.games-word')).toHaveCount(16);
+  await page.getByRole('button', { name: 'Later puzzle' }).click();
+  await expect(page.locator('.games-toolbar')).toContainText('#2');
+  await page.goto('/today');
+  await page.goto('/games');
+  await expect(page.locator('.games-toolbar')).toContainText('#2');
   await page.getByRole('button', { name: 'Earlier puzzle' }).click();
   await expect(page.locator('.games-toolbar')).toContainText('#1');
   await page.getByRole('button', { name: 'Archive', exact: true }).click();

@@ -491,8 +491,11 @@ protection, cancellation and partial-failure behavior remain unchanged.
   Solved groups show their category and all four tiles, not just a colour.
 - Earlier/later and Archive select numbered, dated puzzles. Archive supports search and bounded
   pages, with contained D-pad/Tab/Back navigation and opener focus restoration.
-- Start at puzzle #1 after the requested reset. Later visits resume the earliest uncompleted
-  puzzle, while an explicit archive selection remains available. Browse in ascending puzzle order.
+- Fresh devices start at puzzle #1. Later visits resume the last successfully
+  loaded puzzle on this device, even if no guess was made or the game has finished. Explicit
+  puzzle links override that choice; failed/missing reads do not overwrite it. If a saved board
+  is absent from the current archive, fall back to the earliest uncompleted puzzle, then the first.
+  Browse in ascending puzzle order.
   Completed puzzles have a visible archive marker/count and a **Next puzzle** action after a win;
   the win remains visible until the player chooses to continue. Replaying does not erase completion.
 - Progress survives reload on this device; a fresh puzzle never inherits another puzzle's guesses.
