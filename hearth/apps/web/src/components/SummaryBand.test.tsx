@@ -7,6 +7,26 @@ import { SummaryBand } from './SummaryBand';
 afterEach(cleanup);
 
 describe('SummaryBand', () => {
+  it.each(['information', 'link', 'button'] as const)(
+    'preserves a layout class on the %s variant',
+    (variant) => {
+      const { container } = render(
+        <MemoryRouter>
+          <SummaryBand
+            className="today-daily-verse"
+            icon="book-open"
+            label="Daily verse"
+            {...(variant === 'button' ? { onActivate: vi.fn() } : {})}
+            {...(variant === 'link' ? { to: '/meals' } : {})}
+          >
+            A short excerpt
+          </SummaryBand>
+        </MemoryRouter>,
+      );
+      expect(container.querySelector('.today-daily-verse')).toHaveClass('summary-band');
+    },
+  );
+
   it('links an actionable summary to its real module', () => {
     render(
       <MemoryRouter>

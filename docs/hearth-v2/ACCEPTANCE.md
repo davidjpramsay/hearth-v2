@@ -1,5 +1,64 @@
 # Hearth v2 acceptance and definition of done
 
+## D-118 compact bottom verse — local implementation, 2026-10-20
+
+Baseline `b515e1e` was published after hosted run **39246485505** passed all eight jobs,
+including **1,148 browser tests**, and activated on the existing private NAS with live asset hashes,
+readiness, database and preservation checks passing. The user reports the TV looks better; that
+does not establish physical acceptance of this subsequent refinement.
+
+Daily verse now follows the other summaries in a content-height final grid row, anchored at the
+bottom of the same summary area. It no longer stretches into otherwise unused vertical space.
+Other modules, contained photos, Chores-first order and full-verse/Back behavior remain. Null verse
+data retains an informational compact card; hiding the verse removes its track. Companion layout
+scrolls naturally and adds no fixed overlay. The rule is D-118, not an exception silently hidden
+in the tests. No API, migration, provider, layout observer/state, dependency or private-runtime
+configuration change.
+Very short TVs with all five summaries show one core row with truthful overflow. This reserves
+room for stacked stale/error messages without clipping module text or hiding a failed retry target.
+
+### Local verification
+
+- `pnpm verify:code` — **PASS**: format, lint, workspace type checks, **93 shared + 40 core +
+  101 server + 426 web unit tests**, **265 API/integration tests**, **29 migration tests**,
+  deployment scaffold checks and production web/server builds. The same two upstream JSX-parser
+  diagnostics remain, without lint failure. The final compact-height density stylesheet adjustment
+  was rebuilt with `pnpm --filter @hearth/web build` before the final browser run below.
+- `pnpm verify:ci` — **PASS**: five policy tests and a complete, non-overlapping **1,156-case**
+  browser inventory, 289 per shard. Inventory is not execution of the full release suite.
+- Browser plugin unavailable; used repository Playwright/Chromium against isolated built demo API
+  `127.0.0.1:4310` and web `127.0.0.1:4320`. Target flow: Today → compact verse → full dialog →
+  Back/focus restoration, plus photo/module reflow and natural phone scrolling.
+
+```sh
+pnpm test:e2e:built tests/e2e/today-polish.spec.ts tests/e2e/today-adaptive.spec.ts tests/e2e/today-photo-rotation.spec.ts tests/e2e/today-settings.spec.ts --output /tmp/hearth-compact-verse.gGC72u/verified-results
+```
+
+**435/435 PASS (6.6 minutes)**, no retries, skips or failures in the final run. Includes all 384
+composition subsets, 256 decoded-pixel stress layouts, eight additional verse-only TV/theme cases
+with available/unavailable/off states and all photo shapes, settled focus, remote reachability,
+full verse/Back, rotation/pause/reduced motion, stale/error/retry, phone settings and axe checks.
+Shared assertions now check natural verse height, bottom alignment and separation, in addition to
+existing containment, readable-height and no-overflow requirements. TV and phone screenshots were
+visually inspected; the normal photo composition, sparse verse-only footer and compact stacked-error
+layout are contained. Synthetic stress images are fixtures, not real household photos.
+
+Earlier stopped runs caught old grid specificity and remote-route assumptions, and insufficient
+short/compact error-state space; these were corrected rather than waived. One stopped 4K stress run
+recorded nine Chromium `net::ERR_NETWORK_CHANGED` resource errors. Its trace was retained; the
+unchanged case passed on rerun, and the final complete run has no such error. No network setting,
+assertion tolerance, timeout or release filter was changed to hide a failure. Final error-state
+checks explicitly focus the visible Retry action. Raw logs, traces and screenshots are outside
+source in `/tmp/hearth-compact-verse.gGC72u/`.
+
+### Release and actual-device boundary
+
+The user approved push and private deployment after checks. Publication, the full hosted gate,
+immutable-image activation, exact live-asset verification and before/after preservation checks
+remain subsequent release evidence, not implied by these local results. This change needs no new
+APK, HA restart, calendar reconnection or re-pairing. Actual TV and iPhone Safari viewing of this
+refinement remain **not run**; preserve that distinction after deployment.
+
 ## D-116 release focus correction — 2026-10-19
 
 Publishing `110635b` triggered hosted run **39245179396**. Its code/API/migration, dependency,

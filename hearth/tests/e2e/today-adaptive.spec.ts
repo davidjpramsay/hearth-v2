@@ -140,6 +140,66 @@ for (const viewport of [viewports[4], viewports[6], viewports[7]]) {
   }
 }
 
+for (const viewport of [viewports[4], viewports[5], viewports[6], viewports[7]]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Today verse-only footer stays compact at ${viewport.width}x${viewport.height} ${theme}`, async ({
+      page,
+      request,
+    }, info) => {
+      await request.post('/api/v1/demo/reset');
+      await stabilizePhotoPlayback(page);
+      await page.setViewportSize(viewport);
+      await page.addInitScript(
+        (theme) =>
+          localStorage.setItem(
+            'hearth.appearance.v1',
+            JSON.stringify({ theme, eveningDimming: false }),
+          ),
+        theme,
+      );
+      const fixture = await installAdaptiveFixture(page);
+      fixture.verseOnly = true;
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+      });
+      for (const unavailable of [false, true]) {
+        fixture.verseUnavailable = unavailable;
+        for (const photo of shapes) {
+          fixture.photo = photo;
+          await page.goto('/today');
+          await expect(page).toHaveTitle('Hearth');
+          await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+          await expect(page.locator('.today-dashboard')).toHaveAttribute('data-summary-count', '1');
+          const verse = page.locator('.today-daily-verse');
+          await expect(verse).toBeVisible();
+          await expectTodayGeometry(page);
+          if (unavailable) {
+            await expect(verse).toContainText('Add the private ESV key');
+            expect(await verse.evaluate((element) => element.tagName)).toBe('SECTION');
+          } else {
+            await verse.focus();
+            await page.keyboard.press('Enter');
+            await expect(page.getByRole('dialog')).toBeVisible();
+            await page.keyboard.press('Escape');
+            await expect(verse).toBeFocused();
+            await expectTodayGeometry(page);
+            if (photo.orientation === 'none')
+              await page.screenshot({ path: info.outputPath(`only-verse-${theme}.png`) });
+          }
+        }
+      }
+      fixture.showVerse = false;
+      fixture.photo = shapes[0];
+      await page.goto('/today');
+      await expect(page.locator('.today-dashboard')).toHaveAttribute('data-summary-count', '0');
+      await expect(page.locator('.today-daily-verse, .summary-details--with-verse')).toHaveCount(0);
+      expect(errors).toEqual([]);
+    });
+  }
+}
+
 test('Today remote can reach and leave every tile after reflow without losing opener focus', async ({
   page,
   request,
@@ -201,10 +261,18 @@ for (const width of [1200, 1366, 1920]) {
     fixture.stale = true;
     await page.goto('/today');
     await expect(page.locator('.status-banner')).toContainText('saved calendar');
+    if (width === 1200) {
+      await expect(page.locator('.today-dashboard')).toHaveAttribute('data-rail-capacity', '1');
+      await expect(page.locator('.chore-row')).toHaveCount(1);
+      await expect(page.getByRole('link', { name: 'View 5 more chores' })).toBeVisible();
+    }
     await expectTodayGeometry(page);
     await page.route('**/chore-occurrences/*/completions', (route) => route.abort('failed'));
     await page.locator('.chore-row').first().click();
     await expect(page.locator('.inline-error')).toBeVisible();
+    const retry = page.getByRole('button', { name: 'Try again', exact: true });
+    await retry.focus();
+    await expect(retry).toBeFocused();
     await expectTodayGeometry(page);
     await page.screenshot({ path: info.outputPath(`today-error-${width}.png`) });
   });
@@ -219,13 +287,23 @@ async function installAdaptiveFixture(page: Page) {
     await page.request.get(`${base}/modules`)
   ).json()) as ModulesConfiguration;
   const gallery = (await (await page.request.get(`${base}/photos`)).json()) as PhotoGallery;
-  const fixture: { core: number; photo: (typeof shapes)[number]; sparse: boolean; stale: boolean } =
-    {
-      core: 3,
-      photo: shapes[1],
-      sparse: false,
-      stale: false,
-    };
+  const fixture: {
+    core: number;
+    photo: (typeof shapes)[number];
+    sparse: boolean;
+    stale: boolean;
+    verseOnly: boolean;
+    verseUnavailable: boolean;
+    showVerse: boolean;
+  } = {
+    core: 3,
+    photo: shapes[1],
+    sparse: false,
+    stale: false,
+    verseOnly: false,
+    verseUnavailable: false,
+    showVerse: true,
+  };
   const pixels = new Map<string, Buffer>();
   for (const photo of shapes.slice(1)) {
     pixels.set(
@@ -269,23 +347,25 @@ async function installAdaptiveFixture(page: Page) {
         freshness: fixture.stale ? 'stale' : 'current',
         statusMessage: fixture.stale ? 'Showing saved calendar plans.' : null,
         sections: {
-          dinner: !fixture.sparse,
-          listSummary: !fixture.sparse,
-          notice: !fixture.sparse,
-          dailyVerse: true,
-          reminders: true,
+          dinner: !fixture.sparse && !fixture.verseOnly,
+          listSummary: !fixture.sparse && !fixture.verseOnly,
+          notice: !fixture.sparse && !fixture.verseOnly,
+          dailyVerse: fixture.showVerse,
+          reminders: !fixture.verseOnly,
           photo: fixture.photo.orientation !== 'none',
         },
         notice:
           'An intentionally longer household notice to check wrapping without widening the dashboard or covering another tile.',
-        dailyVerse: {
-          freshness: 'current',
-          reference: 'Philippians 4:6–7',
-          sourceUrl: null,
-          statusMessage: null,
-          translation: 'ESV',
-          text: 'Do not be anxious about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God.',
-        },
+        dailyVerse: fixture.verseUnavailable
+          ? null
+          : {
+              freshness: 'current',
+              reference: 'Philippians 4:6–7',
+              sourceUrl: null,
+              statusMessage: null,
+              translation: 'ESV',
+              text: 'Do not be anxious about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God.',
+            },
         reminderSummary: {
           openCount: 7,
           items: [

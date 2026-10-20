@@ -237,7 +237,9 @@ export function TodayScreen({
             className={`summary-row${showPhoto ? '' : ' summary-row--without-photo'}${visibleSummaryCount === 0 ? ' summary-row--photo-only' : ''}`}
           >
             {visibleSummaryCount === 0 ? null : (
-              <div className={`summary-details summary-details--count-${visibleSummaryCount}`}>
+              <div
+                className={`summary-details summary-details--count-${visibleSummaryCount}${today.sections.dailyVerse ? ' summary-details--with-verse' : ''}`}
+              >
                 {today.sections.dinner ? (
                   <SummaryBand
                     ariaLabel="Open the family meal plan"
@@ -279,23 +281,6 @@ export function TodayScreen({
                     </SummaryBand>
                   )
                 ) : null}
-                {today.sections.dailyVerse ? (
-                  today.dailyVerse === null ? (
-                    <SummaryBand icon="book-open" label="Daily verse">
-                      Add the private ESV key to show today’s verse
-                    </SummaryBand>
-                  ) : (
-                    <SummaryBand
-                      ariaLabel={`Read ${today.dailyVerse.reference}`}
-                      focus={summaryFocus('today-summary-daily-verse')}
-                      icon="book-open"
-                      label="Daily verse"
-                      onActivate={() => setSelectedDailyVerse(today.dailyVerse)}
-                    >
-                      {today.dailyVerse.reference} · {today.dailyVerse.text}
-                    </SummaryBand>
-                  )
-                ) : null}
                 {showReminderSummary && today.reminderSummary !== null ? (
                   <SummaryBand
                     ariaLabel="Open reminders"
@@ -324,6 +309,24 @@ export function TodayScreen({
                       </>
                     )}
                   </SummaryBand>
+                ) : null}
+                {today.sections.dailyVerse ? (
+                  today.dailyVerse === null ? (
+                    <SummaryBand className="today-daily-verse" icon="book-open" label="Daily verse">
+                      Add the private ESV key to show today’s verse
+                    </SummaryBand>
+                  ) : (
+                    <SummaryBand
+                      ariaLabel={`Read ${today.dailyVerse.reference}`}
+                      className="today-daily-verse"
+                      focus={summaryFocus('today-summary-daily-verse')}
+                      icon="book-open"
+                      label="Daily verse"
+                      onActivate={() => setSelectedDailyVerse(today.dailyVerse)}
+                    >
+                      {today.dailyVerse.reference} · {today.dailyVerse.text}
+                    </SummaryBand>
+                  )
                 ) : null}
               </div>
             )}

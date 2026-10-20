@@ -24,8 +24,8 @@ and voice. Native television media apps remain separate.
 
 ## Current boundaries
 
-Today composition follows D-116: Chores left/before Upcoming, bounded orientation-safe photos,
-stretch-filled enabled summaries and natural companion scrolling. Local layout evidence is
+Today composition follows D-116/D-118: Chores left/before Upcoming, bounded orientation-safe photos,
+stretch-filled modules, a content-height bottom verse and natural companion scrolling. Local layout evidence is
 separate from release and actual TV/phone acceptance in ACCEPTANCE.
 
 Games reopens the last successfully loaded puzzle on each device (D-117), preserving existing saves.

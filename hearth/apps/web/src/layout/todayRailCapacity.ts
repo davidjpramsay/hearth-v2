@@ -4,7 +4,7 @@ import { COMPANION_QUERY } from './viewportQueries';
 
 export type TodayPhotoOrientation = 'landscape' | 'none' | 'portrait' | 'square';
 export type TodayViewportClass = 'companion' | 'short-tv' | 'compact-tv' | 'full-tv';
-export type TodayRailCapacity = 2 | 3 | 4 | 5;
+export type TodayRailCapacity = 1 | 2 | 3 | 4 | 5;
 
 const FULL_TV_QUERY = '(min-width: 1200px) and (min-height: 900px)';
 const SHORT_TV_QUERY = '(min-width: 1200px) and (max-height: 719px)';
@@ -19,7 +19,7 @@ export function getTodayRailCapacity({
   viewportClass: TodayViewportClass;
 }): TodayRailCapacity {
   if (viewportClass === 'companion') return 3;
-  if (viewportClass === 'short-tv') return 2;
+  if (viewportClass === 'short-tv') return summaryCount >= 5 ? 1 : 2;
   if (summaryCount >= 5 && viewportClass === 'compact-tv') return 3;
   if (summaryCount >= 5 && photoOrientation === 'portrait') return 4;
   if (photoOrientation === 'landscape') return viewportClass === 'full-tv' ? 4 : 3;

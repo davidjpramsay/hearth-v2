@@ -201,8 +201,13 @@ photos use a shorter wide panel, and no-photo layouts return the full lower widt
 Chores occupies the left column and Upcoming the right; that is also their document/phone order.
 The two core columns remain equal and share heading and first-card rails. Portrait media begins at
 that core upper rail; landscape/square media and the enabled summary bands share one lower rail.
-Collapsed modules reserve no track. Summary cards stretch through the remaining lower rail instead
-of shrink-wrapping at its bottom; the Verse/Reminders pair can use the available reading area.
+Collapsed modules reserve no track. Module summary cards stretch through the remaining lower rail.
+The Daily verse is the exception (D-118): it follows the other summaries in a full-width footer
+within their existing summary area, aligned to the dashboard bottom and only as tall as its
+displayed excerpt, heading and normal padding require. A quiet gap above a lone verse is intentional;
+do not stretch its card to fill that gap. Keep the full quotation in its existing Back-safe dialog.
+The unavailable verse uses the same compact treatment. Disabling it removes its row. On phones,
+keep natural document flow rather than pinning a card over the bottom navigation or photos.
 Filled Today summary/photo cards keep their allocated geometry under television focus; retain the
 visible outline and halo, without scaling or lifting the whole card beyond its track.
 With neither core module, the optional content takes the whole dashboard rather than preserving an
@@ -231,6 +236,11 @@ landscape-photo television layouts may use four rows, while their compact-height
 compact-square television layouts retain three. Portrait, full-height square and no-photo television
 layouts may use up to five when the complete dashboard remains inside one viewport. The phone keeps
 three; TV canvases below 720 pixels high use two core rows to preserve the lower content.
+When all five summaries include the compact verse, these very short canvases use one core row
+so status and retry messages can coexist with readable module cards; the same overflow links
+truthfully expose the omitted items. Normal-height TVs and the scrolling companion are unchanged.
+Compact TVs with all five summaries use single-line card excerpts and tighter spacing so stale
+and retry messages fit without reducing text or action sizes. Full details remain one action away.
 A deterministic, focusable `+N more` action reports the complete hidden count and
 opens the Calendar agenda or Chores screen. Event rows open the same detail dialog as the calendar
 views. Dinner, List summary and the photo preview link to Meals, Lists and Photos; an active Notice

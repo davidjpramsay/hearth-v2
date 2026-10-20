@@ -1,5 +1,13 @@
 # Hearth v2 implementation roadmap
 
+## Compact Today verse — D-118 (2026-10-20)
+
+Keep the verse at content height at the bottom of its existing summary area; leave calm space
+above it rather than stretching the card. Retain expanding module tracks, photo containment,
+Chores-first order and full-verse/Back behavior. Verify all composition subsets, verse-only and
+unavailable/off states, phone/TV/4K and remote focus. Local evidence belongs in ACCEPTANCE;
+publication, deployment and actual-device viewing of this refinement remain separate gates.
+
 ## Today adaptive composition — D-116 (2026-10-19)
 
 Swap Chores left/before Upcoming; bound photos by remaining track height and let enabled summary

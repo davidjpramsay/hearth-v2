@@ -11,7 +11,9 @@ export function SummaryBand({
   onActivate,
   focus,
   ariaLabel,
+  className,
 }: SummaryBandProps) {
+  const bandClassName = ['summary-band', className].filter(Boolean).join(' ');
   const content = (
     <>
       <Icon className="summary-band__icon" name={icon} />
@@ -29,7 +31,7 @@ export function SummaryBand({
     return (
       <Link
         aria-label={ariaLabel}
-        className="summary-band summary-band--action focusable"
+        className={`${bandClassName} summary-band--action focusable`}
         to={to}
         {...focus}
       >
@@ -41,7 +43,7 @@ export function SummaryBand({
     return (
       <button
         aria-label={ariaLabel}
-        className="summary-band summary-band--action focusable"
+        className={`${bandClassName} summary-band--action focusable`}
         onClick={onActivate}
         type="button"
         {...focus}
@@ -50,7 +52,7 @@ export function SummaryBand({
       </button>
     );
   }
-  return <section className="summary-band">{content}</section>;
+  return <section className={bandClassName}>{content}</section>;
 }
 
 interface SummaryBandProps {
@@ -60,6 +62,7 @@ interface SummaryBandProps {
   to?: string;
   onActivate?: () => void;
   ariaLabel?: string;
+  className?: string;
   focus?: SummaryBandFocusProps;
 }
 

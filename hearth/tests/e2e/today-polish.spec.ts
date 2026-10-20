@@ -343,8 +343,10 @@ test('@visual Today gives a sparse summary shelf room for long-form content', as
   expect(dashboardBox).not.toBeNull();
   expect(summariesBox).not.toBeNull();
   expect(cardBoxes).toHaveLength(2);
-  expect(cardBoxes.every((card) => card.height >= 160)).toBe(true);
-  expect(Math.abs(cardBoxes[0]!.height - cardBoxes[1]!.height)).toBeLessThanOrEqual(1);
+  // Reminders use the available module area; Verse is the compact, full-width footer.
+  expect(cardBoxes[0]!.height).toBeGreaterThan(cardBoxes[1]!.height + 40);
+  expect(cardBoxes[1]!.height).toBeLessThan(160);
+  expect(Math.abs(cardBoxes[0]!.width - cardBoxes[1]!.width)).toBeLessThanOrEqual(1);
   expect(
     Math.abs(summariesBox!.y + summariesBox!.height - (dashboardBox!.y + dashboardBox!.height)),
   ).toBeLessThanOrEqual(1);
@@ -366,6 +368,7 @@ test('@visual Today gives a sparse summary shelf room for long-form content', as
   expect(verseFit.lineClamp).toBe('4');
   expect(verseFit.lineCount).toBeLessThanOrEqual(4);
   expect(verseFit.contentBottom).toBeLessThanOrEqual(verseFit.elementBottom + 1);
+  await expectTodayGeometry(page);
   expect(await hasTelevisionOverflow(page)).toBe(false);
 
   await captureEvidence(page, {
@@ -494,7 +497,7 @@ for (const viewport of [
           (photo.orientation === 'none' || photo.orientation === 'portrait')
         ) {
           const tops = await page
-            .locator('.summary-band')
+            .locator('.summary-band:not(.today-daily-verse)')
             .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().top));
           expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
         }

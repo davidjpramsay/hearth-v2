@@ -11,6 +11,15 @@ normal three/four/five-row policies and honest overflow remain. The shared spati
 current geometry after reflow, with stable control IDs for focus restoration. No extra measurements,
 resize observer, layout state store, timer, API or persistence layer is introduced.
 
+D-118 refines only Daily verse: the same summary grid allocates an intrinsic-height final row for
+the labelled verse variant, after the other modules. Other module tracks keep their available
+space, and the original photo slot remains bounded. A lone verse may leave quiet space above it.
+The generic SummaryBand accepts an optional layout class for all three semantic variants; no
+measurement effect or duplicate verse rendering is added. Companion layout stays in normal flow.
+The existing pure capacity helper reserves a single core row only for a very short TV with all
+five summaries, including the verse; this also budgets for status and retry messages without
+hiding the failed chore dynamically or shrinking targets. Overflow remains explicit.
+
 ## NBA provider and preferences (D-113)
 
 `NbaService` owns bounded read-through cache and household preferences/command receipts.

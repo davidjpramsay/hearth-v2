@@ -1,5 +1,25 @@
 # Hearth v2 decision record
 
+## D-118 — Keep Today's verse compact and bottom-aligned
+
+- Date: 2026-10-20
+- Status: accepted; local implementation, not publication/deployment or physical-device proof
+- Context: After the D-116 release the user liked the improved TV fit but asked that Daily verse
+  stop consuming all unused vertical space. A quiet gap above it is preferable to an oversized card.
+- Choice: Render the verse after the other summary modules, in an intrinsic-height final row of
+  the existing summary area. Span that area's width and align its bottom to the dashboard; keep
+  the excerpt's existing clamping and full-detail/Back interaction. Apply the same geometry to
+  the informational unavailable state. Other summaries can still expand; photo containment, core
+  order, focus visibility and natural companion scrolling remain. Very short TVs with all five
+  summaries use one core row and honest overflow so stale/retry states remain readable; all other
+  capacity rules are unchanged. Hide the row when the
+  existing preference/module is off. No sticky phone footer or new setting is introduced.
+- Verification: Extend the shared composition geometry checks to assert content-height sizing,
+  bottom alignment and separation from other modules, including sparse/verse-only layouts,
+  unavailable/off states, both themes, TV sizes, photo shapes, D-pad and Back restoration.
+- Boundaries: Supersedes D-116's verse-stretch detail only. No API, database, provider, timer,
+  photo rotation, credential, pairing, HA, native shell or live-runtime change.
+
 ## D-117 — Reopen the last successfully loaded Word groups puzzle
 
 - Date: 2026-10-19

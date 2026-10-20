@@ -8,7 +8,7 @@ describe('getTodayRailCapacity', () => {
       for (let summaryCount = 0; summaryCount <= 5; summaryCount += 1)
         expect(
           getTodayRailCapacity({ photoOrientation, summaryCount, viewportClass: 'short-tv' }),
-        ).toBe(2);
+        ).toBe(summaryCount >= 5 ? 1 : 2);
     }
   });
   it('keeps the scrolling companion presentation concise', () => {

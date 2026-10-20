@@ -75,6 +75,28 @@ export async function expectTodayGeometry(page: Page, television = true) {
     const summaries = dashboard.querySelector('.summary-details')?.getBoundingClientRect();
     if (tv && summaries && Math.abs(summaries.bottom - bounds.bottom) > 1)
       issues.push('Summaries do not use the remaining vertical space');
+    const verse = dashboard.querySelector<HTMLElement>('.today-daily-verse');
+    if (tv && verse) {
+      const box = verse.getBoundingClientRect();
+      const style = getComputedStyle(verse);
+      const zoom = Number(getComputedStyle(document.querySelector('.app-shell')!).zoom || 1);
+      const naturalContentHeight = Math.max(
+        ...[...verse.children].map((child) => child.getBoundingClientRect().height),
+      );
+      const verticalInsets =
+        parseFloat(style.paddingTop) +
+        parseFloat(style.paddingBottom) +
+        parseFloat(style.borderTopWidth) +
+        parseFloat(style.borderBottomWidth);
+      if (Math.abs(box.height - (naturalContentHeight + verticalInsets * zoom)) > 2 * zoom)
+        issues.push('Verse grows beyond its displayed content height');
+      if (Math.abs(box.bottom - bounds.bottom) > 1)
+        issues.push('Verse is not anchored to the bottom of the dashboard');
+      for (const other of dashboard.querySelectorAll('.summary-band:not(.today-daily-verse)')) {
+        if (other.getBoundingClientRect().bottom > box.top - 4 * zoom)
+          issues.push('Another summary is not above the verse footer');
+      }
+    }
     return issues;
   }, television);
   expect(problems).toEqual([]);
