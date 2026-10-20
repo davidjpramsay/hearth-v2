@@ -4,7 +4,7 @@
 
 `TodayScreen` derives enabled content from the existing typed summary and module flags. Its scoped
 stylesheet allocates the remaining logical canvas: Chores precedes Upcoming; portrait photos share
-the upper rail and landscape/square photos share a stretch-filled lower rail with summary cards.
+the upper rail and landscape/square photos share a bounded lower rail with the summary area.
 Image intrinsic sizes cannot grow the allocated track. Zero/one core module and absent optional
 content collapse their tracks. The viewport subscription selects two rows on very short TV canvases;
 normal three/four/five-row policies and honest overflow remain. The shared spatial resolver reads
@@ -19,6 +19,18 @@ measurement effect or duplicate verse rendering is added. Companion layout stays
 The existing pure capacity helper reserves a single core row only for a very short TV with all
 five summaries, including the verse; this also budgets for status and retry messages without
 hiding the failed chore dynamically or shrinking targets. Overflow remains explicit.
+
+D-119 extends the content-height policy to every text summary. Existing row templates use `auto`
+instead of fractional heights; the summary area fills its allocated track but aligns its compact
+rows and cards to the bottom. Cards retain a 60-logical-pixel minimum target. Responsive column
+spans, the full-width final verse and the independent photo slot remain. The pure capacity helper
+also receives the already-derived verse visibility flag: full-height TVs budget four and compact
+TVs three core rows for a separate verse row alongside other summaries. Very short TVs budget one for four/five
+summaries including that row. Other existing capacities remain. Compact TVs with core content use
+single-line, 18px excerpts to coexist with status and retry messages, without hiding a failed row
+when its error appears. Full-height TVs retain their existing excerpt sizing.
+No new React state, queries, measurements or effects are introduced. Empty/informational cards
+follow the same rule as actionable links and dialogs; no disabled content reserves a card.
 
 ## NBA provider and preferences (D-113)
 

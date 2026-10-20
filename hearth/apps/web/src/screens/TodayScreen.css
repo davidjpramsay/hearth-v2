@@ -109,20 +109,22 @@
     background: transparent;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: auto;
+    align-content: end;
+    align-items: end;
     gap: 10px;
   }
   .today-screen .summary-details--count-2 {
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, auto);
   }
   .today-screen .summary-details--count-3,
   .today-screen .summary-details--count-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, auto);
   }
   .today-screen .summary-details--count-5 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, auto);
   }
   .today-screen .summary-details--count-3 .summary-band:last-child,
   .today-screen .summary-details--count-5 .summary-band:last-child {
@@ -131,7 +133,7 @@
   .today-screen .summary-band:nth-child(n) {
     grid-column: auto;
     min-width: 0;
-    min-height: 0;
+    min-height: 60px;
     overflow: hidden;
     padding: 14px 16px;
     border: 1px solid var(--hairline);
@@ -140,7 +142,7 @@
     box-shadow: var(--shadow-rest);
     gap: 14px;
   }
-  /* Large filled tracks must not grow past the canvas when remote focus settles. */
+  /* Remote focus keeps compact cards and photo slots inside their allocated geometry. */
   .today-screen .summary-band.focusable:focus-visible,
   .today-screen .today-photo-action:focus-visible {
     transform: none;
@@ -215,21 +217,21 @@
     .today-dashboard--photo-portrait:not([data-core-count='0'])
     .summary-details--count-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: auto;
   }
   .today-screen .today-dashboard--photo-none .summary-details--count-3,
   .today-screen
     .today-dashboard--photo-portrait:not([data-core-count='0'])
     .summary-details--count-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: auto;
   }
   .today-screen .today-dashboard--photo-none .summary-details--count-4,
   .today-screen
     .today-dashboard--photo-portrait:not([data-core-count='0'])
     .summary-details--count-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: auto;
   }
   .today-screen .today-dashboard--photo-none .summary-details--count-3 .summary-band:last-child,
   .today-screen
@@ -243,7 +245,7 @@
     .today-dashboard--photo-portrait:not([data-core-count='0'])
     .summary-details--count-5 {
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, auto);
   }
   .today-screen .today-dashboard--photo-none .summary-details--count-5 .summary-band,
   .today-screen
@@ -296,6 +298,17 @@
   .today-screen .summary-band p {
     font-size: 18px;
   }
+  .today-screen .today-dashboard:not([data-summary-count='0']) .chore-list,
+  .today-screen .today-dashboard:not([data-summary-count='0']) .event-list {
+    gap: 6px;
+  }
+  .today-screen .today-dashboard:not([data-core-count='0']) .summary-band:nth-child(n) {
+    padding-block: 6px;
+  }
+  .today-screen .today-dashboard:not([data-core-count='0']) .summary-band p {
+    font-size: 18px;
+    -webkit-line-clamp: 1;
+  }
 }
 
 @media (max-width: 1199px) {
@@ -338,7 +351,7 @@
   }
   .today-screen .summary-details--count-5 {
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, auto);
   }
   .today-screen .summary-details--count-5 .summary-band:nth-child(n) {
     grid-column: span 2;
@@ -384,11 +397,16 @@
   }
 }
 
-/* Verse is a content-height footer, not another expanding module track. */
+/* All text cards use content height; Verse retains its full-width final row. */
 @media (min-width: 1200px) {
   .today-screen .today-dashboard .summary-details.summary-details--with-verse {
     grid-template-columns: repeat(var(--today-module-columns, 2), minmax(0, 1fr));
-    grid-template-rows: repeat(var(--today-module-rows, 1), minmax(0, 1fr)) auto;
+    grid-template-rows: repeat(var(--today-module-rows, 1), auto) auto;
+  }
+  .today-screen
+    .today-dashboard
+    .summary-details.summary-details--with-verse.summary-details--count-1 {
+    grid-template-rows: auto;
   }
   .today-screen .summary-details--with-verse.summary-details--count-1,
   .today-screen .summary-details--with-verse.summary-details--count-2 {

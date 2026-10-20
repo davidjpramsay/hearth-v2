@@ -86,6 +86,7 @@ export function TodayScreen({
   const railCapacity = getTodayRailCapacity({
     photoOrientation,
     summaryCount: visibleSummaryCount,
+    hasVerse: today.sections.dailyVerse,
     viewportClass,
   });
   const visibleEvents = today.events.slice(0, railCapacity);

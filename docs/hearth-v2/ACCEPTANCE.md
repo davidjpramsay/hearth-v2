@@ -1,5 +1,66 @@
 # Hearth v2 acceptance and definition of done
 
+## D-119 shared compact Today text modules — 2026-10-20
+
+Built from `10695d5`, whose hosted run **39352656881** passed all eight jobs, including **1,156
+browser tests**, before private deployment. Exact live asset hashes matched that run's build;
+readiness, database and before/after networking, pairing, configuration and aggregate data checks
+passed. That is release evidence for D-118, not physical viewing or acceptance of D-119.
+
+Dinner, Lists, Notices, Reminders and Daily verse now share intrinsic-height grid rows and
+bottom alignment, with a 60-logical-pixel readable/actionable minimum. Quiet space above is
+intentional. Existing responsive spans, the verse's full-width final row, photo fitting and
+full-detail/Back behavior remain. A lone verse no longer allocates an extra
+empty row. Phone scrolling remains natural; no fixed overlay, layout state/effect, new preference,
+provider/API/schema, dependency, native shell or private-runtime configuration change is added.
+Compact TV core/summary budgets explicitly account for a separate verse row and stacked status/
+retry messages: concise 18px compact-TV excerpts, four core rows on full-height TVs and three on
+compact TVs when the verse adds another summary row,
+and one on very short TVs with four/five summaries including the verse. Other capacities remain;
+truthful overflow links retain access to omitted items, and a failed row is not hidden dynamically.
+
+### Local verification
+
+- `pnpm verify:code` — **PASS**: formatting, lint, workspace types, **93 shared + 40 core +
+  101 server + 427 web unit tests**, **265 API/integration tests**, **29 migration tests**, ten
+  deployment scaffold fixture tests and production web/server builds. Two existing upstream
+  JSX-parser diagnostics remain, without lint failure. No dependency or API contract changed.
+- `pnpm verify:ci` — **PASS**: five policy tests; complete, non-overlapping **1,212-case** browser
+  inventory, 303 per shard. This is inventory, not execution of the whole release suite.
+- Browser plugin unavailable; used repository Playwright/Chromium, isolated built demo API on
+  `127.0.0.1:4310` and web on `127.0.0.1:4320`, never private household content. Flow: Today →
+  D-pad Down to a compact module → Enter for its real screen/full text → Back, with natural phone
+  scrolling. Fixtures exercise populated, informational, wholly empty and disabled content.
+
+```sh
+pnpm test:e2e:built tests/e2e/today-polish.spec.ts tests/e2e/today-adaptive.spec.ts tests/e2e/today-photo-rotation.spec.ts tests/e2e/today-settings.spec.ts tests/e2e/visual.spec.ts tests/e2e/appearance.spec.ts tests/e2e/modules.spec.ts tests/e2e/remote.spec.ts --grep-invert 'Today composition' --output /tmp/hearth-compact-modules.iMnIWC/verified-results
+```
+
+**189/189 PASS (5.7 minutes)**, no retries, failures or skips in this final run. Includes the
+256-state phone/tablet/short/compact/1080p/4K stress loop, settled focus, eight verse-only cases,
+**32 non-verse single-module cases** across themes/TV sizes/photo shapes and empty/populated data,
+and **27 stale/retry cases**, each covering all four photo shapes (**108 compositions**). The
+shared geometry checks now assert every text card's natural height (or 60px target minimum) and
+the last row's bottom alignment, while retaining readable size, sibling separation, image bounds
+and no-overflow assertions. Remote reachability, dialog/Back focus, rotation/pause, reduced motion,
+module hiding, themes, existing surrounding screens and serious/critical axe checks also pass.
+TV and phone screenshots were visually inspected. All **384** named composition cases remain in
+the full, unfiltered release gate; they are not counted in this targeted invocation.
+
+Earlier focused runs caught an incorrect new fixture expectation for the pre-existing wholly empty
+Today state, then real short/compact/full-TV crowding when status/retry space and different photo
+orientations were combined. Those were corrected with the explicit height policy above, not with
+weaker assertions, timeouts or release filters. Retry stays focusable and visible; no failed row is
+removed dynamically. Raw logs, screenshots and traces are outside source in
+`/tmp/hearth-compact-modules.iMnIWC/`.
+
+### Release and physical boundary
+
+The user approved push and private deployment after checks. Full hosted execution/image publication,
+exact-version activation and before/after preservation/live-asset checks are subsequent release
+evidence. No new APK, HA restart, calendar reconnection or re-pairing is required. Actual TV and
+iPhone Safari viewing of this refinement remain **not run**; local demo proof is not device proof.
+
 ## D-118 compact bottom verse — local implementation, 2026-10-20
 
 Baseline `b515e1e` was published after hosted run **39246485505** passed all eight jobs,

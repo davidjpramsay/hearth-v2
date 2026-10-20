@@ -74,22 +74,36 @@ export async function expectTodayGeometry(page: Page, television = true) {
     }
     const summaries = dashboard.querySelector('.summary-details')?.getBoundingClientRect();
     if (tv && summaries && Math.abs(summaries.bottom - bounds.bottom) > 1)
-      issues.push('Summaries do not use the remaining vertical space');
+      issues.push('Summary area is not anchored to the dashboard bottom');
+    const cards = [...dashboard.querySelectorAll<HTMLElement>('.summary-band')];
+    if (tv && cards.length > 0) {
+      const zoom = Number(getComputedStyle(document.querySelector('.app-shell')!).zoom || 1);
+      for (const card of cards) {
+        const box = card.getBoundingClientRect();
+        const style = getComputedStyle(card);
+        const naturalContentHeight = Math.max(
+          ...[...card.children].map((child) => child.getBoundingClientRect().height),
+        );
+        const verticalInsets =
+          parseFloat(style.paddingTop) +
+          parseFloat(style.paddingBottom) +
+          parseFloat(style.borderTopWidth) +
+          parseFloat(style.borderBottomWidth);
+        const contentHeight = Math.max(60 * zoom, naturalContentHeight + verticalInsets * zoom);
+        if (Math.abs(box.height - contentHeight) > 2 * zoom)
+          issues.push(`${card.textContent}: grows beyond content height or minimum target size`);
+      }
+      if (
+        Math.abs(
+          Math.max(...cards.map((card) => card.getBoundingClientRect().bottom)) - bounds.bottom,
+        ) > 1
+      )
+        issues.push('Bottom summary row is not anchored to the dashboard bottom');
+    }
     const verse = dashboard.querySelector<HTMLElement>('.today-daily-verse');
     if (tv && verse) {
       const box = verse.getBoundingClientRect();
-      const style = getComputedStyle(verse);
       const zoom = Number(getComputedStyle(document.querySelector('.app-shell')!).zoom || 1);
-      const naturalContentHeight = Math.max(
-        ...[...verse.children].map((child) => child.getBoundingClientRect().height),
-      );
-      const verticalInsets =
-        parseFloat(style.paddingTop) +
-        parseFloat(style.paddingBottom) +
-        parseFloat(style.borderTopWidth) +
-        parseFloat(style.borderBottomWidth);
-      if (Math.abs(box.height - (naturalContentHeight + verticalInsets * zoom)) > 2 * zoom)
-        issues.push('Verse grows beyond its displayed content height');
       if (Math.abs(box.bottom - bounds.bottom) > 1)
         issues.push('Verse is not anchored to the bottom of the dashboard');
       for (const other of dashboard.querySelectorAll('.summary-band:not(.today-daily-verse)')) {

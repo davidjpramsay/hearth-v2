@@ -1,5 +1,14 @@
 # Hearth v2 implementation roadmap
 
+## Shared compact Today summaries — D-119 (2026-10-20)
+
+Extend the compact bottom-verse rule to Dinner, Lists, Notices and Reminders. All text cards
+shrink-wrap their excerpts with a readable/actionable minimum; keep the group's bottom alignment,
+verse span, photo containment, explicit core overflow and natural phone scrolling. Budget compact
+and very short TVs for the separate verse row and status/retry space. Verify populated/empty
+single-module states as well as all mixed compositions and remote/Back behavior. Record local,
+hosted, deployment and actual-device evidence separately in ACCEPTANCE.
+
 ## Compact Today verse — D-118 (2026-10-20)
 
 Keep the verse at content height at the bottom of its existing summary area; leave calm space

@@ -12,14 +12,18 @@ const SHORT_TV_QUERY = '(min-width: 1200px) and (max-height: 719px)';
 export function getTodayRailCapacity({
   photoOrientation,
   summaryCount = 0,
+  hasVerse = false,
   viewportClass,
 }: {
   photoOrientation: TodayPhotoOrientation;
   summaryCount?: number;
+  hasVerse?: boolean;
   viewportClass: TodayViewportClass;
 }): TodayRailCapacity {
   if (viewportClass === 'companion') return 3;
-  if (viewportClass === 'short-tv') return summaryCount >= 5 ? 1 : 2;
+  if (viewportClass === 'short-tv')
+    return summaryCount >= 5 || (hasVerse && summaryCount >= 4) ? 1 : 2;
+  if (hasVerse && summaryCount >= 2) return viewportClass === 'compact-tv' ? 3 : 4;
   if (summaryCount >= 5 && viewportClass === 'compact-tv') return 3;
   if (summaryCount >= 5 && photoOrientation === 'portrait') return 4;
   if (photoOrientation === 'landscape') return viewportClass === 'full-tv' ? 4 : 3;

@@ -265,8 +265,7 @@ for (const viewport of [
       .locator('.summary-band')
       .evaluateAll((bands) => bands.map((band) => band.getBoundingClientRect().height));
     expect(summaryBandHeights.length).toBeGreaterThan(0);
-    expect(summariesBox!.height).toBeCloseTo(Math.max(...summaryBandHeights), 0);
-    expect(summariesBox!.height).toBeGreaterThan(120);
+    expect(summariesBox!.height).toBeGreaterThanOrEqual(Math.max(...summaryBandHeights));
     await expectTodayGeometry(page);
 
     const lastChore = page.locator('.chore-row').last();
@@ -282,7 +281,7 @@ for (const viewport of [
   });
 }
 
-test('@visual Today fills the lower rail beside landscape media', async ({ page }) => {
+test('@visual Today anchors compact cards beside contained landscape media', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/today');
 
@@ -343,9 +342,8 @@ test('@visual Today gives a sparse summary shelf room for long-form content', as
   expect(dashboardBox).not.toBeNull();
   expect(summariesBox).not.toBeNull();
   expect(cardBoxes).toHaveLength(2);
-  // Reminders use the available module area; Verse is the compact, full-width footer.
-  expect(cardBoxes[0]!.height).toBeGreaterThan(cardBoxes[1]!.height + 40);
-  expect(cardBoxes[1]!.height).toBeLessThan(160);
+  // Both modules shrink-wrap their excerpts instead of stretching through the shelf.
+  expect(cardBoxes.every((card) => card.height >= 60 && card.height < 160)).toBe(true);
   expect(Math.abs(cardBoxes[0]!.width - cardBoxes[1]!.width)).toBeLessThanOrEqual(1);
   expect(
     Math.abs(summariesBox!.y + summariesBox!.height - (dashboardBox!.y + dashboardBox!.height)),
@@ -479,7 +477,9 @@ for (const viewport of [
         await expect(dashboard).toHaveAttribute('data-photo-orientation', photo.orientation);
         await expect(dashboard).toHaveAttribute(
           'data-rail-capacity',
-          String(expectedRailCapacity(viewport, photo.orientation, summaryCount)),
+          String(
+            expectedRailCapacity(viewport, photo.orientation, summaryCount, Boolean(mask & 8)),
+          ),
         );
         await expect(page.locator('.summary-band')).toHaveCount(summaryCount);
         await expect(page.locator('.summary-row')).toHaveCount(
@@ -496,10 +496,10 @@ for (const viewport of [
           summaryCount === 3 &&
           (photo.orientation === 'none' || photo.orientation === 'portrait')
         ) {
-          const tops = await page
+          const bottoms = await page
             .locator('.summary-band:not(.today-daily-verse)')
-            .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().top));
-          expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+            .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().bottom));
+          expect(Math.max(...bottoms) - Math.min(...bottoms)).toBeLessThanOrEqual(1);
         }
 
         if (photo.orientation === 'none') {
@@ -748,8 +748,10 @@ function expectedRailCapacity(
   viewport: { height: number; width: number },
   photoOrientation: 'landscape' | 'none' | 'portrait' | 'square',
   summaryCount: number,
+  hasVerse: boolean,
 ): number {
   if (viewport.width <= 900) return 3;
+  if (hasVerse && summaryCount >= 2) return viewport.height < 900 ? 3 : 4;
   if (summaryCount >= 5 && viewport.height < 900) return 3;
   if (summaryCount >= 5 && photoOrientation === 'portrait') return 4;
   if (photoOrientation === 'landscape') return viewport.height >= 900 ? 4 : 3;

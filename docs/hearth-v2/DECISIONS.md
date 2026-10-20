@@ -1,5 +1,30 @@
 # Hearth v2 decision record
 
+## D-119 — Share compact sizing across Today's text modules
+
+- Date: 2026-10-20
+- Status: accepted; local implementation, release and physical viewing remain separate gates
+- Context: The user asked to extend the compact bottom-verse rule to the other bottom Today
+  modules, not leave Dinner, Lists, Notices and Reminders stretching into spare vertical space.
+- Choice: Use intrinsic-height grid rows for every Today summary card, with a 60-logical-pixel
+  readable/actionable minimum and normal padding. Bottom-align the summary group and cards within
+  each row; allow quiet space above it rather than inflating the cards. Retain existing responsive
+  column/span choices and the verse's full-width final row. A lone verse has no extra empty track.
+  Full-detail links/dialogs, stable focus IDs and Back behavior remain. Photo slots
+  still use their independent bounded, aspect-preserving layout; phones stay in document flow.
+- Height budget: Compact TVs with core content use concise 18px, single-line excerpts. A separate
+  verse row with other summaries reserves four core rows on full-height TVs and three on compact
+  TVs; very short TVs reserve one when four/five summaries include that verse row. Other capacity rules remain. Omitted core
+  items retain honest overflow links. Reserve this budget from first render, not by hiding a failed
+  row dynamically when Retry appears. Full-height TVs keep their existing excerpt sizing.
+- Verification: Apply natural-height and bottom-row assertions to all existing composition cases,
+  then exercise each non-verse module alone, populated and empty, across photo shapes, themes and
+  short/compact/1080p/4K TVs. Keep readable-size, overlap, scrolling, stale/retry and remote checks.
+- Boundaries: Extends D-118's sizing policy and supersedes D-116's text-card stretch only. No API,
+  migration, provider, dependency, timer, layout measurement/effect, setting or private runtime
+  configuration change. Photo fitting is unchanged; only the bounded text/core height policy is
+  refined.
+
 ## D-118 — Keep Today's verse compact and bottom-aligned
 
 - Date: 2026-10-20

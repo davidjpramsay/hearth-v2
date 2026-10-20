@@ -192,8 +192,8 @@ Adults may independently show or hide Dinner, List summary, Notice, Reminders, D
 and Family photo from the phone-first **Today & notices** settings surface. The verse opens in a Back-safe
 reading dialog so a full quotation and ESV attribution do not make Today dense; a missing server
 key produces a calm unavailable band rather than a broken dashboard. Upcoming plans and due chores
-remain the stable core. The remaining summary bands expand to
-use the freed space; a photo-only configuration is centred rather than leaving
+remain the stable core. The remaining summary bands use the freed width without inflating
+their text cards vertically; a photo-only configuration is centred rather than leaving
 an unexplained empty column. Television Today is a single non-scrolling dashboard rather than a
 vertical document. It selects a bounded composition from the enabled band count and the featured
 photo's typed orientation: portrait photos use a substantial right-side rail, landscape and square
@@ -201,12 +201,16 @@ photos use a shorter wide panel, and no-photo layouts return the full lower widt
 Chores occupies the left column and Upcoming the right; that is also their document/phone order.
 The two core columns remain equal and share heading and first-card rails. Portrait media begins at
 that core upper rail; landscape/square media and the enabled summary bands share one lower rail.
-Collapsed modules reserve no track. Module summary cards stretch through the remaining lower rail.
-The Daily verse is the exception (D-118): it follows the other summaries in a full-width footer
-within their existing summary area, aligned to the dashboard bottom and only as tall as its
-displayed excerpt, heading and normal padding require. A quiet gap above a lone verse is intentional;
-do not stretch its card to fill that gap. Keep the full quotation in its existing Back-safe dialog.
-The unavailable verse uses the same compact treatment. Disabling it removes its row. On phones,
+Collapsed modules reserve no track. Every text summary uses content-height sizing (D-119): Dinner,
+Lists, Notices, Reminders and Daily verse are only as tall as their displayed text, heading and
+normal padding require, with a 60-logical-pixel minimum for readability and remote targeting.
+The summary group and cards within each row align to the bottom; a quiet gap above is intentional,
+not space to fill by stretching cards. The Daily verse retains its full-width final row (D-118)
+and existing Back-safe full-quotation dialog. A lone verse needs only one row. Empty/informational
+cards use the same compact treatment when the dashboard exists; a wholly empty Today retains its
+existing empty state rather than creating an empty shelf. Hiding a module removes its card/unused
+track. Photos retain their independent aspect-preserving fitting rule rather than shrink-wrapping
+like text. On phones,
 keep natural document flow rather than pinning a card over the bottom navigation or photos.
 Filled Today summary/photo cards keep their allocated geometry under television focus; retain the
 visible outline and halo, without scaling or lifting the whole card beyond its track.
@@ -236,11 +240,13 @@ landscape-photo television layouts may use four rows, while their compact-height
 compact-square television layouts retain three. Portrait, full-height square and no-photo television
 layouts may use up to five when the complete dashboard remains inside one viewport. The phone keeps
 three; TV canvases below 720 pixels high use two core rows to preserve the lower content.
-When all five summaries include the compact verse, these very short canvases use one core row
+When four or five summaries include the compact verse, these very short canvases use one core row
 so status and retry messages can coexist with readable module cards; the same overflow links
-truthfully expose the omitted items. Normal-height TVs and the scrolling companion are unchanged.
-Compact TVs with all five summaries use single-line card excerpts and tighter spacing so stale
-and retry messages fit without reducing text or action sizes. Full details remain one action away.
+truthfully expose the omitted items. When a separate verse row accompanies other summary cards,
+full-height TVs reserve four core rows and compact TVs three. The scrolling companion is unchanged.
+Compact TVs with core content use the existing 18px compact body size, single-line card excerpts
+and tighter spacing so stale and retry messages fit. Target sizes stay at least 60 logical pixels;
+full details remain one action away. Do not hide a failed chore dynamically to fit its Retry message.
 A deterministic, focusable `+N more` action reports the complete hidden count and
 opens the Calendar agenda or Chores screen. Event rows open the same detail dialog as the calendar
 views. Dinner, List summary and the photo preview link to Meals, Lists and Photos; an active Notice

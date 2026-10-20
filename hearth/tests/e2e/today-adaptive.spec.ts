@@ -10,6 +10,12 @@ const shapes = [
   { orientation: 'square', width: 800, height: 800 },
   { orientation: 'portrait', width: 400, height: 1200 },
 ] as const;
+const compactModules = [
+  { key: 'dinner', path: '/meals' },
+  { key: 'listSummary', path: '/lists' },
+  { key: 'notice', path: null },
+  { key: 'reminders', path: '/reminders' },
+] as const;
 const viewports = [
   { width: 320, height: 740 },
   { width: 390, height: 844 },
@@ -158,7 +164,7 @@ for (const viewport of [viewports[4], viewports[5], viewports[6], viewports[7]])
         theme,
       );
       const fixture = await installAdaptiveFixture(page);
-      fixture.verseOnly = true;
+      fixture.singleSummary = 'dailyVerse';
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
       page.on('console', (message) => {
@@ -197,6 +203,81 @@ for (const viewport of [viewports[4], viewports[5], viewports[6], viewports[7]])
       await expect(page.locator('.today-daily-verse, .summary-details--with-verse')).toHaveCount(0);
       expect(errors).toEqual([]);
     });
+  }
+}
+
+for (const viewport of [viewports[4], viewports[5], viewports[6], viewports[7]]) {
+  for (const theme of ['light', 'dark'] as const) {
+    for (const module of compactModules) {
+      test(`Today ${module.key}-only cards stay compact at ${viewport.width}x${viewport.height} ${theme}`, async ({
+        page,
+        request,
+      }, info) => {
+        await request.post('/api/v1/demo/reset');
+        await stabilizePhotoPlayback(page);
+        await page.setViewportSize(viewport);
+        await page.addInitScript(
+          (theme) =>
+            localStorage.setItem(
+              'hearth.appearance.v1',
+              JSON.stringify({ theme, eveningDimming: false }),
+            ),
+          theme,
+        );
+        const fixture = await installAdaptiveFixture(page);
+        fixture.singleSummary = module.key;
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        page.on('console', (message) => {
+          if (message.type() === 'error') errors.push(message.text());
+        });
+        for (const empty of [false, true]) {
+          fixture.emptySummaries = empty;
+          fixture.core = empty ? 0 : 3;
+          for (const photo of shapes) {
+            fixture.photo = photo;
+            await page.goto('/today');
+            await expect(page).toHaveTitle('Hearth');
+            await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+            // Existing Today policy collapses wholly empty non-reminder summaries when
+            // there is no core content or photo. Do not turn that into a blank dashboard.
+            if (empty && photo.orientation === 'none' && module.key !== 'reminders') {
+              await expect(page.getByText('All set for today.', { exact: true })).toBeVisible();
+              await expect(page.locator('.today-dashboard, .summary-band')).toHaveCount(0);
+              continue;
+            }
+            await expect(page.locator('.today-dashboard')).toHaveAttribute(
+              'data-summary-count',
+              '1',
+            );
+            const card = page.locator('.summary-band');
+            await expect(card).toBeVisible();
+            await expect(page.locator('.today-daily-verse')).toHaveCount(0);
+            await expectTodayGeometry(page);
+            if (!empty && photo.orientation === 'none') {
+              await page.locator('.chore-row').last().focus();
+              await page.keyboard.press('ArrowDown');
+              await expect(card).toBeFocused();
+              await page.keyboard.press('Enter');
+              if (module.path === null) {
+                await expect(page.getByRole('dialog')).toBeVisible();
+                await page.keyboard.press('Escape');
+                await expect(card).toBeFocused();
+              } else {
+                await expect(page).toHaveURL(new RegExp(`${module.path}$`));
+                await page.goBack();
+                await expect(
+                  page.getByRole('heading', { name: 'Today', exact: true }),
+                ).toBeVisible();
+              }
+              await expectTodayGeometry(page);
+              await page.screenshot({ path: info.outputPath(`only-${module.key}-${theme}.png`) });
+            }
+          }
+        }
+        expect(errors).toEqual([]);
+      });
+    }
   }
 }
 
@@ -247,35 +328,66 @@ test('Today remote can reach and leave every tile after reflow without losing op
   }
 });
 
+const errorSummaryMasks = [
+  { mask: 31, name: '' },
+  { mask: 23, name: 'four without verse' },
+  { mask: 30, name: 'four with verse' },
+  { mask: 21, name: 'three without verse' },
+  { mask: 28, name: 'three with verse' },
+  { mask: 20, name: 'two without verse' },
+  { mask: 24, name: 'two with verse' },
+  { mask: 4, name: 'notice only' },
+  { mask: 8, name: 'verse only' },
+] as const;
+
 for (const width of [1200, 1366, 1920]) {
-  test(`Today stale and failed chore layouts stay bounded at ${width}`, async ({
-    page,
-    request,
-  }, info) => {
-    await request.post('/api/v1/demo/reset');
-    await page.setViewportSize({
-      width,
-      height: width === 1200 ? 620 : width === 1366 ? 768 : 1080,
+  for (const { mask, name } of errorSummaryMasks) {
+    test(`Today stale and failed chore layouts stay bounded at ${width}${name ? ` ${name}` : ''}`, async ({
+      page,
+      request,
+    }, info) => {
+      await request.post('/api/v1/demo/reset');
+      await page.setViewportSize({
+        width,
+        height: width === 1200 ? 620 : width === 1366 ? 768 : 1080,
+      });
+      const fixture = await installAdaptiveFixture(page);
+      fixture.stale = true;
+      fixture.summaryMask = mask;
+      const summaryCount = [1, 2, 4, 8, 16].filter((bit) => (mask & bit) !== 0).length;
+      await page.route('**/chore-occurrences/*/completions', (route) => route.abort('failed'));
+      for (const photo of shapes) {
+        fixture.photo = photo;
+        await page.goto('/today');
+        await expect(page.locator('.status-banner')).toContainText('saved calendar');
+        await expect(page.locator('.today-dashboard')).toHaveAttribute(
+          'data-summary-count',
+          String(summaryCount),
+        );
+        if (width === 1200) {
+          const capacity = summaryCount >= 5 || ((mask & 8) !== 0 && summaryCount >= 4) ? 1 : 2;
+          await expect(page.locator('.today-dashboard')).toHaveAttribute(
+            'data-rail-capacity',
+            String(capacity),
+          );
+          await expect(page.locator('.chore-row')).toHaveCount(capacity);
+          await expect(
+            page.getByRole('link', { name: `View ${6 - capacity} more chores` }),
+          ).toBeVisible();
+        }
+        await expectTodayGeometry(page);
+        await page.locator('.chore-row').first().click();
+        await expect(page.locator('.inline-error')).toBeVisible();
+        const retry = page.getByRole('button', { name: 'Try again', exact: true });
+        await retry.focus();
+        await expect(retry).toBeFocused();
+        await expectTodayGeometry(page);
+        await page.screenshot({
+          path: info.outputPath(`today-error-${width}-${photo.orientation}.png`),
+        });
+      }
     });
-    const fixture = await installAdaptiveFixture(page);
-    fixture.stale = true;
-    await page.goto('/today');
-    await expect(page.locator('.status-banner')).toContainText('saved calendar');
-    if (width === 1200) {
-      await expect(page.locator('.today-dashboard')).toHaveAttribute('data-rail-capacity', '1');
-      await expect(page.locator('.chore-row')).toHaveCount(1);
-      await expect(page.getByRole('link', { name: 'View 5 more chores' })).toBeVisible();
-    }
-    await expectTodayGeometry(page);
-    await page.route('**/chore-occurrences/*/completions', (route) => route.abort('failed'));
-    await page.locator('.chore-row').first().click();
-    await expect(page.locator('.inline-error')).toBeVisible();
-    const retry = page.getByRole('button', { name: 'Try again', exact: true });
-    await retry.focus();
-    await expect(retry).toBeFocused();
-    await expectTodayGeometry(page);
-    await page.screenshot({ path: info.outputPath(`today-error-${width}.png`) });
-  });
+  }
 }
 
 async function installAdaptiveFixture(page: Page) {
@@ -292,7 +404,9 @@ async function installAdaptiveFixture(page: Page) {
     photo: (typeof shapes)[number];
     sparse: boolean;
     stale: boolean;
-    verseOnly: boolean;
+    singleSummary: (typeof compactModules)[number]['key'] | 'dailyVerse' | null;
+    emptySummaries: boolean;
+    summaryMask: number;
     verseUnavailable: boolean;
     showVerse: boolean;
   } = {
@@ -300,7 +414,9 @@ async function installAdaptiveFixture(page: Page) {
     photo: shapes[1],
     sparse: false,
     stale: false,
-    verseOnly: false,
+    singleSummary: null,
+    emptySummaries: false,
+    summaryMask: 31,
     verseUnavailable: false,
     showVerse: true,
   };
@@ -347,15 +463,31 @@ async function installAdaptiveFixture(page: Page) {
         freshness: fixture.stale ? 'stale' : 'current',
         statusMessage: fixture.stale ? 'Showing saved calendar plans.' : null,
         sections: {
-          dinner: !fixture.sparse && !fixture.verseOnly,
-          listSummary: !fixture.sparse && !fixture.verseOnly,
-          notice: !fixture.sparse && !fixture.verseOnly,
-          dailyVerse: fixture.showVerse,
-          reminders: !fixture.verseOnly,
+          dinner:
+            Boolean(fixture.summaryMask & 1) &&
+            (fixture.singleSummary === null ? !fixture.sparse : fixture.singleSummary === 'dinner'),
+          listSummary:
+            Boolean(fixture.summaryMask & 2) &&
+            (fixture.singleSummary === null
+              ? !fixture.sparse
+              : fixture.singleSummary === 'listSummary'),
+          notice:
+            Boolean(fixture.summaryMask & 4) &&
+            (fixture.singleSummary === null ? !fixture.sparse : fixture.singleSummary === 'notice'),
+          dailyVerse:
+            Boolean(fixture.summaryMask & 8) &&
+            fixture.showVerse &&
+            (fixture.singleSummary === null || fixture.singleSummary === 'dailyVerse'),
+          reminders:
+            Boolean(fixture.summaryMask & 16) &&
+            (fixture.singleSummary === null || fixture.singleSummary === 'reminders'),
           photo: fixture.photo.orientation !== 'none',
         },
-        notice:
-          'An intentionally longer household notice to check wrapping without widening the dashboard or covering another tile.',
+        dinner: fixture.emptySummaries ? null : today.dinner,
+        listSummary: fixture.emptySummaries ? null : today.listSummary,
+        notice: fixture.emptySummaries
+          ? null
+          : 'An intentionally longer household notice to check wrapping without widening the dashboard or covering another tile.',
         dailyVerse: fixture.verseUnavailable
           ? null
           : {
@@ -366,17 +498,19 @@ async function installAdaptiveFixture(page: Page) {
               translation: 'ESV',
               text: 'Do not be anxious about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God.',
             },
-        reminderSummary: {
-          openCount: 7,
-          items: [
-            {
-              dueAt: null,
-              hasDueTime: false,
-              id: 'reminder_layout',
-              title: 'Remember the library books and the school excursion permission form',
+        reminderSummary: fixture.emptySummaries
+          ? { openCount: 0, items: [] }
+          : {
+              openCount: 7,
+              items: [
+                {
+                  dueAt: null,
+                  hasDueTime: false,
+                  id: 'reminder_layout',
+                  title: 'Remember the library books and the school excursion permission form',
+                },
+              ],
             },
-          ],
-        },
         photo:
           fixture.photo.orientation === 'none'
             ? null
