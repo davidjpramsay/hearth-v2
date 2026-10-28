@@ -214,8 +214,11 @@ export function NbaGameDialog({
             type="button"
             className="button focusable"
             data-focus-id="nba-detail-refresh"
-            disabled={query.isFetching}
-            onClick={() => void query.refetch()}
+            aria-disabled={query.isFetching}
+            aria-busy={query.isFetching}
+            onClick={() => {
+              if (!query.isFetching) void query.refetch();
+            }}
           >
             {query.isFetching ? 'Checking…' : 'Check stats'}
           </button>

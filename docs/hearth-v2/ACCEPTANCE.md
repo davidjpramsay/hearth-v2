@@ -2,6 +2,18 @@
 
 ## D-120 Morning Routine — 2026-10-28
 
+### Authorised release follow-up
+
+The owner authorised pushing/deploying all pending updates, including the prior NBA release blocker
+and the matching HA update. Test-only keyboard diagnostics identified a focused NBA **Check stats**
+button becoming natively disabled during background query invalidation; focus fell to the body,
+then Tab reached the phone dock. The narrow fix keeps this busy button focusable with aria-disabled/
+aria-busy and guards activation. Shared focus/navigation code is unchanged. A deterministic held
+response verifies retained focus, duplicate-activation rejection and forward/reverse containment.
+The phone scenario now exercises 24 forward and 24 reverse tabs. Ten repetitions of both cases
+**passed 20/20 (43.8 seconds)** in `/tmp/hearth-focus-proof`. This is local evidence; full hosted
+verification and private activation remain required before calling the release deployed.
+
 Implemented on `codex/morning-routine` from GitHub main `1de910e`, in an isolated worktree. The
 historical dirty iOS checkout and the prior compact-module branch are preserved. The independent
 module defaults off; first settings derive all current children, 07:00–08:00 and empty lists.

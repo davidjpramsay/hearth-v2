@@ -65,11 +65,12 @@ for (const viewport of [
       ]);
       await expect(dialog.locator('thead')).toContainText('Fouls');
       await expect(dialog.locator('tbody tr')).toHaveCount(8);
-      for (let i = 0; i < 8; i++) {
-        await page.keyboard.press('Tab');
-        expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
-          true,
+      for (let i = 0; i < 48; i++) {
+        await page.keyboard.press(i < 24 ? 'Tab' : 'Shift+Tab');
+        const contained = await dialog.evaluate((element) =>
+          element.contains(document.activeElement),
         );
+        expect(contained).toBe(true);
       }
       await expect(dialog.locator('tfoot')).toContainText('Team totals');
       await dialog.getByRole('button', { name: 'Next players', exact: true }).click();
@@ -137,6 +138,43 @@ for (const viewport of [
       expect(errors).toEqual([]);
     });
   }
+test('a focused NBA refresh retains modal focus while a response is pending', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let hold = false;
+  let reads = 0;
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/nba/games/*', async (route) => {
+    reads++;
+    const response = await route.fetch();
+    if (hold) await pending;
+    await route.fulfill({ response });
+  });
+  await page.goto('/nba');
+  await page.locator('.nba-game').first().click();
+  const dialog = page.getByRole('dialog', { name: 'Game box score' });
+  await expect(dialog.getByRole('table')).toBeVisible();
+  const refresh = dialog.locator('[data-focus-id="nba-detail-refresh"]');
+  hold = true;
+  try {
+    await refresh.click();
+    await expect(refresh).toHaveAttribute('aria-busy', 'true');
+    await expect(refresh).toBeFocused();
+    await refresh.press('Enter');
+    await refresh.press('Enter');
+    await expect.poll(() => reads).toBe(2);
+    await page.keyboard.press('Tab');
+    await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(refresh).toBeFocused();
+  } finally {
+    release();
+  }
+  await expect(refresh).toHaveAttribute('aria-busy', 'false');
+});
+
 test('saved box scores and shooting remain within the TV canvas', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.route('**/nba/games/*', async (route) => {
