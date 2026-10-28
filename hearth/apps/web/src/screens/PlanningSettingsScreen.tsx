@@ -10,6 +10,12 @@ const planningAreas: Array<{
   focusId: string;
 }> = [
   {
+    title: 'Morning Routine',
+    path: '/admin/morning-routine',
+    icon: 'sun',
+    focusId: 'planning-morning',
+  },
+  {
     title: 'Routines and chores',
     path: '/admin/routines',
     icon: 'chores',

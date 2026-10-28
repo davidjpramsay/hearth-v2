@@ -15,6 +15,7 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
   {
     title: 'Family',
     links: [
+      { title: 'Morning Routine', icon: 'sun', path: '/morning-routine' },
       { title: 'Reminders', icon: 'bell', path: '/reminders' },
       { title: 'Lists', icon: 'list', path: '/lists' },
       { title: 'Meals', icon: 'meal', path: '/meals' },
@@ -33,6 +34,7 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
     links: [
       { title: 'Modules', icon: 'leaf', path: '/admin/modules' },
       { title: 'NBA teams', icon: 'basketball', path: '/admin/nba' },
+      { title: 'Morning Routine settings', icon: 'sun', path: '/admin/morning-routine' },
       {
         title: 'Manage photos',
         icon: 'image',

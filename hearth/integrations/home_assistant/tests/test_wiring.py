@@ -318,10 +318,20 @@ class WiringTests(unittest.IsolatedAsyncioTestCase):
         for callback in coord.listeners:
             callback()
             callback()
-        self.assertEqual(len(entities), 12)
-        self.assertEqual(len({entity._attr_unique_id for entity in entities}), 12)
+        self.assertEqual(len(entities), 13)
+        self.assertEqual(len({entity._attr_unique_id for entity in entities}), 13)
         coord.data["permissions"]["controlModules"] = False
         self.assertTrue(all(not entity.available for entity in entities))
+
+    def test_morning_tab_requires_explicit_new_module_approval_and_enabled_state(self):
+        coord = self.make_coordinator()
+        coord.data["modules"] = dict.fromkeys(client.MODULE_LABELS, True)
+        tab = self.select_module.HearthTabSelect(coord, "screen_kitchen")
+        self.assertNotIn("morning_routine", tab.options)
+        coord.data["permissions"]["moduleIds"] = list(client.MODULE_LABELS)
+        self.assertIn("morning_routine", tab.options)
+        coord.data["modules"]["morningRoutine"] = False
+        self.assertNotIn("morning_routine", tab.options)
 
     def test_disabled_module_hides_even_previously_cached_entity_content(self):
         coord = self.chore_control()

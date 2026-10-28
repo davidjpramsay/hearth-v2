@@ -1,0 +1,106 @@
+.morning-settings {
+  display: grid;
+  gap: 24px;
+}
+.morning-settings fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--admin-panel-radius);
+}
+.morning-settings legend {
+  font-size: 22px;
+  font-weight: 650;
+  padding: 0 6px;
+}
+.morning-settings__times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.morning-settings__times label,
+.morning-editor label {
+  display: grid;
+  gap: 6px;
+  font-size: 16px;
+}
+.morning-settings input:not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 12px;
+  background: var(--input-surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  font: inherit;
+}
+.morning-settings__people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.morning-settings__people label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  cursor: pointer;
+}
+.morning-settings__people img {
+  border-radius: 50%;
+  object-fit: cover;
+}
+.morning-settings__people input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--eucalyptus);
+}
+.morning-editor {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.morning-editor summary {
+  padding: 16px;
+  min-height: 56px;
+  font-size: 20px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.morning-editor summary span {
+  float: right;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 400;
+}
+.morning-editor__body {
+  padding: 0 16px 16px;
+}
+.morning-editor ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+.morning-editor li {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--hairline);
+}
+.morning-editor__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.morning-settings .admin-secondary {
+  min-height: 44px;
+}

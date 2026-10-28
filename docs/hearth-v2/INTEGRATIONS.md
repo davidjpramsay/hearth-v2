@@ -1,5 +1,17 @@
 # Hearth v2 integration contracts
 
+## Morning Routine alarm destination (D-120)
+
+HA component 1.4.0 adds wire tab `morning_routine`, mapped to `/morning-routine`, and its optional
+`morningRoutine` module flag. Only an approved visible screen and an explicit moduleIds grant may
+navigate there; old grants are not expanded. No routine contents or tick commands enter HA.
+After an approved release, update the component and deliberately reconnect before selecting the
+new tab. Append a weekday-only choice after the existing alarm's wake/music/Hearth launch and
+safety checks; never make the whole alarm weekday-only or alter its weekend/media behaviour.
+Wait a bounded interval for the actual registered screen selector, then `select.select_option`
+with `morning_routine`. A failed/offline selector must not interrupt music or repeatedly relaunch.
+Installation and actual weekday alarm operation remain separate acceptance checks.
+
 ## NBA (D-113)
 
 The keyless server adapter reads fixed ESPN NBA standings and monthly scoreboard HTTPS feeds.

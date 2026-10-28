@@ -44,6 +44,7 @@
         "name": "Visible tab",
         "state": {
           "today": "Today",
+          "morning_routine": "Morning Routine",
           "calendar": "Agenda",
           "calendar_week": "Week",
           "calendar_month": "Month",

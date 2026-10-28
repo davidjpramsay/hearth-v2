@@ -14,7 +14,8 @@ export function useModulePathAvailable(): (path: string) => boolean {
   const enabled = useModules();
   return (path) => {
     const clean = normalizeModulePath(path);
-    if (clean === '/admin/planning') return enabled.chores || enabled.meals || enabled.lists;
+    if (clean === '/admin/planning')
+      return enabled.chores || enabled.meals || enabled.lists || enabled.morningRoutine;
     const module = moduleForPath(clean);
     return module === null || enabled[module];
   };

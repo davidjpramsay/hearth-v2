@@ -21,9 +21,11 @@ MODULE_LABELS = {
     "notices": "Notices",
     "dailyVerse": "Daily Bible verse",
     "nba": "NBA",
+    "morningRoutine": "Morning Routine",
 }
-LEGACY_MODULE_IDS = tuple(key for key in MODULE_LABELS if key != "nba")
+LEGACY_MODULE_IDS = tuple(key for key in MODULE_LABELS if key not in ("nba", "morningRoutine"))
 TAB_MODULES = {
+    "morning_routine": "morningRoutine",
     "calendar": "calendar",
     "calendar_week": "calendar",
     "calendar_month": "calendar",
@@ -50,6 +52,7 @@ MAX_CALENDAR_EVENTS = 10000
 # Labels are presentation only; requests and observed state always use these IDs.
 TAB_LABELS = {
     "today": "Today",
+    "morning_routine": "Morning Routine",
     "calendar": "Agenda",
     "calendar_week": "Week",
     "calendar_month": "Month",

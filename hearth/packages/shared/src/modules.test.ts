@@ -17,10 +17,10 @@ describe('fixed household modules contract', () => {
     expect(moduleForPath('/ADMIN/PHOTOS')).toBe('photos');
     expect(moduleForPath('/%61dmin/connections/calendar')).toBe('calendar');
     for (const id of MODULE_IDS) {
-      expect(DEFAULT_MODULE_FLAGS[id]).toBe(id !== 'nba');
+      expect(DEFAULT_MODULE_FLAGS[id]).toBe(!['nba', 'morningRoutine'].includes(id));
       expect(
         ModuleFlagsSchema.safeParse({ ...DEFAULT_MODULE_FLAGS, [id]: undefined }).success,
-      ).toBe(id === 'nba');
+      ).toBe(['nba', 'morningRoutine'].includes(id));
       expect(ModuleFlagsSchema.safeParse({ ...DEFAULT_MODULE_FLAGS, [id]: 0 }).success).toBe(false);
     }
     expect(
@@ -49,6 +49,8 @@ describe('fixed household modules contract', () => {
     ['/photos#fullscreen', 'photos'],
     ['/admin/photos', 'photos'],
     ['/games', 'games'],
+    ['/morning-routine', 'morningRoutine'],
+    ['/admin/morning-routine', 'morningRoutine'],
     ['/admin/connections/calendar', 'calendar'],
     ['/today', null],
     ['/more', null],

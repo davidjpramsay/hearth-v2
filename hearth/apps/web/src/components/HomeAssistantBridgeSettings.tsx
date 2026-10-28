@@ -75,6 +75,7 @@ export function HomeAssistantBridgeSettings() {
       !connection.shareCalendar ||
       !connection.controlChores ||
       !connection.controlModules ||
+      MODULE_IDS.some((id) => !connection.moduleIds.includes(id)) ||
       screens.some((screen) => !connection.screenIds.includes(screen.id)));
   async function approve() {
     // Freeze the disclosed bundle only on explicit approval. An uncertain retry
@@ -194,8 +195,8 @@ export function HomeAssistantBridgeSettings() {
           <h3>Home Assistant is connected</h3>
           {needsReconnect ? (
             <p className="ha-bridge-reconnect" role="status">
-              This connection has limited access. Reconnect once to enable screens, calendar and
-              chore and module control.
+              This connection has limited access. Reconnect once to include all current screens and
+              modules, plus calendar and chore control.
             </p>
           ) : null}
           <dl>

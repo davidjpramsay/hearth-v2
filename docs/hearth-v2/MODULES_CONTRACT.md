@@ -7,7 +7,9 @@ availability, never a substitute for authentication or household authorization.
 ## Fixed modules and core
 
 `calendar`, `weather`, `reminders`, `chores`, `lists`, `meals`, `home`, `photos`, `games`, `notices`,
-`dailyVerse`, `nba` (D-113). Chores includes routines, occurrences and pocket money. Home means the outbound Home
+`dailyVerse`, `nba` (D-113), `morningRoutine` (D-120). Morning Routine is independent of Chores.
+It defaults off; missing legacy fields also mean off. Chores includes its existing routine groups,
+occurrences and pocket money. Home means the outbound Home
 controls feature, not inbound HA pairing/module management. The original eleven flags default true;
 NBA defaults off, including missing legacy wire fields. Existing Today visibility preferences remain
 independent and retained (notably Bible verse still defaults hidden on Today).
@@ -21,7 +23,7 @@ or an arbitrary layout system.
 
 Source of truth: `hearth/packages/shared/src/modules.ts`.
 
-- `GET /api/v1/households/{householdId}/modules` → `{householdId,enabled:{all twelve booleans}}`.
+- `GET /api/v1/households/{householdId}/modules` → `{householdId,enabled:{all thirteen booleans}}`.
   Same normal household-read authorization as Today, including paired screens; no module content.
 - Adult `PUT /api/v1/households/{householdId}/modules/{moduleId}`: strict `{requestId,enabled}` →
   `{configuration,audit,replayed}`. Administrator/controller/origin checks remain in force.
@@ -50,7 +52,7 @@ while disabled. No hidden feature writes are allowed through old clients or cach
 In-flight provider reads cannot be recalled; recheck enabled state before returning their content
 or committing a new action. Core audit/backup history is retained, not erased by a feature toggle.
 
-HA state includes `modules` (the eleven flags) and `permissions.controlModules`. Chore/calendar
+HA state includes `modules` (the current flags) and `permissions.controlModules`. Chore/calendar
 data become null while off, corresponding commands/ranges reject, and disabled screen destinations
 cannot enqueue or deliver (including an already pending command). HA select options omit disabled
 tabs; always retain Today and More. A module switch remains available even while its feature is off.
@@ -70,7 +72,7 @@ provider configuration, financial settings or arbitrary admin endpoints. Revocat
 all actions, including exact retries. Existing current-feature scopes keep their original meaning.
 
 The matching manual HA component adds only approved household Switch entities (eleven legacy,
-up to twelve after D-113 approval), using observed state,
+up to twelve after D-113 approval, thirteen after D-120 approval), using observed state,
 bounded exact-retry requests and coordinator refresh; no optimistic state. Older server responses
 without module fields mean all enabled and no module-control authority. Updating code alone does
 not install HA files or authorize live switches, pairing, data changes or deployment.

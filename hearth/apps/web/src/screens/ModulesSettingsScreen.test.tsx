@@ -2,7 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_MODULE_FLAGS, type ModuleCommandResult, type ModuleFlags } from '@hearth/shared';
+import {
+  DEFAULT_MODULE_FLAGS,
+  MODULE_IDS,
+  type ModuleCommandResult,
+  type ModuleFlags,
+} from '@hearth/shared';
 import { clearHearthClient, configureHearthClient } from '../api/core';
 import { modulesApi } from '../api/modules';
 import { ModulesProvider } from '../modules/ModulesProvider';
@@ -81,7 +86,7 @@ function receipt(enabled: ModuleFlags): ModuleCommandResult {
 describe('simple Modules settings', () => {
   it('has eleven switches, preserves core controls and sends nothing until asked', async () => {
     show();
-    expect(await screen.findAllByRole('switch')).toHaveLength(12);
+    expect(await screen.findAllByRole('switch')).toHaveLength(MODULE_IDS.length);
     expect(screen.getByText(/Your data stays saved/)).toBeVisible();
     expect(screen.getByText('Photos available / Core available')).toBeVisible();
     expect(modulesApi.update).not.toHaveBeenCalled();
@@ -148,6 +153,6 @@ describe('simple Modules settings', () => {
     ).toBeVisible();
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findAllByRole('switch')).toHaveLength(12);
+    expect(await screen.findAllByRole('switch')).toHaveLength(MODULE_IDS.length);
   });
 });

@@ -27,6 +27,16 @@ same card. No horizontal phone table, tiny TV spreadsheet or extra shared-screen
 
 ## Modules (D-112)
 
+D-120 adds Morning Routine in the family rail/More and its adult settings in More, Family planning
+and Hearth settings. Up to three person cards share the TV canvas with a vertical countdown; the
+remaining fill drops toward the bottom between the configured start and end. Label the remaining
+minutes/seconds, start, deadline and weekday state. Use stable numbered rows, visible check/undo,
+next unchecked step and positive progress. Long routines/participant groups page with accessible
+buttons on TV; phones stack naturally. Respect dark mode and reduced motion. Settings choose
+people independently of Chores, retain deselected lists, and offer text editing and Up/Down
+ordering. Warn on unsaved drafts, retain errors, and reject stale saves/checks with refresh.
+The midnight reset derives from the home date, not navigation. See MORNING_ROUTINE_CONTRACT.md.
+
 **More → Modules** (also Hearth settings → Modules) is one adult-only page of twelve labelled
 On/Off switches, shared styles, large targets and short retained-data copy. No confirmation maze,
 per-screen picker or data deletion. Show confirmed state, Saving, a readable failure and safe exact

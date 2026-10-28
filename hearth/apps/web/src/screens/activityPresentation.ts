@@ -19,6 +19,9 @@ export const activityFilters: Array<{ id: ActivityFilter; label: string }> = [
 ];
 
 const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> = {
+  'morning-routine.settings.update': family('Morning Routine updated', 'sun'),
+  'morning-routine.complete': family('Morning step checked', 'sun'),
+  'morning-routine.reopen': family('Morning step reopened', 'sun'),
   'module.update': system('Module setting changed', 'leaf'),
   'nba.settings.update': family('NBA standout teams updated', 'basketball'),
   'chore.complete': planning('Chore marked done', 'chores'),

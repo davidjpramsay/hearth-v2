@@ -1,5 +1,17 @@
 # Hearth v2 local environment and operations plan
 
+## Morning Routine release (D-120)
+
+The release includes migration 0034 and HA custom component 1.4.0. Use the existing immutable
+verified private activation/backup path. Preserve the complete commissioned network, pairings and
+household data. The new module defaults off and does not seed personal steps. After approval,
+enable it, save all intended child participants and configure their lists through the adult API/UI.
+Keep private step contents out of Git, screenshots and release evidence. HA requires matching code
+and a deliberate fresh adult approval for this new module. Inspect/back up the current alarm, then
+append only the weekday navigation choice with the real registered screen selector. Preserve
+wake/music/volume/safety/weekend behaviour and never run the alarm as a deployment test.
+Physical TV/phone and the next real weekday alarm remain separate proof from demo/CI.
+
 ## NBA local addition — D-113
 
 No key/environment variable is required. After an approved future release/migration 0033, enable

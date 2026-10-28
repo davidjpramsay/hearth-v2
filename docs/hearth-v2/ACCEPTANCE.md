@@ -1,5 +1,67 @@
 # Hearth v2 acceptance and definition of done
 
+## D-120 Morning Routine — 2026-10-28
+
+Implemented on `codex/morning-routine` from GitHub main `1de910e`, in an isolated worktree. The
+historical dirty iOS checkout and the prior compact-module branch are preserved. The independent
+module defaults off; first settings derive all current children, 07:00–08:00 and empty lists.
+Adult settings edit participants, steps and ordering. Suggested ordering permits any step, with
+check/undo, durable day-specific progress and versioned exact retries. The countdown bar drains
+downward according to household time. TV cards/step lists page; phone content flows naturally.
+Long step labels reserve extra vertical space rather than shrinking text or clipping actions.
+Empty/weekend states retain an explicit, remote-focusable Today action. Private household steps
+are prepared outside Git and have not been applied to live data.
+
+### Verified locally
+
+- `pnpm verify:code` — PASS: formatting, lint, workspace types, **105 shared + 47 core +
+  101 server + 428 web unit tests**, **272 API/integration tests**, **29 migration tests**,
+  deployment scaffold checks and production web/server builds. Final log:
+  `/tmp/hearth-morning-verify-final.log`.
+- `python3.12 -B -m unittest discover -s hearth/integrations/home_assistant/tests` — **69 PASS**.
+  This includes explicit Morning Routine approval/module filtering; log `/tmp/hearth-morning-ha.log`.
+- `pnpm verify:ci` — PASS: five policy checks and complete non-overlapping inventory of **1,235
+  browser cases**. Inventory is not execution. Log `/tmp/hearth-morning-ci.log`.
+- `pnpm --filter @hearth/server exec vitest run src/morning-routine.integration.test.ts` — **6 PASS**,
+  including close/reopen of a real temporary SQLite file, local date rollover, weekend rejection,
+  exact/conflicting retries, stale versions/settings, independent people and module retention.
+- The HA integration test proves the new tab stays pending until the exact paired-screen ID/tab
+  acknowledgement, then becomes applied; module-off rejects it. Legacy grants cannot navigate or
+  switch this module; automation credentials cannot write routine checks/settings.
+- `git diff --check` — PASS. No dependency, Android APK, live networking or provider change.
+
+### Rendered gate and remaining release work
+
+The flow is adult settings → save/reorder → family Morning Routine → any-order check/retry →
+reopen/undo. Browser plugin not available; the repository Playwright workflow supplies local
+Chromium proof. Target viewports are 3840×2160, 1920×1080, 1366×768, 1280×720, 1280×640,
+820×1180, 1180×820, 390×844 and 844×390, in light/dark with reduced motion. Its final combined
+command is `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts tests/e2e/modules.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts tests/e2e/remote.spec.ts
+--output=/tmp/hearth-morning-browser-final`; result is recorded below.
+
+The combined rendered gate **passed 56/56 (1.7 minutes)**, including **23 Morning Routine cases**,
+the 80-character/12-step/four-person stress fixtures, actual D-pad exit to the rail, reduced-motion
+bar styling, accessible light/dark renders, save/reorder/reopen, loss of a committed response with
+exact retry, weekend focus and stale-read protection. Page identity/content, console health,
+no framework overlay, horizontal/TV vertical bounds and serious/critical accessibility checks
+passed. Demo screenshots were visually inspected, including TV light/dark, constrained TV and
+phone. Final small follow-ups **passed 2/2 (8.6 seconds)** with `--grep 'save/reorder|weekend'`,
+output `/tmp/hearth-morning-followup`, after rebuilding. These verify Morning Routine alone
+retains its Family planning entry and the weekend bar reports zero. Final format/lint, production
+build and CI policy/inventory checks also pass. These do not change the actual-device boundary.
+
+Read-only live HA inspection shows **Hearth component 1.2.0, one household device/four entities**,
+with no approved screen selector yet. The existing **06:30 Good Morning** automation still has its
+wake/music/30%-volume/foreground safety actions. It was neither edited, saved nor run. Installing
+1.4.0 and explicit adult reconnection must precede choosing the real screen selector for a
+weekday-only Morning Routine action. No guessed entity or automatic access expansion is allowed.
+
+Not run: hosted release on this branch, private deployment/migration, applying personal checklists,
+HA component installation/reconnection/alarm edit, actual TV/iPhone Safari and the real weekday
+alarm. The base's earlier hosted NBA-dialog focus failure remains a separate known release blocker;
+no NBA/shared-focus repair is included or claimed. Complete the full hosted gate before activation.
+
 ## D-119 shared compact Today text modules — 2026-10-20
 
 Built from `10695d5`, whose hosted run **39352656881** passed all eight jobs, including **1,156

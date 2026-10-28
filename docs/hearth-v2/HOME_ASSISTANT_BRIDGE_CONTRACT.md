@@ -1,5 +1,13 @@
 # Home Assistant → Hearth bridge v1 (D-108)
 
+## Morning Routine extension (D-120)
+
+Component 1.4.0 adds `morning_routine` → `/morning-routine` and module `morningRoutine` (off by
+default). The tab and switch require that exact module in the explicitly approved moduleIds list;
+legacy grants remain frozen. New approval may contain thirteen IDs. Routine contents and completion
+writes are not HA endpoints. The screen still must be visible/online, enabled and explicitly
+approved, and acknowledgement still proves applied navigation. See MORNING_ROUTINE_CONTRACT.md.
+
 ## NBA catalogue extension (D-113)
 
 Module control carries an immutable approved `moduleIds` list. Missing means the original eleven,

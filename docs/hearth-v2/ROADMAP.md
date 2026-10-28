@@ -1,5 +1,13 @@
 # Hearth v2 implementation roadmap
 
+## Morning Routine (D-120)
+
+Implement independent weekday checklists, adult people/step/time editor, downward time bar,
+durable daily checks and the explicitly scoped HA destination. Verify schema/timezone/date rollover,
+retry/conflict/access/module retention, phone/TV layout, D-pad and reduced motion locally. Publication,
+private migration/deployment, adult approval, private list setup and weekday alarm execution are
+distinct remaining gates in ACCEPTANCE; weekend variants remain deferred.
+
 ## Shared compact Today summaries — D-119 (2026-10-20)
 
 Extend the compact bottom-verse rule to Dinner, Lists, Notices and Reminders. All text cards

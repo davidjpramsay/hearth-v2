@@ -6,6 +6,7 @@ import type { RuntimeMode } from '@hearth/shared';
 import { SqliteAdminRepository } from './admin-repository.js';
 import { createApplianceUpdateRepository } from './appliance-update.js';
 import { buildServer } from './app.js';
+import { MorningRoutineService } from './morning-routine-service.js';
 import { GamesArchive } from './games-archive.js';
 import { RealtimeHub } from './realtime.js';
 import {
@@ -302,6 +303,7 @@ const homeAssistantPairings = new HomeAssistantPairingService(homeAssistantBridg
 });
 
 const server = buildServer({
+  morningRoutine: new MorningRoutineService(database, () => clock.now()),
   nba: new NbaService(demoMode ? new DemoNbaProvider() : new EspnNbaProvider(), database, () =>
     clock.now(),
   ),

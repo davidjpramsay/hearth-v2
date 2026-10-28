@@ -87,3 +87,11 @@ Component 1.3.0 adds the optional NBA module switch. A fresh adult approval free
 `moduleIds`; old grants remain scoped to the original eleven modules. No NBA sports data or NBA
 screen navigation is shared. Upgrade/install/restart and adult reconnection are separate from
 the local source change. Backward-compatible old-server responses default NBA off and unapproved.
+
+Component 1.4.0 adds Morning Routine's module switch and `morning_routine` visible-tab option.
+The module starts off. This tab/switch needs fresh adult approval including `morningRoutine`;
+existing grants never gain it silently. No checklist contents or completion writes enter HA.
+After the existing alarm launches Hearth and confirms the screen is online, a weekday-only choice
+can call `select.select_option` with `option: morning_routine`. Use the exact registered screen
+selector. Preserve the alarm's music, volume, physical wake, guards and weekend behaviour.
+Installing code, approving the connection and proving the real weekday alarm are separate steps.

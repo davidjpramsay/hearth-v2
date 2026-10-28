@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BridgeStateSchema, type ScreenCommand } from '@hearth/shared';
+import { BridgeStateSchema, MODULE_IDS, type ScreenCommand } from '@hearth/shared';
+import { ModulesService } from './modules-repository.js';
 import { buildServer } from './app.js';
 import { SqliteAdminRepository } from './admin-repository.js';
 import type { CompanionAuthRepository } from './companion-auth.js';
@@ -131,6 +132,47 @@ async function harness(privateMode = false, persistentChores = false) {
 }
 
 describe('Home Assistant inbound authority and projection', () => {
+  it('applies an explicitly approved Morning Routine tab only after exact screen acknowledgement', async () => {
+    const h = await harness(true);
+    const modules = new ModulesService();
+    h.service.setModules(modules);
+    modules.update(
+      DEMO_HOUSEHOLD_ID,
+      'morningRoutine',
+      { requestId: 'request_morning_on', enabled: true },
+      { id: 'member_maya', type: 'member', source: 'companion' },
+    );
+    expect(
+      (
+        await h.app.inject({
+          method: 'POST',
+          url: base,
+          headers: adult,
+          payload: { ...h.input, moduleIds: [...MODULE_IDS] },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect((await h.present()).statusCode).toBe(200);
+    const navigation = await h.navigate('request_morning_nav', 'morning_routine');
+    expect(navigation.statusCode).toBe(200);
+    expect(navigation.json().command.status).toBe('pending');
+    expect((await h.state()).json().screens[0].currentTab).toBe('today');
+    await h.present({
+      tab: 'morning_routine',
+      acknowledgedCommandId: navigation.json().command.id,
+    });
+    expect((await h.state()).json().screens[0]).toMatchObject({
+      currentTab: 'morning_routine',
+      command: { status: 'applied' },
+    });
+    modules.update(
+      DEMO_HOUSEHOLD_ID,
+      'morningRoutine',
+      { requestId: 'request_morning_off', enabled: false },
+      { id: 'member_maya', type: 'member', source: 'companion' },
+    );
+    expect((await h.navigate('request_morning_disabled', 'morning_routine')).statusCode).toBe(403);
+  });
   it('requires adult authority, stores only a digest and makes grant retries exact', async () => {
     const h = await harness(true);
     expect((await h.app.inject({ method: 'POST', url: base, payload: h.input })).statusCode).toBe(

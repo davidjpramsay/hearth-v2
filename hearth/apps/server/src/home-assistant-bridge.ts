@@ -547,6 +547,11 @@ export class HomeAssistantBridgeService {
 
   async navigate(secret: string, deviceId: string, requestId: string, tab: ScreenTab) {
     const row = this.authenticate(secret);
+    if (tab === 'morning_routine' && !row.connection.moduleIds.includes('morningRoutine'))
+      throw new RepositoryError(
+        'FORBIDDEN',
+        'Reconnect Home Assistant on an adult phone to approve Morning Routine.',
+      );
     this.assertTabEnabled(row.householdId, tab);
     this.clean();
     const inputHash = digest(JSON.stringify({ deviceId, tab }));

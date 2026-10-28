@@ -1,5 +1,17 @@
 # Hearth v2 architecture
 
+## Morning Routine (D-120)
+
+The shared schema defines separate configuration/daily progress commands. Pure `morningClock`
+projects the household timezone and weekday, independent of screen uptime. `MorningRoutineService`
+owns SQLite settings, progress and atomic actor-scoped request receipts; HTTP adapters retain the
+existing authenticated household/controller/module leases. A new realtime domain refetches shared
+progress. Views only send typed commands. Configuration revision and per-step versions protect
+concurrent phones, stale undo and edits. No chore occurrence or pocket-money state is touched.
+HA receives only the new allowlisted screen tab and module flag; routine content/check commands
+stay outside automation authority. Legacy module grants are frozen; a fresh disclosed approval is
+required. See [MORNING_ROUTINE_CONTRACT.md](MORNING_ROUTINE_CONTRACT.md).
+
 ## Bounded Today composer (D-116)
 
 `TodayScreen` derives enabled content from the existing typed summary and module flags. Its scoped

@@ -22,12 +22,14 @@ const icons: Record<ModuleId, IconName> = {
   notices: 'bell',
   dailyVerse: 'book-open',
   nba: 'basketball',
+  morningRoutine: 'sun',
 };
 const help: Partial<Record<ModuleId, string>> = {
   chores: 'Includes routines',
   home: 'Scenes and screen actions',
   dailyVerse: 'Visibility on Today is set separately',
   nba: 'Standings, this week and next week',
+  morningRoutine: 'Weekday steps and a morning countdown',
 };
 export function ModulesSettingsScreen() {
   const enabled = useModules();

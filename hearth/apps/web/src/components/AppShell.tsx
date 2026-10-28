@@ -27,6 +27,7 @@ interface AdminNavigationItem {
 
 const baseNavigation: NavigationItem[] = [
   { label: 'Today', path: '/today', icon: 'today', enabled: true },
+  { label: 'Morning', path: '/morning-routine', icon: 'sun', enabled: true },
   { label: 'Calendar', path: '/calendar/agenda', icon: 'calendar', enabled: true },
   { label: 'Weather', path: '/weather', icon: 'cloud-sun', enabled: true },
   { label: 'Reminders', path: '/reminders', icon: 'bell', enabled: true },
@@ -52,6 +53,7 @@ const adminNavigationGroups: Array<{ label: string; items: AdminNavigationItem[]
       { label: 'Today', path: '/admin/today', icon: 'today' },
       { label: 'Photos', path: '/admin/photos', icon: 'image' },
       { label: 'NBA teams', path: '/admin/nba', icon: 'basketball' },
+      { label: 'Morning Routine', path: '/admin/morning-routine', icon: 'sun' },
       {
         label: 'Planning',
         path: '/admin/planning',
@@ -276,7 +278,16 @@ function PhoneNavigation() {
     pathname === '/more' ||
     pathname === '/appearance' ||
     pathname.startsWith('/admin') ||
-    ['/lists', '/meals', '/home', '/photos', '/reminders', '/games', '/nba'].includes(pathname);
+    [
+      '/lists',
+      '/meals',
+      '/home',
+      '/photos',
+      '/reminders',
+      '/games',
+      '/nba',
+      '/morning-routine',
+    ].includes(pathname);
   return (
     <nav
       className="phone-tabs"

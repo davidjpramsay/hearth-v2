@@ -23,7 +23,7 @@ export const LEGACY_BRIDGE_MODULE_IDS: ModuleId[] = [
 ];
 const BridgeModuleIdsSchema = z
   .array(ModuleIdSchema)
-  .max(12)
+  .max(13)
   .refine((ids) => new Set(ids).size === ids.length)
   .default(LEGACY_BRIDGE_MODULE_IDS);
 
@@ -37,6 +37,7 @@ import {
 
 export const SCREEN_TAB_PATHS = {
   today: '/today',
+  morning_routine: '/morning-routine',
   calendar: '/calendar/agenda',
   calendar_week: '/calendar/week',
   calendar_month: '/calendar/month',

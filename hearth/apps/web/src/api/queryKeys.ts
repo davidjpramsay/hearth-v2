@@ -1,6 +1,12 @@
 import { getHearthRuntime, householdId } from './core';
 
 export const queryKeys = {
+  get morningRoutine() {
+    return [householdId(getHearthRuntime()), 'morning-routine'] as const;
+  },
+  get morningSettings() {
+    return [householdId(getHearthRuntime()), 'morning-routine-settings'] as const;
+  },
   nbaGame: (gameId: string) => [...queryKeys.nba, 'game', gameId] as const,
   get nba() {
     const runtime = getHearthRuntime();

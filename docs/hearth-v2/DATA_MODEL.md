@@ -1,5 +1,17 @@
 # Hearth v2 domain and data model
 
+## Morning Routine (D-120)
+
+Migration 0034 extends the fixed module catalogue without enabling the new module or changing
+existing overrides/credentials. `morning_routine_settings` stores revision + validated configuration
+per household; routines retain stable person/step IDs and explicit selected people. Missing initial
+settings derive all current children with empty lists, 07:00–08:00. `morning_routine_progress` is
+keyed by household, local date, person and step, with a completion boolean and monotonically
+increasing version. New dates read unchecked defaults without erasing history. Actor-scoped
+`morning_routine_receipts` bind request hashes and results. Settings/check/audit/receipt commit
+together. Audit metadata omits titles; routine contents stay in the private database/backup boundary.
+No user-specific list is seeded. See MORNING_ROUTINE_CONTRACT.md for bounds and concurrency.
+
 ## NBA preferences and additive catalogue (D-113)
 
 Migration 0033 rebuilds only the `household_modules` fixed-ID check to admit `nba`, preserving

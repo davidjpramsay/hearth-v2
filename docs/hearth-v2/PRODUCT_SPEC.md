@@ -15,6 +15,14 @@ include shooting, personal fouls and the remaining standard box-score statistics
 
 ## Household Modules (D-112)
 
+D-120 adds optional **Morning Routine**, with its own people selection (all current children before
+first save), editable ordered checklists and weekday 07:00–08:00 countdown. Any step can be ticked
+in any order; progress persists for that household-local date and starts fresh the next morning.
+The time bar drains downward with remaining time labelled. It encourages readiness without locking
+steps after the deadline. This independent checklist has no earnings/chore side effects. HA may
+select its family destination after the existing weekday alarm launch, under explicit approval;
+weekend behaviour remains separate. See [MORNING_ROUTINE_CONTRACT.md](MORNING_ROUTINE_CONTRACT.md).
+
 Adults can turn Calendar, Weather, Reminders, Chores & pocket money, Lists, Meals, Home controls,
 Photos, Games, Notices and Daily Bible verse on/off from one simple Modules page. Off is household-wide:
 hide all corresponding family/admin surfaces and deny feature API/HA access, without deleting any

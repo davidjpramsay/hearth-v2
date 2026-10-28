@@ -1,5 +1,24 @@
 # Hearth v2 decision record
 
+## D-120 — Weekday Morning Routine with independent progress and countdown
+
+- Date: 2026-10-28
+- Status: accepted; implementation and actual alarm evidence are separate
+- Choice: Add an optional Morning Routine module, independent participant selector, per-person
+  ordered editable lists and a household-local 07:00–08:00 vertical bar that drains downward.
+  Select all children initially; retain explicit saved choices and deselected lists thereafter.
+  Order guides rather than locks; check any step and undo. New local dates start unchecked, while
+  reopening/restarting retains today's progress. Weekends show an intentional weekday-only state.
+- Persistence: Separate settings/progress/atomic actor-scoped receipts in migration 0034. Validate
+  current household/person/step/date and revision/version before new writes. Exact retries replay
+  without retoggling; audit omits titles. No chore or earnings effects and no personal seed data.
+- UI: Three TV cards per page, bounded step pages, natural phone flow, readable countdown labels,
+  next-step/progress cues, reduced motion, dark mode and remote exit/navigation.
+- HA: The existing bridge may select the new family tab only with explicit new-module approval.
+  HA retains all physical/music authority. Append a weekday choice after the existing launch and
+  guards; preserve weekend alarm behaviour. Never execute wake/music as a setup test.
+- Details: [MORNING_ROUTINE_CONTRACT.md](MORNING_ROUTINE_CONTRACT.md).
+
 ## D-119 — Share compact sizing across Today's text modules
 
 - Date: 2026-10-20

@@ -8,3 +8,4 @@ export * from './home-assistant-bridge.js';
 export * from './connection-codes.js';
 export * from './modules.js';
 export * from './nba.js';
+export * from './morning-routine.js';

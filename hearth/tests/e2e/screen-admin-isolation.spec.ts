@@ -148,6 +148,7 @@ test('all admin routes and restored/encoded links return a paired screen to the 
     '/admin/meals',
     '/admin/photos',
     '/admin/routines',
+    '/admin/morning-routine',
     '/admin/chore-day',
     '/admin/pocket-money',
     '/admin/system',

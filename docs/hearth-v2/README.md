@@ -24,6 +24,10 @@ and voice. Native television media apps remain separate.
 
 ## Current boundaries
 
+Morning Routine (D-120) follows [MORNING_ROUTINE_CONTRACT.md](MORNING_ROUTINE_CONTRACT.md):
+weekday per-person checklists, independent participant settings and a household-local 7–8 am
+downward countdown bar. Local evidence, publication and the actual HA alarm are separate gates.
+
 Today composition follows D-116/D-119: Chores left/before Upcoming, bounded orientation-safe photos,
 content-height bottom-aligned text modules, a full-width final verse and natural companion scrolling. Local layout evidence is
 separate from release and actual TV/phone acceptance in ACCEPTANCE.

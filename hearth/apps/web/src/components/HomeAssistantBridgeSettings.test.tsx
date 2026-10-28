@@ -213,6 +213,16 @@ describe('short-code Home Assistant connection', () => {
     expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
     expect(homeAssistantBridgeApi.revoke).not.toHaveBeenCalled();
   });
+  it('offers deliberate reconnect when an older grant lacks Morning Routine', async () => {
+    vi.mocked(homeAssistantBridgeApi.getConnection).mockResolvedValue({
+      ...summary,
+      moduleIds: summary.moduleIds.filter((id) => id !== 'morningRoutine'),
+    });
+    show();
+    await screen.findByRole('button', { name: 'Reconnect Home Assistant' });
+    expect(homeAssistantBridgeApi.approvePairing).not.toHaveBeenCalled();
+    expect(homeAssistantBridgeApi.revoke).not.toHaveBeenCalled();
+  });
   it('keeps invalid/incomplete codes out of requests', async () => {
     show();
     await ready();

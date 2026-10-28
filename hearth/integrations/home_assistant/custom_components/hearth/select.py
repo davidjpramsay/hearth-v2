@@ -48,7 +48,9 @@ class HearthTabSelect(HearthScreenEntity, SelectEntity):
     @property
     def options(self) -> list[str]:
         modules = self.coordinator.data.get("modules", {})
-        return [tab for tab in TAB_LABELS if modules.get(TAB_MODULES.get(tab), True)]
+        approved = self.coordinator.data["permissions"].get("moduleIds", [])
+        return [tab for tab in TAB_LABELS if modules.get(TAB_MODULES.get(tab), True)
+                and (tab != "morning_routine" or "morningRoutine" in approved)]
 
     @property
     def available(self) -> bool:
