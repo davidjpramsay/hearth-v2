@@ -11,6 +11,11 @@ only within existing majors: Fastify 5.12.6, Zod 4.6.6, Vite 8.2.4, Vitest 4.1.1
 vulnerabilities**. No audit bypass or changed application permission is used. Full verification is
 repeated before publication.
 
+Hosted run 40707967616 then passed code/API, Android and container builds but correctly stopped
+on the System Health browser assertion still expecting migration 33. Updated that assertion to
+the new migration 34; its focused production-build browser regression passed **1/1 (5.5 seconds)**
+in `/tmp/hearth-morning-system-health-proof`. Publication still requires a fresh complete run.
+
 The owner authorised pushing/deploying all pending updates, including the prior NBA release blocker
 and the matching HA update. Test-only keyboard diagnostics identified a focused NBA **Check stats**
 button becoming natively disabled during background query invalidation; focus fell to the body,
