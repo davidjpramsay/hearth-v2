@@ -28,11 +28,39 @@ check passed, and its restart dialog confirmed no running automations/scripts. T
 editor is no longer running (its service log confirms successful SIGTERM shutdown); its original
 startup/watchdog/sidebar/auto-update settings remain off. No TV, music or chore command was sent.
 
-**Still blocked on adult-phone setup:** HA's existing entry requests reauthentication. No new
-grant has been approved, no Morning Routine switch or real screen selector is claimed operational,
-and the weekday alarm has not been edited or run. Personal checklists remain prepared privately,
-not applied; the new module retains its safe default-off state. Actual TV/iPhone Safari and a real
-weekday alarm remain unverified. The release is deployed; household commissioning is separate.
+The subsequent owner-phone approval completed successfully in HA's existing reauthentication
+repair. The integration now exposes the server's module switches and both already-paired screen
+selectors. Morning Routine was enabled through that approved HA grant; the other module settings
+were preserved. The actual living-room selector was identified from its registered entity details,
+not inferred from a physical-TV or media-player entity. That TV was unavailable during setup.
+
+At the owner's explicit request, the personal checklist was applied privately using the unchanged
+`MorningRoutineService` and its existing shared schema. An SSH-authenticated, temporary bundled
+maintenance command ran on the NAS's Node 22.22.3 with built-in SQLite, the existing household
+reader with demo seeding disabled, a unique owner/child match and an expected-revision-zero guard.
+`--check` passed without writes; `--apply` passed typed validation, transactional protected-record
+comparison, settings readback, database integrity and atomic audit/receipt checks. Its audit source
+is automation under the requesting owner. All current children are selected, the window is
+07:00–08:00, the requested person's five steps are present and the other child lists remain empty.
+No private titles/identifiers entered Git or command output. The temporary NAS code was removed.
+The existing paired browser then rendered the live routine; both step pages matched the requested
+five items and all checks remained undone. This is production browser evidence, not physical TV
+or iPhone Safari rendering evidence.
+
+The existing 06:30 alarm now has one final **Open Morning Routine on weekdays** choice. Monday–Friday
+waits at most 60 seconds for the registered Hearth selector to be available and offer the approved
+tab, stops that branch on timeout, then selects `morning_routine`. Weekend behaviour is unchanged.
+Parsed fresh saved readback proved the original 22 actions, trigger, conditions, description, mode
+and trace settings unchanged; only the intended 23rd action was added. An interrupted unsaved
+editor draft was discarded before the final verified save. HA's built-in configuration check
+passed. No wake, music, navigation-to-TV or chore action was run as a test.
+
+Retained local evidence: `/private/tmp/hearth-ha-reauth-success.png`,
+`/private/tmp/hearth-morning-module-enabled.png`, `/private/tmp/hearth-morning-live-configured.png`,
+`/private/tmp/hearth-weekday-morning-alarm-saved.png` and
+`/private/tmp/hearth-morning-ha-config-check.png`. Personal screenshots stay outside Git.
+Still not run: physical TV/iPhone Safari routine rendering and the real weekday wake/music/alarm
+path. The next weekday alarm is the remaining end-to-end operational proof.
 
 ### Authorised release follow-up
 
@@ -109,15 +137,16 @@ retains its Family planning entry and the weekend bar reports zero. Final format
 build and CI policy/inventory checks also pass. These do not change the actual-device boundary.
 
 Initial read-only live HA inspection showed **Hearth component 1.2.0, one household device/four entities**,
-with no approved screen selector yet. The existing **06:30 Good Morning** automation still has its
-wake/music/30%-volume/foreground safety actions. It was neither edited, saved nor run. Installing
+with no approved screen selector yet. At that checkpoint, the existing **06:30 Good Morning** automation
+had its wake/music/30%-volume/foreground safety actions and was neither edited, saved nor run. Installing
 1.4.0 and explicit adult reconnection must precede choosing the real screen selector for a
 weekday-only Morning Routine action. No guessed entity or automatic access expansion is allowed.
 
 The initial local handoff did not include publication/deployment or an NBA repair. The authorised
 follow-up above resolves the NBA release blocker and records the successful hosted/private release
-and HA installation. Remaining phone commissioning and physical-device/alarm checks are explicitly
-listed in the live checkpoint; local/browser evidence does not substitute for them.
+and HA installation. The later commissioning follow-up above records adult approval, household
+configuration and the saved alarm edit. Physical-device/alarm checks remain explicit; local/browser
+evidence does not substitute for them.
 
 ## D-119 shared compact Today text modules — 2026-10-20
 
