@@ -80,6 +80,12 @@ for (const viewport of [
       await expect(
         page.getByRole('heading', { name: 'Morning Routine', exact: true }),
       ).toBeVisible();
+      await expect(page.getByText(/\d+ of \d+ steps done together/)).toHaveCount(0);
+      await expect(page.locator('.morning-person__header p')).toHaveText([
+        '1 of 5 done',
+        '1 of 5 done',
+        '1 of 5 done',
+      ]);
       await expect(page.getByText('18:00', { exact: true })).toBeVisible();
       await expect(
         page.getByRole('progressbar', { name: 'Morning time remaining' }),

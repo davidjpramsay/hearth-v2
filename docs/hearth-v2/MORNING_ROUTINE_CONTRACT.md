@@ -21,7 +21,8 @@ five-step lists fit together at every supported TV size, including 1280×640. Us
 steps rather than an eyebrow, duplicated next-step heading or permanent instruction/status row.
 Routine save feedback remains announced; errors/refresh actions stay visible. Unusually long
 labels/lists retain bounded step pages; phones stack cards naturally. Show positive progress
-without ranking children. Keep done steps in place, with visible checks and undo. Use
+without ranking children or showing a combined household step count. Keep done steps in place,
+with visible checks and undo. Use
 readable targets, bounded TV height, D-pad/Back, reduced motion and both themes. No loud sounds,
 auto-advancing focus, blocking expiry, punitive late state or automatic TV takeover.
 

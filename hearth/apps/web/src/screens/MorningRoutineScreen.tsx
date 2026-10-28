@@ -101,6 +101,14 @@ function MorningBoard({
     total > 0 && done === total && !data.people.some((person) => person.steps.length === 0);
   const canCheck = data.isWeekday && !oldDay && !stale && online && !busy && !hasPending;
   const needsRefresh = stale || oldDay || !online;
+  const footerMessage =
+    clock.phase === 'weekend'
+      ? 'Your school-morning steps are saved for Monday.'
+      : ready
+        ? 'All ready for a good day ✨'
+        : total === 0
+          ? 'A new routine begins with one small step.'
+          : null;
   async function toggle(
     memberId?: string,
     step?: MorningOverview['people'][number]['steps'][number],
@@ -261,15 +269,7 @@ function MorningBoard({
         </div>
       </div>
       <footer className="morning-footer">
-        <span>
-          {clock.phase === 'weekend'
-            ? 'Your school-morning steps are saved for Monday.'
-            : ready
-              ? 'All ready for a good day ✨'
-              : total === 0
-                ? 'A new routine begins with one small step.'
-                : `${done} of ${total} steps done together`}
-        </span>
+        {footerMessage ? <span>{footerMessage}</span> : null}
         <Link
           className="button focusable"
           data-focus-id="morning-today"

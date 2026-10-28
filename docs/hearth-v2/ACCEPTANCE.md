@@ -2,6 +2,33 @@
 
 ## D-120 Morning Routine — 2026-10-28
 
+### Remove combined routine count — 2026-10-29
+
+At the owner's request, the routine footer no longer shows the household-wide “steps done
+together” count. Each person's progress, countdown, Today/people navigation and the useful
+weekend/empty/all-ready messages remain. Existing light/dark viewport cases assert the combined
+count is absent and all three demo people's individual progress remains visible. This is included
+with the explicitly approved phone time-field release below; no settings/data/HA change is needed.
+
+- `pnpm verify:code` — PASS: format/lint/types, **681 unit**, **272 API/integration**, **29 migration**,
+  **10** deployment safety checks and production builds; `/tmp/hearth-morning-footer-code.log`.
+  The final scoped footer alignment also passed formatting/lint and a fresh web production build.
+- `pnpm verify:ci` — PASS: five policy checks and complete non-overlapping **1,237-case** inventory;
+  `/tmp/hearth-morning-footer-ci.log`.
+- `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts
+--output=/tmp/hearth-morning-footer-chromium-final` — **24/24 PASS (41.7 seconds)**. Standard
+  lists remain fully visible; individual progress, no aggregate count, both themes, real save/retry,
+  stale/weekend states and D-pad exit pass. The first rendered run caught the text removal moving
+  Today to the left and changing directional navigation; keeping the footer action aligned to the
+  right resolves this without changing shared navigation. Final TV screenshots were inspected.
+
+- `pnpm exec playwright test --config=/private/tmp/hearth-morning-times-webkit.config.mts
+morning-routine.spec.ts --grep 'fits 390x844|countdown time fields'
+--output=/tmp/hearth-morning-footer-webkit` — **3/3 PASS (8.5 seconds)** with iPhone emulation.
+  Light/dark routine rendering has no aggregate count; time fields remain separated and persisted.
+- `git diff --check` — PASS. Hosted publication and private activation results follow once
+  complete. Actual physical TV and iPhone Safari remain separate, unverified checks.
+
 ### Phone countdown-field fit — 2026-10-29
 
 The owner's iPhone screenshot shows Start time and Ready by overlapping and escaping the
@@ -24,12 +51,12 @@ browser evidence, not a fresh physical iPhone Safari check.
 - `pnpm verify:ci` — PASS: five policy checks and complete non-overlapping **1,237-case** browser
   inventory (inventory is not execution). Log: `/tmp/hearth-morning-times-ci.log`.
 - `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts
-  --output=/tmp/hearth-morning-times-chromium` — **24/24 PASS (40.7 seconds)**, including the
+--output=/tmp/hearth-morning-times-chromium` — **24/24 PASS (40.7 seconds)**, including the
   existing TV/D-pad/full-list and retry/error checks. The added regression covers 320, 360, 390,
   430, 820 and 844-pixel layouts in both themes, then actual demo save/reload readback.
 - `pnpm exec playwright test --config=/private/tmp/hearth-morning-times-webkit.config.mts
-  morning-routine.spec.ts --grep 'countdown time fields'
-  --output=/tmp/hearth-morning-times-webkit` — **1/1 PASS (5.7 seconds)** with iPhone 13 emulation.
+morning-routine.spec.ts --grep 'countdown time fields'
+--output=/tmp/hearth-morning-times-webkit` — **1/1 PASS (5.7 seconds)** with iPhone 13 emulation.
   Local-only config extends the unchanged production-build demo servers. Page identity/content,
   no overlay, console errors/warnings, field geometry, real save/readback and serious/critical
   accessibility checks pass. WebKit 26.5 was downloaded to the local test cache, with no application
@@ -59,7 +86,7 @@ plugin not available; the repository's production-build Playwright workflow supp
 - `pnpm verify:ci` — PASS: five policy checks and the unchanged complete **1,236-case** inventory.
   Log: `/tmp/hearth-morning-full-list-ci.log`.
 - `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts
-  --output=/tmp/hearth-morning-full-list-browser` — **23/23 PASS (37.2 seconds)** on the final build.
+--output=/tmp/hearth-morning-full-list-browser` — **23/23 PASS (37.2 seconds)** on the final build.
   Nine viewport sizes in light/dark cover full/compact/short TV, tablet and portrait/landscape phone.
   Each TV fixture has all 15 rows (five per child) fully inside the viewport/card, no step pager,
   no TV scrolling, and D-pad movement through the last row and back to the rail. Page identity,

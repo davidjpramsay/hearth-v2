@@ -226,6 +226,9 @@
   font-size: 24px;
   min-height: 38px;
 }
+.morning-footer > .button {
+  margin-inline-start: auto;
+}
 .morning-pager {
   display: flex;
   align-items: center;
