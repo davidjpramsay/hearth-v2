@@ -2,6 +2,38 @@
 
 ## D-120 Morning Routine — 2026-10-28
 
+### Verified private release checkpoint
+
+Application release `ce0320c1220a7cbd844967a832f02ccbb31e3959` is pushed to main and deployed
+privately. [Verify Hearth run 40709250508](https://github.com/davidjpramsay/hearth-v2/actions/runs/40709250508)
+passed all eight jobs, including **1,236 browser cases (309 per shard)**, the complete code/API
+gate, dependency audit, Android checks, container builds and verified image publication.
+This release also includes D-119's previously undeployed compact Today modules.
+
+`hearth/deploy/synology/activate-private-release.sh ce0320c1220a7cbd844967a832f02ccbb31e3959`
+completed successfully using the existing protected helper. External health/readiness/runtime are
+HTTP 200, private, database ready and on the exact release, with no fresh-setup or unauthenticated
+household disclosure. `python3 /private/tmp/hearth-release-ce0320c-postflight.py` passed: the index
+and **27 production assets**, including Morning Routine and NBA, match the exact hosted artifact.
+Logs are retained under `/tmp/hearth-release-ce0320c/`.
+
+The preservation comparison runs entirely on the NAS and returns pass/fail only. It passed for
+protected phone/screen/member records, existing module/NBA settings, household data counts,
+runtime configuration, the complete existing bridge interface and database integrity; migration 34
+is active. No private counts, hashes, contents or credentials are exported for that comparison.
+
+The matching HA component **1.4.0** is installed, byte-verified and visibly loaded after a
+Core-only restart. Previous component code remains backed up locally on HA. HA's configuration
+check passed, and its restart dialog confirmed no running automations/scripts. The temporary File
+editor is no longer running (its service log confirms successful SIGTERM shutdown); its original
+startup/watchdog/sidebar/auto-update settings remain off. No TV, music or chore command was sent.
+
+**Still blocked on adult-phone setup:** HA's existing entry requests reauthentication. No new
+grant has been approved, no Morning Routine switch or real screen selector is claimed operational,
+and the weekday alarm has not been edited or run. Personal checklists remain prepared privately,
+not applied; the new module retains its safe default-off state. Actual TV/iPhone Safari and a real
+weekday alarm remain unverified. The release is deployed; household commissioning is separate.
+
 ### Authorised release follow-up
 
 Hosted run 40706545301 for `8ef2fc7` stopped before browser/publication at the dependency advisory
@@ -23,8 +55,8 @@ then Tab reached the phone dock. The narrow fix keeps this busy button focusable
 aria-busy and guards activation. Shared focus/navigation code is unchanged. A deterministic held
 response verifies retained focus, duplicate-activation rejection and forward/reverse containment.
 The phone scenario now exercises 24 forward and 24 reverse tabs. Ten repetitions of both cases
-**passed 20/20 (43.8 seconds)** in `/tmp/hearth-focus-proof`. This is local evidence; full hosted
-verification and private activation remain required before calling the release deployed.
+**passed 20/20 (43.8 seconds)** in `/tmp/hearth-focus-proof`. This was local evidence; the later
+successful hosted gate and private activation are recorded separately above.
 
 Implemented on `codex/morning-routine` from GitHub main `1de910e`, in an isolated worktree. The
 historical dirty iOS checkout and the prior compact-module branch are preserved. The independent
@@ -52,7 +84,8 @@ are prepared outside Git and have not been applied to live data.
 - The HA integration test proves the new tab stays pending until the exact paired-screen ID/tab
   acknowledgement, then becomes applied; module-off rejects it. Legacy grants cannot navigate or
   switch this module; automation credentials cannot write routine checks/settings.
-- `git diff --check` — PASS. No dependency, Android APK, live networking or provider change.
+- `git diff --check` — PASS. The feature itself needs no new dependency or Android APK.
+  The authorised release follow-up patches existing dependencies; live networking is preserved.
 
 ### Rendered gate and remaining release work
 
@@ -75,16 +108,16 @@ output `/tmp/hearth-morning-followup`, after rebuilding. These verify Morning Ro
 retains its Family planning entry and the weekend bar reports zero. Final format/lint, production
 build and CI policy/inventory checks also pass. These do not change the actual-device boundary.
 
-Read-only live HA inspection shows **Hearth component 1.2.0, one household device/four entities**,
+Initial read-only live HA inspection showed **Hearth component 1.2.0, one household device/four entities**,
 with no approved screen selector yet. The existing **06:30 Good Morning** automation still has its
 wake/music/30%-volume/foreground safety actions. It was neither edited, saved nor run. Installing
 1.4.0 and explicit adult reconnection must precede choosing the real screen selector for a
 weekday-only Morning Routine action. No guessed entity or automatic access expansion is allowed.
 
-Not run: hosted release on this branch, private deployment/migration, applying personal checklists,
-HA component installation/reconnection/alarm edit, actual TV/iPhone Safari and the real weekday
-alarm. The base's earlier hosted NBA-dialog focus failure remains a separate known release blocker;
-no NBA/shared-focus repair is included or claimed. Complete the full hosted gate before activation.
+The initial local handoff did not include publication/deployment or an NBA repair. The authorised
+follow-up above resolves the NBA release blocker and records the successful hosted/private release
+and HA installation. Remaining phone commissioning and physical-device/alarm checks are explicitly
+listed in the live checkpoint; local/browser evidence does not substitute for them.
 
 ## D-119 shared compact Today text modules — 2026-10-20
 
