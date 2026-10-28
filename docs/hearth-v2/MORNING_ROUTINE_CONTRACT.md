@@ -16,9 +16,12 @@ per title. An empty selection is valid. Deselection retains that person's saved 
 starts off; off hides routes, blocks all feature API/HA navigation and retains configuration and
 progress. Core module management remains available.
 
-`/morning-routine` presents the countdown and up to three person cards per TV page. Longer lists
-page within a card; phones stack cards naturally. Show the next unchecked step and positive
-progress without ranking children. Keep done steps in place, with visible checks and undo. Use
+`/morning-routine` presents the countdown and up to three person cards per TV page. Standard
+five-step lists fit together at every supported TV size, including 1280×640. Use the space for
+steps rather than an eyebrow, duplicated next-step heading or permanent instruction/status row.
+Routine save feedback remains announced; errors/refresh actions stay visible. Unusually long
+labels/lists retain bounded step pages; phones stack cards naturally. Show positive progress
+without ranking children. Keep done steps in place, with visible checks and undo. Use
 readable targets, bounded TV height, D-pad/Back, reduced motion and both themes. No loud sounds,
 auto-advancing focus, blocking expiry, punitive late state or automatic TV takeover.
 

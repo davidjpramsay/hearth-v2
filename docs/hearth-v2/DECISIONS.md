@@ -13,7 +13,9 @@
   current household/person/step/date and revision/version before new writes. Exact retries replay
   without retoggling; audit omits titles. No chore or earnings effects and no personal seed data.
 - UI: Three TV cards per page, bounded step pages, natural phone flow, readable countdown labels,
-  next-step/progress cues, reduced motion, dark mode and remote exit/navigation.
+  progress cues, reduced motion, dark mode and remote exit/navigation. The 2026-10-29 refinement
+  fits standard five-step lists together on compact/short TVs, removing duplicate next-step and
+  introductory headings while retaining announced save feedback and visible errors.
 - HA: The existing bridge may select the new family tab only with explicit new-module approval.
   HA retains all physical/music authority. Append a weekday choice after the existing launch and
   guards; preserve weekend alarm behaviour. Never execute wake/music as a setup test.

@@ -14,12 +14,6 @@
   margin: 0;
   font-size: 46px;
 }
-.morning-eyebrow {
-  margin: 0 0 4px;
-  color: var(--eucalyptus);
-  font-size: 22px;
-  font-weight: 650;
-}
 .morning-day-label {
   color: var(--muted);
   font-size: 24px;
@@ -167,17 +161,10 @@
   background: var(--eucalyptus);
   transition: width 250ms ease-out;
 }
-.morning-person__next {
+.morning-person__empty {
   margin: 0;
-  min-height: 64px;
   color: var(--muted);
   font-size: 22px;
-}
-.morning-person__next strong {
-  display: block;
-  color: var(--ink);
-  font-size: 24px;
-  overflow-wrap: anywhere;
 }
 .morning-steps {
   list-style: none;
@@ -283,7 +270,6 @@
   .morning-header h1 {
     font-size: 32px;
   }
-  .morning-eyebrow,
   .morning-feedback,
   .morning-day-label,
   .morning-footer {
@@ -325,15 +311,9 @@
     font-size: 24px;
   }
   .morning-person__header p,
-  .morning-person__next,
+  .morning-person__empty,
   .morning-step__number {
     font-size: 18px;
-  }
-  .morning-person__next {
-    min-height: 48px;
-  }
-  .morning-person__next strong {
-    font-size: 20px;
   }
   .morning-person__badge {
     font-size: 26px;
@@ -359,9 +339,6 @@
   }
   .morning-header h1 {
     font-size: 30px;
-  }
-  .morning-eyebrow {
-    font-size: 16px;
   }
   .morning-day-label {
     font-size: 14px;
@@ -420,14 +397,8 @@
     font-size: 26px;
   }
   .morning-person__header p,
-  .morning-person__next {
+  .morning-person__empty {
     font-size: 17px;
-  }
-  .morning-person__next {
-    min-height: 0;
-  }
-  .morning-person__next strong {
-    font-size: 19px;
   }
   .morning-step {
     font-size: 18px;

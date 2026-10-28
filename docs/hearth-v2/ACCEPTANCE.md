@@ -2,6 +2,38 @@
 
 ## D-120 Morning Routine — 2026-10-28
 
+### Five-step TV fit refinement — 2026-10-29
+
+The owner asked to fit the full current list on one screen and permitted removing subheadings.
+Compact/short TVs previously paged ordinary five-step routines into three/two rows while repeating
+the next step above the list. All supported TV sizes now show the five numbered rows together;
+the repeated next-step heading, eyebrow and permanent instruction/status row are removed.
+Save feedback remains in a live region, errors/refresh actions remain visible, and oversized
+labels/lists retain their accessible paging fallback. Phone flow and all persisted routine,
+countdown, HA and completion boundaries are unchanged.
+
+The flow under test is Morning Routine → all five steps visible in each TV card → remote movement
+to the final step and back to the rail, plus phone/error/weekend/long-list regressions. Browser
+plugin not available; the repository's production-build Playwright workflow supplies the checks.
+
+- `pnpm verify:code` — PASS: format/lint/types, **681 unit**, **272 API/integration**, **29 migration**
+  tests, **10** deployment safety fixtures and production web/server builds. An initial restricted
+  invocation stopped on the existing first-phone tests' loopback `listen EPERM`; the same source
+  passed with the local-listener permission those tests require. Log:
+  `/tmp/hearth-morning-full-list-code.log`.
+- `pnpm verify:ci` — PASS: five policy checks and the unchanged complete **1,236-case** inventory.
+  Log: `/tmp/hearth-morning-full-list-ci.log`.
+- `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts
+  --output=/tmp/hearth-morning-full-list-browser` — **23/23 PASS (37.2 seconds)** on the final build.
+  Nine viewport sizes in light/dark cover full/compact/short TV, tablet and portrait/landscape phone.
+  Each TV fixture has all 15 rows (five per child) fully inside the viewport/card, no step pager,
+  no TV scrolling, and D-pad movement through the last row and back to the rail. Page identity,
+  meaningful render, no overlay, clean error/warning console, accessibility and reduced motion pass.
+  Save/reopen/exact retry, stale/weekend guards and oversized-label/participant paging still pass.
+  Screenshots include `/tmp/hearth-morning-full-list-browser/morning-routine-Morning-Ro-aed2f--1280x640-light-visual-a11y/morning-routine.png`.
+- `git diff --check` — PASS. Publication/deployment and the actual TV remain separate evidence;
+  the baseline preservation comparison stays on the NAS and includes the saved routines/HA grant.
+
 ### Verified private release checkpoint
 
 Application release `ce0320c1220a7cbd844967a832f02ccbb31e3959` is pushed to main and deployed

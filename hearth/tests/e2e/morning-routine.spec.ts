@@ -10,7 +10,7 @@ const titles = [
   'Shoes and socks',
   'Have breakfast',
   'Pack school bag',
-  'Fill water bottle',
+  'Pack your lunch bag and water bottle',
 ];
 const overview = {
   householdId: 'household_hearth_demo',
@@ -57,6 +57,9 @@ for (const viewport of [
     }, info) => {
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text());
+      });
       await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
       await page.route('**/api/v1/households/*/modules', (route) =>
@@ -71,7 +74,9 @@ for (const viewport of [
         route.fulfill({ json: overview }),
       );
       await page.goto('/morning-routine');
+      await expect(page).toHaveURL(/\/morning-routine$/);
       await expect(page).toHaveTitle(/Hearth/);
+      await expect(page.locator('vite-error-overlay')).toHaveCount(0);
       await expect(
         page.getByRole('heading', { name: 'Morning Routine', exact: true }),
       ).toBeVisible();
@@ -88,6 +93,18 @@ for (const viewport of [
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
       ).toBe(true);
       if (viewport.width >= 1200) {
+        await expect(page.locator('.morning-step')).toHaveCount(15);
+        await expect(page.getByRole('button', { name: /^More steps for / })).toHaveCount(0);
+        for (const step of await page.locator('.morning-step').all()) {
+          await expect(step).toBeInViewport({ ratio: 1 });
+          expect(
+            await step.evaluate((element) => {
+              const row = element.getBoundingClientRect();
+              const card = element.closest('.morning-person')!.getBoundingClientRect();
+              return row.bottom <= card.bottom && row.right <= card.right;
+            }),
+          ).toBe(true);
+        }
         expect(
           await page
             .locator('.app-content')
@@ -99,6 +116,10 @@ for (const viewport of [
             .evaluate((element) => element.scrollHeight <= element.clientHeight + 1),
         ).toBe(true);
         const first = page.getByRole('button', { name: 'Ari: Shoes and socks', exact: true });
+        const last = page.getByRole('button', { name: `Ari: ${titles[4]}`, exact: true });
+        await first.focus();
+        for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+        await expect(last).toBeFocused();
         await first.focus();
         await page.keyboard.press('ArrowLeft');
         await expect(page.locator('.tv-rail :focus')).toHaveCount(1);

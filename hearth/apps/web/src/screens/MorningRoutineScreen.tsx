@@ -100,6 +100,7 @@ function MorningBoard({
   const ready =
     total > 0 && done === total && !data.people.some((person) => person.steps.length === 0);
   const canCheck = data.isWeekday && !oldDay && !stale && online && !busy && !hasPending;
+  const needsRefresh = stale || oldDay || !online;
   async function toggle(
     memberId?: string,
     step?: MorningOverview['people'][number]['steps'][number],
@@ -147,14 +148,11 @@ function MorningBoard({
   return (
     <section className="screen morning-screen">
       <header className="morning-header">
-        <div>
-          <p className="morning-eyebrow">A little step at a time</p>
-          <h1>Morning Routine</h1>
-        </div>
-        <span className="morning-day-label">Monday–Friday</span>
+        <h1>Morning Routine</h1>
+        <span className="morning-day-label">{busy ? 'Saving…' : 'Monday–Friday'}</span>
       </header>
-      <div className="morning-feedback" aria-live="polite">
-        {stale || oldDay || !online ? (
+      <div className={needsRefresh || error ? 'morning-feedback' : 'sr-only'} aria-live="polite">
+        {needsRefresh ? (
           <span>Showing saved progress. Refresh before ticking steps.</span>
         ) : error ? (
           <span role="alert">{error}</span>
@@ -168,7 +166,7 @@ function MorningBoard({
                   : 'Your own pace. Any step can go first.')}
           </span>
         )}
-        {stale || oldDay || error || !online ? (
+        {needsRefresh || error ? (
           <button
             className="button focusable"
             onClick={() => (pending.current ? void toggle() : refresh())}
@@ -250,17 +248,11 @@ function MorningBoard({
                 capacity={
                   viewport === 'companion'
                     ? 12
-                    : viewport === 'short-tv'
-                      ? steps.some((step) => step.title.length > 40)
+                    : steps.some((step) => step.title.length > 40)
+                      ? viewport === 'short-tv'
                         ? 1
                         : 2
-                      : viewport === 'compact-tv'
-                        ? steps.some((step) => step.title.length > 40)
-                          ? 2
-                          : 3
-                        : steps.some((step) => step.title.length > 40)
-                          ? 2
-                          : 5
+                      : 5
                 }
                 onToggle={(step) => void toggle(person.id, step)}
               />
@@ -335,8 +327,7 @@ function MorningPerson({
   const pages = Math.max(1, Math.ceil(steps.length / capacity));
   const activePage = Math.min(page, pages - 1);
   const completed = steps.filter((step) => step.isCompleted).length;
-  const next = steps.find((step) => !step.isCompleted);
-  const allDone = steps.length > 0 && !next;
+  const allDone = steps.length > 0 && completed === steps.length;
   return (
     <section
       className={`morning-person${allDone ? ' morning-person--ready' : ''}`}
@@ -356,20 +347,9 @@ function MorningPerson({
       <div className="morning-person__progress" aria-hidden="true">
         <span style={{ width: `${steps.length ? (completed / steps.length) * 100 : 0}%` }} />
       </div>
-      <p className="morning-person__next">
-        {next ? (
-          <>
-            Up next{' '}
-            <strong>
-              {next.title.length > 40 ? `Step ${steps.indexOf(next) + 1}` : next.title}
-            </strong>
-          </>
-        ) : allDone ? (
-          'You did it. Have a lovely day!'
-        ) : (
-          'An adult can add your steps from their phone.'
-        )}
-      </p>
+      {steps.length === 0 ? (
+        <p className="morning-person__empty">An adult can add your steps from their phone.</p>
+      ) : null}
       <ol className="morning-steps" start={activePage * capacity + 1}>
         {steps.slice(activePage * capacity, (activePage + 1) * capacity).map((step, index) => (
           <li key={step.id}>
