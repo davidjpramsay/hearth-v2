@@ -37,6 +37,8 @@ a permanent status row; errors and refresh actions remain visible. Long routines
 buttons on TV; phones stack naturally. Respect dark mode and reduced motion. Settings choose
 people independently of Chores, retain deselected lists, and offer text editing and Up/Down
 ordering. Warn on unsaved drafts, retain errors, and reject stale saves/checks with refresh.
+On narrow phones, stack Start time and Ready by with full-width native time controls; constrain
+each field to its grid cell so Safari's time-picker sizing cannot overlap its neighbour or panel.
 The midnight reset derives from the home date, not navigation. See MORNING_ROUTINE_CONTRACT.md.
 
 **More → Modules** (also Hearth settings → Modules) is one adult-only page of twelve labelled

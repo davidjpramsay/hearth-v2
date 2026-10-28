@@ -2,6 +2,41 @@
 
 ## D-120 Morning Routine — 2026-10-28
 
+### Phone countdown-field fit — 2026-10-29
+
+The owner's iPhone screenshot shows Start time and Ready by overlapping and escaping the
+Morning countdown panel. At phone widths up to 480 logical pixels, these native time fields now
+stack with a full-width row each. Grid labels can shrink and all routine text/time inputs have a
+maximum width of their cell. The native time picker, readable type, touch-target sizes and saved
+settings behaviour are retained. Wider companion layouts keep the two-column row.
+
+The flow under test is adult Morning Routine settings → both labelled time fields inside their
+panel → edit both times → save → reopen with the same values. Browser plugin not available; the
+repository's production-build Playwright workflow supplies Chromium and an additional local
+iPhone-emulated WebKit check. Neither baseline browser reproduced the exact physical iOS native
+control rendering; the regression explicitly checks separated rows on narrow phones, field/panel
+bounds, readable control sizes and persisted values across six widths in both themes. This is
+browser evidence, not a fresh physical iPhone Safari check.
+
+- `pnpm verify:code` — PASS: format/lint/types, **681 unit**, **272 API/integration**, **29 migration**,
+  **10** deployment safety fixtures and production web/server builds. Log:
+  `/tmp/hearth-morning-times-code.log`.
+- `pnpm verify:ci` — PASS: five policy checks and complete non-overlapping **1,237-case** browser
+  inventory (inventory is not execution). Log: `/tmp/hearth-morning-times-ci.log`.
+- `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts
+  --output=/tmp/hearth-morning-times-chromium` — **24/24 PASS (40.7 seconds)**, including the
+  existing TV/D-pad/full-list and retry/error checks. The added regression covers 320, 360, 390,
+  430, 820 and 844-pixel layouts in both themes, then actual demo save/reload readback.
+- `pnpm exec playwright test --config=/private/tmp/hearth-morning-times-webkit.config.mts
+  morning-routine.spec.ts --grep 'countdown time fields'
+  --output=/tmp/hearth-morning-times-webkit` — **1/1 PASS (5.7 seconds)** with iPhone 13 emulation.
+  Local-only config extends the unchanged production-build demo servers. Page identity/content,
+  no overlay, console errors/warnings, field geometry, real save/readback and serious/critical
+  accessibility checks pass. WebKit 26.5 was downloaded to the local test cache, with no application
+  dependency or lockfile change. Screenshots in both browser output directories were inspected.
+- `git diff --check` — PASS. Physical iPhone Safari remains unverified; publication, hosted checks
+  and private activation are separate from this local evidence. No HA/TV APK or contract change.
+
 ### Five-step TV fit refinement — 2026-10-29
 
 The owner asked to fit the full current list on one screen and permitted removing subheadings.

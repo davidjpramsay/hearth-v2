@@ -136,6 +136,92 @@ for (const viewport of [
       });
     });
   }
+test('countdown time fields stay separated on narrow phones and save both values @visual @a11y', async ({
+  page,
+  request,
+}, info) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text());
+  });
+  expect(
+    (
+      await request.put(`${home}/modules/morningRoutine`, {
+        headers: adult,
+        data: { requestId: 'request_time_layout_morning', enabled: true },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.goto('/admin/morning-routine');
+  await expect(page).toHaveURL(/\/admin\/morning-routine$/);
+  await expect(page).toHaveTitle(/Hearth/);
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Morning Routine', exact: true })).toBeVisible();
+  const start = page.getByLabel('Start time', { exact: true });
+  const end = page.getByLabel('Ready by', { exact: true });
+  await expect(start).toHaveValue('07:00');
+  await expect(end).toHaveValue('08:00');
+  for (const viewport of [
+    { width: 320, height: 740 },
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 844, height: 390 },
+    { width: 820, height: 1180 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const theme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: theme });
+      const bounds = await page.locator('.morning-settings__times').evaluate((grid) => {
+        const container = grid.getBoundingClientRect();
+        const fields = [...grid.querySelectorAll('input')].map((input) => {
+          const rect = input.getBoundingClientRect();
+          return {
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+            height: rect.height,
+            fontSize: parseFloat(getComputedStyle(input).fontSize),
+          };
+        });
+        return { left: container.left, right: container.right, fields };
+      });
+      const [first, second] = bounds.fields;
+      expect(first!.right + 8 <= second!.left || first!.bottom + 8 <= second!.top).toBe(true);
+      if (viewport.width <= 480) expect(first!.bottom + 8 <= second!.top).toBe(true);
+      for (const field of bounds.fields) {
+        expect(field.left).toBeGreaterThanOrEqual(bounds.left - 1);
+        expect(field.right).toBeLessThanOrEqual(bounds.right + 1);
+        expect(field.height).toBeGreaterThanOrEqual(44);
+        expect(field.fontSize).toBeGreaterThanOrEqual(16);
+      }
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      ).toBe(true);
+      if ([320, 390, 844].includes(viewport.width))
+        await page.screenshot({
+          path: info.outputPath(`countdown-${viewport.width}-${theme}.png`),
+          fullPage: true,
+        });
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start.fill('07:10');
+  await end.fill('08:10');
+  await page.getByRole('button', { name: 'Save Morning Routine' }).click();
+  await expect(page.getByText('Morning Routine saved.', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(start).toHaveValue('07:10');
+  await expect(end).toHaveValue('08:10');
+  expect(
+    (await new AxeBuilder({ page }).analyze()).violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+  ).toEqual([]);
+  expect(errors).toEqual([]);
+});
 test('adult settings save/reorder and any-order checks survive reopening; exact retry does not toggle twice', async ({
   page,
   request,
