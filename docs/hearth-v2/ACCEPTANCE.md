@@ -4,6 +4,13 @@
 
 ### Authorised release follow-up
 
+Hosted run 40706545301 for `8ef2fc7` stopped before browser/publication at the dependency advisory
+gate (18 findings); Android and container builds passed, but this was not a releasable run. Updated
+only within existing majors: Fastify 5.12.6, Zod 4.6.6, Vite 8.2.4, Vitest 4.1.12 and fast-uri
+3.1.9/4.2.3 through the existing scoped overrides. Fresh `pnpm audit` reports **no known
+vulnerabilities**. No audit bypass or changed application permission is used. Full verification is
+repeated before publication.
+
 The owner authorised pushing/deploying all pending updates, including the prior NBA release blocker
 and the matching HA update. Test-only keyboard diagnostics identified a focused NBA **Check stats**
 button becoming natively disabled during background query invalidation; focus fell to the body,
