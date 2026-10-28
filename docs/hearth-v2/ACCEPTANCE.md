@@ -34,9 +34,22 @@ plugin not available; the repository's production-build Playwright workflow supp
 - `git diff --check` — PASS. Publication/deployment and the actual TV remain separate evidence;
   the baseline preservation comparison stays on the NAS and includes the saved routines/HA grant.
 
+The layout application release **`f781354dcd1ad47a0ddd027d6329197483bfc944` is now deployed**.
+[Verify Hearth run 40724037826](https://github.com/davidjpramsay/hearth-v2/actions/runs/40724037826)
+passed all eight jobs, including all **1,236 browser tests**, before verified images were published.
+`hearth/deploy/synology/activate-private-release.sh f781354dcd1ad47a0ddd027d6329197483bfc944`
+completed using the existing protected helper. `python3 /private/tmp/hearth-release-f781354-postflight.py`
+passed exact-release health/readiness/private-runtime checks and matched the index plus **27**
+production assets to that run's hosted artifact. Logs: `/tmp/hearth-release-f781354/`.
+The NAS-local before/after comparison also passed for the saved routine settings/progress, approved
+HA connection, module flags, protected member/phone/screen records, existing data counts, runtime
+configuration, bridge interface and database integrity. No private comparison values were exported.
+No HA component/automation, APK, credentials or household records were edited by this layout release.
+Actual physical TV rendering has not been rechecked; reopen the TV app to load the changed assets.
+
 ### Verified private release checkpoint
 
-Application release `ce0320c1220a7cbd844967a832f02ccbb31e3959` is pushed to main and deployed
+The initial application release `ce0320c1220a7cbd844967a832f02ccbb31e3959` was pushed to main and deployed
 privately. [Verify Hearth run 40709250508](https://github.com/davidjpramsay/hearth-v2/actions/runs/40709250508)
 passed all eight jobs, including **1,236 browser cases (309 per shard)**, the complete code/API
 gate, dependency audit, Android checks, container builds and verified image publication.
