@@ -2,6 +2,23 @@
 
 ## D-124 restore 25 MiB per-photo uploads — 2026-10-29
 
+Hosted follow-up: `fb56705` passed the code/API, Android and container checks, but run
+`40813397255` stopped before publication on a photo geometry fixture's late `route.fetch()` response
+being disposed during browser teardown. Its layout assertions completed in the retained trace;
+this is not evidence of a rendered layout failure. The static portrait-rich fixture now reads
+its gallery once before navigation, matching the existing `photoPlaybackFixture` pattern. Photos
+tests also drain pending routes with `unrouteAll({ behavior: 'wait' })` before context disposal,
+as supported by [Playwright's API](https://playwright.dev/docs/api/class-page#page-unroute-all).
+No assertion, timeout, retry policy or application behavior was relaxed. The corrected case passed
+**10/10 Chromium (25.3 seconds)** and **1/1 WebKit (6.7 seconds)**; logs
+`/tmp/hearth-photo-cap25-race-repeat.log` and `/tmp/hearth-photo-cap25-race-webkit.log`.
+The failed run was not activated; a fresh complete hosted gate is required.
+The complete `photos.spec.ts` suite then passed **26/26 (58.4 seconds)** with the route-draining
+hook; `pnpm lint`, `pnpm format:check` and `git diff --check` passed. Logs:
+`/tmp/hearth-photo-cap25-cleanup-suite.log`, `/tmp/hearth-photo-cap25-cleanup-lint.log` and
+`/tmp/hearth-photo-cap25-cleanup-format.log`. This follow-up changes the test harness and evidence
+only; the correction's application code is identical to `fb56705`.
+
 The owner clarified the intended limit immediately after the D-122 release: 25 MB per photo is
 sufficient, and ordinary settings should not display the size-limit line. Restore the shared
 capability, provider, Fastify raw-body and exact Nginx upload-route limit to **25 MiB**. Settings

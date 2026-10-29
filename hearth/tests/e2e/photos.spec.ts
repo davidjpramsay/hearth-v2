@@ -5,13 +5,17 @@ import { expect, test } from '@playwright/test';
 
 import { captureEvidence } from './visualEvidence';
 import { stabilizePhotoPlayback } from './photoPlaybackFixture';
-import type { PhotoSourceIndexStatus } from '@hearth/shared';
+import type { PhotoGallery, PhotoSourceIndexStatus } from '@hearth/shared';
 
 const evidence = resolve('docs/evidence/phase-7/screenshots');
 
 test.beforeEach(async ({ request, page }) => {
   await request.post('http://127.0.0.1:4310/api/v1/demo/reset');
   await stabilizePhotoPlayback(page);
+});
+
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'wait' });
 });
 
 for (const viewport of [
@@ -413,38 +417,24 @@ test('the collage uses each photo once, fits both orientations and rotates calml
 test('a portrait-rich gallery uses tall rails and wide bands without cropping portrait files', async ({
   page,
 }) => {
-  await page.route('**/api/v1/households/*/photos', async (route) => {
-    const response = await route.fetch();
-    const data = (await response.json()) as {
-      featuredPhotoId: string | null;
-      photos: Array<{
-        alt: string;
-        capturedAt: string | null;
-        displayUrl: string;
-        favourite: boolean;
-        height: number;
-        id: string;
-        orientation: 'landscape' | 'portrait' | 'square';
-        thumbnailUrl: string;
-        width: number;
-      }>;
-    };
-    const portrait = data.photos.find((photo) => photo.orientation === 'portrait');
-    const landscapes = data.photos.filter((photo) => photo.orientation === 'landscape');
-    if (portrait === undefined || landscapes.length < 2) {
-      await route.fulfill({ response });
-      return;
-    }
-    data.photos = [
-      { ...portrait, id: 'portrait-a', alt: 'Portrait A' },
-      { ...portrait, id: 'portrait-b', alt: 'Portrait B' },
-      { ...portrait, id: 'portrait-c', alt: 'Portrait C' },
-      { ...landscapes[0]!, id: 'landscape-a', alt: 'Landscape A' },
-      { ...landscapes[1]!, id: 'landscape-b', alt: 'Landscape B' },
-    ];
-    data.featuredPhotoId = 'portrait-a';
-    await route.fulfill({ response, json: data });
-  });
+  // This is a fixed geometry fixture, not a gallery-refresh test. Read before navigation so
+  // screenshot/focus refreshes cannot leave route.fetch() work behind during browser teardown.
+  const response = await page.request.get('/api/v1/households/household_hearth_demo/photos');
+  expect(response.ok()).toBe(true);
+  const data = (await response.json()) as PhotoGallery;
+  const portrait = data.photos.find((photo) => photo.orientation === 'portrait');
+  const landscapes = data.photos.filter((photo) => photo.orientation === 'landscape');
+  if (portrait === undefined || landscapes.length < 2)
+    throw new Error('The demo gallery must contain a portrait and two landscape photos.');
+  data.photos = [
+    { ...portrait, id: 'portrait-a', alt: 'Portrait A' },
+    { ...portrait, id: 'portrait-b', alt: 'Portrait B' },
+    { ...portrait, id: 'portrait-c', alt: 'Portrait C' },
+    { ...landscapes[0]!, id: 'landscape-a', alt: 'Landscape A' },
+    { ...landscapes[1]!, id: 'landscape-b', alt: 'Landscape B' },
+  ];
+  data.featuredPhotoId = 'portrait-a';
+  await page.route('**/api/v1/households/*/photos', (route) => route.fulfill({ json: data }));
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/photos');
