@@ -1,5 +1,69 @@
 # Hearth v2 acceptance and definition of done
 
+## D-121/D-122/D-123 verified private release — 2026-10-29
+
+Owner approval: “please push and deploy everything.” Application release
+`3fbd69ec76ab047a3e328a78f7503a2c9f1490bc` includes the Home Screen web app, compact photo management/
+bounded uploads and scheduled School days/Weekends. It was pushed to `main` and the task branch.
+[Hosted run 40810332971](https://github.com/davidjpramsay/hearth-v2/actions/runs/40810332971)
+passed **all eight jobs**, including dependency audit, complete code/API gate, Android TV,
+container builds, four browser shards and verified-image publication. The first run's stale
+System health migration-number assertion was corrected and locally checked before this full run;
+no failing or cancelled run was deployed.
+
+Hosted evidence: **697 unit**, **279 API/integration**, **30 migration**, **10 deployment fixtures**,
+five CI policies and production builds with 35 migrations passed. Browser shards passed
+**318 + 318 + 317 + 317 = 1,270** cases (9.4, 8.5, 9.9 and 5.9 minutes respectively). No reduced
+browser gate, retries-to-hide-failure or publication bypass was used. The exact hosted `browser-build`
+artifact was downloaded to `/tmp/hearth-release-3fbd69e-artifact` for deployment comparison.
+
+Before activation, an online SQLite backup passed `quick_check` and remained on the NAS under
+`/volume1/hearth-v2-private/deployment-checkpoints/day-profiles-3fbd69e-20261029/`. Comparison
+fingerprints also stayed there. The initial strict Unix-mode check stopped on DSM's inherited ACLs
+before copying private data. Read-only ACL inspection confirmed that the private parent, checkpoint
+parent and new directory allow only the existing NAS administrators and Hearth service; the checker
+then validated that same allowlist on the newly created files. No ACL, owner, private content or
+credential was changed/exported to work around this. The installed root-owned activation helper
+also performed its normal stopped-database rollback snapshot and independently verified the release.
+
+Commands/results from `/private/tmp/hearth-morning-routine`:
+
+- `git push --atomic origin HEAD:refs/heads/main HEAD:refs/heads/codex/morning-day-profiles`
+  — **PASS**, exact application commit above published.
+- `gh run view 40810332971 --repo davidjpramsay/hearth-v2 --json status,conclusion,headSha,url`
+  — **PASS**, completed/success with the exact release SHA. The GitHub connector's job/log tools
+  independently confirmed every job and each browser count; its commit-run listing supports only
+  PR events, so the CLI identified this push-triggered run.
+- `ssh hearth-synology '/usr/bin/python3 - before' < /private/tmp/hearth-day-profiles-preserve-on-nas.py`
+  — **PASS**, checked v34 backup/private baseline retained, no content/count/hash exported.
+- `hearth/deploy/synology/activate-private-release.sh 3fbd69ec76ab047a3e328a78f7503a2c9f1490bc`
+  — **PASS**, installed verified immutable server/web images, readiness `ready`, private mode,
+  existing bridge/DNS compatibility and loopback publication retained. Log:
+  `/tmp/hearth-release-3fbd69e-activation.log`.
+- Same NAS-only checker with `after` — **PASS**, migration **35** and database integrity;
+  exact School configuration/revision and dated progress (projected without the added profile ID)
+  unchanged; original receipt bytes/hashes unchanged; independent Saturday–Sunday Weekend lists
+  empty, saved participants/times retained and timer off. Phones/screens/members/module flags,
+  HA approval, NBA preferences, photo identity/curation metadata, chore templates and Hearth reminder
+  rows matched. Normal slideshow/index timestamps were deliberately excluded from photo comparison.
+  Commissioned runtime Compose/environment/helper hashes and bridge configuration matched.
+- `python3 /private/tmp/hearth-release-3fbd69e-postflight.py` — **PASS**, external health/readiness
+  and exact release identity; private runtime discloses no household and does not require setup;
+  index plus **27** production assets byte-match the hosted artifact. Standalone manifest MIME/bytes,
+  unrestricted orientation and 180/192/512px fern icons also match.
+
+No TV APK or HA integration reinstall was needed; neither changed in this release. The live HA
+alarm remains weekday-only and no music/power/navigation command was sent as a deployment test.
+No re-pairing, credentials, household seed, photo rewrite or network reset was performed.
+This checkpoint supersedes the publication/private-deployment “not run” flags in the local D-121/
+D-122/D-123 entries below; those entries retain their original local evidence. The later evidence-only
+Git commit does not change the installed application bytes or require another activation.
+
+**Still unverified:** physical iPhone/iPad Home Screen installation and rendered use, real bulk-upload
+throughput/near-limit requests through DSM's outer proxy, physical phone/TV viewing of the profiles,
+and actual weekday/weekend alarm execution. DSM's outer body/time limits were not changed or claimed
+verified. No weekend alarm branch was added. Existing browser checks are not physical-device proof.
+
 ## D-123 School days and Weekends — 2026-10-29
 
 Release follow-up: commit `5d59ea7` was pushed with D-121/D-122 included. Hosted run

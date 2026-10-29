@@ -2,6 +2,11 @@
 
 ## Morning Routine day profiles (D-123)
 
+Local and full hosted verification plus private release/migration/preservation passed on 2026-10-29
+for `3fbd69e`, together with D-121/D-122. Exact evidence is in ACCEPTANCE. Remaining work is actual
+device use/installation, real upload throughput and normal alarm observation; no weekend alarm
+automation is implemented or implied.
+
 Verify disjoint/editable schedules, untimed/timed weekends, local-date rollover, dated profile
 isolation, v1 save/retry compatibility and migration preservation. Keep seven-step TV/verse fit,
 phone/iPad editors, draft conflict/unknown-outcome retry and existing auth/module/HA boundaries.

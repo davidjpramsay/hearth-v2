@@ -2,6 +2,13 @@
 
 ## Morning Routine profiles release (D-123)
 
+Release `3fbd69ec76ab047a3e328a78f7503a2c9f1490bc` is installed privately after all eight hosted jobs
+passed on 2026-10-29. It also includes D-121 Home Screen support and D-122 photo management/uploads.
+Migration 35, School data/tick/receipt preservation, private runtime, commissioned networking and
+exact hosted web assets are verified in ACCEPTANCE. A checked v34 backup is retained on the NAS.
+The existing ACLs were verified, not changed; no TV APK/HA integration update or alarm edit occurred.
+Actual phone/iPad/TV viewing, bulk-upload throughput and real alarm execution remain separate checks.
+
 Settings now has a day-to-routine selector and separate School days/Weekends editors. Existing
 school lists, times and today's checks migrate unchanged. Weekend lists start empty using the same
 saved participants, with countdown off. Save both profiles together; choose No routine to leave a
