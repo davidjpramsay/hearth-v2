@@ -1302,6 +1302,18 @@ describe('Hearth v2 API', () => {
     expect(child.json().error.code).toBe('FORBIDDEN');
     expect(unsupported.statusCode).toBe(400);
     expect(unsupported.json().error.code).toBe('VALIDATION_ERROR');
+    const sourceUrl = '/api/v1/households/household_hearth_demo/photo-source';
+    const beforeOversize = await app.inject({ url: sourceUrl, headers: adultHeaders });
+    expect(beforeOversize.json().upload.maxFileBytes).toBe(25 * 1024 * 1024);
+    const oversized = await app.inject({
+      method: 'POST',
+      url,
+      headers: { ...adultHeaders, 'x-hearth-request-id': 'request_photo_upload_oversized' },
+      payload: Buffer.alloc(25 * 1024 * 1024 + 1),
+    });
+    expect(oversized.statusCode).toBe(413);
+    const afterOversize = await app.inject({ url: sourceUrl, headers: adultHeaders });
+    expect(afterOversize.json().photos).toEqual(beforeOversize.json().photos);
   });
 
   it('favourites, hides and restores photos through adult-only replay-safe commands', async () => {

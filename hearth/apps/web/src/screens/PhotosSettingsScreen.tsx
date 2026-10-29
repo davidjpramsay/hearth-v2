@@ -223,10 +223,7 @@ export function PhotosSettingsScreen() {
           <Icon name="image" />
           Choose photos
         </button>
-        <p className="photo-source-guide__formats">
-          {data.upload.acceptedFormats.join(', ')} · up to{' '}
-          {Math.round(data.upload.maxFileBytes / 1024 / 1024)} MB per photo
-        </p>
+        <p className="photo-source-guide__formats">{data.upload.acceptedFormats.join(', ')}</p>
         <p className="photo-source-guide__formats">
           Choose multiple photos together. Keep this page open while they upload.
         </p>

@@ -1,12 +1,12 @@
 # Hearth v2 architecture
 
-## Photo management and bounded uploads (D-122)
+## Photo management and bounded uploads (D-122/D-124)
 
 The existing adult-only raw-image command keeps its typed response, actor validation, receipts,
-audit, private storage and imported-original protections. A shared 100 MiB byte constant and the
+audit, private storage and imported-original protections. A shared 25 MiB byte constant and the
 advertised capability govern Fastify/provider/client limits. Only Nginx's exact photo-upload route
-gets the larger body and 300-second upstream timeout; other API limits remain. Adult/controller
-access is checked before reading the larger body and again before mutation; legacy mixed-cookie
+gets the matching body bound and 300-second upstream timeout; other API limits remain. Adult/controller
+access is checked before reading the image body and again before mutation; legacy mixed-cookie
 screen retirement is preserved. The same-origin
 XHR adapter validates the same DTO/errors and reports upload bytes separately from preparation.
 A page-local external-store queue has at most two transfers, stable File/request IDs for retries,

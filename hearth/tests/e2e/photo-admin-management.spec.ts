@@ -39,6 +39,9 @@ for (const profile of [
       await expect(page).toHaveTitle('Hearth');
       await expect(page.getByRole('heading', { name: 'Manage photos' })).toBeVisible();
       await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+      await expect(page.getByText(/MB per photo/)).toHaveCount(0);
+      if (profile.name === 'phone' && theme === 'light')
+        await page.screenshot({ path: info.outputPath('photo-upload-settings.png') });
       const cards = page.locator('.photo-curation-card');
       await expect(cards).toHaveCount(48);
       await cards.first().scrollIntoViewIfNeeded();
@@ -119,7 +122,7 @@ test('batch queue overlaps transfers, pauses future photos and retries only an a
     } else await route.continue();
   });
   await page.goto('/admin/photos');
-  await expect(page.getByText(/up to 100 MB per photo/)).toBeVisible();
+  await expect(page.getByText(/MB per photo/)).toHaveCount(0);
   await page.locator('input[type=file]').setInputFiles(
     [1, 2, 3, 4].map((i) => ({
       name: `Local photo ${i}.jpg`,

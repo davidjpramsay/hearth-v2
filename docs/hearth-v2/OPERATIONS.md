@@ -1105,9 +1105,10 @@ Favourites or Hidden; page through 48 at a time. Select page adds only the visib
 selection, which is retained across pages/filters. Normal controls and exact delete confirmation
 remain available. Optional folder details are collapsed unless there is an import error.
 
-Choose multiple files together, up to **100 MiB per photo**. There is no total batch-byte limit.
-The UI takes its limit from the server capability, so old installations keep their actual lower
-limit until updated. Two transfers overlap; the NAS prepares one uploaded image at a time. Progress separates
+Choose multiple files together, up to **25 MiB per photo** (D-124). There is no total batch-byte limit.
+The queue takes its limit from the server capability; ordinary settings show supported formats
+without the size-limit line. A rejected file still receives an actionable size error. Previously
+accepted larger photos remain readable. Two transfers overlap; the NAS prepares one uploaded image at a time. Progress separates
 Uploading from Preparing photo. Pause queue stops dispatch, not already-started commands. Continue
 resumes; Retry failed photos retains each failed file and original request ID, so a lost response
 can safely replay an already accepted upload. Pause remains in effect when retries are queued.
@@ -1116,7 +1117,7 @@ sync. Accepted photos remain on Hearth, while unsent files need choosing again a
 photo bytes or upload secrets are persisted in the browser. Actual iPhone/Wi-Fi/NAS throughput
 must be measured separately from local fake-server queue and image-pipeline checks.
 
-The committed Nginx upload-only location allows 100 MiB and a 300-second upstream read timeout;
+The committed Nginx upload-only location allows 25 MiB and a 300-second upstream read timeout;
 Fastify and the adapter enforce the same byte bound and retain 120-million input-pixel validation.
 The front Synology HTTPS reverse proxy may also have a body/idle bound: verify that separately at
 release time; do not silently change DSM/network configuration. New managed thumbnails use the

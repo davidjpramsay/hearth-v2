@@ -102,19 +102,27 @@ describe('bounded photo upload queue', () => {
     expect(queue.getSnapshot().items[0]?.state).toBe('added');
   });
 
-  it('honours the advertised per-file limit without blocking valid photos', async () => {
+  it('honours the per-file limit while allowing a batch whose combined bytes exceed it', async () => {
     const upload = vi.fn().mockResolvedValue(receipt());
     const queue = new PhotoUploadQueue(upload, vi.fn(), vi.fn());
-    queue.add([new File(['too much'], 'large.jpg'), new File(['ok'], 'small.jpg')], 4, requestId);
+    queue.add(
+      [
+        new File(['too much'], 'large.jpg'),
+        new File(['one'], 'small.jpg'),
+        new File(['two'], 'other.jpg'),
+      ],
+      4,
+      requestId,
+    );
     await flush();
-    expect(upload).toHaveBeenCalledOnce();
+    expect(upload).toHaveBeenCalledTimes(2);
     expect(queue.getSnapshot().items[0]).toMatchObject({
       state: 'failed',
       file: null,
       retryable: false,
     });
     queue.retry();
-    expect(upload).toHaveBeenCalledOnce();
+    expect(upload).toHaveBeenCalledTimes(2);
   });
   it('distinguishes bytes sent from preparation and stops dispatch after leaving', async () => {
     const finish: Array<(result: PhotoUploadResult) => void> = [];

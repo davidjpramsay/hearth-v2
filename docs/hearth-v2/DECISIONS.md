@@ -1,5 +1,18 @@
 # Hearth v2 decision record
 
+## D-124 — Restore the 25 MiB per-photo cap and remove routine limit copy
+
+- Date: 2026-10-29
+- Status: accepted correction to D-122
+- Choice: The owner clarified that 100 MB was understood as a batch total and requested 25 MB per
+  photo. Restore the shared/provider/Fastify/proxy bound to 25 MiB. Keep the two-transfer batch
+  queue, progress/pause/exact retry, compact management, thumbnail efficiency and 300-second timeout.
+  There is no aggregate batch-byte cap. Remove the per-photo size line from ordinary settings;
+  retained supported-format guidance and actionable oversize errors remain.
+- Boundary: No migration, existing-photo rewrite/deletion, new permission, credential, import mount
+  or networking change. Existing photos above the new upload limit remain readable; this applies
+  only to new upload commands. Local checks, hosted release and private activation remain separate.
+
 ## D-123 — Separate scheduled School days and Weekends
 
 - Date: 2026-10-29
@@ -30,7 +43,8 @@
 - Choice: Page ordinary curation as well as selection at 48 photos. Use two phone columns, a wider
   responsive grid, whole-image previews and compact accessible actions; retain exact deletion and
   read-only imported originals. Add visibility/favourite filters and explicit Select page/Clear.
-- Uploads: Increase the advertised per-photo limit from 25 to 100 MiB. Keep one raw image per
+- Uploads: Originally increase the advertised per-photo limit from 25 to 100 MiB, superseded by
+  D-124's restored 25 MiB bound and removal of routine size copy. Keep one raw image per
   authenticated idempotent command and 120-million input-pixel validation. Two same-origin transfers
   may overlap; adult/controller access is checked before reading the larger body and again before
   mutation, preserving legacy mixed-cookie screen retirement. Expensive preparation remains FIFO,

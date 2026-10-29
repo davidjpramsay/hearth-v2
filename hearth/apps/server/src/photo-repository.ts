@@ -265,10 +265,7 @@ export class PhotoService implements PhotoRepository {
     if (receipt !== undefined) return { ...structuredClone(receipt), replayed: true };
     const uploaded = await this.provider.uploadPhoto(householdId, { ...input, actorId: actor.id });
     if (uploaded === null) {
-      throw new RepositoryError(
-        'VALIDATION_ERROR',
-        'Choose a supported family photo up to 100 MB.',
-      );
+      throw new RepositoryError('VALIDATION_ERROR', 'Choose a supported family photo up to 25 MB.');
     }
     const audit = AuditSummarySchema.parse({
       id: `audit_${randomUUID()}`,

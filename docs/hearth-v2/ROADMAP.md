@@ -16,7 +16,7 @@ Do not change the existing HA weekday alarm as part of local implementation.
 ## Photo management and uploads (D-122)
 
 Verify compact/paged normal and selection grids, filters/retained selections, safe exact deletion,
-100 MiB/decoded-pixel bounds, bounded FIFO processing, two-transfer progress/pause/retry and draft
+25 MiB/decoded-pixel bounds (D-124), bounded FIFO processing, two-transfer progress/pause/retry and draft
 protection. Preserve master hashes and existing files. Record local evidence separately from hosted
 checks, private deployment, physical phone throughput and any front-proxy limit verification.
 

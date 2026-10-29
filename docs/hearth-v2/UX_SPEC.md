@@ -510,8 +510,9 @@ Imported-original protection, cancellation and partial-failure behavior remain u
 - Photo storage/import errors should never reveal filesystem paths or technical details to the household.
 - Phone-first Photos administration begins with **Add photos**, opens the native
   multi-select photo picker and reports added, duplicate and failed counts without sending client
-  filenames to the server. D-122 raises the limit to 100 MB per photo, advertised by the server;
-  there is no aggregate batch-byte limit. Two transfers may overlap while the server serializes
+  filenames to the server. D-124 restores a 25 MB per-photo limit, supplied by the server capability;
+  omit routine limit text in settings and show size guidance only for a rejected file. There is no
+  aggregate batch-byte limit. Two transfers may overlap while the server serializes
   expensive preparation. A bounded-height queue distinguishes byte-transfer percentage from
   Preparing photo, counts added/duplicate/failed results, pauses new dispatch while current photos
   finish, and retries failures with their original file/request ID. Accepted files release their

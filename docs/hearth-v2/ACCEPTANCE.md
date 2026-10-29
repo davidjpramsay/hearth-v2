@@ -1,5 +1,50 @@
 # Hearth v2 acceptance and definition of done
 
+## D-124 restore 25 MiB per-photo uploads — 2026-10-29
+
+The owner clarified the intended limit immediately after the D-122 release: 25 MB per photo is
+sufficient, and ordinary settings should not display the size-limit line. Restore the shared
+capability, provider, Fastify raw-body and exact Nginx upload-route limit to **25 MiB**. Settings
+retains supported formats and the multi-file picker. Size guidance remains in actionable rejection
+errors. The two-transfer queue, progress/preparation, pause/exact retry, compact management and
+300-second timeout remain. A batch may total more than 25 MiB when its individual files comply.
+Previously accepted larger photos remain readable; there is no migration or stored-photo rewrite.
+
+Browser plugin not available; the repository's built-app Playwright flow uses fictional data.
+Flow: Manage photos → no ordinary limit text → choose multiple photos → pause/resume → safe exact
+retry, with retained paging/filtering/curation and deletion guards. Page identity, meaningful UI,
+no framework overlay, relevant console health, keyboard navigation and a11y checks passed.
+
+- `pnpm -C hearth verify:code` — **PASS**: format/lint/types, **697 unit**, **279 API/integration**,
+  **30 migration**, **10 deployment fixtures**, Compose validation and production builds. Real-image
+  tests accept a roughly 17 MB TIFF, retain the 480px thumbnail and reject a roughly 27 MB TIFF plus
+  a limit+1 byte payload. The HTTP adapter returns **413** above 25 MiB and leaves photo records
+  unchanged; advertised capability is 25 MiB. The queue test proves valid files proceed even when
+  combined bytes exceed the per-file cap. Log: `/tmp/hearth-photo-cap25-code.log`. An initial format
+  check caught the shortened repository error fitting on one line; formatting was applied and the
+  entire gate passed on rerun.
+- `pnpm -C hearth verify:ci` — **PASS**, five policies and complete **1,270-case** shard inventory;
+  `/tmp/hearth-photo-cap25-ci.log`. Inventory is separate from hosted execution.
+- `pnpm -C hearth test:e2e:built tests/e2e/photo-admin-management.spec.ts tests/e2e/photos.spec.ts
+--reporter=line --output=/tmp/hearth-photo-cap25-chromium` — **35/35 PASS (1.2 minutes)**.
+  Phone 320/390px, tablet, desktop and TV views; light/dark, no ordinary limit copy, compact cards,
+  batch/replay, curation/deletion, rotation/ambient, D-pad/Back and accessibility pass. Log:
+  `/tmp/hearth-photo-cap25-chromium.log`.
+- `pnpm -C hearth exec playwright test --config /private/tmp/hearth-morning-times-webkit.config.mts
+tests/e2e/photo-admin-management.spec.ts tests/e2e/photos.spec.ts --grep 'photo management stays|batch queue|phone administration'
+--reporter=line --output=/tmp/hearth-photo-cap25-webkit` — **12/12 PASS (31.0 seconds)**;
+  `/tmp/hearth-photo-cap25-webkit.log`. This is desktop WebKit with mobile/touch emulation,
+  not physical iOS/Safari proof. The first-viewport phone screenshot
+  `/tmp/hearth-photo-cap25-chromium/photo-admin-management-pho-755c7-tays-compact-on-phone-light/photo-upload-settings.png`
+  was visually inspected; settings contains formats and upload controls without the limit line.
+- `git diff --check` — **PASS**. No database migration, permission/credential, import-source,
+  TV APK, HA integration/automation or networking change is included.
+
+Publication/private activation evidence follows separately. Actual iPhone/Wi-Fi throughput and
+near-limit requests through DSM's outer proxy remain unverified; do not change that proxy merely
+to establish this local correction. Historical D-122's 100 MiB statements below describe the former
+release and are superseded by D-124's 25 MiB policy.
+
 ## D-121/D-122/D-123 verified private release — 2026-10-29
 
 Owner approval: “please push and deploy everything.” Application release

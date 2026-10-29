@@ -222,15 +222,15 @@ describe('SynologyFolderPhotoSourceProvider', () => {
     await fixture.close();
   });
 
-  it('accepts a real image above the former 25 MB cap and still bounds bytes and thumbnail size', async () => {
+  it('accepts supported photos below 25 MB, rejects larger images and bounds thumbnail size', async () => {
     const fixture = await photoFixture();
     try {
       const bytes = await sharp({
-        create: { width: 3000, height: 3000, channels: 3, background: '#426848' },
+        create: { width: 2400, height: 2400, channels: 3, background: '#426848' },
       })
         .tiff({ compression: 'none' })
         .toBuffer();
-      expect(bytes.byteLength).toBeGreaterThan(25 * 1024 * 1024);
+      expect(bytes.byteLength).toBeLessThan(25 * 1024 * 1024);
       const result = await fixture.provider.uploadPhoto('household_photo_test', {
         bytes,
         mimeType: 'image/tiff',
@@ -238,13 +238,27 @@ describe('SynologyFolderPhotoSourceProvider', () => {
         actorId: 'member_adult',
       });
       expect(result?.photo).toMatchObject({ width: 2160, height: 2160 });
-      expect(result?.snapshot.index.upload.maxFileBytes).toBe(100 * 1024 * 1024);
+      expect(result?.snapshot.index.upload.maxFileBytes).toBe(25 * 1024 * 1024);
       const thumb = await fixture.provider.getDerivative(
         'household_photo_test',
         result!.photo.id,
         'thumbnail',
       );
       expect(await sharp(thumb!.bytes).metadata()).toMatchObject({ width: 480, height: 480 });
+      const largeImage = await sharp({
+        create: { width: 3000, height: 3000, channels: 3, background: '#426848' },
+      })
+        .tiff({ compression: 'none' })
+        .toBuffer();
+      expect(largeImage.byteLength).toBeGreaterThan(25 * 1024 * 1024);
+      expect(
+        await fixture.provider.uploadPhoto('household_photo_test', {
+          bytes: largeImage,
+          mimeType: 'image/tiff',
+          capturedAt: null,
+          actorId: 'member_adult',
+        }),
+      ).toBeNull();
       const oversized = await fixture.provider.uploadPhoto('household_photo_test', {
         bytes: new Uint8Array(MAX_MANAGED_PHOTO_BYTES + 1),
         mimeType: 'image/tiff',

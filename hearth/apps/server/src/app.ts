@@ -2642,7 +2642,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ApiErrorSchema.parse({
             error: {
               code: 'VALIDATION_ERROR',
-              message: 'Choose a supported family photo up to 100 MB.',
+              message: 'Choose a supported family photo up to 25 MB.',
               retryable: false,
               requestId: headers['x-hearth-request-id'],
             },
