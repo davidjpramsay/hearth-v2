@@ -16,6 +16,9 @@
   progress cues, reduced motion, dark mode and remote exit/navigation. The 2026-10-29 refinement
   fits standard five-step lists together on compact/short TVs, removing duplicate next-step and
   introductory headings while retaining announced save feedback and visible errors.
+  The subsequent seven-step refinement reclaims compact-TV padding, gaps and duplicate decoration;
+  it retains the existing text/check/target sizes, three visible people and bottom verse. Larger or
+  unusually long lists keep explicit paging; saved settings and the twelve-step limit do not change.
 - Verse: The owner also requested the Bible verse at the bottom. Reuse the existing daily verse,
   private provider key, shared nonblocking cache and full-text dialog through a narrow authenticated
   `GET .../daily-verse`. Respect its module flag independently of Today's section switch; retain

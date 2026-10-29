@@ -293,6 +293,11 @@
   height: 60px;
   color: var(--ochre);
 }
+@media (min-width: 1200px) {
+  .morning-screen--seven {
+    height: 100%;
+  }
+}
 @media (min-width: 1200px) and (max-height: 899px) {
   .morning-screen {
     gap: 10px;
@@ -378,6 +383,49 @@
   .morning-verse .summary-band__chevron {
     width: 24px;
     height: 24px;
+  }
+  .morning-screen--seven {
+    gap: 8px;
+  }
+  .morning-screen--seven .morning-layout {
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .morning-screen--seven .morning-timer .morning-header {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .morning-screen--seven .morning-timer .morning-header h1 {
+    max-width: 100%;
+  }
+  .morning-screen--seven .morning-person {
+    padding: 8px;
+    gap: 8px;
+  }
+  .morning-screen--seven .morning-person__header > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+  }
+  .morning-screen--seven .morning-person__header p {
+    margin: 0;
+  }
+  .morning-screen--seven .morning-person__badge,
+  .morning-screen--seven .morning-person__progress {
+    display: none;
+  }
+  .morning-screen--seven .morning-steps {
+    gap: 4px;
+  }
+  .morning-screen--seven .morning-step {
+    padding: 3px 6px;
+    gap: 6px;
+    line-height: 1.2;
+  }
+  .morning-screen--seven .morning-step:focus-visible {
+    outline-offset: -3px;
   }
 }
 @media (max-width: 1199px) {

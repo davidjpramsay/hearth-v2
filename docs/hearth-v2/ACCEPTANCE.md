@@ -2,6 +2,40 @@
 
 ## D-120 Morning Routine — 2026-10-28
 
+### Up to seven visible steps — 2026-10-29
+
+The owner requested room for up to seven steps per person, while approving publication/deployment
+of the pending Bible-verse addition. This refinement keeps all three people and the verse visible
+on TV. Six/seven-step compact layouts reclaim padding, row gaps and duplicate sun/progress
+decoration, with an inline individual count. Step text/targets/checks keep their existing sizes.
+Long labels and lists over seven retain paging; phone flow, data, settings and HA are unchanged.
+
+- `pnpm verify:code` — PASS: format/lint/types, **681 unit**, **274 API/integration**, **29 migration**,
+  **10** deployment fixtures and production builds; `/tmp/hearth-morning-seven-code-final.log`.
+- `pnpm verify:ci` — PASS: five policies and complete non-overlapping **1,240-case** inventory;
+  `/tmp/hearth-morning-seven-ci.log`. Inventory is separate from hosted execution.
+- `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts tests/e2e/today-settings.spec.ts
+--output=/tmp/hearth-morning-seven-final` — **32/32 PASS (59.9 seconds)**. Nine light/dark viewport
+  pairs now contain seven demo steps per person. All **21** TV rows and the verse are wholly in the
+  viewport/card with no TV scrolling or step pager. Geometry asserts at least the existing **56px
+  target / 20px text** baseline, including wrapped text inside the row. D-pad reaches the seventh
+  step, verse and rail; popup Back restores focus. Mixed seven-/nine-step lists and all-nine-step
+  short-TV cases retain accessible paging, while 80-character/12-step/four-person stress cases,
+  module-off, saved/unavailable verse, settings/retry, weekend/stale and Today regressions pass.
+  Page identity/content, console health, no framework overlay, a11y and reduced motion pass.
+  The final compact layout places the title in the countdown rail and preserves the original outer
+  insets. The TV canvas fills the viewport while the verse keeps its content height; no text,
+  checkbox or target size is reduced. Final short-TV screenshots were inspected:
+  `/tmp/hearth-morning-seven-final/morning-routine-Morning-Ro-aed2f--1280x640-light-visual-a11y/morning-routine.png`.
+
+- `pnpm exec playwright test --config=/private/tmp/hearth-morning-times-webkit.config.mts
+morning-routine.spec.ts --grep 'fits 390x844|countdown time fields|follows module availability'
+--output=/tmp/hearth-morning-seven-webkit-final` — **4/4 PASS (12.3 seconds)** with iPhone emulation;
+  both themes, verse popup/Back focus, module-off and time-field save/reopen pass.
+- `git diff --check` — PASS. Approved hosted/private release results follow once complete.
+  Actual physical TV/iPhone rendering remains unverified for this addition; no live data or settings
+  have been changed locally.
+
 ### Bottom daily verse — 2026-10-29
 
 The owner requested the daily Bible verse at the bottom of Morning Routine. A compact card beside

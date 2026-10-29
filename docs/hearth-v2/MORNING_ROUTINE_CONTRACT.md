@@ -17,7 +17,7 @@ starts off; off hides routes, blocks all feature API/HA navigation and retains c
 progress. Core module management remains available.
 
 `/morning-routine` presents the countdown and up to three person cards per TV page. Standard
-five-step lists fit together at every supported TV size, including 1280×640. Use the space for
+lists of up to seven ordinary steps fit together at every supported TV size, including 1280×640. Use the space for
 steps rather than an eyebrow, duplicated next-step heading or permanent instruction/status row.
 Routine save feedback remains announced; errors/refresh actions stay visible. Unusually long
 labels/lists retain bounded step pages; phones stack cards naturally. Show positive progress
@@ -29,10 +29,18 @@ auto-advancing focus, blocking expiry, punitive late state or automatic TV takeo
 When the Daily Bible verse module is enabled, show its compact, content-height card in the bottom
 row beside Today. It uses the same household-local daily verse as Today, independently of Today's
 section visibility setting. Short TVs show a readable one-line excerpt; Select opens the existing
-full-text/attribution dialog and Back restores focus. Five standard steps remain visible. Phones
+full-text/attribution dialog and Back restores focus. Seven standard steps remain visible. Phones
 place the card after the lists in normal flow. A missing, failed or stale verse never blocks routine
 reads/checks; show an honest unavailable/retry or saved state. Module off removes the card/dialog
 and stops reads. No new key, background worker or HA authority is introduced.
+
+For six/seven-step lists on compact TVs, reclaim panel padding, row gaps and duplicate sun/progress
+decoration; put the individual count alongside the name and the title inside the countdown rail.
+Keep the existing outer screen insets. Retain the existing 20px step text, 56px
+targets and 30px checks. Do not shrink content to make it fit. Labels over 40 characters keep the
+existing long-label paging fallback; more than seven steps page in bounded groups (four on short
+TVs, five otherwise). Phones retain natural scrolling and all saved steps. No configuration limit
+or persistence change is needed.
 
 The countdown follows current household-local time, never elapsed time since opening the screen.
 Before start show the start time; during the window count down to the end; afterward show Time to

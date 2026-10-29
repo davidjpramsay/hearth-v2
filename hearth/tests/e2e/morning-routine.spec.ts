@@ -19,6 +19,8 @@ const titles = [
   'Have breakfast',
   'Pack school bag',
   'Pack your lunch bag and water bottle',
+  'Brush teeth',
+  'Ready for school',
 ];
 const overview = {
   householdId: 'household_hearth_demo',
@@ -93,9 +95,9 @@ for (const viewport of [
       ).toBeVisible();
       await expect(page.getByText(/\d+ of \d+ steps done together/)).toHaveCount(0);
       await expect(page.locator('.morning-person__header p')).toHaveText([
-        '1 of 5 done',
-        '1 of 5 done',
-        '1 of 5 done',
+        '1 of 7 done',
+        '1 of 7 done',
+        '1 of 7 done',
       ]);
       await expect(page.getByText('18:00', { exact: true })).toBeVisible();
       const verseCard = page.getByRole('button', { name: 'Read Demo preview', exact: true });
@@ -112,7 +114,13 @@ for (const viewport of [
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
       ).toBe(true);
       if (viewport.width >= 1200) {
-        await expect(page.locator('.morning-step')).toHaveCount(15);
+        expect(
+          await page.locator('.morning-screen').evaluate((element) => {
+            const screen = element.getBoundingClientRect();
+            return screen.top >= 0 && Math.abs(screen.bottom - innerHeight) <= 1;
+          }),
+        ).toBe(true);
+        await expect(page.locator('.morning-step')).toHaveCount(21);
         await expect(page.getByRole('button', { name: /^More steps for / })).toHaveCount(0);
         for (const step of await page.locator('.morning-step').all()) {
           await expect(step).toBeInViewport({ ratio: 1 });
@@ -120,7 +128,18 @@ for (const viewport of [
             await step.evaluate((element) => {
               const row = element.getBoundingClientRect();
               const card = element.closest('.morning-person')!.getBoundingClientRect();
-              return row.bottom <= card.bottom && row.right <= card.right;
+              const text = element
+                .querySelector(':scope > span:nth-child(2)')!
+                .getBoundingClientRect();
+              const style = getComputedStyle(element);
+              return (
+                row.bottom <= card.bottom &&
+                row.right <= card.right &&
+                text.top >= row.top &&
+                text.bottom <= row.bottom &&
+                row.height >= 56 &&
+                parseFloat(style.fontSize) >= 20
+              );
             }),
           ).toBe(true);
         }
@@ -136,9 +155,9 @@ for (const viewport of [
             .evaluate((element) => element.scrollHeight <= element.clientHeight + 1),
         ).toBe(true);
         const first = page.getByRole('button', { name: 'Ari: Shoes and socks', exact: true });
-        const last = page.getByRole('button', { name: `Ari: ${titles[4]}`, exact: true });
+        const last = page.getByRole('button', { name: `Ari: ${titles.at(-1)}`, exact: true });
         await first.focus();
-        for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+        for (let i = 0; i < titles.length - 2; i++) await page.keyboard.press('ArrowDown');
         await expect(last).toBeFocused();
         await page.keyboard.press('ArrowDown');
         await expect(verseCard).toBeFocused();
@@ -163,6 +182,74 @@ for (const viewport of [
       });
     });
   }
+test('lists longer than seven keep honest paging beside seven-step neighbours on short TVs', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 640 });
+  await page.route('**/api/v1/households/*/modules', (route) =>
+    route.fulfill({
+      json: {
+        householdId: overview.householdId,
+        enabled: { ...DEFAULT_MODULE_FLAGS, morningRoutine: true },
+      },
+    }),
+  );
+  await page.route('**/api/v1/households/*/daily-verse', (route) => route.fulfill({ json: verse }));
+  let allLonger = false;
+  await page.route('**/api/v1/households/*/morning-routine', (route) =>
+    route.fulfill({
+      json: {
+        ...overview,
+        people: overview.people.map((person, index) =>
+          index === 0 || allLonger
+            ? {
+                ...person,
+                steps: [
+                  ...person.steps,
+                  ...['Check the weather', 'Choose a book'].map((title, extra) => ({
+                    id: `step_extra_${index}_${extra}`,
+                    title,
+                    isCompleted: false,
+                    version: 0,
+                  })),
+                ],
+              }
+            : person,
+        ),
+      },
+    }),
+  );
+  for (const longer of [false, true]) {
+    allLonger = longer;
+    await page.goto('/morning-routine');
+    if (longer) await page.reload();
+    const next = page.getByRole('button', { name: 'More steps for Ari', exact: true });
+    await expect(next).toBeVisible();
+    if (!longer) {
+      await expect(
+        page.getByRole('button', { name: 'Bo: Ready for school', exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'More steps for Bo', exact: true }),
+      ).toHaveCount(0);
+    }
+    await next.click();
+    await next.click();
+    await expect(
+      page.getByRole('button', { name: 'Ari: Choose a book', exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    await expect(next).toBeDisabled();
+    await expect(
+      page.getByRole('button', { name: 'Read Demo preview', exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    expect(
+      await page
+        .locator('.app-content')
+        .evaluate((element) => element.scrollHeight <= element.clientHeight + 1),
+    ).toBe(true);
+  }
+});
+
 test('the morning verse follows module availability and closes its full-text view when disabled', async ({
   page,
   request,
@@ -265,7 +352,7 @@ test('a missing or stale morning verse does not block the routine and its full t
   await page.goto('/morning-routine');
   const retry = page.getByRole('button', { name: 'Refresh daily verse' });
   await expect(retry).toContainText('Today’s verse isn’t available yet.');
-  await expect(page.locator('.morning-step')).toHaveCount(15);
+  await expect(page.locator('.morning-step')).toHaveCount(21);
   await expect(
     page.getByRole('button', { name: 'Ari: Shoes and socks', exact: true }),
   ).toHaveAttribute('aria-disabled', 'false');

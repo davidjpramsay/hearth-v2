@@ -31,7 +31,7 @@ D-120 adds Morning Routine in the family rail/More and its adult settings in Mor
 and Hearth settings. Up to three person cards share the TV canvas with a vertical countdown; the
 remaining fill drops toward the bottom between the configured start and end. Label the remaining
 minutes/seconds, start, deadline and weekday state. Use stable numbered rows, visible check/undo
-and positive per-person progress, without a combined household step count. Standard five-step
+and positive per-person progress, without a combined household step count. Up to seven standard steps
 lists fit together even on compact/short TVs; omit the
 extra eyebrow and repeated next-step/instruction headings. Announce routine saves without reserving
 a permanent status row; errors and refresh actions remain visible. Long routines/participant groups page with accessible
@@ -43,10 +43,16 @@ each field to its grid cell so Safari's time-picker sizing cannot overlap its ne
 The midnight reset derives from the home date, not navigation. See MORNING_ROUTINE_CONTRACT.md.
 
 When Daily Bible verse is enabled, Morning Routine adds a compact bottom card beside Today. Keep
-its height intrinsic and the five standard checklist rows visible on short TVs. A readable excerpt
+its height intrinsic and up to seven standard checklist rows visible on short TVs. A readable excerpt
 opens the existing full verse/attribution popup; Back returns to the card. Phones place it after
 the lists. Missing/stale content has an honest retry/saved state and never blocks the checklists.
 Disabling the verse module removes both card and dialog; Today's section visibility is independent.
+
+Six/seven-step compact-TV lists tighten nonessential spacing, place the count beside each name and
+omit duplicate sun/progress decoration, with the title in the countdown rail so outer screen insets
+stay unchanged. Retain the existing 20px step text, 56px targets and 30px
+checks. Focus stays visible inside the close-spaced rows. Exceptionally long labels and lists over
+seven retain explicit paging; phones keep normal scrolling. This does not reduce the saved-step limit.
 
 **More → Modules** (also Hearth settings → Modules) is one adult-only page of twelve labelled
 On/Off switches, shared styles, large targets and short retained-data copy. No confirmation maze,

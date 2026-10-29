@@ -95,6 +95,13 @@ function MorningBoard({
   const activePage = Math.min(page, pages - 1);
   const people =
     viewport === 'companion' ? data.people : data.people.slice(activePage * 3, activePage * 3 + 3);
+  const sevenStepLayout =
+    viewport !== 'companion' &&
+    people.some(
+      ({ steps }) =>
+        steps.length > 5 && steps.length <= 7 && steps.every((step) => step.title.length <= 40),
+    );
+  const embeddedHeader = sevenStepLayout && viewport !== 'full-tv';
   const total = data.people.reduce((sum, person) => sum + person.steps.length, 0);
   const done = data.people.reduce(
     (sum, person) => sum + person.steps.filter((step) => step.isCompleted).length,
@@ -156,12 +163,15 @@ function MorningBoard({
       setBusy(false);
     }
   }
+  const heading = (
+    <header className="morning-header">
+      <h1>Morning Routine</h1>
+      <span className="morning-day-label">{busy ? 'Saving…' : 'Monday–Friday'}</span>
+    </header>
+  );
   return (
-    <section className="screen morning-screen">
-      <header className="morning-header">
-        <h1>Morning Routine</h1>
-        <span className="morning-day-label">{busy ? 'Saving…' : 'Monday–Friday'}</span>
-      </header>
+    <section className={`screen morning-screen${sevenStepLayout ? ' morning-screen--seven' : ''}`}>
+      {embeddedHeader ? null : heading}
       <div className={needsRefresh || error ? 'morning-feedback' : 'sr-only'} aria-live="polite">
         {needsRefresh ? (
           <span>Showing saved progress. Refresh before ticking steps.</span>
@@ -190,9 +200,13 @@ function MorningBoard({
       </div>
       <div className="morning-layout">
         <aside className="morning-timer" aria-label="Morning countdown">
-          <div className="morning-timer__sun" aria-hidden="true">
-            <Icon name="sun" />
-          </div>
+          {embeddedHeader ? (
+            heading
+          ) : (
+            <div className="morning-timer__sun" aria-hidden="true">
+              <Icon name="sun" />
+            </div>
+          )}
           <p className="morning-timer__caption">
             {clock.phase === 'weekend'
               ? 'A slower morning'
@@ -264,7 +278,11 @@ function MorningBoard({
                       ? viewport === 'short-tv'
                         ? 1
                         : 2
-                      : 5
+                      : steps.length > 7
+                        ? viewport === 'short-tv'
+                          ? 4
+                          : 5
+                        : 7
                 }
                 onToggle={(step) => void toggle(person.id, step)}
               />
