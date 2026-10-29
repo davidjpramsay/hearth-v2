@@ -1,5 +1,28 @@
 # Hearth v2 decision record
 
+## D-123 — Separate scheduled School days and Weekends
+
+- Date: 2026-10-29
+- Status: accepted; source/migration, private release and actual-device evidence are separate
+- Choice: Extend D-120 with two fixed profiles, each with independent people/lists and optional
+  countdown. Default School days to Monday–Friday with existing times/lists; create empty untimed
+  Weekends on Saturday–Sunday using the saved participants. A seven-day assignment selector can
+  choose either profile or No routine. No overlapping assignments, automatic school-holiday inference
+  or silent participant changes. The family view selects by household-local date and keeps seven-step
+  TV fit, the bottom verse, accessible focus and natural phone flow.
+- Data: Migration 0035 preserves settings revisions, school IDs/text/selections/times, all dated
+  checks and receipt hashes. Progress gains profile identity. Fresh dates reset visually without
+  deleting history; a midday schedule switch cannot transfer checks between profiles. Timers off
+  preserve their stored times and permit every ordinary check.
+- Compatibility: Settings adds canonical profiles while retaining a derived flat School configuration
+  for v1 readers. Legacy saves affect only School lists/times and never erase Weekends/day assignments.
+  New completions name the active profile; omitted v1 identity means School only and is not inserted
+  into the raw command hash. Exact old retries replay safely; stale-day/profile/revision/version
+  writes conflict. No new module, credential, privilege or HA scope.
+- Operation: The current HA weekday alarm is unchanged. Weekend alarm use needs a separate exact
+  automation change/approval. A live upgrade requires a checked backup; v34 rollback restores its
+  matching database snapshot. Details: [MORNING_ROUTINE_CONTRACT.md](MORNING_ROUTINE_CONTRACT.md).
+
 ## D-122 — Compact photo management and a bounded visible upload queue
 
 - Date: 2026-10-29

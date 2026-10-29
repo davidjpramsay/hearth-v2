@@ -529,3 +529,28 @@
     transition: none;
   }
 }
+
+.morning-timer--untimed .morning-timer__time {
+  max-width: 100%;
+  font-size: 30px;
+  text-align: center;
+}
+@media (max-width: 1199px) {
+  .morning-timer--untimed {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .morning-timer--untimed .morning-timer__time {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .morning-header {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .morning-day-label {
+    max-width: 100%;
+    white-space: normal;
+  }
+}

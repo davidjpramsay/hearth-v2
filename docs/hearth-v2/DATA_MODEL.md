@@ -1,6 +1,27 @@
 # Hearth v2 domain and data model
 
-## Morning Routine (D-120)
+## Morning Routine profiles (D-123)
+
+Migration `0035_morning_routine_profiles.sql` converts saved configuration to canonical `schoolDays`
+and `weekends` profiles, each with disjoint assigned days, a countdown flag and its own original
+configuration shape. It preserves the settings revision and exact School lists/IDs/selections/times.
+Weekends starts Saturday–Sunday with the same explicit participants, empty lists and countdown off.
+The original flat API `configuration` is now a derived School-only compatibility projection, not a
+second stored authority. Legacy settings saves preserve the entire Weekend profile and assignments.
+
+Progress gains `profile_id` in its primary key: household, local date, profile, person and step.
+Old progress rows become `schoolDays` with completion/version/timestamp retained. No checks transfer
+between profiles or dates. Existing receipt JSON and input hashes remain byte-for-byte untouched;
+optional v1 completion profile identity is interpreted only after hashing. Settings/check/audit/
+receipt atomicity and access/module boundaries remain. See MORNING_ROUTINE_CONTRACT.md.
+
+Before live migration, retain a matching v34 database backup. Compare old configuration with new
+`profiles.schoolDays.configuration`, and old progress with School rows projected without profile ID;
+raw config/progress hashes intentionally change. Receipts and unrelated data must remain unchanged.
+A v34 rollback restores its matching database, not the v35 representation. Local fixture tests are
+separate from this private preservation check; no live migration is implied.
+
+## Original Morning Routine (D-120)
 
 Migration 0034 extends the fixed module catalogue without enabling the new module or changing
 existing overrides/credentials. `morning_routine_settings` stores revision + validated configuration

@@ -1,5 +1,77 @@
 # Hearth v2 acceptance and definition of done
 
+## D-123 School days and Weekends — 2026-10-29
+
+The requested two-profile refinement is implemented locally. School days retains the existing
+participants, ordered steps and countdown times (07:00–08:00 by default). Weekends starts with the
+same explicit participants, empty steps and countdown off. Each profile has independent people,
+steps and timer settings. Seven day selectors assign either routine or No routine without overlap.
+The family view chooses automatically by household-local date; no school-term/holiday inference.
+Untimed routines stay fully checkable. Fresh dates start unchecked without erasing history;
+same-date reassignment cannot transfer ticks between profiles, even when step IDs match.
+
+Migration 0035 preserves School configuration, revisions and dated progress, adds profile identity
+to progress, and leaves old receipt bytes/hashes untouched. The typed API accepts legacy School-only
+saves without erasing Weekends or assignments; old completion retries retain their exact payload
+hash. New checks validate date/profile/revision/version. No module, credential, HA grant, automation,
+background sync or existing live household configuration change is included.
+
+Browser plugin unavailable; repository Playwright ran against production builds with isolated
+fictional fixtures. Flow: edit both profiles/day assignments → save/reload → automatically display
+the assigned profile → check/reopen → change date/profile → fresh independent checks. Draft conflict,
+unknown-outcome retry and module/auth isolation remain. All commands below run from the `hearth/`
+directory of `/private/tmp/hearth-morning-routine` (equivalent to `pnpm -C hearth` from its root).
+
+- `pnpm verify:code` — **PASS**: format/lint/types, **697 unit** (108 shared, 48 core, 103 server,
+  438 web), **279 API/integration**, **30 migration**, **10 deployment fixtures**, Compose validation
+  and production web/server builds with **35 SQL migrations**. Log:
+  `/tmp/hearth-morning-profiles-code-final.log`. The database-upgrade fixtures start at v34 with
+  existing School settings/ticks and an exact completion receipt; v35 retains these and safely
+  replays the old receipt. Reapplying the migration runner is idempotent. Overlapping days, wrong
+  profile/date, changed command reuse and stale revisions/versions are rejected. The migration was
+  registered after the first migration test correctly caught the omitted registry entry.
+- `pnpm verify:ci` — **PASS**: five policies and complete non-overlapping **1,270-case** browser
+  inventory (318/318/317/317); `/tmp/hearth-morning-profiles-ci.log`. Inventory is not hosted execution.
+- `pnpm test:e2e:built tests/e2e/morning-profiles.spec.ts tests/e2e/morning-routine.spec.ts
+tests/e2e/today-settings.spec.ts tests/e2e/screen-admin-isolation.spec.ts --reporter=line
+--output=/tmp/hearth-morning-profiles-final` — **57/57 PASS (1.8 minutes)**. Includes both editors,
+  day assignment, retained hidden drafts, accepted-save/lost-response exact retry, immediate
+  foreground midnight refresh, seven-step timed/untimed TV layouts and verse, Today regression,
+  shared-screen/admin isolation, keyboard/Back focus, serious/critical a11y and relevant console
+  health. Log: `/tmp/hearth-morning-profiles-final.log`.
+- `pnpm exec playwright test --config /private/tmp/hearth-morning-times-webkit.config.mts
+tests/e2e/morning-profiles.spec.ts tests/e2e/morning-routine.spec.ts --grep 'adult edits both|lost response|untimed weekend|foreground screen|invalid draft|countdown time|adult settings save|unassigned days|morning verse'
+--reporter=line --output=/tmp/hearth-morning-profiles-webkit` — **19/19 PASS (33.4 seconds)**.
+  Log: `/tmp/hearth-morning-profiles-webkit.log`. This is installed desktop WebKit with iPhone
+  mobile/touch emulation, not iOS Simulator or physical Safari proof.
+
+Visual cases cover 1280×640, 1366×768 and 1920×1080 TVs, 390×844 phones and 820×1180 tablets in
+light/dark, plus a 320px overflow check. Compact TV, phone editor and dark tablet screenshots were
+inspected outside source under the corresponding Playwright output directories. No private lists,
+names or identifiers were captured. Review caught a shared-admin CSS rule overriding the selected
+profile colour; the editor selector was scoped and both engines rechecked for a distinct selected
+button in light/dark. `pnpm build` and `pnpm --filter @hearth/web build` passed after that CSS
+refinement; logs `/tmp/hearth-morning-profiles-polish-build.log` and
+`/tmp/hearth-morning-profiles-polish-build-final.log`. Final format/lint checks also pass.
+
+The focused `adult edits both` case then passed again in Chromium (**1/1, 8.9 seconds**) and WebKit
+(**1/1, 8.2 seconds**) with the same command/config above, outputs
+`/tmp/hearth-morning-profiles-editor-final` and `/tmp/hearth-morning-profiles-editor-webkit-final`.
+Those final phone editor screenshots and both-theme a11y results include the visible selected style.
+Early theme-flip audits sampled intermediate inherited colours in WebKit; the final test uses
+reduced motion and fresh pages in each theme, rather than treating an in-transition sample as a
+settled contrast result. No speculative production theme workaround remains. A separate read-only
+review of the D-123 migration, compatibility, progress isolation and retry seams reported no findings.
+
+**Not run:** publication, hosted full browser execution, private v34→v35 migration/preservation,
+actual phone/iPad/TV viewing, and real weekday/weekend alarm execution. The existing HA alarm is
+unchanged and still selects Morning Routine only on weekdays; no weekend branch was added.
+Existing data preservation is proved with migration fixtures, not a performed live upgrade.
+Any future activation needs the normal checked pre-migration backup and logical School-data
+comparison; v34 rollback must restore its matching database snapshot. Networking, pairings and
+private runtime configuration were not changed. The preceding Home Screen and photo changes are
+also still local release candidates, not implied live by these results.
+
 ## D-122 photo management and uploads — 2026-10-29
 
 The owner requested a more manageable photo-admin layout and larger/faster uploads. Ordinary

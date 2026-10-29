@@ -1,17 +1,20 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
-import { localDateInTimezone, morningIsWeekday } from '@hearth/core';
+import { localDateInTimezone, morningIsWeekday, morningProfileForDate } from '@hearth/core';
 import {
   AuditSummarySchema,
   MorningConfigurationSchema,
+  MorningProfilesSchema,
+  defaultMorningProfiles,
+  type MorningProfiles,
+  type MorningProfileId,
+  type MorningSettingsCommand,
   MorningSettingsSchema,
   MorningSettingsResultSchema,
   MorningOverviewSchema,
   MorningCompletionResultSchema,
   type HouseholdSummary,
-  type MorningConfiguration,
   type MorningSettings,
-  type UpdateMorningSettings,
   type MorningSettingsResult,
   type SetMorningCompletion,
   type MorningCompletionResult,
@@ -19,7 +22,7 @@ import {
 } from '@hearth/shared';
 import { RepositoryError, type CommandActor } from './repository.js';
 
-type Saved = { revision: number; configuration: MorningConfiguration };
+type Saved = { revision: number; profiles: MorningProfiles };
 type Progress = { isCompleted: boolean; version: number };
 type Result = MorningSettingsResult | MorningCompletionResult;
 
@@ -38,27 +41,43 @@ export class MorningRoutineService {
         'SELECT revision,configuration_json FROM morning_routine_settings WHERE household_id=?',
       )
       .get(home.id) as { revision: number; configuration_json: string } | undefined;
-    const stored = row
+    const decoded = row ? JSON.parse(row.configuration_json) : null;
+    const profilesResult = MorningProfilesSchema.safeParse(decoded);
+    const stored: Saved | undefined = row
       ? {
           revision: row.revision,
-          configuration: MorningConfigurationSchema.parse(JSON.parse(row.configuration_json)),
+          profiles: profilesResult.success
+            ? profilesResult.data
+            : defaultMorningProfiles(MorningConfigurationSchema.parse(decoded)),
         }
       : this.settings.get(home.id);
     const children = home.members.filter((member) => member.role === 'child').slice(0, 20);
     const validPeople = new Set(home.members.map((person) => person.id));
-    const configuration = stored?.configuration ?? {
-      startTime: '07:00',
-      endTime: '08:00',
-      selectedMemberIds: children.map((person) => person.id),
-      routines: children.map((person) => ({ memberId: person.id, steps: [] })),
-    };
+    const profiles =
+      stored?.profiles ??
+      defaultMorningProfiles({
+        startTime: '07:00',
+        endTime: '08:00',
+        selectedMemberIds: children.map((person) => person.id),
+        routines: children.map((person) => ({ memberId: person.id, steps: [] })),
+      });
+    const clean = (profile: MorningProfiles['schoolDays']) => ({
+      ...profile,
+      configuration: {
+        ...profile.configuration,
+        selectedMemberIds: profile.configuration.selectedMemberIds.filter((id) =>
+          validPeople.has(id),
+        ),
+        routines: profile.configuration.routines.filter((routine) =>
+          validPeople.has(routine.memberId),
+        ),
+      },
+    });
+    const current = { schoolDays: clean(profiles.schoolDays), weekends: clean(profiles.weekends) };
     return MorningSettingsSchema.parse({
       revision: stored?.revision ?? 0,
-      configuration: {
-        ...configuration,
-        selectedMemberIds: configuration.selectedMemberIds.filter((id) => validPeople.has(id)),
-        routines: configuration.routines.filter((routine) => validPeople.has(routine.memberId)),
-      },
+      configuration: current.schoolDays.configuration,
+      profiles: current,
       people: home.members,
     });
   }
@@ -67,22 +86,27 @@ export class MorningRoutineService {
     const settings = this.getSettings(home);
     const generatedAt = this.now().toISOString();
     const localDate = localDateInTimezone(generatedAt, home.timezone);
+    const profileId = morningProfileForDate(localDate, settings.profiles);
+    const profile = profileId === null ? null : settings.profiles[profileId];
+    const configuration = profile?.configuration ?? settings.configuration;
     return MorningOverviewSchema.parse({
       householdId: home.id,
       generatedAt,
       timezone: home.timezone,
       localDate,
       isWeekday: morningIsWeekday(localDate),
+      profileId,
+      countdownEnabled: profile?.countdownEnabled ?? false,
       settingsRevision: settings.revision,
-      startTime: settings.configuration.startTime,
-      endTime: settings.configuration.endTime,
-      people: settings.configuration.selectedMemberIds.map((id) => ({
+      startTime: configuration.startTime,
+      endTime: configuration.endTime,
+      people: (profile ? configuration.selectedMemberIds : []).map((id) => ({
         person: settings.people.find((person) => person.id === id)!,
-        steps: settings.configuration.routines
+        steps: configuration.routines
           .find((routine) => routine.memberId === id)!
           .steps.map((step) => ({
             ...step,
-            ...this.readProgress(home.id, localDate, id, step.id),
+            ...this.readProgress(home.id, localDate, profileId!, id, step.id),
           })),
       })),
     });
@@ -90,7 +114,7 @@ export class MorningRoutineService {
 
   update(
     home: HouseholdSummary,
-    input: UpdateMorningSettings,
+    input: MorningSettingsCommand,
     actor: CommandActor,
   ): MorningSettingsResult {
     const member = home.members.find((person) => person.id === actor.id);
@@ -107,19 +131,31 @@ export class MorningRoutineService {
           'CONFLICT',
           'Morning Routine changed on another device. Load the latest settings before saving.',
         );
+      const profiles =
+        'profiles' in input
+          ? input.profiles
+          : {
+              ...current.profiles,
+              schoolDays: { ...current.profiles.schoolDays, configuration: input.configuration },
+            };
       if (
-        input.configuration.routines.some(
-          (routine) => !home.members.some((person) => person.id === routine.memberId),
+        Object.values(profiles).some((profile) =>
+          profile.configuration.routines.some(
+            (routine) => !home.members.some((person) => person.id === routine.memberId),
+          ),
         )
       )
         throw new RepositoryError('VALIDATION_ERROR', 'Choose people from this home.');
-      const saved = { revision: current.revision + 1, configuration: input.configuration };
+      const saved = {
+        revision: current.revision + 1,
+        profiles: MorningProfilesSchema.parse(profiles),
+      };
       if (this.database)
         this.database
           .prepare(
             'INSERT INTO morning_routine_settings VALUES (?,?,?) ON CONFLICT(household_id) DO UPDATE SET revision=excluded.revision,configuration_json=excluded.configuration_json',
           )
-          .run(home.id, saved.revision, JSON.stringify(saved.configuration));
+          .run(home.id, saved.revision, JSON.stringify(saved.profiles));
       else this.settings.set(home.id, structuredClone(saved));
       return MorningSettingsResultSchema.parse({
         settings: this.getSettings(home),
@@ -144,25 +180,32 @@ export class MorningRoutineService {
       throw new RepositoryError('FORBIDDEN', 'Use a connected Hearth screen or phone.');
     return this.command(home.id, input, actor, 'morning-routine.completion', () => {
       const today = localDateInTimezone(this.now().toISOString(), home.timezone);
-      if (input.localDate !== today || !morningIsWeekday(today))
+      if (input.localDate !== today)
         throw new RepositoryError(
           'CONFLICT',
           'That morning has changed. Refresh to see today’s routine.',
         );
       const settings = this.getSettings(home);
+      const profileId = input.profileId ?? 'schoolDays';
+      if (morningProfileForDate(today, settings.profiles) !== profileId)
+        throw new RepositoryError(
+          'CONFLICT',
+          'That morning has changed. Refresh to see today’s routine.',
+        );
+      const configuration = settings.profiles[profileId].configuration;
       if (settings.revision !== input.settingsRevision)
         throw new RepositoryError(
           'CONFLICT',
           'The routine was edited. Refresh before ticking a step.',
         );
       if (
-        !settings.configuration.selectedMemberIds.includes(input.memberId) ||
-        !settings.configuration.routines
+        !configuration.selectedMemberIds.includes(input.memberId) ||
+        !configuration.routines
           .find((routine) => routine.memberId === input.memberId)
           ?.steps.some((step) => step.id === input.stepId)
       )
         throw new RepositoryError('NOT_FOUND', 'That step is no longer in this morning’s routine.');
-      const current = this.readProgress(home.id, today, input.memberId, input.stepId);
+      const current = this.readProgress(home.id, today, profileId, input.memberId, input.stepId);
       if (current.version !== input.expectedVersion)
         throw new RepositoryError(
           'CONFLICT',
@@ -172,20 +215,26 @@ export class MorningRoutineService {
       if (this.database)
         this.database
           .prepare(
-            'INSERT INTO morning_routine_progress VALUES (?,?,?,?,?,?,?) ON CONFLICT(household_id,local_date,member_id,step_id) DO UPDATE SET completed=excluded.completed,version=excluded.version,updated_at=excluded.updated_at',
+            'INSERT INTO morning_routine_progress VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(household_id,local_date,profile_id,member_id,step_id) DO UPDATE SET completed=excluded.completed,version=excluded.version,updated_at=excluded.updated_at',
           )
           .run(
             home.id,
             today,
+            profileId,
             input.memberId,
             input.stepId,
             Number(next.isCompleted),
             next.version,
             this.now().toISOString(),
           );
-      else this.progress.set(JSON.stringify([home.id, today, input.memberId, input.stepId]), next);
+      else
+        this.progress.set(
+          JSON.stringify([home.id, today, profileId, input.memberId, input.stepId]),
+          next,
+        );
       return MorningCompletionResultSchema.parse({
         ...next,
+        profileId,
         localDate: today,
         memberId: input.memberId,
         stepId: input.stepId,
@@ -199,19 +248,26 @@ export class MorningRoutineService {
     }) as MorningCompletionResult;
   }
 
-  private readProgress(home: string, date: string, member: string, step: string): Progress {
+  private readProgress(
+    home: string,
+    date: string,
+    profile: MorningProfileId,
+    member: string,
+    step: string,
+  ): Progress {
     if (this.database) {
       const row = this.database
         .prepare(
-          'SELECT completed,version FROM morning_routine_progress WHERE household_id=? AND local_date=? AND member_id=? AND step_id=?',
+          'SELECT completed,version FROM morning_routine_progress WHERE household_id=? AND local_date=? AND profile_id=? AND member_id=? AND step_id=?',
         )
-        .get(home, date, member, step) as { completed: number; version: number } | undefined;
+        .get(home, date, profile, member, step) as
+        { completed: number; version: number } | undefined;
       return row
         ? { isCompleted: row.completed === 1, version: row.version }
         : { isCompleted: false, version: 0 };
     }
     return (
-      this.progress.get(JSON.stringify([home, date, member, step])) ?? {
+      this.progress.get(JSON.stringify([home, date, profile, member, step])) ?? {
         isCompleted: false,
         version: 0,
       }

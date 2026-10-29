@@ -5,7 +5,7 @@ import { MorningRoutineService } from './morning-routine-service.js';
 import {
   MorningOverviewSchema,
   MorningSettingsSchema,
-  UpdateMorningSettingsSchema,
+  MorningSettingsCommandSchema,
   SetMorningCompletionSchema,
 } from '@hearth/shared';
 import { NbaGameService } from './nba-game-service.js';
@@ -2408,7 +2408,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.put('/api/v1/households/:householdId/morning-routine/settings', async (request, reply) => {
     reply.header('Cache-Control', 'private, no-store');
     const params = parse(HouseholdParamsSchema, request.params, reply);
-    const body = parse(UpdateMorningSettingsSchema, request.body, reply);
+    const body = parse(MorningSettingsCommandSchema, request.body, reply);
     if (!params || !body) return reply;
     return run(reply, async () => {
       const overview = await adminRepository.getOverview(

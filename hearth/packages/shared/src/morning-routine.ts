@@ -53,11 +53,81 @@ export const MorningConfigurationSchema = z
         message: 'Every selected person needs a routine, even if empty.',
       });
   });
-export const MorningSettingsSchema = z.object({
-  revision: z.number().int().nonnegative(),
-  configuration: MorningConfigurationSchema,
-  people: z.array(MorningPersonSchema),
-});
+export const MORNING_DAY_IDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export const MorningDaySchema = z.enum(MORNING_DAY_IDS);
+export const MorningProfileIdSchema = z.enum(['schoolDays', 'weekends']);
+export const MORNING_PROFILE_LABELS = { schoolDays: 'School days', weekends: 'Weekends' } as const;
+export const MorningProfileSchema = z
+  .object({
+    days: z
+      .array(MorningDaySchema)
+      .max(7)
+      .refine((days) => new Set(days).size === days.length, 'Choose each day once.'),
+    countdownEnabled: z.boolean(),
+    configuration: MorningConfigurationSchema,
+  })
+  .strict();
+export const MorningProfilesSchema = z
+  .object({
+    schoolDays: MorningProfileSchema,
+    weekends: MorningProfileSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.schoolDays.days.some((day) => value.weekends.days.includes(day)))
+      context.addIssue({ code: 'custom', message: 'Each day can use only one morning routine.' });
+  });
+export type MorningDay = z.infer<typeof MorningDaySchema>;
+export type MorningProfileId = z.infer<typeof MorningProfileIdSchema>;
+export type MorningProfiles = z.infer<typeof MorningProfilesSchema>;
+
+function copyMorningConfiguration(configuration: MorningConfiguration): MorningConfiguration {
+  return {
+    ...configuration,
+    selectedMemberIds: [...configuration.selectedMemberIds],
+    routines: configuration.routines.map((routine) => ({
+      ...routine,
+      steps: routine.steps.map((step) => ({ ...step })),
+    })),
+  };
+}
+
+/** Upgrade only the old school schedule; never seed personal weekend steps. */
+export function defaultMorningProfiles(configuration: MorningConfiguration): MorningProfiles {
+  return {
+    schoolDays: {
+      days: ['mon', 'tue', 'wed', 'thu', 'fri'],
+      countdownEnabled: true,
+      configuration: copyMorningConfiguration(configuration),
+    },
+    weekends: {
+      days: ['sat', 'sun'],
+      countdownEnabled: false,
+      configuration: {
+        ...copyMorningConfiguration(configuration),
+        routines: configuration.routines.map((routine) => ({
+          memberId: routine.memberId,
+          steps: [],
+        })),
+      },
+    },
+  };
+}
+export const MorningSettingsSchema = z.preprocess(
+  (input) => {
+    if (typeof input !== 'object' || input === null || 'profiles' in input) return input;
+    const value = input as Record<string, unknown>;
+    const legacy = MorningConfigurationSchema.safeParse(value.configuration);
+    return legacy.success ? { ...value, profiles: defaultMorningProfiles(legacy.data) } : input;
+  },
+  z.object({
+    revision: z.number().int().nonnegative(),
+    // Kept as a school-only projection for installed v1 clients.
+    configuration: MorningConfigurationSchema,
+    profiles: MorningProfilesSchema,
+    people: z.array(MorningPersonSchema),
+  }),
+);
 export const UpdateMorningSettingsSchema = z
   .object({
     requestId: OpaqueIdSchema,
@@ -65,6 +135,19 @@ export const UpdateMorningSettingsSchema = z
     configuration: MorningConfigurationSchema,
   })
   .strict();
+export const UpdateMorningProfilesSchema = z
+  .object({
+    requestId: OpaqueIdSchema,
+    expectedRevision: z.number().int().nonnegative(),
+    profiles: MorningProfilesSchema,
+  })
+  .strict();
+export const MorningSettingsCommandSchema = z.union([
+  UpdateMorningProfilesSchema,
+  UpdateMorningSettingsSchema,
+]);
+export type UpdateMorningProfiles = z.infer<typeof UpdateMorningProfilesSchema>;
+export type MorningSettingsCommand = z.infer<typeof MorningSettingsCommandSchema>;
 export const MorningSettingsResultSchema = z.object({
   settings: MorningSettingsSchema,
   audit: AuditSummarySchema,
@@ -74,19 +157,30 @@ export const MorningProgressSchema = MorningStepSchema.extend({
   isCompleted: z.boolean(),
   version: z.number().int().nonnegative(),
 });
-export const MorningOverviewSchema = z.object({
-  householdId: OpaqueIdSchema,
-  generatedAt: TimestampSchema,
-  timezone: TimezoneSchema,
-  localDate: LocalDateSchema,
-  isWeekday: z.boolean(),
-  settingsRevision: z.number().int().nonnegative(),
-  startTime: LocalTimeSchema,
-  endTime: LocalTimeSchema,
-  people: z
-    .array(z.object({ person: MorningPersonSchema, steps: z.array(MorningProgressSchema).max(12) }))
-    .max(20),
-});
+export const MorningOverviewSchema = z.preprocess(
+  (input) => {
+    if (typeof input !== 'object' || input === null || 'profileId' in input) return input;
+    const value = input as Record<string, unknown>;
+    return { ...value, profileId: value.isWeekday ? 'schoolDays' : null };
+  },
+  z.object({
+    householdId: OpaqueIdSchema,
+    generatedAt: TimestampSchema,
+    timezone: TimezoneSchema,
+    localDate: LocalDateSchema,
+    isWeekday: z.boolean(),
+    profileId: MorningProfileIdSchema.nullable(),
+    countdownEnabled: z.boolean().default(true),
+    settingsRevision: z.number().int().nonnegative(),
+    startTime: LocalTimeSchema,
+    endTime: LocalTimeSchema,
+    people: z
+      .array(
+        z.object({ person: MorningPersonSchema, steps: z.array(MorningProgressSchema).max(12) }),
+      )
+      .max(20),
+  }),
+);
 export const SetMorningCompletionSchema = z
   .object({
     requestId: OpaqueIdSchema,
@@ -96,9 +190,11 @@ export const SetMorningCompletionSchema = z
     settingsRevision: z.number().int().nonnegative(),
     expectedVersion: z.number().int().nonnegative(),
     isCompleted: z.boolean(),
+    profileId: MorningProfileIdSchema.optional(),
   })
   .strict();
 export const MorningCompletionResultSchema = z.object({
+  profileId: MorningProfileIdSchema.optional(),
   localDate: LocalDateSchema,
   memberId: OpaqueIdSchema,
   stepId: OpaqueIdSchema,

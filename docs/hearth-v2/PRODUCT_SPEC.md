@@ -18,6 +18,10 @@ include shooting, personal fouls and the remaining standard box-score statistics
 D-120 adds optional **Morning Routine**, with its own people selection (all current children before
 first save), editable ordered checklists and weekday 07:00–08:00 countdown. Any step can be ticked
 in any order; progress persists for that household-local date and starts fresh the next morning.
+D-123 adds School days and Weekends profiles with separate participants/steps, editable day
+assignments and optional countdowns. The current school lists/times/ticks are preserved; Weekends
+starts with empty steps and the timer off. The assigned profile appears automatically using the
+household-local date; No routine is a valid day assignment. Each date/profile has separate checks.
 The time bar drains downward with remaining time labelled. It encourages readiness without locking
 steps after the deadline. This independent checklist has no earnings/chore side effects. HA may
 select its family destination after the existing weekday alarm launch, under explicit approval;

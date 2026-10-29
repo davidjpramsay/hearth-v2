@@ -1,96 +1,94 @@
-# Morning Routine v1 — D-120
+# Morning Routine v2 — D-120 / D-123
 
-Morning Routine is a separate, optional household module (`morningRoutine`). It has its own
-participant selection and ordered per-person checklists; it never changes chores, pocket money,
-calendar or medical records. This is a family checklist, not proof that an action happened.
-Defaults are weekdays and 07:00–08:00 in the household timezone. Order is suggested: any step
-may be checked or unchecked. Before first save, select all current children with empty lists.
-After saving, selection is explicit; new people are not silently included. No personal routine
-or photograph is shipped in migrations, demos, tests or source control.
+Morning Routine is one optional household module (`morningRoutine`) with two fixed profiles:
+**School days** (`schoolDays`) and **Weekends** (`weekends`). Each has its own participant selection,
+ordered per-person lists, assigned weekdays and countdown setting. This family checklist never
+changes chores, earnings, calendar or medical records, and is not proof an action occurred.
 
-## Settings and daily progress
+## Schedule and settings
 
-Adult-only `/admin/morning-routine` edits start/end time, participants and each person's steps,
-including accessible Move up/Move down controls. Maximum 20 people, 12 steps each and 80 characters
-per title. An empty selection is valid. Deselection retains that person's saved list. The module
-starts off; off hides routes, blocks all feature API/HA navigation and retains configuration and
-progress. Core module management remains available.
+School days defaults to Monday–Friday with the existing 07:00–08:00 countdown. Weekends defaults to
+Saturday–Sunday, the same explicitly selected participants, empty lists and countdown off. Existing
+school times, selections, step titles/IDs and saved checks are preserved. Before the first save,
+all current children are selected; saved selections stay explicit and new people are not silently
+included. No household's real routines or photos are seeded into source, migrations or demos.
 
-`/morning-routine` presents the countdown and up to three person cards per TV page. Standard
-lists of up to seven ordinary steps fit together at every supported TV size, including 1280×640. Use the space for
-steps rather than an eyebrow, duplicated next-step heading or permanent instruction/status row.
-Routine save feedback remains announced; errors/refresh actions stay visible. Unusually long
-labels/lists retain bounded step pages; phones stack cards naturally. Show positive progress
-without ranking children or showing a combined household step count. Keep done steps in place,
-with visible checks and undo. Use
-readable targets, bounded TV height, D-pad/Back, reduced motion and both themes. No loud sounds,
-auto-advancing focus, blocking expiry, punitive late state or automatic TV takeover.
+An adult edits `/admin/morning-routine`. A seven-day selector assigns each day to School days,
+Weekends or No routine; a day cannot belong to both profiles. Profile buttons switch editors
+without losing either draft. Each editor has its own people, suggested step order and optional
+countdown. Turning the timer off retains its saved times. Dates use the home's timezone; school
+terms, holidays and one-off overrides are not inferred. Empty day assignments/selections are valid
+and retain saved lists. Limits remain 20 people and 12 steps per person per profile, with 80-character
+titles. Move up/down and ordinary checkbox toggling remain keyboard/touch accessible.
 
-When the Daily Bible verse module is enabled, show its compact, content-height card in the bottom
-row beside Today. It uses the same household-local daily verse as Today, independently of Today's
-section visibility setting. Short TVs show a readable one-line excerpt; Select opens the existing
-full-text/attribution dialog and Back restores focus. Seven standard steps remain visible. Phones
-place the card after the lists in normal flow. A missing, failed or stale verse never blocks routine
-reads/checks; show an honest unavailable/retry or saved state. Module off removes the card/dialog
-and stops reads. No new key, background worker or HA authority is introduced.
+Save uses one revision for both profiles with compare-and-swap protection. A stale editor never
+silently replaces another phone's settings. Failed/ambiguous saves retain the draft and exact
+request; leaving warns and release reloads wait. Deselection/reordering/text edits retain stable
+step identity. Replacing/removing a step uses a new ID.
 
-For six/seven-step lists on compact TVs, reclaim panel padding, row gaps and duplicate sun/progress
-decoration; put the individual count alongside the name and the title inside the countdown rail.
-Keep the existing outer screen insets. Retain the existing 20px step text, 56px
-targets and 30px checks. Do not shrink content to make it fit. Labels over 40 characters keep the
-existing long-label paging fallback; more than seven steps page in bounded groups (four on short
-TVs, five otherwise). Phones retain natural scrolling and all saved steps. No configuration limit
-or persistence change is needed.
+## Daily family view
 
-The countdown follows current household-local time, never elapsed time since opening the screen.
-Before start show the start time; during the window count down to the end; afterward show Time to
-go without disabling unfinished steps. Weekends show a quiet weekday-only state. Completion is
-stored by household, local date, person and stable step ID; a new local date has fresh checks
-without deleting history. Reopening/restarting never resets today's progress. Reordering/text
-edits keep step identity; removal/replacement uses a new ID. A server time response anchors the
-client clock, with foreground/poll refresh and stale-day write rejection.
+`/morning-routine` chooses the profile assigned to the current household-local date automatically.
+It shows that profile's label, participants and steps. Untimed routines remain fully checkable and
+show a calm greeting without a deadline, time-remaining bar or Ready by label. Timed profiles use
+the existing downward bar: before start show the start time, during the window count down, and
+afterward show Time to go without locking unfinished steps. No assigned profile shows No routine
+scheduled today. No automatic TV takeover, sound, ranking or punitive late state.
 
-## Typed API and storage
+Progress is keyed by household, local date, profile, person and step ID. A new date starts fresh
+without deleting history; reopening/restarting preserves today's ticks. Switching day assignments
+midday cannot carry a School check into Weekends, even if IDs match. Switching back restores the
+original profile's checks. A new command must match today's active profile, current settings revision
+and step version. Unknown outcomes retry the original payload; an exact replay returns the earlier
+result without mutating today's new profile/date. Old v1 completions without `profileId` refer only
+to School days. Auth/module gates still precede receipt lookup; stale/new-profile commands conflict.
 
-Schemas: `packages/shared/src/morning-routine.ts`; pure clock policy in `packages/core`.
+The existing TV composition remains: up to three people per page, seven ordinary steps visible
+on supported TVs down to 1280×640, explicit paging for longer labels/lists and natural phone flow.
+Retain 20px TV step text, 56px targets and 30px checks; do not shrink to fit. Both timed and untimed
+profiles support dark mode, reduced motion, D-pad/Back and focus restoration. Save feedback remains
+announced, with errors/retry visible. The clock anchors to server time and refetches at foreground/
+interval/date change. Saved/offline reads remain visible but stale-day or unconfirmed data disables
+new checks. This is not an offline write queue.
 
-- `GET /api/v1/households/:householdId/daily-verse`: existing `DailyVerseSummarySchema` or JSON
-  null, using today's household-local date. Authenticated household readers only; enforce
-  `dailyVerse` module availability and `private, no-store` before provider work. Reuse Today's
-  nonblocking cache, provider limits, realtime `today.changed` and existing private ESV key.
-  This endpoint does not load other Today content or change its visibility preferences.
+When Daily Bible verse is enabled, retain its compact content-height bottom card, independent of
+Today's visibility setting. Reuse the existing narrow household/module-gated `GET .../daily-verse`,
+shared nonblocking cache/provider/key, attribution/full-text dialog and Back focus. Missing/failed/
+stale verse states never block checks. No new provider, persistence or HA authority.
 
-- `GET /api/v1/households/:householdId/morning-routine`: current dated view for authorised household
-  readers, including paired displays. Safe person presentation, selected steps, completion versions,
-  settings revision, timezone and generatedAt. No credentials or unrelated admin data.
-- Adult `GET .../morning-routine/settings`: configuration plus current people.
-- Adult `PUT .../morning-routine/settings`: requestId, expectedRevision and complete configuration.
-  Compare-and-swap rejects stale editors; never silently overwrite another phone's edits.
-- `PUT .../morning-routine/completion`: requestId, localDate, memberId, stepId, settingsRevision,
-  expectedVersion, isCompleted. Only a selected current person/step on today's weekday may change.
-  Paired screens and authorised household members may check/undo; HA credentials cannot.
+## Typed API and persistence
 
-Migration 0034 adds module availability and dedicated settings, progress and actor-scoped receipt
-tables. Command/data/audit/receipt commit atomically. Exact same actor/request/payload retries
-return their original result without reapplying; changed reuse conflicts. Version checks prevent
-stale undos or saves. Authentication and module gates precede receipt lookup. Audit summaries omit
-step titles; `morning-routine.changed` invalidates relevant caches. Read failures retain visible
-saved progress but disable writes until current data returns. Unknown mutation outcomes retry the
-same frozen request. Drafts survive errors and warn before leaving; no offline write queue.
+Schemas are in `packages/shared/src/morning-routine.ts`; date/profile/clock policy is in core.
+The existing authenticated/module-gated endpoints remain:
+
+- `GET .../morning-routine`: dated safe overview, `profileId` (nullable), `countdownEnabled`,
+  selected people/steps and versions, settings revision, timezone and generated time. `isWeekday`
+  remains a calendar fact for compatibility, not authority to enable checks.
+- Adult `GET .../morning-routine/settings`: revision, canonical `profiles` and current people.
+  The old flat `configuration` remains a derived School-days projection for installed v1 readers.
+- Adult `PUT .../morning-routine/settings`: new writes contain requestId, expectedRevision and
+  both `profiles`. The v1 body containing `configuration` remains accepted and updates only the
+  School-days lists/times, preserving day assignments, timer flag and the entire Weekend profile.
+- `PUT .../morning-routine/completion`: existing protected fields plus `profileId` for new clients.
+  Connected screens/authorised members may check/undo; HA credentials cannot. The optional v1
+  omission is not default-injected into the parsed payload, preserving old request hashes.
+
+Migration **0035** rewrites saved configuration into two profiles, retaining the revision; copies
+all existing progress into `schoolDays`; and adds profile identity to the progress primary key.
+Existing actor-scoped receipt bytes/hashes are untouched. Migration 0034's tables, audit actions,
+atomic setting/check/audit/receipt writes and module flag remain. No new module or credential.
+Exact actor/request/payload replay is safe; changed reuse conflicts. `morning-routine.changed`
+invalidates the same queries. A checked pre-migration backup is required before live release;
+rollback to v34 must restore that matching database snapshot, not read the v35 profile JSON.
 
 ## Home Assistant boundary
 
-Add allowlisted tab `morning_routine` → `/morning-routine`. This only navigates an already visible,
-approved screen through the existing acknowledged command protocol. Require explicit approval
-containing `morningRoutine` in `moduleIds`; legacy grants are never expanded. Matching HA code
-adds the tab label and module switch; no routine contents or completion endpoint is exposed to HA.
+The existing allowlisted `morning_routine` tab opens `/morning-routine`, which chooses the profile.
+Existing approved `morningRoutine` module scope is sufficient; do not expand grants or add routine
+content/check commands to HA. The live alarm remains Monday–Friday only; this change does not edit
+HA's weekend/music/power branches, wake a screen or execute an alarm as a test. Enabling a weekend
+alarm branch later requires a separately reviewed exact automation change and approval.
 
-For the existing alarm automation, retain its wake/music/volume/safety actions. After its existing
-Hearth launch and screen-online wait, choose Morning Routine on Monday–Friday only; preserve the
-weekend branch. A time condition belongs inside the choice, not at the top of the alarm (which
-would stop weekend music). Use the exact registered screen selector, bounded wait and no guessed
-device/entity. Never run the wake/music automation as a deployment test.
-
-Source verification, live installation, adult reconnect, household configuration and actual
-weekday alarm execution are separate acceptance evidence. Live changes require the approved
-release and a reviewed exact automation diff. No deployment is implied by local implementation.
+Source/migration tests, hosted release, private installation, physical viewing and actual alarm
+execution remain separate acceptance gates. Local implementation implies no deployment or live
+household configuration changes.

@@ -41,6 +41,8 @@ ordering. Warn on unsaved drafts, retain errors, and reject stale saves/checks w
 On narrow phones, stack Start time and Ready by with full-width native time controls; constrain
 each field to its grid cell so Safari's time-picker sizing cannot overlap its neighbour or panel.
 The midnight reset derives from the home date, not navigation. See MORNING_ROUTINE_CONTRACT.md.
+The scheduled School days/Weekends refinement is defined under D-123 below; the weekday label and
+countdown described here apply to the original D-120 defaults, not every assigned profile.
 
 When Daily Bible verse is enabled, Morning Routine adds a compact bottom card beside Today. Keep
 its height intrinsic and up to seven standard checklist rows visible on short TVs. A readable excerpt
@@ -691,6 +693,18 @@ Imported-original protection, cancellation and partial-failure behavior remain u
   overall rendered glare, including photos and ambient mode, but does not claim to change panel
   hardware brightness.
 - Apply the saved appearance before React renders to avoid a bright startup flash.
+
+## Morning Routine day profiles (D-123)
+
+Settings starts with seven clear day assignments: School days, Weekends or No routine. Switching
+between the two profile editors preserves unsaved changes in both. Each has independent people,
+ordered steps and a Use a countdown switch; off hides time fields but preserves their saved values.
+School days retains existing content and times. Weekends starts empty and untimed. New dates start
+fresh, while close/reopen and switching back to a profile retain its dated checks. The family view
+labels the active profile, permits untimed weekend checks and hides timer/deadline UI when off.
+An unassigned day shows No routine scheduled today. Keep seven-step TV fit, compact bottom verse,
+ordinary step order/undo, phone safe areas, dark/reduced-motion and remote navigation. No calendar
+holiday inference or live HA alarm changes are included. See MORNING_ROUTINE_CONTRACT.
 
 ## Responsive companion
 

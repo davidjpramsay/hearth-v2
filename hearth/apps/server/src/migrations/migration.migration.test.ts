@@ -11,6 +11,71 @@ import { applyMigrations } from '../database.js';
 
 const temporaryDirectories: string[] = [];
 
+describe('0035 Morning Routine profiles', () => {
+  it('preserves school settings, dated checks, revisions and exact legacy receipts', () => {
+    const database = new Database(':memory:');
+    try {
+      for (const file of readdirSync(fileURLToPath(new URL('.', import.meta.url)))
+        .filter((file) => /^\d{4}_.*\.sql$/.test(file) && Number(file.slice(0, 4)) <= 34)
+        .sort())
+        database.exec(readFileSync(new URL(file, import.meta.url), 'utf8'));
+      database.exec(
+        "INSERT INTO households VALUES ('household_kept','Kept','Australia/Perth','en-AU',1,'now','now');",
+      );
+      const configuration = {
+        startTime: '06:45',
+        endTime: '07:50',
+        selectedMemberIds: ['member_child'],
+        routines: [
+          { memberId: 'member_child', steps: [{ id: 'step_kept', title: 'A saved step' }] },
+        ],
+      };
+      database
+        .prepare('INSERT INTO morning_routine_settings VALUES (?,?,?)')
+        .run('household_kept', 7, JSON.stringify(configuration));
+      database
+        .prepare('INSERT INTO morning_routine_progress VALUES (?,?,?,?,?,?,?)')
+        .run('household_kept', '2026-10-29', 'member_child', 'step_kept', 1, 3, 'now');
+      database
+        .prepare('INSERT INTO morning_routine_receipts VALUES (?,?,?,?,?)')
+        .run(
+          'household_kept',
+          'device:test',
+          'request_kept',
+          'unchanged_hash',
+          '{"replayed":false}',
+        );
+      const receipts = database.prepare('SELECT * FROM morning_routine_receipts').all();
+      applyMigrations(database);
+      applyMigrations(database);
+      const row = database
+        .prepare('SELECT revision,configuration_json FROM morning_routine_settings')
+        .get() as { revision: number; configuration_json: string };
+      const profiles = JSON.parse(row.configuration_json);
+      expect(row.revision).toBe(7);
+      expect(profiles.schoolDays).toEqual({
+        days: ['mon', 'tue', 'wed', 'thu', 'fri'],
+        countdownEnabled: true,
+        configuration,
+      });
+      expect(profiles.weekends).toEqual({
+        days: ['sat', 'sun'],
+        countdownEnabled: false,
+        configuration: { ...configuration, routines: [{ memberId: 'member_child', steps: [] }] },
+      });
+      expect(
+        database
+          .prepare('SELECT profile_id,completed,version,step_id FROM morning_routine_progress')
+          .get(),
+      ).toEqual({ profile_id: 'schoolDays', completed: 1, version: 3, step_id: 'step_kept' });
+      expect(database.prepare('SELECT * FROM morning_routine_receipts').all()).toEqual(receipts);
+      expect(database.pragma('foreign_key_check')).toEqual([]);
+    } finally {
+      database.close();
+    }
+  });
+});
+
 describe('0033 NBA catalogue extension', () => {
   it('preserves prior flags, receipts and access while adding no enabled NBA override', () => {
     const database = new Database(':memory:');
@@ -86,7 +151,7 @@ describe('0031 additive connection codes', () => {
       database.prepare('SELECT count(*) AS n FROM controller_phone_invitation_codes').get(),
     ).toEqual({ n: 0 });
     expect(database.prepare('SELECT max(version) AS n FROM schema_migrations').get()).toEqual({
-      n: 34,
+      n: 35,
     });
     expect(database.pragma('foreign_key_check')).toEqual([]);
     database.close();

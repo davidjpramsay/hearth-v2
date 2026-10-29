@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -56,6 +57,186 @@ describe('Morning Routine persistence and command boundary', () => {
     );
     expect(service.overview(home).isWeekday).toBe(true);
   });
+  it('keeps profile checks separate on the same date and preserves exact school retries', async () => {
+    const home = await new InMemoryAdminRepository().getHousehold(DEMO_HOUSEHOLD_ID);
+    const service = new MorningRoutineService(undefined, () => new Date(DEMO_NOW));
+    service.update(home, settingsInput, actor);
+    const schoolReceipt = service.complete(home, completion, device);
+    const profiles = service.getSettings(home).profiles;
+    profiles.schoolDays.days = profiles.schoolDays.days.filter((day) => day !== 'mon');
+    profiles.weekends.days.push('mon');
+    profiles.weekends.configuration = structuredClone(configuration); // Even identical step IDs remain isolated.
+    service.update(
+      home,
+      { requestId: 'request_profile_switch', expectedRevision: 1, profiles },
+      actor,
+    );
+    expect(service.overview(home)).toMatchObject({
+      profileId: 'weekends',
+      countdownEnabled: false,
+    });
+    expect(service.overview(home).people[0]?.steps[1]?.isCompleted).toBe(false);
+    expect(service.complete(home, completion, device)).toEqual({
+      ...schoolReceipt,
+      replayed: true,
+    });
+    expect(service.overview(home).people[0]?.steps[1]?.isCompleted).toBe(false);
+    expect(() =>
+      service.complete(
+        home,
+        {
+          ...completion,
+          requestId: 'request_wrong_profile',
+          settingsRevision: 2,
+          profileId: 'schoolDays',
+        },
+        device,
+      ),
+    ).toThrow('morning has changed');
+    service.complete(
+      home,
+      {
+        ...completion,
+        requestId: 'request_weekend_check',
+        settingsRevision: 2,
+        profileId: 'weekends',
+      },
+      device,
+    );
+    profiles.weekends.days = profiles.weekends.days.filter((day) => day !== 'mon');
+    profiles.schoolDays.days.push('mon');
+    service.update(
+      home,
+      { requestId: 'request_profile_back', expectedRevision: 2, profiles },
+      actor,
+    );
+    expect(service.overview(home).people[0]?.steps[1]).toMatchObject({
+      isCompleted: true,
+      version: 1,
+    });
+  });
+
+  it('supports untimed Saturday checks, fresh Sunday checks and deliberately unassigned days', async () => {
+    let instant = '2026-08-08T07:30:00+08:00';
+    const home = await new InMemoryAdminRepository().getHousehold(DEMO_HOUSEHOLD_ID);
+    const service = new MorningRoutineService(undefined, () => new Date(instant));
+    const profiles = service.getSettings(home).profiles;
+    profiles.weekends.configuration = structuredClone(configuration);
+    service.update(home, { requestId: 'request_weekends', expectedRevision: 0, profiles }, actor);
+    service.complete(
+      home,
+      { ...completion, localDate: '2026-08-08', profileId: 'weekends' },
+      device,
+    );
+    expect(service.overview(home).people[0]?.steps[1]?.isCompleted).toBe(true);
+    instant = '2026-08-09T00:01:00+08:00';
+    expect(service.overview(home)).toMatchObject({
+      profileId: 'weekends',
+      countdownEnabled: false,
+    });
+    expect(service.overview(home).people[0]?.steps.every((step) => !step.isCompleted)).toBe(true);
+    profiles.weekends.days = [];
+    service.update(home, { requestId: 'request_no_sunday', expectedRevision: 1, profiles }, actor);
+    expect(service.overview(home)).toMatchObject({ profileId: null, people: [] });
+  });
+
+  it('lets a v1 editor update only school configuration without erasing weekend settings', async () => {
+    const home = await new InMemoryAdminRepository().getHousehold(DEMO_HOUSEHOLD_ID);
+    const service = new MorningRoutineService(undefined, () => new Date(DEMO_NOW));
+    const profiles = service.getSettings(home).profiles;
+    profiles.weekends.configuration = {
+      ...structuredClone(configuration),
+      startTime: '09:00',
+      endTime: '10:00',
+    };
+    profiles.weekends.countdownEnabled = true;
+    service.update(
+      home,
+      { requestId: 'request_new_profiles', expectedRevision: 0, profiles },
+      actor,
+    );
+    service.update(
+      home,
+      { ...settingsInput, requestId: 'request_legacy_editor', expectedRevision: 1 },
+      actor,
+    );
+    expect(service.getSettings(home).profiles.weekends).toEqual(profiles.weekends);
+    expect(service.getSettings(home).configuration).toEqual(configuration);
+    expect(service.getSettings(home).profiles.schoolDays.configuration).toEqual(configuration);
+  });
+
+  it('upgrades a v34 database without losing today’s check or invalidating its old retry hash', async () => {
+    const db = new Database(':memory:');
+    try {
+      const folder = new URL('./migrations/', import.meta.url);
+      for (const file of readdirSync(folder)
+        .filter((name) => /^\d{4}_.*\.sql$/.test(name) && Number(name.slice(0, 4)) <= 34)
+        .sort())
+        db.exec(readFileSync(new URL(file, folder), 'utf8'));
+      const home = await new SqliteAdminRepository(db).getHousehold(DEMO_HOUSEHOLD_ID);
+      db.prepare('INSERT INTO morning_routine_settings VALUES (?,?,?)').run(
+        home.id,
+        1,
+        JSON.stringify(configuration),
+      );
+      db.prepare('INSERT INTO morning_routine_progress VALUES (?,?,?,?,?,?,?)').run(
+        home.id,
+        completion.localDate,
+        completion.memberId,
+        completion.stepId,
+        1,
+        1,
+        DEMO_NOW,
+      );
+      const original = {
+        localDate: completion.localDate,
+        memberId: completion.memberId,
+        stepId: completion.stepId,
+        isCompleted: true,
+        version: 1,
+        audit: {
+          id: 'audit_legacy_check',
+          actorType: 'device',
+          actorId: device.id,
+          source: 'tv',
+          action: 'morning-routine.complete',
+          targetId: completion.stepId,
+          occurredAt: DEMO_NOW,
+          result: 'succeeded',
+        },
+        replayed: false,
+      };
+      const hash = createHash('sha256')
+        .update(JSON.stringify({ action: 'morning-routine.completion', input: completion }))
+        .digest('hex');
+      db.prepare('INSERT INTO morning_routine_receipts VALUES (?,?,?,?,?)').run(
+        home.id,
+        `device:${device.id}`,
+        completion.requestId,
+        hash,
+        JSON.stringify(original),
+      );
+      applyMigrations(db);
+      const service = new MorningRoutineService(db, () => new Date(DEMO_NOW));
+      expect(service.overview(home).people[0]?.steps[1]).toMatchObject({
+        isCompleted: true,
+        version: 1,
+      });
+      expect(service.complete(home, completion, device)).toEqual({ ...original, replayed: true });
+      expect(service.getSettings(home).profiles.schoolDays.configuration).toEqual(configuration);
+      expect(
+        service
+          .getSettings(home)
+          .profiles.weekends.configuration.routines.every((routine) => routine.steps.length === 0),
+      ).toBe(true);
+      expect(db.prepare('SELECT count(*) AS n FROM morning_routine_progress').get()).toEqual({
+        n: 1,
+      });
+    } finally {
+      db.close();
+    }
+  });
+
   it('persists checks/settings and exact receipts across restarts, without duplicating audit', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'hearth-morning-db-'));
     const path = join(directory, 'household.sqlite');

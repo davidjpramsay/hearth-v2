@@ -1,5 +1,13 @@
 # Hearth v2 implementation roadmap
 
+## Morning Routine day profiles (D-123)
+
+Verify disjoint/editable schedules, untimed/timed weekends, local-date rollover, dated profile
+isolation, v1 save/retry compatibility and migration preservation. Keep seven-step TV/verse fit,
+phone/iPad editors, draft conflict/unknown-outcome retry and existing auth/module/HA boundaries.
+Source tests, hosted release, checked v34-to-v35 deployment and physical viewing remain separate.
+Do not change the existing HA weekday alarm as part of local implementation.
+
 ## Photo management and uploads (D-122)
 
 Verify compact/paged normal and selection grids, filters/retained selections, safe exact deletion,
@@ -14,13 +22,14 @@ without a new client, auth mode or offline cache. Verify built resources, iPad p
 split-view navigation, phone/TV regressions and access isolation. Publication, private deployment,
 actual Add to Home Screen, status-bar safe areas and retained device identity are separate gates.
 
-## Morning Routine (D-120)
+## Original Morning Routine (D-120)
 
 Implement independent weekday checklists, adult people/step/time editor, downward time bar,
 durable daily checks and the explicitly scoped HA destination. Verify schema/timezone/date rollover,
 retry/conflict/access/module retention, phone/TV layout, D-pad and reduced motion locally. Publication,
 private migration/deployment, adult approval, private list setup and weekday alarm execution are
-distinct remaining gates in ACCEPTANCE; weekend variants remain deferred.
+distinct gates in ACCEPTANCE. D-123 above supersedes the original deferral of weekend variants;
+actual weekend alarm automation remains outside this implementation.
 
 ## Shared compact Today summaries — D-119 (2026-10-20)
 

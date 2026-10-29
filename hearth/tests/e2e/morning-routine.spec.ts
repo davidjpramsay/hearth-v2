@@ -531,9 +531,7 @@ test('adult settings save/reorder and any-order checks survive reopening; exact 
   await page.getByRole('link', { name: 'Morning Routine', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Ezra step 1' })).toHaveValue('Pack school bag');
 });
-test('weekend and failed-refresh states retain steps but prevent stale writes', async ({
-  page,
-}) => {
+test('unassigned days and failed-refresh states prevent stale writes', async ({ page }) => {
   await page.route('**/api/v1/households/*/modules', (route) =>
     route.fulfill({
       json: {
@@ -553,11 +551,11 @@ test('weekend and failed-refresh states retain steps but prevent stale writes', 
     }),
   );
   await page.goto('/morning-routine');
-  await expect(page.getByText('Weekend', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No routine scheduled today' })).toBeVisible();
   await expect(page.locator('[data-focus-id="morning-today"]')).toBeFocused();
-  await expect(
-    page.getByRole('button', { name: 'Ari: Shoes and socks', exact: true }),
-  ).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('button', { name: 'Ari: Shoes and socks', exact: true })).toHaveCount(
+    0,
+  );
   await page.route('**/api/v1/households/*/morning-routine', (route) =>
     route.fulfill({
       status: 503,
@@ -575,7 +573,7 @@ test('weekend and failed-refresh states retain steps but prevent stale writes', 
   await expect(
     page.getByText('Showing saved progress. Refresh before ticking steps.'),
   ).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Ari', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No routine scheduled today' })).toBeVisible();
 });
 
 for (const viewport of [

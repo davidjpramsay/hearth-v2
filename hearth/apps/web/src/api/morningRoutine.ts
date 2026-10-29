@@ -4,6 +4,7 @@ import {
   MorningSettingsResultSchema,
   MorningCompletionResultSchema,
   type UpdateMorningSettings,
+  type UpdateMorningProfiles,
   type SetMorningCompletion,
 } from '@hearth/shared';
 import { demoAdminHeaders, getHearthRuntime, householdApiBase, request } from './core';
@@ -18,7 +19,7 @@ export const morningRoutineApi = {
       headers: headers(),
       ...(signal ? { signal } : {}),
     }),
-  save: (input: UpdateMorningSettings) =>
+  save: (input: UpdateMorningSettings | UpdateMorningProfiles) =>
     request(`${householdApiBase()}/morning-routine/settings`, MorningSettingsResultSchema, {
       method: 'PUT',
       headers: headers(),

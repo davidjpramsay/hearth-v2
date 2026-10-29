@@ -1,6 +1,18 @@
 # Hearth v2 integration contracts
 
-## Morning Routine alarm destination (D-120)
+## Morning Routine profiles (D-123)
+
+The existing approved `morning_routine` destination and `morningRoutine` module grant remain
+sufficient. Opening `/morning-routine` automatically chooses the profile for the home's local date;
+School days and Weekends share one module, not separate HA capabilities. No routine contents,
+settings writes or tick commands are exposed to HA, and no credentials or grants are expanded.
+
+The existing live alarm continues to open Morning Routine on weekdays only. This feature changes
+neither HA automation nor its wake/music/power/weekend branches. A future weekend navigation branch
+needs a separately reviewed exact automation change and approval. Local simulated day selection is
+not evidence of an actual weekend/weekday alarm execution.
+
+## Original Morning Routine alarm destination (D-120)
 
 HA component 1.4.0 adds wire tab `morning_routine`, mapped to `/morning-routine`, and its optional
 `morningRoutine` module flag. Only an approved visible screen and an explicit moduleIds grant may

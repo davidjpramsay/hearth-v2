@@ -30,7 +30,20 @@ fern assets inside the existing web build boundary. No native wrapper, service w
 data store is added. All runtime, API, HttpOnly session and shared-screen authorization paths remain
 the same; browser/app storage separation is an installation concern, not a new authority signal.
 
-## Morning Routine (D-120)
+## Morning Routine day profiles (D-123)
+
+MorningProfiles is canonical for the two schedules. The settings DTO additionally derives the flat
+School-days configuration so v1 readers/school-only writers remain safe. Input parsing preserves
+legacy command shape for exact receipt hashes; new whole-profile saves use the same revision/CAS,
+audit and atomic receipt transaction. The server validates active profile/date/revision/version
+before new checks. Core resolves the household-local day assignment. Progress storage gains profile
+identity in migration 0035; existing rows become School days and receipts/revisions remain untouched.
+The editor owns one draft for both profiles; day selects produce disjoint assignments. The board
+uses server profile identity and explicit timed/untimed clock policy, retaining stale-data protection,
+query invalidation, seven-step capacity and the shared verse. No new background job, credential,
+module flag or HA grant/automation. See the versioned MORNING_ROUTINE_CONTRACT.
+
+## Original Morning Routine slice (D-120)
 
 The shared schema defines separate configuration/daily progress commands. Pure `morningClock`
 projects the household timezone and weekday, independent of screen uptime. `MorningRoutineService`

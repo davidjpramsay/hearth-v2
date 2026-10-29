@@ -2,7 +2,11 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { morningClock } from '@hearth/core';
-import type { MorningOverview, SetMorningCompletion } from '@hearth/shared';
+import {
+  MORNING_PROFILE_LABELS,
+  type MorningOverview,
+  type SetMorningCompletion,
+} from '@hearth/shared';
 import { morningRoutineApi } from '../api/morningRoutine';
 import { createRequestId, getHearthRuntime, HearthApiError } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
@@ -45,7 +49,7 @@ export function MorningRoutineScreen() {
       data={query.data}
       receivedAt={query.dataUpdatedAt}
       stale={query.isError}
-      refresh={() => void query.refetch()}
+      refresh={query.refetch}
     />
   );
 }
@@ -89,12 +93,19 @@ function MorningBoard({
     data.timezone,
     data.startTime,
     data.endTime,
+    { scheduled: data.profileId !== null, countdownEnabled: data.countdownEnabled },
   );
   const oldDay = clock.localDate !== data.localDate;
-  const pages = Math.max(1, Math.ceil(data.people.length / 3));
+  useEffect(() => {
+    if (oldDay && online) void refresh();
+  }, [oldDay, online, refresh]);
+  const scheduledPeople = data.profileId === null ? [] : data.people;
+  const pages = Math.max(1, Math.ceil(scheduledPeople.length / 3));
   const activePage = Math.min(page, pages - 1);
   const people =
-    viewport === 'companion' ? data.people : data.people.slice(activePage * 3, activePage * 3 + 3);
+    viewport === 'companion'
+      ? scheduledPeople
+      : scheduledPeople.slice(activePage * 3, activePage * 3 + 3);
   const sevenStepLayout =
     viewport !== 'companion' &&
     people.some(
@@ -102,18 +113,18 @@ function MorningBoard({
         steps.length > 5 && steps.length <= 7 && steps.every((step) => step.title.length <= 40),
     );
   const embeddedHeader = sevenStepLayout && viewport !== 'full-tv';
-  const total = data.people.reduce((sum, person) => sum + person.steps.length, 0);
-  const done = data.people.reduce(
+  const total = scheduledPeople.reduce((sum, person) => sum + person.steps.length, 0);
+  const done = scheduledPeople.reduce(
     (sum, person) => sum + person.steps.filter((step) => step.isCompleted).length,
     0,
   );
   const ready =
-    total > 0 && done === total && !data.people.some((person) => person.steps.length === 0);
-  const canCheck = data.isWeekday && !oldDay && !stale && online && !busy && !hasPending;
+    total > 0 && done === total && !scheduledPeople.some((person) => person.steps.length === 0);
+  const canCheck = data.profileId !== null && !oldDay && !stale && online && !busy && !hasPending;
   const needsRefresh = stale || oldDay || !online;
   const footerMessage =
-    clock.phase === 'weekend'
-      ? 'Your school-morning steps are saved for Monday.'
+    clock.phase === 'unscheduled'
+      ? 'Your routines are saved for their scheduled days.'
       : ready
         ? 'All ready for a good day ✨'
         : total === 0
@@ -128,6 +139,7 @@ function MorningBoard({
       pending.current = {
         requestId: createRequestId('morning'),
         localDate: data.localDate,
+        profileId: data.profileId!,
         memberId,
         stepId: step.id,
         settingsRevision: data.settingsRevision,
@@ -166,7 +178,13 @@ function MorningBoard({
   const heading = (
     <header className="morning-header">
       <h1>Morning Routine</h1>
-      <span className="morning-day-label">{busy ? 'Saving…' : 'Monday–Friday'}</span>
+      <span className="morning-day-label">
+        {busy
+          ? 'Saving…'
+          : data.profileId
+            ? MORNING_PROFILE_LABELS[data.profileId]
+            : 'No routine today'}
+      </span>
     </header>
   );
   return (
@@ -199,7 +217,14 @@ function MorningBoard({
         ) : null}
       </div>
       <div className="morning-layout">
-        <aside className="morning-timer" aria-label="Morning countdown">
+        <aside
+          className={`morning-timer${!data.countdownEnabled || data.profileId === null ? ' morning-timer--untimed' : ''}`}
+          aria-label={
+            data.countdownEnabled && data.profileId !== null
+              ? 'Morning countdown'
+              : 'Morning routine'
+          }
+        >
           {embeddedHeader ? (
             heading
           ) : (
@@ -208,45 +233,53 @@ function MorningBoard({
             </div>
           )}
           <p className="morning-timer__caption">
-            {clock.phase === 'weekend'
+            {clock.phase === 'unscheduled'
               ? 'A slower morning'
-              : clock.phase === 'before'
-                ? `Starts ${friendlyTime(data.startTime)}`
-                : clock.phase === 'finished'
-                  ? 'Time to go'
-                  : 'Time to get ready'}
+              : clock.phase === 'untimed'
+                ? 'At your own pace'
+                : clock.phase === 'before'
+                  ? `Starts ${friendlyTime(data.startTime)}`
+                  : clock.phase === 'finished'
+                    ? 'Time to go'
+                    : 'Time to get ready'}
           </p>
           <strong className="morning-timer__time">
-            {clock.phase === 'weekend'
-              ? 'Weekend'
-              : `${Math.floor(clock.remainingSeconds / 60)}:${String(clock.remainingSeconds % 60).padStart(2, '0')}`}
+            {clock.phase === 'unscheduled'
+              ? 'Rest day'
+              : clock.phase === 'untimed'
+                ? 'Good morning!'
+                : `${Math.floor(clock.remainingSeconds / 60)}:${String(clock.remainingSeconds % 60).padStart(2, '0')}`}
           </strong>
-          <div
-            className="morning-timer__track"
-            role="progressbar"
-            aria-label="Morning time remaining"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={
-              clock.phase === 'weekend' ? 0 : Math.round((1 - clock.elapsedFraction) * 100)
-            }
-            aria-valuetext={
-              clock.phase === 'weekend'
-                ? 'Weekday routine resumes on Monday'
-                : `${Math.ceil(clock.remainingSeconds / 60)} minutes remaining`
-            }
-          >
-            <div
-              className="morning-timer__fill"
-              style={{
-                transform: `scaleY(${clock.phase === 'weekend' ? 0 : 1 - clock.elapsedFraction})`,
-              }}
-            />
-            <span className="morning-timer__ticks" aria-hidden="true" />
-          </div>
-          <p className="morning-timer__end">
-            Ready by <strong>{friendlyTime(data.endTime)}</strong>
-          </p>
+          {data.profileId !== null && data.countdownEnabled ? (
+            <>
+              <div
+                className="morning-timer__track"
+                role="progressbar"
+                aria-label="Morning time remaining"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={
+                  clock.phase === 'unscheduled' ? 0 : Math.round((1 - clock.elapsedFraction) * 100)
+                }
+                aria-valuetext={
+                  clock.phase === 'unscheduled'
+                    ? 'Weekday routine resumes on Monday'
+                    : `${Math.ceil(clock.remainingSeconds / 60)} minutes remaining`
+                }
+              >
+                <div
+                  className="morning-timer__fill"
+                  style={{
+                    transform: `scaleY(${clock.phase === 'unscheduled' ? 0 : 1 - clock.elapsedFraction})`,
+                  }}
+                />
+                <span className="morning-timer__ticks" aria-hidden="true" />
+              </div>
+              <p className="morning-timer__end">
+                Ready by <strong>{friendlyTime(data.endTime)}</strong>
+              </p>
+            </>
+          ) : null}
         </aside>
         <div
           className="morning-people"
@@ -255,16 +288,17 @@ function MorningBoard({
           {people.length === 0 ? (
             <div className="morning-empty">
               <Icon name="sun" />
-              <h2>A fresh start</h2>
+              <h2>{data.profileId === null ? 'No routine scheduled today' : 'A fresh start'}</h2>
               <p>
-                Choose your people and add their steps in Morning Routine settings on an adult
-                phone.
+                {data.profileId === null
+                  ? 'Choose a routine for this day in Morning Routine settings on an adult phone.'
+                  : 'Choose your people and add their steps in Morning Routine settings on an adult phone.'}
               </p>
             </div>
           ) : (
             people.map(({ person, steps }, index) => (
               <MorningPerson
-                key={`${person.id}:${data.localDate}`}
+                key={`${data.profileId}:${person.id}:${data.localDate}`}
                 person={person}
                 steps={steps}
                 entry={index === 0}

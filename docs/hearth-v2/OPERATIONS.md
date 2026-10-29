@@ -1,6 +1,25 @@
 # Hearth v2 local environment and operations plan
 
-## Morning Routine release (D-120)
+## Morning Routine profiles release (D-123)
+
+Settings now has a day-to-routine selector and separate School days/Weekends editors. Existing
+school lists, times and today's checks migrate unchanged. Weekend lists start empty using the same
+saved participants, with countdown off. Save both profiles together; choose No routine to leave a
+day unscheduled. School holidays are not automatically detected. Closing/reopening retains today's
+checks; a new local date starts fresh. Timer off keeps the stored times for later use.
+
+Deploy only a fully verified release with the normal checked pre-migration backup. Migration 0035
+adds profile-scoped progress and converts saved configuration; it preserves revisions and receipts.
+Compare the pre-migration School configuration to `profiles.schoolDays.configuration`, and old
+dated progress to School rows without the added profile column; raw configuration/progress hashes
+will intentionally differ. Receipts and unrelated data remain unchanged. Keep private values on
+the NAS and report only preservation pass/fail, not lists or payloads.
+Rollback to the old v34 server requires its matching database snapshot. Verify school data/ticks,
+new Weekend settings and independent day/profile checks separately on actual phones/TV. The current
+HA weekday alarm remains unchanged; editing a weekend branch requires separate approval. No module
+reconnect or new grant is required for the existing Morning Routine destination.
+
+## Original Morning Routine release (D-120)
 
 The bottom-verse refinement needs matching server/web images for its new `GET .../daily-verse`
 read. It reuses the commissioned ESV key/cache and needs no migration, key setup, HA component

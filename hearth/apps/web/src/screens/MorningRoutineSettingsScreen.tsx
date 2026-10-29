@@ -1,10 +1,14 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  MorningConfigurationSchema,
+  MorningProfilesSchema,
+  MORNING_DAY_IDS,
+  MORNING_PROFILE_LABELS,
+  type MorningProfiles,
+  type MorningProfileId,
   type MorningConfiguration,
   type MorningSettings,
-  type UpdateMorningSettings,
+  type UpdateMorningProfiles,
 } from '@hearth/shared';
 import { morningRoutineApi } from '../api/morningRoutine';
 import { createRequestId, HearthApiError } from '../api/core';
@@ -49,25 +53,37 @@ function MorningForm({
 }) {
   const client = useQueryClient();
   const [draft, setDraft] = useState<{
-    configuration: MorningConfiguration;
+    profiles: MorningProfiles;
     revision: number;
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const [frozen, setFrozen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
-  const pending = useRef<UpdateMorningSettings | null>(null);
+  const pending = useRef<UpdateMorningProfiles | null>(null);
   const running = useRef(false);
   useUnsavedChanges(draft !== null || frozen);
-  const configuration = draft?.configuration ?? latest.configuration;
-  const conflict = draft !== null && draft.revision !== latest.revision;
-  function change(update: (current: MorningConfiguration) => MorningConfiguration) {
+  const [editingProfile, setEditingProfile] = useState<MorningProfileId>('schoolDays');
+  const profiles = draft?.profiles ?? latest.profiles;
+  const profile = profiles[editingProfile];
+  const configuration = profile.configuration;
+  const conflict = !frozen && draft !== null && draft.revision !== latest.revision;
+  function changeProfiles(update: (current: MorningProfiles) => MorningProfiles) {
     setDraft((current) => ({
       revision: current?.revision ?? latest.revision,
-      configuration: update(current?.configuration ?? latest.configuration),
+      profiles: update(current?.profiles ?? latest.profiles),
     }));
     setNotice('');
     setError(null);
+  }
+  function change(update: (current: MorningConfiguration) => MorningConfiguration) {
+    changeProfiles((current) => ({
+      ...current,
+      [editingProfile]: {
+        ...current[editingProfile],
+        configuration: update(current[editingProfile].configuration),
+      },
+    }));
   }
   function stepsFor(id: string) {
     return configuration.routines.find((routine) => routine.memberId === id)?.steps ?? [];
@@ -101,15 +117,22 @@ function MorningForm({
   async function save(event?: FormEvent) {
     event?.preventDefault();
     if (running.current) return;
-    const parsed = MorningConfigurationSchema.safeParse(configuration);
+    const parsed = MorningProfilesSchema.safeParse(profiles);
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Check the routine settings.');
+      const issue = parsed.error.issues[0];
+      const profileId = issue?.path[0];
+      if (profileId === 'schoolDays' || profileId === 'weekends') {
+        setEditingProfile(profileId);
+        setError(
+          `${MORNING_PROFILE_LABELS[profileId]}: ${issue?.message ?? 'Check these settings.'}`,
+        );
+      } else setError(issue?.message ?? 'Check the routine settings.');
       return;
     }
     pending.current ??= {
       requestId: createRequestId('morning_settings'),
       expectedRevision: draft?.revision ?? latest.revision,
-      configuration: parsed.data,
+      profiles: parsed.data,
     };
     running.current = true;
     setBusy(true);
@@ -151,8 +174,8 @@ function MorningForm({
   return (
     <AdminPage title="Morning Routine" backTo="/more" backLabel="Back to More">
       <p>
-        Weekday checklists, with a fresh start each morning. These checks are separate from chores
-        and pocket money.
+        Different steps for school days and weekends, with a fresh start each day. These checks stay
+        separate from chores and pocket money.
       </p>
       {readError ? (
         <AdminError
@@ -182,34 +205,127 @@ function MorningForm({
       ) : null}
       <form className="morning-settings" onSubmit={(event) => void save(event)}>
         <fieldset disabled={busy || frozen}>
-          <legend>Morning countdown</legend>
-          <div className="morning-settings__times">
-            <label>
-              Start time
-              <input
-                type="time"
-                required
-                value={configuration.startTime}
-                onChange={(event) =>
-                  change((current) => ({ ...current, startTime: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              Ready by
-              <input
-                type="time"
-                required
-                value={configuration.endTime}
-                onChange={(event) =>
-                  change((current) => ({ ...current, endTime: event.target.value }))
-                }
-              />
-            </label>
+          <legend>Which routine runs each day?</legend>
+          <div className="morning-settings__days">
+            {MORNING_DAY_IDS.map((day, index) => {
+              const name = [
+                'Monday',
+                'Tuesday',
+                'Wednesday',
+                'Thursday',
+                'Friday',
+                'Saturday',
+                'Sunday',
+              ][index]!;
+              const assigned = profiles.schoolDays.days.includes(day)
+                ? 'schoolDays'
+                : profiles.weekends.days.includes(day)
+                  ? 'weekends'
+                  : 'none';
+              return (
+                <label key={day}>
+                  {name}
+                  <select
+                    aria-label={`${name} routine`}
+                    value={assigned}
+                    onChange={(event) => {
+                      const selected = event.target.value;
+                      changeProfiles((current) => ({
+                        schoolDays: {
+                          ...current.schoolDays,
+                          days: MORNING_DAY_IDS.filter((id) =>
+                            id === day
+                              ? selected === 'schoolDays'
+                              : current.schoolDays.days.includes(id),
+                          ),
+                        },
+                        weekends: {
+                          ...current.weekends,
+                          days: MORNING_DAY_IDS.filter((id) =>
+                            id === day
+                              ? selected === 'weekends'
+                              : current.weekends.days.includes(id),
+                          ),
+                        },
+                      }));
+                    }}
+                  >
+                    <option value="schoolDays">School days</option>
+                    <option value="weekends">Weekends</option>
+                    <option value="none">No routine</option>
+                  </select>
+                </label>
+              );
+            })}
           </div>
           <p className="field-help">
-            Monday–Friday · Uses your home’s timezone. The bar drains down until Ready by.
+            Uses your home’s day and timezone. School holidays are not detected automatically.
           </p>
+        </fieldset>
+        <div className="morning-settings__profiles" role="group" aria-label="Edit routine">
+          {(['schoolDays', 'weekends'] as const).map((id) => (
+            <button
+              type="button"
+              className="admin-secondary focusable"
+              aria-pressed={editingProfile === id}
+              disabled={busy || frozen}
+              key={id}
+              onClick={() => setEditingProfile(id)}
+            >
+              {MORNING_PROFILE_LABELS[id]}
+            </button>
+          ))}
+        </div>
+        <h2 className="morning-settings__profile-title">
+          {MORNING_PROFILE_LABELS[editingProfile]}
+        </h2>
+        <fieldset disabled={busy || frozen}>
+          <legend>Morning countdown</legend>
+          <label className="morning-settings__countdown-toggle">
+            <input
+              type="checkbox"
+              checked={profile.countdownEnabled}
+              onChange={(event) => {
+                const enabled = event.target.checked;
+                changeProfiles((current) => ({
+                  ...current,
+                  [editingProfile]: { ...current[editingProfile], countdownEnabled: enabled },
+                }));
+              }}
+            />
+            Use a countdown
+          </label>
+          {profile.countdownEnabled ? (
+            <>
+              <div className="morning-settings__times">
+                <label>
+                  Start time
+                  <input
+                    type="time"
+                    required
+                    value={configuration.startTime}
+                    onChange={(event) =>
+                      change((current) => ({ ...current, startTime: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  Ready by
+                  <input
+                    type="time"
+                    required
+                    value={configuration.endTime}
+                    onChange={(event) =>
+                      change((current) => ({ ...current, endTime: event.target.value }))
+                    }
+                  />
+                </label>
+              </div>
+              <p className="field-help">The bar drains down until Ready by.</p>
+            </>
+          ) : (
+            <p className="field-help">No deadline or timer. Tick the steps at your own pace.</p>
+          )}
         </fieldset>
         <fieldset disabled={busy || frozen}>
           <legend>Who’s getting ready?</legend>
@@ -238,7 +354,7 @@ function MorningForm({
               .map((person, personIndex) => (
                 <details
                   className="morning-editor"
-                  key={person.id}
+                  key={`${editingProfile}:${person.id}`}
                   open={personIndex === 0 ? true : undefined}
                 >
                   <summary>
