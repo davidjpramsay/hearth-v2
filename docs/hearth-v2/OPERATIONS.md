@@ -646,9 +646,12 @@ uses their current Hearth avatar and colour.
 Open Today, Week and Month screens request current calendar data immediately,
 then every five minutes while visible. They also refresh as soon as the browser
 reconnects and whenever an adult saves, remaps or removes calendar settings.
-The server attempts the bounded read-only CalDAV sync for each request. If
-iCloud is temporarily unavailable, Hearth serves the last durable projection,
-marks it stale and keeps the saved events on screen. Do not remove and recreate
+Private reads return the durable projection immediately; D-086's serialized, bounded background
+queue coalesces requested windows, caches success for five minutes and backs off failures for one
+minute. D-125 shows routine updating as a small heading ring, without a warning banner. Actual
+provider/authentication/configuration failures and failed cached reads still show an issue message.
+If iCloud is temporarily unavailable, Hearth marks the retained projection stale and keeps saved
+events on screen. No new polling loop or credential is needed. Do not remove and recreate
 the connection merely to force a refresh; first allow the next automatic cycle
 or reconnect, then inspect the Calendar status and server logs if stale state
 persists.

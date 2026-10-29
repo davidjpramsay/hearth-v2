@@ -20,9 +20,9 @@ test.beforeEach(async ({ request, page }) => {
 
 test('Today summarises every open reminder and links to the complete list', async ({ page }) => {
   let openCount = 3;
+  const basePayload = await preloadTodayFixture(page);
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-    const response = await route.fetch();
-    const payload = (await response.json()) as {
+    const payload = structuredClone(basePayload) as {
       reminderSummary: unknown;
       sections: { reminders: boolean };
     };
@@ -41,7 +41,7 @@ test('Today summarises every open reminder and links to the complete list', asyn
               },
             ],
     };
-    await route.fulfill({ response, json: payload });
+    await route.fulfill({ json: payload });
   });
 
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -397,14 +397,7 @@ for (const viewport of [
         page,
       }) => {
         if (photo.orientation !== 'none') await useSinglePhotoAlbum(page, photo);
-        // This matrix checks static geometry, not realtime Today refreshes. Load the
-        // seeded response before navigation so refresh interception cannot outlive
-        // the final assertion while waiting on route.fetch().
-        const response = await page.request.get(
-          '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
-        );
-        expect(response.ok()).toBe(true);
-        const basePayload: unknown = await response.json();
+        const basePayload = await preloadTodayFixture(page);
         await page.route('**/api/v1/households/*/today?date=*', async (route) => {
           const payload = structuredClone(basePayload) as {
             photo: null | {
@@ -579,10 +572,21 @@ test('@visual Today expands enabled summaries when the photo is disabled', async
   });
 });
 
+async function preloadTodayFixture(page: Page): Promise<unknown> {
+  // These fixtures test static content/layout, not provider refreshes. Finish the
+  // seed read before installing a handler so a late refresh needs only fulfill(),
+  // without route.fetch()/response parsing racing navigation or test teardown.
+  const response = await page.request.get(
+    '/api/v1/households/household_hearth_demo/today?date=2026-08-03',
+  );
+  expect(response.ok()).toBe(true);
+  return response.json();
+}
+
 async function addOverflowPlans(page: Page): Promise<void> {
+  const basePayload = await preloadTodayFixture(page);
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-    const response = await route.fetch();
-    const payload = (await response.json()) as {
+    const payload = structuredClone(basePayload) as {
       events: Array<Record<string, unknown>>;
       chores: Array<Record<string, unknown>>;
     };
@@ -611,7 +615,7 @@ async function addOverflowPlans(page: Page): Promise<void> {
       { ...firstChore, id: 'occurrence_lunchboxes', title: 'Empty lunchboxes' },
       { ...firstChore, id: 'occurrence_school_shoes', title: 'Put school shoes away' },
     );
-    await route.fulfill({ response, json: payload });
+    await route.fulfill({ json: payload });
   });
 }
 
@@ -623,9 +627,9 @@ async function usePortraitPhoto(page: Page): Promise<void> {
     url: '/demo/photos/garden-morning.webp',
     alt: 'Ezra and Maya water herbs in the family garden.',
   });
+  const basePayload = await preloadTodayFixture(page);
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-    const response = await route.fetch();
-    const payload = (await response.json()) as {
+    const payload = structuredClone(basePayload) as {
       photo: { alt: string; orientation: string; url: string } | null;
     };
     payload.photo = {
@@ -633,7 +637,7 @@ async function usePortraitPhoto(page: Page): Promise<void> {
       orientation: 'portrait',
       url: '/demo/photos/garden-morning.webp',
     };
-    await route.fulfill({ response, json: payload });
+    await route.fulfill({ json: payload });
   });
 }
 
@@ -645,9 +649,9 @@ async function useSparseReadableSummaries(page: Page): Promise<void> {
     url: '/demo/photos/garden-morning.webp',
     alt: 'Ezra and Maya water herbs in the family garden.',
   });
+  const basePayload = await preloadTodayFixture(page);
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-    const response = await route.fetch();
-    const payload = (await response.json()) as {
+    const payload = structuredClone(basePayload) as {
       dailyVerse: unknown;
       photo: null | {
         alt: string;
@@ -690,27 +694,27 @@ async function useSparseReadableSummaries(page: Page): Promise<void> {
       url: '/demo/photos/garden-morning.webp',
       width: 900,
     };
-    await route.fulfill({ response, json: payload });
+    await route.fulfill({ json: payload });
   });
 }
 
 async function useNoPhoto(page: Page): Promise<void> {
+  const basePayload = await preloadTodayFixture(page);
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-    const response = await route.fetch();
-    const payload = (await response.json()) as {
+    const payload = structuredClone(basePayload) as {
       photo: unknown;
       sections: { photo: boolean };
     };
     payload.photo = null;
     payload.sections.photo = false;
-    await route.fulfill({ response, json: payload });
+    await route.fulfill({ json: payload });
   });
 }
 
 async function usePhotoOnly(page: Page): Promise<void> {
+  const basePayload = await preloadTodayFixture(page);
   await page.route('**/api/v1/households/*/today?date=*', async (route) => {
-    const response = await route.fetch();
-    const payload = (await response.json()) as {
+    const payload = structuredClone(basePayload) as {
       sections: {
         dailyVerse: boolean;
         dinner: boolean;
@@ -728,7 +732,7 @@ async function usePhotoOnly(page: Page): Promise<void> {
       photo: true,
       reminders: false,
     };
-    await route.fulfill({ response, json: payload });
+    await route.fulfill({ json: payload });
   });
 }
 

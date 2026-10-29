@@ -4,10 +4,18 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  DEFAULT_MODULE_FLAGS,
+  MonthScheduleSchema,
+  TodaySummarySchema,
+  WeekScheduleSchema,
+} from '@hearth/shared';
+
 import { CalendarProjectionService } from './calendar-projection.js';
 import { DEMO_HOUSEHOLD_ID, DEMO_NOW } from './demo/seed.js';
 import { openHearthDatabase } from './database.js';
 import {
+  CalendarProviderError,
   FakeCalendarProvider,
   UnconfiguredCalendarProvider,
   type CalendarDescriptor,
@@ -45,7 +53,12 @@ describe('provider-neutral calendar projection', () => {
       'background',
     );
     expect(cached.events).toEqual(initial.events);
-    expect(cached.freshness).toBe('stale');
+    expect(cached).toMatchObject({
+      freshness: 'stale',
+      refreshing: true,
+      statusMessage: null,
+      integration: { status: 'stale', message: 'Updating calendar.' },
+    });
     await background.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09', 'background');
     expect(list).toHaveBeenCalledTimes(1);
     release();
@@ -56,7 +69,12 @@ describe('provider-neutral calendar projection', () => {
       '2026-08-09',
       'background',
     );
-    expect(current.freshness).toBe('current');
+    expect(current).toMatchObject({
+      freshness: 'current',
+      refreshing: false,
+      statusMessage: null,
+      integration: { status: 'healthy', message: '2 calendars are current.' },
+    });
     expect(list).toHaveBeenCalledTimes(1);
     database.close();
   });
@@ -77,8 +95,114 @@ describe('provider-neutral calendar projection', () => {
       'background',
     );
     expect(cached.events).toEqual(initial.events);
-    expect(cached.integration.status).toBe('unavailable');
+    expect(cached).toMatchObject({
+      freshness: 'stale',
+      refreshing: false,
+      statusMessage: 'Calendar is unavailable · Showing saved plans.',
+      integration: {
+        status: 'unavailable',
+        message: 'Calendar is unavailable · Showing saved plans.',
+      },
+    });
     expect(list).toHaveBeenCalledTimes(1);
+    database.close();
+  });
+
+  it.each(['today', 'week', 'month'] as const)(
+    'exposes typed refresh progress and retains issue banners in the %s DTO',
+    async (view) => {
+      const { database, provider } = await projectionFixture();
+      const read = (repository: SqliteHearthRepository) =>
+        view === 'today'
+          ? repository.getToday(DEMO_HOUSEHOLD_ID, '2026-08-03')
+          : view === 'week'
+            ? repository.getWeek(DEMO_HOUSEHOLD_ID, '2026-08-03')
+            : repository.getMonth(DEMO_HOUSEHOLD_ID, '2026-08');
+      const schema = {
+        today: TodaySummarySchema,
+        week: WeekScheduleSchema,
+        month: MonthScheduleSchema,
+      }[view];
+      const initial = await read(
+        new SqliteHearthRepository(database, { calendarProvider: provider, seedDemo: false }),
+      );
+      expect(initial.events.length).toBeGreaterThan(0);
+      expect(initial.calendarRefreshing).toBe(false);
+
+      const refreshed = vi.fn();
+      const background = new SqliteHearthRepository(database, {
+        calendarProvider: provider,
+        seedDemo: false,
+        backgroundCalendar: true,
+        onCalendarRefresh: refreshed,
+      });
+      const original = provider.listCalendars.bind(provider);
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const list = vi.spyOn(provider, 'listCalendars').mockImplementation(async () => {
+        await gate;
+        return original();
+      });
+      const pending = await read(background);
+      expect(pending.events).toEqual(initial.events);
+      expect(pending).toMatchObject({
+        freshness: 'stale',
+        calendarRefreshing: true,
+        statusMessage: null,
+      });
+      expect(schema.parse(pending).calendarRefreshing).toBe(true);
+      // Previously saved responses remain decodable after the additive contract change.
+      const { calendarRefreshing: _refreshing, ...legacy } = pending;
+      expect(schema.parse(legacy).calendarRefreshing).toBe(false);
+      expect(schema.safeParse({ ...legacy, calendarRefreshing: 'true' }).success).toBe(false);
+
+      release();
+      await vi.waitFor(() => expect(refreshed).toHaveBeenCalledTimes(1));
+      const current = await read(background);
+      expect(current.events).toEqual(initial.events);
+      expect(current).toMatchObject({
+        freshness: 'current',
+        calendarRefreshing: false,
+        statusMessage: null,
+      });
+      expect(list).toHaveBeenCalledTimes(1);
+
+      provider.setAvailable(false);
+      background.invalidateCalendarRefresh();
+      await read(background);
+      await vi.waitFor(() => expect(refreshed).toHaveBeenCalledTimes(2));
+      const failed = await read(background);
+      expect(failed.events).toEqual(initial.events);
+      expect(failed).toMatchObject({
+        freshness: 'stale',
+        calendarRefreshing: false,
+        statusMessage: 'Calendar is unavailable · Showing saved plans.',
+      });
+      expect(list).toHaveBeenCalledTimes(2);
+      database.close();
+    },
+  );
+
+  it('does not report a refresh or read the provider when Today calendar is disabled', async () => {
+    const { database, provider } = await projectionFixture();
+    const repository = new SqliteHearthRepository(database, {
+      calendarProvider: provider,
+      seedDemo: false,
+      backgroundCalendar: true,
+    });
+    repository.setModuleAvailability(() => ({ ...DEFAULT_MODULE_FLAGS, calendar: false }));
+    const list = vi.spyOn(provider, 'listCalendars');
+
+    expect(await repository.getToday(DEMO_HOUSEHOLD_ID, '2026-08-03')).toMatchObject({
+      freshness: 'current',
+      calendarRefreshing: false,
+      statusMessage: null,
+      calendars: [],
+      events: [],
+    });
+    expect(list).not.toHaveBeenCalled();
     database.close();
   });
 
@@ -180,6 +304,8 @@ describe('provider-neutral calendar projection', () => {
     const cached = await service.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09');
     expect(cached).toMatchObject({
       freshness: 'stale',
+      refreshing: false,
+      statusMessage: 'Calendar is unavailable · Showing saved plans.',
       integration: { status: 'unavailable' },
     });
     expect(cached.events).toEqual(current.events);
@@ -249,8 +375,30 @@ describe('provider-neutral calendar projection', () => {
       calendars: [],
       events: [],
       freshness: 'stale',
+      refreshing: false,
       integration: { status: 'not-configured' },
       statusMessage: 'Ask an adult to connect calendars from their phone · Showing saved plans.',
+    });
+    database.close();
+  });
+
+  it('keeps authentication issues visible without reporting refresh progress', async () => {
+    const { database, service, provider } = await projectionFixture();
+    const initial = await service.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09');
+    vi.spyOn(provider, 'listCalendars').mockRejectedValue(
+      new CalendarProviderError('AUTHENTICATION_REQUIRED', 'Private provider diagnostic'),
+    );
+
+    const cached = await service.projectRange(DEMO_HOUSEHOLD_ID, '2026-08-03', '2026-08-09');
+    expect(cached.events).toEqual(initial.events);
+    expect(cached).toMatchObject({
+      freshness: 'stale',
+      refreshing: false,
+      statusMessage: 'Calendar needs attention · Showing saved plans.',
+      integration: {
+        status: 'authentication-required',
+        message: 'Calendar needs attention · Showing saved plans.',
+      },
     });
     database.close();
   });

@@ -409,6 +409,12 @@
   letter-spacing: -0.035em;
   font-weight: 680;
 }
+.screen-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 .screen-header__meta {
   margin-top: 9px;
   color: var(--muted);

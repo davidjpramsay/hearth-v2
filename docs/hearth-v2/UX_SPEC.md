@@ -1,5 +1,15 @@
 # Hearth v2 television and companion UX specification
 
+## Quiet calendar activity (D-125)
+
+Today, Week, Month and Agenda place a small refresh ring beside the heading. It has the accessible
+name “Refreshing calendar”, no keyboard stop and no repeated live announcement. Keep its size at
+22px on TV / 18px on companion layouts, with a static ring for reduced motion. Routine stale-while-
+refreshing data has no banner or explanatory update copy; heading height and content fit stay stable.
+Keep saved plans visible and usable. Real provider/authentication/configuration issues, offline
+state and failed cached reads keep a message; an unconfirmed cached busy flag never hides them.
+Initial loading and failure states retain their existing recovery controls.
+
 ## NBA (D-113)
 
 Enable in More → Modules; NBA appears on the TV rail and phone More. Adult More → NBA teams

@@ -1,5 +1,12 @@
 # Hearth v2 integration contracts
 
+## Calendar activity feedback (D-125)
+
+Routine background CalDAV reads expose a typed busy hint without a family warning message.
+Authentication/configuration/provider failures still expose their existing safe issue copy and
+cached plans. No new provider request, credential, write authority, HA scope or sync cadence.
+This presentation flag must not be interpreted as a new calendar source or successful freshness.
+
 ## Morning Routine profiles (D-123)
 
 The existing approved `morning_routine` destination and `morningRoutine` module grant remain

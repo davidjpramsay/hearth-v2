@@ -4,6 +4,7 @@ import type { CalendarEvent, CalendarSource, DemoScenario, MonthDay } from '@hea
 
 import { Avatar } from '../components/Avatar';
 import { CalendarDayDialog } from '../components/CalendarDayDialog';
+import { CalendarIssue, CalendarRefreshIndicator } from '../components/CalendarFeedback';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -64,6 +65,11 @@ export function MonthScreen({
       <ScreenHeader
         title={month.displayMonth}
         meta={month.displayYear}
+        indicator={
+          <CalendarRefreshIndicator
+            active={online && !query.isError && (query.isFetching || month.calendarRefreshing)}
+          />
+        }
         actions={
           runtime.mode === 'private' ? null : (
             <div className="week-glance">
@@ -82,11 +88,12 @@ export function MonthScreen({
       />
       <CalendarViewSwitch />
       {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
-      {month.freshness === 'stale' && online ? (
-        <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
-          {month.statusMessage}
-        </StatusBanner>
-      ) : null}
+      <CalendarIssue
+        online={online}
+        failed={query.isError}
+        freshness={month.freshness}
+        message={month.statusMessage}
+      />
       {month.events.length === 0 ? (
         <div className="month-empty-note" role="status">
           Nothing planned this month yet.

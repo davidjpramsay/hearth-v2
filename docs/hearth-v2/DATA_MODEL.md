@@ -1,5 +1,12 @@
 # Hearth v2 domain and data model
 
+## Calendar refresh presentation metadata (D-125)
+
+TodaySummary, WeekSchedule and MonthSchedule add `calendarRefreshing: boolean`, defaulting false
+on legacy decoding. It is transient projection activity, not a persisted calendar/event field or
+freshness override. Routine refreshing retains stale freshness with null statusMessage; genuine
+issues retain safe messages. No SQL migration, event/cursor rewrite or stored credential change.
+
 ## Morning Routine profiles (D-123)
 
 Migration `0035_morning_routine_profiles.sql` converts saved configuration to canonical `schoolDays`

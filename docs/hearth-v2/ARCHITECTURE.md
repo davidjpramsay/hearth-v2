@@ -1,5 +1,15 @@
 # Hearth v2 architecture
 
+## Calendar refresh feedback (D-125)
+
+The projection separates routine refresh activity from issue copy. Its transient `refreshing` flag
+maps to additive `calendarRefreshing` in Today/Week/Month DTOs (default false for old payloads),
+while freshness remains stale until confirmed current. Routine statusMessage is null; integration
+diagnostics remain honest, and actual provider/auth/configuration messages remain intact. No new
+storage or scheduler. The shared client feedback renders a non-live heading ring for a pending read
+or server refresh, and preserves provider errors, cached-read failures and offline banners. Existing
+read-only adapters, D-086 queue/backoff, query policy and current device/auth boundaries are unchanged.
+
 ## Photo management and bounded uploads (D-122/D-124)
 
 The existing adult-only raw-image command keeps its typed response, actor validation, receipts,

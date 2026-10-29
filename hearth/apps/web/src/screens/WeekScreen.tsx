@@ -7,6 +7,7 @@ import type { CalendarEvent, DemoScenario, WeekDay } from '@hearth/shared';
 import { Avatar } from '../components/Avatar';
 import { CalendarAgenda, WeekForecast } from '../components/CalendarAgenda';
 import { CalendarDayDialog } from '../components/CalendarDayDialog';
+import { CalendarIssue, CalendarRefreshIndicator } from '../components/CalendarFeedback';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { Icon, type IconName } from '../components/Icon';
@@ -123,6 +124,11 @@ export function WeekScreen({
       <ScreenHeader
         title={weekStart === runtime.weekStart ? 'This week' : 'Week'}
         meta={week.displayRange}
+        indicator={
+          <CalendarRefreshIndicator
+            active={online && !query.isError && (query.isFetching || week.calendarRefreshing)}
+          />
+        }
         actions={
           <div className="week-glance">
             {currentForecast === null ? null : (
@@ -146,11 +152,12 @@ export function WeekScreen({
         </p>
       ) : null}
       {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
-      {week.freshness === 'stale' && online ? (
-        <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
-          {week.statusMessage}
-        </StatusBanner>
-      ) : null}
+      <CalendarIssue
+        online={online}
+        failed={query.isError}
+        freshness={week.freshness}
+        message={week.statusMessage}
+      />
       {!companion ? (
         <div
           className={`week-grid${allDayRowCount > 0 ? ' week-grid--with-all-day' : ''}`}

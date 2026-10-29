@@ -1,5 +1,22 @@
 # Hearth v2 decision record
 
+## D-125 — Quiet routine calendar refreshes
+
+- Date: 2026-10-29
+- Status: accepted
+- Choice: Today, Week, Month and Agenda show routine calendar refresh as a small labelled ring
+  beside the heading, not an “Updating calendar” warning banner. The ring is noninteractive and
+  has no live-region announcement on every poll; reduced motion uses a static ring. It disappears
+  when the read/refresh finishes and preserves heading height and saved-event visibility.
+- Contract: Today/Week/Month add `calendarRefreshing`, default false for older DTOs. The projection
+  keeps honest stale freshness while refreshing, returns no ordinary statusMessage, and retains
+  an honest updating integration diagnostic. Authentication/configuration/provider failures keep
+  their messages and report no routine-refresh flag. Cached HTTP read errors and offline state
+  also remain visible; they take precedence over a cached busy flag.
+- Boundary: No provider/cadence, calendar write, connection, credential, migration, HA, network or
+  background-service change. Existing D-086 coalescing/backoff and foreground-only client refresh
+  remain. This is the explicitly requested presentation change, not suppression of genuine issues.
+
 ## D-124 — Restore the 25 MiB per-photo cap and remove routine limit copy
 
 - Date: 2026-10-29

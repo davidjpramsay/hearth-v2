@@ -1,5 +1,12 @@
 # Hearth v2 product specification
 
+## Quiet calendar activity (D-125)
+
+Routine calendar refresh uses a small spinner beside the Today/Calendar heading while saved plans
+remain usable. Do not interrupt the household with an updating banner. Real connection, provider,
+permission, offline or failed-read issues still have an understandable message. Reduced motion and
+assistive context remain available; no calendar sync behavior or authority is expanded.
+
 ## Optional NBA (D-113)
 
 An adult may enable NBA and choose up to five standout teams for the home. Browse all teams,

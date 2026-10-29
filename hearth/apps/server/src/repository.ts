@@ -157,11 +157,8 @@ export class InMemoryHearthRepository implements HearthRepository {
       displayDate: 'Monday, 3 August',
       weather: { temperatureCelsius: 16, condition: 'Clear', source: 'demo' },
       freshness: isStale || isUnavailable ? 'stale' : 'current',
-      statusMessage: isStale
-        ? 'Calendar last updated at 6:45 · Trying again quietly.'
-        : isUnavailable
-          ? 'Calendar is unavailable · Showing saved plans.'
-          : null,
+      calendarRefreshing: isStale,
+      statusMessage: isUnavailable ? 'Calendar is unavailable · Showing saved plans.' : null,
       calendars: this.seed.calendars,
       events: isEmpty
         ? []
@@ -233,12 +230,9 @@ export class InMemoryHearthRepository implements HearthRepository {
       endDate,
       displayRange: '3–9 August',
       freshness: this.scenario === 'stale' || this.scenario === 'unavailable' ? 'stale' : 'current',
+      calendarRefreshing: this.scenario === 'stale',
       statusMessage:
-        this.scenario === 'stale'
-          ? 'Calendar last updated at 6:45 · Trying again quietly.'
-          : this.scenario === 'unavailable'
-            ? 'Calendar is unavailable · Showing saved plans.'
-            : null,
+        this.scenario === 'unavailable' ? 'Calendar is unavailable · Showing saved plans.' : null,
       days: this.seed.weekDays,
       calendars: this.seed.calendars,
       events: this.scenario === 'empty' ? [] : sortByStart(events),
@@ -260,12 +254,9 @@ export class InMemoryHearthRepository implements HearthRepository {
       displayMonth: monthName(month),
       displayYear: month.slice(0, 4),
       freshness: this.scenario === 'stale' || this.scenario === 'unavailable' ? 'stale' : 'current',
+      calendarRefreshing: this.scenario === 'stale',
       statusMessage:
-        this.scenario === 'stale'
-          ? 'Calendar last updated at 6:45 · Trying again quietly.'
-          : this.scenario === 'unavailable'
-            ? 'Calendar is unavailable · Showing saved plans.'
-            : null,
+        this.scenario === 'unavailable' ? 'Calendar is unavailable · Showing saved plans.' : null,
       days: grid.days,
       calendars: this.seed.calendars,
       events: this.scenario === 'empty' ? [] : sortByStart(events),

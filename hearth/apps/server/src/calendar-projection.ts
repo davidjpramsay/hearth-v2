@@ -27,6 +27,7 @@ export interface CalendarProjection {
   calendars: CalendarSource[];
   events: CalendarEvent[];
   freshness: 'current' | 'stale';
+  refreshing: boolean;
   statusMessage: string | null;
   integration: IntegrationState;
 }
@@ -495,15 +496,13 @@ export class CalendarProjectionService {
     });
     const freshness = state === 'current' ? 'current' : 'stale';
     const statusMessage =
-      state === 'stale'
-        ? 'Updating calendar · Showing saved plans.'
-        : state === 'authentication-required'
-          ? 'Calendar needs attention · Showing saved plans.'
-          : state === 'not-configured'
-            ? 'Ask an adult to connect calendars from their phone · Showing saved plans.'
-            : state === 'unavailable'
-              ? 'Calendar is unavailable · Showing saved plans.'
-              : null;
+      state === 'authentication-required'
+        ? 'Calendar needs attention · Showing saved plans.'
+        : state === 'not-configured'
+          ? 'Ask an adult to connect calendars from their phone · Showing saved plans.'
+          : state === 'unavailable'
+            ? 'Calendar is unavailable · Showing saved plans.'
+            : null;
     const integrationStatus =
       state === 'current'
         ? 'healthy'
@@ -516,14 +515,17 @@ export class CalendarProjectionService {
       calendars,
       events: sortByStart(events),
       freshness,
+      refreshing: state === 'stale',
       statusMessage,
       integration: {
         kind: 'calendar',
         status: integrationStatus,
         lastSuccessfulAt: connection.last_success_at,
         message:
-          statusMessage ??
-          `${calendars.length} ${calendars.length === 1 ? 'calendar is' : 'calendars are'} current.`,
+          state === 'stale'
+            ? 'Updating calendar.'
+            : (statusMessage ??
+              `${calendars.length} ${calendars.length === 1 ? 'calendar is' : 'calendars are'} current.`),
       },
     };
   }

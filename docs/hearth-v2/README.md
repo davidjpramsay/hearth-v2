@@ -24,6 +24,9 @@ and voice. Native television media apps remain separate.
 
 ## Current boundaries
 
+D-125 replaces routine calendar updating banners with a quiet heading ring on Today and Calendar;
+genuine issues remain visible. Provider/sync/auth behavior is unchanged. See ACCEPTANCE for release evidence.
+
 D-122 improves photo administration with a compact paged library and a visible, bounded upload
 queue. D-124 restores the 25 MiB per-photo limit without routine settings copy; approval/private
 storage/imported-original boundaries remain.

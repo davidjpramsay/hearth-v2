@@ -6,6 +6,7 @@ import type { CalendarEvent, DailyVerseSummary, DemoScenario } from '@hearth/sha
 
 import { demoApi as hearthApi } from '../api/demo';
 import { ChoreRow } from '../components/ChoreRow';
+import { CalendarIssue, CalendarRefreshIndicator } from '../components/CalendarFeedback';
 import { DailyVerseDetailsDialog } from '../components/DailyVerseDetailsDialog';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { EventRow } from '../components/EventRow';
@@ -137,6 +138,16 @@ export function TodayScreen({
       <ScreenHeader
         eyebrow={today.household.mode}
         title="Today"
+        indicator={
+          <CalendarRefreshIndicator
+            active={
+              modules.calendar &&
+              online &&
+              !query.isError &&
+              (query.isFetching || today.calendarRefreshing)
+            }
+          />
+        }
         actions={
           modules.weather ? (
             <div className="today-glance">
@@ -152,10 +163,13 @@ export function TodayScreen({
         }
       />
       {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
-      {modules.calendar && today.freshness === 'stale' && online ? (
-        <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
-          {today.statusMessage}
-        </StatusBanner>
+      {modules.calendar ? (
+        <CalendarIssue
+          online={online}
+          failed={query.isError}
+          freshness={today.freshness}
+          message={today.statusMessage}
+        />
       ) : null}
       <div
         className={`today-dashboard today-dashboard--photo-${photoOrientation}`}

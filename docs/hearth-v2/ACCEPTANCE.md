@@ -1,5 +1,58 @@
 # Hearth v2 acceptance and definition of done
 
+## D-125 quiet calendar refresh — 2026-10-29
+
+The owner requested a small spinner instead of the recurring calendar-updating message. Today,
+Week, Month and Agenda now show a noninteractive ring beside the heading for a pending read or
+routine server refresh. It has an accessible name but no repeated live-region announcement;
+reduced motion uses a static ring. The normal background projection retains stale freshness and
+saved events, reports `calendarRefreshing: true` and null statusMessage, then clears the flag after
+completion. Provider/auth/configuration failures retain their issue messages. Cached HTTP read
+failure and offline state remain visible and take precedence over a cached busy flag. Legacy DTOs
+default the new boolean false. No migration, provider/cadence, credential, permission or HA change.
+
+Browser plugin not available; repository Playwright uses the production build and isolated demo
+data. Flow: Today/Calendar routine refresh → quiet heading indicator with no banner → current
+data/no indicator → unavailable issue message → one offline message. Mobile/TV light/dark layouts
+remain stable; heading height is unchanged and no horizontal overflow is introduced. This is local
+browser evidence, not a physical-device or live provider claim.
+
+- `pnpm -C hearth verify:code` — **PASS**: format/lint/types, **699 unit**, **284 API/integration**,
+  **30 migration**, **10 deployment fixtures**, Compose validation and production builds. Provider
+  tests hold a background read, prove the same events remain visible, then verify completion/error
+  transitions, honest diagnostics, typed Today/Week/Month flags, legacy decoding, authentication
+  messages and disabled-calendar no-I/O behavior. Log: `/tmp/hearth-calendar-quiet-code.log`.
+- `pnpm -C hearth test:e2e:built tests/e2e/calendar-refresh-feedback.spec.ts
+tests/e2e/calendar-header.spec.ts tests/e2e/calendar.spec.ts --reporter=line
+--output=/tmp/hearth-calendar-quiet-browser` — **48/48 PASS (1.2 minutes)**. Includes 390/1920px
+  quiet/current/unavailable/offline transitions in both themes, reduced motion, unchanged heading
+  height, no framework overlay, console health and serious/critical a11y; existing 1366px headings,
+  date navigation, event dialogs/Back and mobile/TV calendar layout pass.
+- Same config under installed desktop WebKit: `pnpm -C hearth exec playwright test --config
+/private/tmp/hearth-morning-times-webkit.config.mts tests/e2e/calendar-refresh-feedback.spec.ts
+tests/e2e/calendar-header.spec.ts --reporter=line --output=/tmp/hearth-calendar-quiet-webkit`
+  — **25/25 PASS (53.4 seconds)**. This is mobile/touch emulation, not physical Safari proof.
+- `pnpm -C hearth test:e2e:built tests/e2e/visual.spec.ts --grep
+'Month empty and stale|stale state|unavailable state|offline state' --reporter=line
+--output=/tmp/hearth-calendar-quiet-existing-states` — **4/4 PASS (11.9 seconds)**. Existing visual
+  checks now expect the quiet accessible indicator for a normal refresh, with real issue/offline
+  expectations retained. Phone and TV Agenda screenshots were visually inspected under the first
+  browser output directory; no private calendar data was used.
+- `pnpm -C hearth verify:ci`, `pnpm -C hearth lint`, `pnpm -C hearth format:check` and
+  `git diff --check` — **PASS**. Complete hosted inventory is **1,286** (322/322/321/321); inventory
+  is not hosted execution. Logs: `/tmp/hearth-calendar-quiet-ci-final.log`,
+  `/tmp/hearth-calendar-quiet-lint-prepush.log`, `/tmp/hearth-calendar-quiet-format-prepush.log`.
+
+This candidate also contains D-124's 25 MiB cap and no ordinary size-limit settings line. The
+preceding cap-only hosted run `40814928042` stopped before publication on an asynchronous Today
+portrait-fixture `route.fulfill` already-handled error. The Today test helpers now read a base DTO
+before registering static layout handlers and clone it for each response; the mutable reminder
+count still changes per request. Existing route draining, assertions, timeouts and retry policy
+remain. No application behavior was changed for that harness issue. Its previously failing 1366px
+portrait case passed in the additional 412-case Today/photo/isolation local run, which was still
+running when this source candidate was recorded. Final local-matrix, hosted and private-release
+results are recorded separately; neither failed cap-only run was activated.
+
 ## D-124 restore 25 MiB per-photo uploads — 2026-10-29
 
 Hosted follow-up: `fb56705` passed the code/API, Android and container checks, but run

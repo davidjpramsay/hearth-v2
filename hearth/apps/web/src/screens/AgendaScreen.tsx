@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { CalendarEvent, DemoScenario, WeekDay } from '@hearth/shared';
 
 import { CalendarAgenda } from '../components/CalendarAgenda';
+import { CalendarIssue, CalendarRefreshIndicator } from '../components/CalendarFeedback';
 import { CalendarViewSwitch } from '../components/CalendarViewSwitch';
 import { EventDetailsDialog } from '../components/EventDetailsDialog';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -33,15 +34,21 @@ export function AgendaScreen({
       <ScreenHeader
         title="Agenda"
         meta={agendaRange(days, runtime.locale)}
+        indicator={
+          <CalendarRefreshIndicator
+            active={online && !query.isError && (query.isFetching || week.calendarRefreshing)}
+          />
+        }
         actions={<span className="agenda-count">{agendaCount(events.length)}</span>}
       />
       <CalendarViewSwitch />
       {!online ? <StatusBanner kind="offline">Offline · Showing saved plans.</StatusBanner> : null}
-      {week.freshness === 'stale' && online ? (
-        <StatusBanner kind={scenario === 'unavailable' ? 'unavailable' : 'stale'}>
-          {week.statusMessage}
-        </StatusBanner>
-      ) : null}
+      <CalendarIssue
+        online={online}
+        failed={query.isError}
+        freshness={week.freshness}
+        message={week.statusMessage}
+      />
       <CalendarAgenda
         days={days}
         events={events}

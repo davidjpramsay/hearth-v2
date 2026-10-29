@@ -157,6 +157,7 @@ export class SqliteHearthRepository implements HearthRepository {
       modules?.calendar === false
         ? {
             freshness: 'current' as const,
+            refreshing: false,
             statusMessage: null,
             calendars: [],
             events: [],
@@ -195,6 +196,7 @@ export class SqliteHearthRepository implements HearthRepository {
             ? { temperatureCelsius: 16, condition: 'Clear', source: 'demo' }
             : weatherForDate(weatherForecast, localDate),
       freshness: projection.freshness,
+      calendarRefreshing: projection.refreshing,
       statusMessage: projection.statusMessage,
       calendars: projection.calendars,
       events: isEmpty
@@ -289,6 +291,7 @@ export class SqliteHearthRepository implements HearthRepository {
       endDate,
       displayRange: displayRange(startDate, endDate),
       freshness: projection.freshness,
+      calendarRefreshing: projection.refreshing,
       statusMessage: projection.statusMessage,
       days: createWeekDays(
         startDate,
@@ -328,6 +331,7 @@ export class SqliteHearthRepository implements HearthRepository {
       displayMonth: monthName(month),
       displayYear: month.slice(0, 4),
       freshness: projection.freshness,
+      calendarRefreshing: projection.refreshing,
       statusMessage: projection.statusMessage,
       days: grid.days,
       calendars: projection.calendars,

@@ -1,5 +1,12 @@
 # Hearth v2 implementation roadmap
 
+## Quiet calendar refresh (D-125)
+
+Verify typed pending/current/failure transitions, saved-event retention, quiet heading feedback on
+Today/Week/Month/Agenda, genuine error/offline messages, phone/TV fit, dark mode and reduced motion.
+Keep sync/coalescing/backoff/auth unchanged. Source checks, hosted release and private activation
+are separate gates; ship alongside the D-124 photo-limit correction.
+
 ## Morning Routine day profiles (D-123)
 
 Local and full hosted verification plus private release/migration/preservation passed on 2026-10-29

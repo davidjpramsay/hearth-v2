@@ -108,7 +108,8 @@ test('@visual Month empty and stale states', async ({ page }) => {
     animations: 'disabled',
   });
   await page.goto('/month?scenario=stale');
-  await expect(page.getByRole('status')).toContainText('Updating calendar');
+  await expect(page.getByRole('img', { name: 'Refreshing calendar', exact: true })).toBeVisible();
+  await expect(page.locator('.status-banner')).toHaveCount(0);
   await captureEvidence(page, {
     path: resolve(monthEvidence, 'month-stale-tv-1080.png'),
     animations: 'disabled',
@@ -316,7 +317,7 @@ test('@visual pocket-money progress and administration at required viewports', a
 const states = [
   { name: 'loading', path: '/today?scenario=loading', marker: 'Loading…' },
   { name: 'empty', path: '/today?scenario=empty', marker: '0 plans' },
-  { name: 'stale', path: '/today?scenario=stale', marker: 'Updating calendar' },
+  { name: 'stale', path: '/today?scenario=stale', marker: 'Refreshing calendar' },
   {
     name: 'unavailable',
     path: '/today?scenario=unavailable',
@@ -330,7 +331,11 @@ for (const state of states) {
   test(`@visual ${state.name} state`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(state.path);
-    await expect(page.getByText(state.marker, { exact: false }).first()).toBeVisible();
+    if (state.name === 'stale')
+      await expect(
+        page.getByRole('img', { name: 'Refreshing calendar', exact: true }),
+      ).toBeVisible();
+    else await expect(page.getByText(state.marker, { exact: false }).first()).toBeVisible();
     await captureEvidence(page, {
       path: resolve(evidence, `state-${state.name}.png`),
       animations: 'disabled',
