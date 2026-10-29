@@ -1680,6 +1680,12 @@ Official platform references:
   retain the provider's short copyright marker and show full attribution in a Back-safe dialog.
   Read the token only from `HEARTH_ESV_API_KEY_PATH`; cache the bounded passage text in SQLite for
   stale fallback. Demo mode uses original fictional copy and contacts no provider.
+- Reading-view refinement (2026-10-30): Use Hearth's normal Source Sans typography in both Today
+  and Morning Routine's shared verse dialog. Remove the long publisher/demo paragraphs and redundant
+  eyebrow from that reading view; preserve the reference, exact quotation, short ESV marker/source
+  link, real freshness warnings and Close/Back focus. Relocate the standard full notice to the
+  read-only More → Credits page, following [ESV's published attribution guidance](https://api.esv.org/).
+  This is a presentation change; provider calls, cache, secret handling and household authority stay unchanged.
 - Consequence: The feature can be enabled per household without changing Today layout code or
   weakening secret boundaries. A missing key or ESV outage cannot take down Today. Migration
   `0024_daily_bible_verse.sql` adds only one visibility flag and the bounded cache; live token

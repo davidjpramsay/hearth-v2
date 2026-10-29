@@ -1,5 +1,45 @@
 # Hearth v2 acceptance and definition of done
 
+## Bible reading popup (D-055) — local cleanup, 2026-10-30
+
+Today and Morning Routine share the updated reading dialog. It inherits Hearth's Source Sans
+typeface, retains the exact quotation/reference and genuine saved-read warnings, and removes
+the redundant eyebrow and publisher/demo paragraphs. An ESV link sits beside the reference,
+with the provider's short marker retained in the text. Full attribution is on the read-only
+**More → Credits** page. Its Back control restores the menu opener and the phone keeps More active.
+The ESV link has a fixed official fallback when older nullable source metadata is absent.
+Provider calls, quotation wording, cache, credentials, household authority and live runtime are unchanged.
+
+Local checks in `/private/tmp/hearth-morning-routine`, `codex/shareable-setup`:
+
+- `pnpm -C hearth --filter @hearth/web test:unit` — **468/468**;
+  `/private/tmp/hearth-verse-popup-unit-final.log`.
+- `pnpm -C hearth --filter @hearth/web typecheck`, `pnpm -C hearth lint`,
+  `pnpm -C hearth --filter @hearth/web build`, `pnpm -C hearth format:check` and `git diff --check`
+  — **PASS**. No new dependency, server or native app change.
+- `pnpm -C hearth test:e2e:built tests/e2e/verse-popup.spec.ts tests/e2e/today-settings.spec.ts
+tests/e2e/morning-routine.spec.ts tests/e2e/screen-admin-isolation.spec.ts tests/e2e/modules.spec.ts
+--grep 'verse|Bible credits|paired .* has no administration|all modules off' --reporter=line
+--output=/private/tmp/hearth-verse-popup-final` — **18/18**, Chromium. Four popup sizes
+  (390×844, 844×390, 1366×768, 1920×1080), both themes, computed quote/body font-family equality,
+  unchanged passage, absent publisher paragraphs, source fallback, a11y, contained Tab/Close/Back,
+  credits navigation, Morning Routine stale/module-off behavior and shared-screen admin isolation.
+- `pnpm -C hearth test:e2e:built tests/e2e/verse-popup.spec.ts --browser=webkit --reporter=line
+--output=/private/tmp/hearth-verse-popup-webkit-pass` — **10/10**, Safari engine. Initial QA caught
+  low-contrast dark Close text and Safari Tab leaving the popup via its link/button preferences.
+  The popup now uses a contrasting dark foreground and cycles its two known controls explicitly;
+  unrelated dialogs/navigation are unchanged. Log `/private/tmp/hearth-verse-popup-webkit-pass.log`.
+- `pnpm -C hearth verify:ci` — **5/5** policy checks and a complete **1,340-case** shard inventory;
+  this is not execution of the full hosted suite.
+
+The publisher's current [API attribution guidance](https://api.esv.org/) and
+[short-marker option](https://api.esv.org/docs/passage-text/) were checked on 2026-10-30.
+Browser plugin unavailable; repository Playwright used with fictional fixture text and no real
+household passages/credentials. Phone and TV screenshots were visually inspected under
+`/private/tmp/hearth-verse-popup-final/` and `/private/tmp/hearth-verse-popup-webkit-pass/`.
+**Not run:** actual iPhone/TV viewing, hosted verification, publication or deployment. The live
+server, NAS/HA configuration and household data remain untouched.
+
 ## Main-menu focus refinement (D-087) — local, 2026-10-30
 
 Selecting a TV, phone or desktop-admin main-menu item keeps focus in navigation, with no automatic

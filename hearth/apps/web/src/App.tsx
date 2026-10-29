@@ -17,6 +17,9 @@ const ModulesSettingsScreen = lazy(async () => ({
   default: (await import('./screens/ModulesSettingsScreen')).ModulesSettingsScreen,
 }));
 const NbaScreen = lazy(async () => ({ default: (await import('./screens/NbaScreen')).NbaScreen }));
+const CreditsScreen = lazy(async () => ({
+  default: (await import('./screens/CreditsScreen')).CreditsScreen,
+}));
 const MorningRoutineScreen = lazy(async () => ({
   default: (await import('./screens/MorningRoutineScreen')).MorningRoutineScreen,
 }));
@@ -210,6 +213,7 @@ export function App() {
               element={<HomeScreen preparing={preparing} scenario={scenario} />}
             />
             <Route path="/more" element={<MoreScreen />} />
+            <Route path="/credits" element={<CreditsScreen />} />
             <Route path="/games" element={<GamesScreen />} />
             <Route path="/nba" element={<NbaScreen />} />
             <Route path="/morning-routine" element={<MorningRoutineScreen />} />

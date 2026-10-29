@@ -88,7 +88,7 @@ countdown described here apply to the original D-120 defaults, not every assigne
 
 When Daily Bible verse is enabled, Morning Routine adds a compact bottom card beside Today. Keep
 its height intrinsic and up to seven standard checklist rows visible on short TVs. A readable excerpt
-opens the existing full verse/attribution popup; Back returns to the card. Phones place it after
+opens the existing full verse popup; Back returns to the card. Phones place it after
 the lists. Missing/stale content has an honest retry/saved state and never blocks the checklists.
 Disabling the verse module removes both card and dialog; Today's section visibility is independent.
 
@@ -268,9 +268,14 @@ The default shared overview:
 
 Adults may independently show or hide Dinner, List summary, Notice, Reminders, Daily Bible verse
 and Family photo from the phone-first **Today & notices** settings surface. The verse opens in a Back-safe
-reading dialog so a full quotation and ESV attribution do not make Today dense; a missing server
+reading dialog so a full quotation does not make Today dense; a missing server
 key produces a calm unavailable band rather than a broken dashboard. Upcoming plans and due chores
-remain the stable core. The remaining summary bands use the freed width without inflating
+remain the stable core. The reading popup uses Hearth's normal Source Sans font, the passage
+reference, unchanged quotation, Close and a compact source link for ESV passages. Publisher and
+demo-explanation paragraphs do not appear there. Full Bible attribution is under **More → Credits**,
+available to household readers and shared screens without any administration controls. Saved-read
+warnings, modal keyboard/Back containment and exact opener focus remain.
+The remaining summary bands use the freed width without inflating
 their text cards vertically; a photo-only configuration is centred rather than leaving
 an unexplained empty column. Television Today is a single non-scrolling dashboard rather than a
 vertical document. It selects a bounded composition from the enabled band count and the featured

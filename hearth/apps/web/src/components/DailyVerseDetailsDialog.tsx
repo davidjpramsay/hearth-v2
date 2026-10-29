@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 
 import type { DailyVerseSummary } from '@hearth/shared';
 
@@ -12,6 +12,7 @@ export function DailyVerseDetailsDialog({
   onClose: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const sourceRef = useRef<HTMLAnchorElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -23,6 +24,18 @@ export function DailyVerseDetailsDialog({
     openerRef.current?.focus();
     openerRef.current = null;
   }, [verse]);
+
+  function cycleControlFocus(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return;
+    // Both known controls remain reachable even when Safari's native Tab
+    // preferences skip links or buttons. Shift+Tab has the same two-item cycle.
+    event.preventDefault();
+    const next =
+      document.activeElement === closeRef.current
+        ? (sourceRef.current ?? closeRef.current)
+        : closeRef.current;
+    next?.focus();
+  }
 
   if (verse === null) return null;
   return (
@@ -36,29 +49,31 @@ export function DailyVerseDetailsDialog({
         <div className="notice-detail__icon">
           <Icon name="book-open" />
         </div>
-        <p>Daily Bible verse</p>
-        <h2 id="daily-verse-detail-title">{verse.reference}</h2>
+        <div className="daily-verse-detail__heading">
+          <h2 id="daily-verse-detail-title">{verse.reference}</h2>
+          {verse.translation === 'ESV' ? (
+            <a
+              className="daily-verse-detail__source focusable"
+              href={verse.sourceUrl ?? 'https://www.esv.org/'}
+              onKeyDown={cycleControlFocus}
+              ref={sourceRef}
+              rel="noreferrer"
+              target="_blank"
+            >
+              ESV
+            </a>
+          ) : null}
+        </div>
         <blockquote>{verse.text}</blockquote>
         {verse.statusMessage === null ? null : (
           <p className="daily-verse-detail__status">{verse.statusMessage}</p>
         )}
-        {verse.sourceUrl === null ? (
-          <p className="daily-verse-detail__copyright">Fictional text for the demo household.</p>
-        ) : (
-          <p className="daily-verse-detail__copyright">
-            Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
-            Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers.
-            Used by permission. All rights reserved.{' '}
-            <a href={verse.sourceUrl} rel="noreferrer" target="_blank">
-              ESV.org
-            </a>
-          </p>
-        )}
         <button
-          className="button button--primary focusable"
+          className="button button--primary focusable daily-verse-detail__close"
           data-back-dismiss="true"
           data-focus-id="daily-verse-detail-close"
           onClick={onClose}
+          onKeyDown={cycleControlFocus}
           ref={closeRef}
           type="button"
         >

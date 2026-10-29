@@ -95,6 +95,7 @@ const baseGroups: Array<{ title: string; links: MoreLink[] }> = [
         icon: 'list',
         path: '/admin/activity',
       },
+      { title: 'Credits', icon: 'book-open', path: '/credits' },
     ],
   },
 ];

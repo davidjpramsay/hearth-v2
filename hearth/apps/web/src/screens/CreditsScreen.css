@@ -1,0 +1,47 @@
+.credits-screen {
+  max-width: 1120px;
+}
+.credits-notice {
+  max-width: 920px;
+  font-size: 26px;
+  line-height: 1.5;
+}
+.credits-notice h2 {
+  font-size: 32px;
+  margin: 0 0 18px;
+}
+.credits-notice a,
+.credits-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 64px;
+  border-radius: 12px;
+  color: var(--eucalyptus);
+}
+.credits-back {
+  gap: 10px;
+  padding: 0 16px;
+  font-size: 24px;
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+.credits-back svg {
+  width: 26px;
+  height: 26px;
+}
+@media (max-width: 1199px) {
+  .credits-notice {
+    font-size: 18px;
+  }
+  .credits-notice h2 {
+    font-size: 24px;
+  }
+  .credits-notice a,
+  .credits-back {
+    min-height: 48px;
+  }
+  .credits-back {
+    font-size: 18px;
+  }
+}

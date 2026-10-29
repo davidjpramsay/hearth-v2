@@ -276,6 +276,7 @@ function PhoneNavigation() {
   const keyboardOpen = usePhoneKeyboardOpen();
   const moreActive =
     pathname === '/more' ||
+    pathname === '/credits' ||
     pathname === '/appearance' ||
     pathname.startsWith('/admin') ||
     [

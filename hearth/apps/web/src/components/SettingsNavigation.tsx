@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate, type LinkProps } from 'react-router-dom
 
 const settingsTitles: Record<string, string> = {
   '/more': 'More',
+  '/credits': 'Credits',
   '/admin': 'Hearth settings',
   '/admin/household': 'Household',
   '/admin/people': 'People',

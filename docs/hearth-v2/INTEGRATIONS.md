@@ -411,8 +411,11 @@ stores only the bounded rotation in SQLite for outage fallback. Today remains us
 is absent or ESV is unavailable. Today reads saved text immediately while refreshing in the
 background. Concurrent refreshes are coalesced; failed/null/stale results retry after a one-minute
 backoff on a subsequent read, including within the same local day. Updated text invalidates Today.
-The full reading dialog carries ESV attribution and the required
-copyright notice. Official contract and usage conditions: <https://api.esv.org/docs/>,
+The reading dialog retains the provider's short ESV marker unchanged and a small ESV source link.
+The full copyright notice is on **More → Credits** (`/credits`), a read-only household page; it no
+longer occupies the verse popup. The provider permits the standard notice on the site's copyright
+page while requiring the ESV identity/notice and source link with displayed passages. No quotation
+words, provider options, key/cache behavior or permissions change. Official contract and usage conditions: <https://api.esv.org/docs/>,
 <https://api.esv.org/docs/passage-text/> and <https://api.esv.org/>.
 
 ## Home Assistant

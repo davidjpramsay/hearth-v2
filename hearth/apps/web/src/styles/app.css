@@ -966,12 +966,13 @@
 .daily-verse-detail blockquote {
   margin: 20px 0 12px;
   color: var(--ink);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: 400;
   font-size: clamp(25px, 2vw, 36px);
   line-height: 1.45;
 }
-.event-detail__panel > .daily-verse-detail__status,
-.event-detail__panel > .daily-verse-detail__copyright {
+.event-detail__panel > .daily-verse-detail__status {
   margin: 12px 0 20px;
   max-width: 760px;
   color: var(--muted);
@@ -979,9 +980,26 @@
   line-height: 1.45;
   text-transform: none;
 }
-.daily-verse-detail__copyright a {
+.daily-verse-detail__heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 18px;
+}
+.daily-verse-detail__source {
   color: var(--eucalyptus);
-  font-weight: 750;
+  font-size: 18px;
+  font-weight: 650;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+:root[data-theme='dark'] .daily-verse-detail__close {
+  color: var(--canvas);
 }
 
 .pocket-progress {
