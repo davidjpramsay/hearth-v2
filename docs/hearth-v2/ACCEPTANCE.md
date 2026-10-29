@@ -1,5 +1,58 @@
 # Hearth v2 acceptance and definition of done
 
+## D-126 private deployment and backup commissioning — 2026-10-29
+
+The owner explicitly approved publication, private activation, the HA read connection and a
+restricted NAS backup account/destination. Application release
+`a8c3a58af7264ab7e71a58506ef03d9e88157bd6` is installed privately after
+[Verify Hearth run 40874622303](https://github.com/davidjpramsay/hearth-v2/actions/runs/40874622303)
+passed every job, including all **1,304 browser cases** and immutable image publication.
+The full web/server, dependency, migration, deployment-fixture and Android TV gates passed.
+
+- `hearth/deploy/synology/activate-private-release.sh a8c3a58af7264ab7e71a58506ef03d9e88157bd6`
+  — **PASS**, restricted installed helper, checked rollback snapshot, ready/private exact images.
+  Log `/tmp/hearth-indoor-activation.log`.
+- `python3 /private/tmp/hearth-indoor-postflight.py` — **PASS**, exact health/readiness/private
+  runtime and hosted index plus **36 production assets**, including Indoor Weather/settings,
+  manifest/icons and existing photo/calendar capabilities. No unauthenticated household disclosure.
+- NAS-only preservation checker, `/private/tmp/hearth-indoor-preserve-on-nas.py`, before/after
+  — **PASS**, checked v35 backup; both routine profiles/ticks/receipts and stable phone/screen/
+  member/module/HA/photo/chore/reminder records preserved. Commissioned runtime/helper files and
+  complete bridge configuration match. The only new access rule on existing shares is an explicit
+  **DENY** for the new backup-only account; the original two allowed Hearth-data principals remain
+  unchanged. The checker accepts only that additional denial, not a new grant or missing allowlist.
+
+**Sensor commissioning:** the private source is mode 0600 and owned by the application service.
+The NAS-host setup validated the chosen temperature/humidity sensor shapes and completed hourly
+statistics using real HA reads. No credential, raw entity ID or sensor contents are in this evidence.
+**Live container proof remains OPEN:** deployed Indoor Weather currently reports unavailable;
+the read-only container diagnostic also timed out for unauthenticated reachability and the selected
+HA sensor request. The same configured HA host responds from the NAS host. A specific one-host,
+one-port outbound-rule exception is awaiting approval; no such network rule is applied yet. Do not infer application-to-HA
+success from the NAS-host checks. No firewall/network change was made to conceal this issue.
+
+**Backup proof PASS:** HA's selected NAS network storage is active. Daily backups use the system
+optimal time and retain **14** copies. Settings/history and all apps are included. Both local and
+NAS locations are selected; encryption is enabled for the NAS location with global retention.
+The first setup backup was local-only because the new NAS location was not yet selected in the
+Core backup settings. After explicit selection, another automatic backup was invoked and HA
+reported success in **two locations**. A nonempty NAS tar was independently inspected: normalized
+`backup.json` is present, `protected=true`, the Home Assistant archive is present and
+`homeassistant.exclude_database=false`. No private archive contents or encryption key were extracted.
+The recovery-kit Download control was invoked, but a saved user file has not been verified.
+
+Operational setup corrections were confined to one-off helpers outside source/runtime: HA's
+REST Supervisor proxy does not expose mount management, so its supported administrator WebSocket
+command was used; DSM 7's modify interface omits the legacy password argument; the unsupported
+explicit SMB version override was removed in favour of normal current-protocol negotiation.
+No older SMB protocol, new application package, HA restart, alarm/TV/media action or unrelated
+account privilege was enabled. The temporary pure-Python client was official-PyPI/SHA-256 verified.
+
+**Not run/open:** container-to-HA sensor success, physical TV/iPhone inspection, next scheduled
+backup execution, recovery-kit custody and isolated restore onto spare/test media. Sensor history
+began on installation day; no historical year was fabricated. This commissioning checkpoint
+supersedes the local-only publication/backup flags in the implementation evidence below.
+
 ## D-126 indoor climate — local implementation and real Recorder proof, 2026-10-29
 
 **Live HA recording PASS:** the newly connected temperature and humidity measurements each show

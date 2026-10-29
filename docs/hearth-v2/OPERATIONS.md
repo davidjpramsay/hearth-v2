@@ -2,6 +2,25 @@
 
 ## Indoor sensor history and backups (D-126)
 
+Commissioned 2026-10-29 with explicit owner approval: exact application release `a8c3a58` is
+privately deployed after the complete hosted gate. HA has daily backups with global retention of
+14, Settings/history and all apps included, and local plus restricted NAS locations selected.
+NAS encryption is enabled. A completed NAS tar was verified as protected, with the Home Assistant
+archive and database included. Keep next scheduled-run, recovery-kit custody and spare-media restore
+as separate evidence. The current application-to-HA read is unavailable pending a read-only
+container check. That check confirms timeouts from the running container while NAS-host reads pass;
+a narrow HA-only outbound firewall exception is awaiting owner approval. Do not call the live
+Indoors bridge complete yet. See ACCEPTANCE for commands.
+
+HA mount administration uses the supported administrator `supervisor/api` WebSocket command;
+Core's REST Supervisor proxy intentionally rejects mount management. Use the actual current DSM
+help: its `synouser --modify` takes username, full name, expired and mail, with no password argument.
+Do not force a CIFS version through HA's old-protocol override; omit it for normal current SMB
+negotiation. The backup account has no administrator membership, a nologin shell, no app privileges
+and explicit denial on pre-existing shares. Only the new backup folder is writable. Those new
+account-only deny entries do not authorize changing existing users' access. No HA restart, alarm,
+TV command, DNS/router setting or networking workaround was used in this checkpoint.
+
 Connect temperature/humidity measurements to HA and inspect their History plus Recorder Statistics
 (No issue). Keep the HA database on its local storage; do not mount a live SQLite file on the NAS
 or increase all detailed history to 365 days. Long-term hourly statistics are retained by HA.
