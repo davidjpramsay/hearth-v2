@@ -782,6 +782,13 @@ casual removal/sign-out, owner People protection and ordinary-QR restrictions re
   Existing directional attributes remain for now but do not override spatial movement. Tab remains
   native except for wrapping inside a modal, and selecting/opening an event still requires
   activation rather than focus alone.
+- Menu-entry refinement (2026-10-30): At the owner's request, selecting a TV/phone/desktop-admin
+  main-menu destination retains navigation focus instead of automatically selecting a page action.
+  Tapped Safari links are focused explicitly; shell replacement restores the current navigation
+  item. Loading and background updates must not steal that focus. Right from a rail explicitly
+  enters the current page's meaningful control (Calendar's selected view, for example); subsequent
+  arrows remain spatial. Direct entry, detail/dialog containment and Back restoration remain.
+  Menu navigation resets content scroll to the top; query-only changes and Back do not.
 
 ## D-086 — Private calendar screens serve saved projections before provider refresh
 

@@ -1,5 +1,54 @@
 # Hearth v2 acceptance and definition of done
 
+## Main-menu focus refinement (D-087) — local, 2026-10-30
+
+Selecting a TV, phone or desktop-admin main-menu item keeps focus in navigation, with no automatic
+page-control outline. Safari taps explicitly focus the chosen link; a shell replacement restores
+the current navigation item. Delayed content/background updates retain that focus. Right from a
+rail deliberately enters the meaningful page control; native Tab, form keys, modal containment,
+detail entry and exact Back restoration remain. New menu destinations start at the top.
+Direct page entry keeps its existing meaningful default. No data, permissions, providers, server
+contracts, native TV code, HA, Synology or networking changed.
+
+The new remote-only Calendar regression failed before the fix because Calendar's view selector
+took focus automatically. The same journey now retains Calendar in the menu, then explicitly
+enters with Right, opens an event, closes its dialog and restores that event.
+
+Local verification from `/private/tmp/hearth-morning-routine`, `codex/shareable-setup`:
+
+- `pnpm -C hearth --filter @hearth/web exec vitest run src/focus/focusGraph.test.ts
+src/focus/useRemoteNavigation.test.tsx` — **26/26**. Covers retained/delayed menu focus, shell
+  replacement, same-page activation, explicit Right/Tab, nested-modal containment and detail/Back.
+- `pnpm -C hearth --filter @hearth/web test:unit` — **468/468**;
+  `/private/tmp/hearth-menu-focus-web-unit-final.log`. Typecheck, lint and production web build passed:
+  `pnpm -C hearth --filter @hearth/web typecheck`, `pnpm -C hearth lint`,
+  `pnpm -C hearth --filter @hearth/web build`.
+- `pnpm -C hearth test:e2e:built tests/e2e/menu-focus.spec.ts tests/e2e/remote.spec.ts
+tests/e2e/keyboard-layout.spec.ts tests/e2e/rail-visibility.spec.ts --reporter=line
+--output=/private/tmp/hearth-menu-focus-regression-pass` — **50/50**. All thirteen available family
+  destinations including Morning/NBA/Appearance, desktop admin and shell exit, phone portrait/
+  landscape taps, lazy transitions, D-pad reachability, short/4K rails, a11y, form editing and
+  completion/undo/Back. Remote Calendar/Chores/Photos journeys now assert retained menu focus and
+  explicitly press Right before using page controls; their existing action assertions remain.
+- `pnpm -C hearth test:e2e:built tests/e2e/calendar.spec.ts tests/e2e/reliability.spec.ts
+tests/e2e/photos.spec.ts --grep 'Calendar defaults|Agenda event details|Calendar preserves|delayed
+Calendar route|explicit loading-screen Back focus|admin loading retains|remote-only navigation
+opens Photos|meal drafts survive' --reporter=line --output=/private/tmp/hearth-menu-focus-lazy-back`
+  — **10/10**. Existing delayed Calendar direction bursts, explicit loading Back, event details,
+  photo/ambient exit, direct-entry defaults and unsaved-draft navigation remain intact.
+- `pnpm -C hearth test:e2e:built tests/e2e/menu-focus.spec.ts --browser=webkit --reporter=line
+--output=/private/tmp/hearth-menu-focus-webkit` — **6/6**, Safari engine, **not physical iPhone**.
+  Includes exact current-menu state, full module crawl, loading, Right/dialog/Back and both phone
+  orientations. Log `/private/tmp/hearth-menu-focus-webkit.log`.
+- `pnpm -C hearth verify:ci` — **5/5** policy checks and **1,330-case** complete shard inventory,
+  not full-suite execution. Formatting and `git diff --check` passed.
+
+Browser plugin unavailable; repository Playwright used with isolated fictional demo data. Page
+identity, meaningful content, no framework overlay, console health and visual focus/geometry were
+checked. Screenshots inspected under `/private/tmp/hearth-menu-focus-regression-pass/` and
+`/private/tmp/hearth-menu-focus-webkit/`. **Not run:** hosted release checks, publication/deployment
+or physical TV/iPhone verification. Existing private runtime and household data remain untouched.
+
 ## D-126 indoor chart axes — local refinement, 2026-10-29
 
 Replaced arbitrary start/middle/end axis labels with whole local hours, regular dates and actual

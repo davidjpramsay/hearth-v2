@@ -20,6 +20,8 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Agenda' })).toBeVisible();
+  await expect(page.locator('[data-focus-id="nav-calendar"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="calendar-view-agenda"]')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -57,6 +59,8 @@ test('remote-only Today → Calendar views → Chores → complete → undo → 
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Chores' })).toBeVisible();
   const schoolBag = page.locator('[data-focus-id="chore-primary"]');
+  await expect(page.locator('[data-focus-id="nav-chores"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(schoolBag).toBeFocused();
 
   await page.keyboard.press('ArrowRight');

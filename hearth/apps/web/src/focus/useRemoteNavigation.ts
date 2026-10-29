@@ -29,6 +29,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
   const activePath = useRef(location.pathname);
   const remoteMoved = useRef(false);
   const pendingDirections = useRef<FocusDirection[]>([]);
+  const activatedMenuLink = useRef<HTMLAnchorElement | null>(null);
 
   useLayoutEffect(() => {
     activePath.current = location.pathname;
@@ -40,8 +41,33 @@ export function useRemoteNavigation(defaultFocusId: string): void {
         focusMemory.current.remember(activePath.current, event.target.dataset.focusId);
       }
     };
+    const menuActivated = (event: MouseEvent) => {
+      activatedMenuLink.current = null;
+      const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.closest('[data-focus-navigation]') === null ||
+        link.closest('[aria-modal="true"], dialog[open]') !== null ||
+        event.button !== 0 ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        (link.target !== '' && link.target !== '_self') ||
+        new URL(link.href).origin !== window.location.origin
+      )
+        return;
+      activatedMenuLink.current = link;
+      // Safari does not focus tapped links. This is the user's chosen menu
+      // control, so keep focus here rather than selecting a page action for them.
+      focusControl(link, { scroll: false });
+    };
     document.addEventListener('focusin', rememberFocusedControl);
-    return () => document.removeEventListener('focusin', rememberFocusedControl);
+    document.addEventListener('click', menuActivated, true);
+    return () => {
+      document.removeEventListener('focusin', rememberFocusedControl);
+      document.removeEventListener('click', menuActivated, true);
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -70,7 +96,29 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     const fallbackId = `nav-${location.pathname.slice(1) || 'today'}`;
     const target = focusMemory.current.recall(location.pathname, defaultFocusId);
     const scrollOnEntry = routeChanged || window.innerWidth > COMPANION_MAX_WIDTH;
-    let entered = false;
+    const menuLink = activatedMenuLink.current;
+    const focusedMenu = document.activeElement?.closest('[data-focus-navigation]') ?? null;
+    const menuEntry =
+      routeChanged &&
+      navigationType !== 'POP' &&
+      ((menuLink !== null && new URL(menuLink.href).pathname === location.pathname) ||
+        focusIsWithin(focusedMenu));
+    if (menuEntry) {
+      const retained = menuLink?.isConnected && focusControl(menuLink, { scroll: false });
+      if (!retained && !focusIsWithin(focusedMenu)) {
+        // A shell change can replace the navigation DOM. Focus its current
+        // destination instead of falling through to a control inside the page.
+        for (const link of document.querySelectorAll<HTMLElement>(
+          '[data-focus-navigation] a[aria-current="page"], [data-focus-navigation] .phone-tab--active, [data-focus-navigation] .rail-item--active',
+        )) {
+          if (focusControl(link, { scroll: false })) break;
+        }
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      const main = document.querySelector('#main-content');
+      if (main !== null) main.scrollTop = 0;
+    }
+    let entered = menuEntry;
     const applyPendingDirections = () => {
       const directions = pendingDirections.current;
       pendingDirections.current = [];
@@ -97,7 +145,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     };
     // Move before paint when the committed route is ready; otherwise the observer
     // waits for its lazy content and restores any queued directional input.
-    if (routeChanged) enter();
+    if (routeChanged && !menuEntry) enter();
     const animationFrame = requestAnimationFrame(() => {
       const content = document.querySelector('#main-content');
       const activeFocusId =
@@ -107,6 +155,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       // A remote key, tap or form-field focus can arrive before this first frame.
       // Never steal that explicit interaction during initial screen entry.
       if (
+        menuEntry ||
         remoteMoved.current ||
         focusIsWithin(content) ||
         (!routeChanged && activeFocusId !== undefined)
@@ -152,6 +201,11 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     };
   }, [defaultFocusId, location.pathname, navigationType]);
 
+  useLayoutEffect(() => {
+    // Also clear same-page/query-only activations, without re-entering their content.
+    activatedMenuLink.current = null;
+  }, [location.key]);
+
   useEffect(() => {
     const handleBack = (fromNativeShell: boolean) => {
       pendingDirections.current = [];
@@ -180,6 +234,17 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       if (direction !== undefined) {
         if (!(active instanceof HTMLElement)) return;
         if (active.matches('input, textarea, select') || active.isContentEditable) return;
+        if (
+          direction === 'right' &&
+          active.closest('[data-focus-navigation="rail"]') !== null &&
+          active.closest('[aria-modal="true"], dialog[open]') === null
+        ) {
+          event.preventDefault();
+          // Entering the page is now an explicit action. Start at its meaningful
+          // entry (the current Calendar view, for example), then use spatial arrows.
+          if (focusById(defaultFocusId) || focusById('screen-entry')) remoteMoved.current = true;
+          return;
+        }
         if (
           document.querySelector('#main-content [data-focus-loading="true"]') !== null &&
           (active === document.body || active.getClientRects().length === 0)

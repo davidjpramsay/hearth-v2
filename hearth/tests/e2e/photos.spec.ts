@@ -145,6 +145,8 @@ test('remote-only navigation opens Photos, selects portrait content, and exits a
 
   await expect(page.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible();
   const breakfast = page.locator('[data-focus-id="photos-thumb-photo_family_breakfast"]');
+  await expect(page.locator('[data-focus-id="nav-photos"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(breakfast).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');

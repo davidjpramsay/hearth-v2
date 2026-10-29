@@ -179,7 +179,7 @@ function AppShellLayout({ children }: { children: ReactNode }) {
   }
   return (
     <div className="app-shell">
-      <aside className="tv-rail" aria-label="Primary navigation">
+      <aside className="tv-rail" aria-label="Primary navigation" data-focus-navigation="rail">
         <HouseholdDateTime placement="rail" />
         <nav className="tv-rail__nav" ref={railNavigation}>
           {navigation.map((item, index) => (
@@ -226,7 +226,7 @@ function AdminDesktopNavigation({ pathname }: { pathname: string }) {
     .map((group) => ({ ...group, items: group.items.filter((item) => available(item.path)) }))
     .filter((group) => group.items.length > 0);
   return (
-    <aside className="admin-desktop-rail" aria-label="Administration">
+    <aside className="admin-desktop-rail" aria-label="Administration" data-focus-navigation="rail">
       <NavLink className="admin-desktop-brand" to="/admin">
         <img alt="" src="/brand/hearth-mark.png" />
         <span>
@@ -293,6 +293,7 @@ function PhoneNavigation() {
       className="phone-tabs"
       style={{ gridTemplateColumns: `repeat(${navigation.length + 1}, minmax(0, 1fr))` }}
       aria-label="Primary navigation"
+      data-focus-navigation="dock"
       hidden={keyboardOpen}
     >
       {navigation.map((item, index) => (

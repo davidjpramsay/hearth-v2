@@ -211,6 +211,12 @@ Primary commands are Up, Down, Left, Right, Select and Back.
   it when that reduction ends. Native editing and pinch zoom remain available.
 - The television rail starts with the time and date in place of the Hearth logo/title; no duplicate clock appears in its footer.
 - The focused destination and focused action are always visually obvious.
+- Choosing a main-menu destination keeps focus on that menu item. Do not automatically highlight
+  a page control, including after lazy loading, background updates or a phone-menu tap. New menu
+  destinations start at the top. On television, Right explicitly enters the page at its meaningful
+  entry control; on phones, touch or Tab chooses the desired control. Keep the normal visible
+  focus treatment once a person deliberately enters the content. Administration's desktop rail
+  follows the same rule, including shell changes.
 - Television rail rows use a stable inset focus outline, without enlargement or an outer glow that
   the scrolling navigation clips. Apply the same bounded treatment to the rail's Appearance action.
   On short displays, scroll only the rail's navigation region to reveal the current destination
@@ -225,7 +231,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
   Movement continues through adjacent page content before entering the navigation rail or a fixed phone navigation bar.
   Clearly aligned neighbours take priority over header actions that only graze a row's edge.
   Text fields, selects and screen-specific widgets retain their native/custom arrow handling.
-  Calendar views initially focus their selected Week/Month/Agenda selector, not an event; Enter
+  Direct Calendar entry and Right from the rail focus the selected Week/Month/Agenda selector,
+  not an event. Choosing Calendar from the main menu leaves focus on Calendar until Right. Enter
   opens details and Back restores the event that opened them. Arrows and Tab stay inside dialogs.
 - Opening a detail page should place focus on its primary meaningful control.
 - Back returns to the previous product surface; a second Back at the root may hand control to Google TV after a confirmation or normal Android behaviour.
@@ -305,7 +312,8 @@ notice administration without embedding a second simulated Today screen. Rapid c
 optimistically and serialised so one switch cannot restore another switch's older value. The actual
 Today destination remains the authoritative rendered result.
 
-The first focus should usually be the most relevant actionable item, not the navigation chrome.
+Direct entry can focus the most relevant actionable item. Opening Today from the main menu keeps
+focus on Today in that menu until the person deliberately enters the page.
 Today derives the visible event/chore capacity from the rendered composition. Full-height
 landscape-photo television layouts may use four rows, while their compact-height counterpart and
 compact-square television layouts retain three. Portrait, full-height square and no-photo television
