@@ -596,6 +596,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return authorization.slice('HearthAutomation '.length);
   };
 
+  const retireRetainedScreenSession = (request: FastifyRequest, reply: FastifyReply) => {
+    if (!isPrivateMode(options) || !isSharedScreenRequest(request.headers)) return;
+    const retainedAdult = optionalCompanionCredential(request.headers);
+    if (retainedAdult !== null && options.companionAuth !== undefined) {
+      // Removing a screen cookie must never resurrect its retained adult authority.
+      options.companionAuth.invalidateBrowserSession(retainedAdult);
+      reply.header('Set-Cookie', options.companionAuth.clearSessionCookie());
+    }
+  };
+
   server.addHook('preHandler', async (request, reply) => {
     const routeUrl = request.routeOptions.url;
     if (routeUrl !== undefined && machinePairingRoutes.has(routeUrl)) {
@@ -663,15 +673,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       );
       if (reply.sent) return reply;
     }
-    if (isPrivateMode(options) && isSharedScreenRequest(request.headers)) {
-      const retainedAdult = optionalCompanionCredential(request.headers);
-      if (retainedAdult !== null && options.companionAuth !== undefined) {
-        // Upgrade legacy mixed-cookie screens too: removing the display cookie
-        // later must not resurrect the adult authority retained on this browser.
-        options.companionAuth.invalidateBrowserSession(retainedAdult);
-        reply.header('Set-Cookie', options.companionAuth.clearSessionCookie());
-      }
-    }
+    retireRetainedScreenSession(request, reply);
     if (
       routeUrl?.startsWith('/api/v1/auth/') &&
       routeUrl !== '/api/v1/auth/status' &&
@@ -2602,7 +2604,34 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   server.post(
     '/api/v1/households/:householdId/photo-uploads',
-    { bodyLimit: MAX_MANAGED_PHOTO_BYTES },
+    {
+      bodyLimit: MAX_MANAGED_PHOTO_BYTES,
+      onRequest: async (request, reply) => {
+        // Reject before allocating the larger raw-image body. Global checks still run again.
+        retireRetainedScreenSession(request, reply);
+        const params = parse(HouseholdParamsSchema, request.params, reply);
+        if (params === null) return reply;
+        await run(reply, async () => {
+          if (
+            typeof request.headers.authorization === 'string' &&
+            /^\s*HearthAutomation(?:\s|$)/i.test(request.headers.authorization)
+          )
+            throw new RepositoryError(
+              'FORBIDDEN',
+              'Home Assistant may use only its dedicated Hearth bridge endpoints.',
+            );
+          assertControllerRequest(request.headers);
+          const actor = commandActor(request.headers, options, adminRepository);
+          if (actor.type !== 'member' || actor.source !== 'companion')
+            throw new RepositoryError(
+              'FORBIDDEN',
+              'Only an adult using the companion can add family photos.',
+            );
+          await adminRepository.getOverview(params.householdId, actor.id);
+        });
+        if (reply.sent) return reply;
+      },
+    },
     async (request, reply) => {
       const params = parse(HouseholdParamsSchema, request.params, reply);
       const headers = parse(PhotoUploadHeadersSchema, request.headers, reply);
@@ -2613,7 +2642,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           ApiErrorSchema.parse({
             error: {
               code: 'VALIDATION_ERROR',
-              message: 'Choose a supported family photo smaller than 25 MB.',
+              message: 'Choose a supported family photo up to 100 MB.',
               retryable: false,
               requestId: headers['x-hearth-request-id'],
             },

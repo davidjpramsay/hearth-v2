@@ -699,3 +699,210 @@
     gap: 8px;
   }
 }
+
+/* Management stays compact in normal mode, not only after Select photos. */
+.photo-curation__grid:not(.photo-curation__grid--selection) {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  align-items: stretch;
+}
+.photo-curation-card__preview {
+  aspect-ratio: 4 / 3;
+}
+.photo-curation-card__image {
+  object-fit: contain;
+}
+.photo-curation-card__copy {
+  min-height: 0;
+  padding: 10px;
+}
+.photo-curation-card__copy strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 13px;
+}
+.photo-curation-card__source {
+  top: 6px;
+  bottom: auto;
+  right: 6px;
+  font-size: 10px;
+}
+.photo-curation-card__state {
+  left: 6px;
+  bottom: 6px;
+  min-height: 26px;
+  padding-inline: 7px;
+  font-size: 11px;
+}
+.photo-curation-card__actions {
+  padding: 0 8px 8px;
+  gap: 5px;
+}
+.photo-curation-action {
+  min-height: 44px;
+  padding-inline: 5px;
+  font-size: 12px;
+}
+.photo-library-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+.photo-bulk-actions {
+  flex-wrap: wrap;
+}
+.photo-upload-status {
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  background: var(--surface);
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.photo-upload-status__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.photo-upload-status__header > div {
+  flex: 1 1 180px;
+}
+.photo-upload-status p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.photo-upload-status progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--eucalyptus);
+}
+.photo-upload-status > progress {
+  margin-top: 12px;
+}
+.photo-upload-status__items {
+  list-style: none;
+  padding: 0;
+  max-height: 230px;
+  overflow-y: auto;
+}
+.photo-upload-status__items li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 13px;
+}
+.photo-upload-status__items li > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.photo-upload-status__items li > span:nth-child(2) {
+  text-align: right;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.photo-upload-status__items progress {
+  grid-column: 1 / -1;
+}
+@media (max-width: 600px) {
+  .photo-curation__grid:not(.photo-curation__grid--selection) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .photo-curation-action__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .photo-curation-card__copy {
+    padding: 8px;
+  }
+  .photo-curation-card__copy span {
+    font-size: 11px;
+  }
+  .photo-source-guide {
+    padding: 15px;
+  }
+  .photo-source-guide__heading .admin-setting-row__icon {
+    display: none;
+  }
+  .photo-upload-button,
+  .photo-source-guide__formats {
+    margin-left: 0;
+  }
+  .photo-curation__header-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.photo-folder-options > summary {
+  padding: 12px 14px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+}
+.photo-source-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.photo-upload-button {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  font-size: 16px;
+}
+.photo-upload-button svg {
+  width: 20px;
+  height: 20px;
+}
+.photo-source-guide__formats {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .photo-source-guide__heading h2 {
+    font-size: 20px;
+  }
+}
+@media (max-width: 600px) {
+  .photo-curation__header-actions .photo-curation__counts {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .photo-curation__header-actions .photo-selection-toggle {
+    flex-shrink: 0;
+  }
+  .photo-bulk-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .photo-bulk-actions > div,
+  .photo-bulk-action--danger {
+    grid-column: 1 / -1;
+  }
+}
+.photo-curation-card {
+  display: flex;
+  flex-direction: column;
+}
+.photo-curation-card__preview {
+  flex: 0 0 auto;
+}
+.photo-curation-card__copy {
+  flex: 1;
+}
+.photo-curation-card__actions {
+  margin-top: auto;
+}

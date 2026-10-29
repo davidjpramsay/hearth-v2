@@ -476,8 +476,11 @@ Favourites stay first in management, not permanently first in playback.
 In **Select photos**, replace large curation cards with compact whole-thumbnail buttons: three
 columns on phones, a responsive wider grid elsewhere, clear checked state and accessible photo
 names. Show at most 48 per page, retain selections when paging, and focus the first tile after a
-page change. Keep bulk counts and exact confirmation. Normal curation, imported-original
-protection, cancellation and partial-failure behavior remain unchanged.
+page change. D-122 also pages ordinary curation at 48 photos, using a two-column phone grid and
+wider responsive grids with whole-image previews, compact labelled actions and 44px minimum phone
+targets. All/Favourites/Hidden filters reset the visible page without dropping selections; Select
+page adds only that page, Clear selection is explicit. Keep bulk counts and exact confirmation.
+Imported-original protection, cancellation and partial-failure behavior remain unchanged.
 
 - Full-screen ambient slideshow.
 - The normal Photos screen is an orientation-aware full-screen collage rather than a large image
@@ -505,8 +508,14 @@ protection, cancellation and partial-failure behavior remain unchanged.
 - Photo storage/import errors should never reveal filesystem paths or technical details to the household.
 - Phone-first Photos administration begins with **Add photos**, opens the native
   multi-select photo picker and reports added, duplicate and failed counts without sending client
-  filenames to the server. Each file is limited to 25 MB and uploads run sequentially so a partial
-  failure does not discard successful additions.
+  filenames to the server. D-122 raises the limit to 100 MB per photo, advertised by the server;
+  there is no aggregate batch-byte limit. Two transfers may overlap while the server serializes
+  expensive preparation. A bounded-height queue distinguishes byte-transfer percentage from
+  Preparing photo, counts added/duplicate/failed results, pauses new dispatch while current photos
+  finish, and retries failures with their original file/request ID. Accepted files release their
+  browser File references. Keep queued/failed retries in page memory only, warn before leaving and
+  suppress automatic release reloads while unfinished work exists. No background uploader or new
+  permission. The optional folder-import details are collapsed unless unavailable.
 - Phone navigation names the two photo intents explicitly: **Photos** opens the gallery
   and ambient display, while a direct **Manage photos** row under Manage Hearth opens upload,
   curation and removal. Adults should not have to enter the display gallery to discover the upload

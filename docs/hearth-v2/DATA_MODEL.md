@@ -437,6 +437,11 @@ orientation correction rather than claiming EXIF capture-date fidelity.
 
 ### Managed photo upload
 
+D-122 changes operational byte/queue limits only: up to 100 MiB per raw image, unchanged 120-million
+input-pixel bound, serialized preparation and smaller newly generated upload thumbnails. The master
+hash/receipt format is unchanged. No migration or rewrite of existing photos is performed; browser
+queue state and original filenames remain ephemeral and are never added to SQLite.
+
 - opaque upload and asset IDs
 - household and authenticated adult actor
 - content hash and byte size for deduplication/limits

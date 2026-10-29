@@ -1,5 +1,25 @@
 # Hearth v2 architecture
 
+## Photo management and bounded uploads (D-122)
+
+The existing adult-only raw-image command keeps its typed response, actor validation, receipts,
+audit, private storage and imported-original protections. A shared 100 MiB byte constant and the
+advertised capability govern Fastify/provider/client limits. Only Nginx's exact photo-upload route
+gets the larger body and 300-second upstream timeout; other API limits remain. Adult/controller
+access is checked before reading the larger body and again before mutation; legacy mixed-cookie
+screen retirement is preserved. The same-origin
+XHR adapter validates the same DTO/errors and reports upload bytes separately from preparation.
+A page-local external-store queue has at most two transfers, stable File/request IDs for retries,
+pause/resume and no new dispatch after unmount. No file bytes/queue go to persistent browser storage;
+accepted File references are released. Unfinished uploads/retries register with the existing draft
+navigation/release guard. Gallery filters/pages/selection are derived from the canonical source read.
+
+The provider chains its upload promise before awaiting, preserving FIFO through failed jobs and
+preventing multiple waiters from decoding concurrently. Canonical 7680px master encoding/hash is
+unchanged for existing deduplication. New upload thumbnails are 480px and derive from the bounded
+3840×2160 display output instead of decoding the large master twice. Existing files are not rewritten.
+No database migration, import mount, network configuration or photo permissions change is needed.
+
 ## iPhone/iPad Home Screen web app (D-121)
 
 The shared HTML declares Apple's standalone metadata and `/manifest.webmanifest`. Stable root

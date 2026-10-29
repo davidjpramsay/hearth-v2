@@ -11,6 +11,7 @@ import { applyMigrations } from '../database.js';
 import { FixedClock } from '../runtime-context.js';
 import {
   SynologyFolderPhotoSourceProvider,
+  MAX_MANAGED_PHOTO_BYTES,
   resolveSynologyPhotoSourceConfiguration,
   readApprovedPhoto,
 } from './synology-photo-source.js';
@@ -219,6 +220,71 @@ describe('SynologyFolderPhotoSourceProvider', () => {
     const restored = await fixture.provider.curatePhoto('household_photo_test', photo.id, 'unhide');
     expect(restored?.photos[0]).toMatchObject({ id: photo.id, favourite: false });
     await fixture.close();
+  });
+
+  it('accepts a real image above the former 25 MB cap and still bounds bytes and thumbnail size', async () => {
+    const fixture = await photoFixture();
+    try {
+      const bytes = await sharp({
+        create: { width: 3000, height: 3000, channels: 3, background: '#426848' },
+      })
+        .tiff({ compression: 'none' })
+        .toBuffer();
+      expect(bytes.byteLength).toBeGreaterThan(25 * 1024 * 1024);
+      const result = await fixture.provider.uploadPhoto('household_photo_test', {
+        bytes,
+        mimeType: 'image/tiff',
+        capturedAt: null,
+        actorId: 'member_adult',
+      });
+      expect(result?.photo).toMatchObject({ width: 2160, height: 2160 });
+      expect(result?.snapshot.index.upload.maxFileBytes).toBe(100 * 1024 * 1024);
+      const thumb = await fixture.provider.getDerivative(
+        'household_photo_test',
+        result!.photo.id,
+        'thumbnail',
+      );
+      expect(await sharp(thumb!.bytes).metadata()).toMatchObject({ width: 480, height: 480 });
+      const oversized = await fixture.provider.uploadPhoto('household_photo_test', {
+        bytes: new Uint8Array(MAX_MANAGED_PHOTO_BYTES + 1),
+        mimeType: 'image/tiff',
+        capturedAt: null,
+        actorId: 'member_adult',
+      });
+      expect(oversized).toBeNull();
+    } finally {
+      await fixture.close();
+    }
+  }, 20_000);
+
+  it('serializes several waiting uploads and deduplicates their shared content safely', async () => {
+    const fixture = await photoFixture();
+    try {
+      const make = (color: string) =>
+        sharp({ create: { width: 800, height: 600, channels: 3, background: color } })
+          .jpeg()
+          .toBuffer();
+      const [first, repeated] = await Promise.all([make('#446688'), make('#994422')]);
+      const results = await Promise.all(
+        [first, repeated, repeated, repeated, repeated].map((bytes) =>
+          fixture.provider.uploadPhoto('household_photo_test', {
+            bytes,
+            mimeType: 'image/jpeg',
+            capturedAt: null,
+            actorId: 'member_adult',
+          }),
+        ),
+      );
+      expect(results.filter((result) => result && !result.duplicate)).toHaveLength(2);
+      expect(results.filter((result) => result?.duplicate)).toHaveLength(3);
+      expect(
+        (await fixture.provider.listApprovedPhotos('household_photo_test')).curation,
+      ).toHaveLength(2);
+      expect(await readdir(fixture.uploads)).toHaveLength(2);
+      expect(await readdir(fixture.derivatives)).toHaveLength(4);
+    } finally {
+      await fixture.close();
+    }
   });
 
   it('stores managed uploads privately, preserves portrait orientation and deduplicates content', async () => {

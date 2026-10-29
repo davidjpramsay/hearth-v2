@@ -661,10 +661,18 @@ test('@visual phone administration uploads and curates the private photo collect
   });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Choose photos' })).toBeFocused();
+  // The compact toolbar adds an import disclosure and visibility filters to the keyboard path.
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.photo-folder-options > summary')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('button', { name: 'Select photos', exact: true })).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(firstFavourite).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Hidden', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('button', { name: 'Favourites', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('button', { name: 'All photos', exact: true })).toBeFocused();
+  await firstFavourite.focus();
   await page.keyboard.press('ArrowRight');
   await expect(
     page.locator('[data-focus-id="photo-curation-hide-photo_coastal_picnic"]'),

@@ -4,7 +4,6 @@ import {
   PhotoGallerySchema,
   PhotoSourceIndexStatusSchema,
   PhotoSourceRefreshResultSchema,
-  PhotoUploadResultSchema,
   type PhotoCurationAction,
   type PhotoCurationCommandResult,
   type PhotoDeletionCommandResult,
@@ -14,6 +13,7 @@ import {
 } from '@hearth/shared';
 
 import { demoAdminHeaders, householdApiBase, request } from './core';
+import { sendPhotoUpload, type PhotoUploadProgress } from './photoUpload';
 
 export const photosApi = {
   getPhotos: () => request(`${householdApiBase()}/photos`, PhotoGallerySchema),
@@ -32,26 +32,25 @@ export const photosApi = {
       },
       120_000,
     ),
-  uploadPhoto: (file: File, requestId: string): Promise<PhotoUploadResult> => {
-    const mimeType = photoMimeType(file);
+  uploadPhoto: (
+    file: File,
+    requestId: string,
+    onProgress?: (progress: PhotoUploadProgress) => void,
+  ): Promise<PhotoUploadResult> => {
     const capturedAt =
       Number.isFinite(file.lastModified) && file.lastModified > 0
         ? new Date(file.lastModified).toISOString()
         : null;
-    return request(
+    return sendPhotoUpload(
       `${householdApiBase()}/photo-uploads`,
-      PhotoUploadResultSchema,
+      file,
       {
-        method: 'POST',
-        headers: {
-          ...demoAdminHeaders,
-          'Content-Type': mimeType,
-          'X-Hearth-Request-Id': requestId,
-          ...(capturedAt === null ? {} : { 'X-Hearth-Photo-Captured-At': capturedAt }),
-        },
-        body: file,
+        ...demoAdminHeaders,
+        'Content-Type': photoMimeType(file),
+        'X-Hearth-Request-Id': requestId,
+        ...(capturedAt === null ? {} : { 'X-Hearth-Photo-Captured-At': capturedAt }),
       },
-      120_000,
+      onProgress,
     );
   },
   updatePhotoCuration: (

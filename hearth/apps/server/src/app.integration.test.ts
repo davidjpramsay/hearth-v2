@@ -1220,6 +1220,42 @@ describe('Hearth v2 API', () => {
     expect(missingDerivative.json().error.code).toBe('NOT_FOUND');
   });
 
+  it('rejects non-adult photo uploads before parsing their larger image body', async () => {
+    const app = server();
+    let parsedBodies = 0;
+    app.addContentTypeParser(
+      'image/x-hearth-upload-probe',
+      { parseAs: 'buffer' },
+      (_request, body, done) => {
+        parsedBodies++;
+        done(null, body);
+      },
+    );
+    const url = '/api/v1/households/household_hearth_demo/photo-uploads';
+    const headers = {
+      'content-type': 'image/x-hearth-upload-probe',
+      'x-hearth-request-id': 'request_photo_early_gate',
+    };
+    for (const actor of ['member_ezra', 'service_test', 'device_screen']) {
+      const response = await app.inject({
+        method: 'POST',
+        url,
+        headers: { ...headers, 'x-hearth-demo-actor': actor },
+        payload: 'large image body would follow',
+      });
+      expect(response.statusCode).toBe(403);
+    }
+    expect(parsedBodies).toBe(0);
+    const adult = await app.inject({
+      method: 'POST',
+      url,
+      headers: { ...headers, 'x-hearth-demo-actor': 'member_maya' },
+      payload: 'probe',
+    });
+    expect(adult.statusCode).toBe(400); // Authorized, but intentionally unsupported test format.
+    expect(parsedBodies).toBe(1);
+  });
+
   it('accepts raw adult photo uploads with replay safety and rejects child and unsupported writes', async () => {
     const app = server();
     const url = '/api/v1/households/household_hearth_demo/photo-uploads';

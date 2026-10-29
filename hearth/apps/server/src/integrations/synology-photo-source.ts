@@ -18,6 +18,8 @@ import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type Database from 'better-sqlite3';
 import sharp, { type OutputInfo } from 'sharp';
 
+import { MAX_PHOTO_UPLOAD_BYTES } from '@hearth/shared';
+
 import type {
   PhotoAsset,
   PhotoCurationAction,
@@ -53,7 +55,7 @@ const MAX_SOURCE_FILES = 20_000;
 const MAX_SOURCE_DEPTH = 16;
 const MAX_SOURCE_BYTES = 120 * 1024 * 1024;
 const IGNORED_SOURCE_DIRECTORIES = new Set(['@eaDir', '#recycle']);
-export const MAX_MANAGED_PHOTO_BYTES = 25 * 1024 * 1024;
+export const MAX_MANAGED_PHOTO_BYTES = MAX_PHOTO_UPLOAD_BYTES;
 const MAX_INPUT_PIXELS = 120_000_000;
 const DERIVATIVE_KEY_PATTERN = /^[a-f0-9]{64}-(display|thumbnail)\.webp$/;
 const MASTER_KEY_PATTERN = /^[a-f0-9]{64}-master\.webp$/;
@@ -207,10 +209,12 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
     householdId: string,
     input: PhotoUploadInput,
   ): Promise<PhotoSourceUpload | null> {
-    if (this.uploadPromise !== null) {
-      await this.uploadPromise;
-    }
-    const upload = this.runUploadPhoto(householdId, input).finally(() => {
+    // Enqueue before awaiting: several callers must not all resume into a parallel decode.
+    const previous = this.uploadPromise;
+    const upload = (async () => {
+      await previous?.catch(() => undefined);
+      return this.runUploadPhoto(householdId, input);
+    })().finally(() => {
       if (this.uploadPromise === upload) this.uploadPromise = null;
     });
     this.uploadPromise = upload;
@@ -277,14 +281,20 @@ export class SynologyFolderPhotoSourceProvider implements PhotoSourceProvider {
     const thumbnailTemporary = this.derivativePath(thumbnailTemporaryKey);
     try {
       await writeFile(masterTemporary, master.data, { flag: 'wx' });
-      const displayInfo = await sharp(master.data)
+      const display = await sharp(master.data)
         .resize({ width: 3840, height: 2160, fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 84, effort: 4, smartSubsample: true })
-        .toFile(displayTemporary);
-      await sharp(master.data)
-        .resize({ width: 960, height: 960, fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 78, effort: 4, smartSubsample: true })
-        .toFile(thumbnailTemporary);
+        .toBuffer({ resolveWithObject: true });
+      const displayInfo = display.info;
+      // Decode the bounded TV derivative, rather than the large master a second time.
+      // Keep master encoding/hash unchanged so existing duplicate detection still works.
+      await Promise.all([
+        writeFile(displayTemporary, display.data, { flag: 'wx' }),
+        sharp(display.data)
+          .resize({ width: 480, height: 480, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 78, effort: 4, smartSubsample: true })
+          .toFile(thumbnailTemporary),
+      ]);
       await Promise.all([
         rename(masterTemporary, this.managedPath(masterKey)),
         rename(displayTemporary, this.derivativePath(derivativeKey)),

@@ -1,5 +1,28 @@
 # Hearth v2 decision record
 
+## D-122 — Compact photo management and a bounded visible upload queue
+
+- Date: 2026-10-29
+- Status: accepted; local, release and physical throughput evidence remain separate
+- Choice: Page ordinary curation as well as selection at 48 photos. Use two phone columns, a wider
+  responsive grid, whole-image previews and compact accessible actions; retain exact deletion and
+  read-only imported originals. Add visibility/favourite filters and explicit Select page/Clear.
+- Uploads: Increase the advertised per-photo limit from 25 to 100 MiB. Keep one raw image per
+  authenticated idempotent command and 120-million input-pixel validation. Two same-origin transfers
+  may overlap; adult/controller access is checked before reading the larger body and again before
+  mutation, preserving legacy mixed-cookie screen retirement. Expensive preparation remains FIFO,
+  including recovery after a failed job.
+  Show transfer/preparation/progress/outcomes, pause/resume and exact-ID/file retry. Hold work only
+  in page memory, release accepted File references and register unfinished work with draft guards.
+  No browser transcoding, background sync, new account/permission or credentials.
+- Efficiency: Preserve canonical master encoding/content hash, avoiding deduplication changes or
+  rewriting existing images. Generate a 480px new-upload thumbnail from the already bounded display
+  output. Scope Nginx body/read-timeout increases to photo uploads. Keep other API limits intact.
+- Boundary: No deletion, live upload, import-source, DSM/network or deployment change is authorized
+  by local implementation. Larger end-to-end uploads and throughput still require physical/private
+  release verification; a local benchmark cannot prove NAS/Wi-Fi speed.
+
+
 ## D-121 — Install the shared web companion on iPhone and iPad
 
 - Date: 2026-10-29

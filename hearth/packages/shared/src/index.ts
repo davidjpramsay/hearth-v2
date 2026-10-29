@@ -9,3 +9,4 @@ export * from './connection-codes.js';
 export * from './modules.js';
 export * from './nba.js';
 export * from './morning-routine.js';
+export * from './photo-uploads.js';

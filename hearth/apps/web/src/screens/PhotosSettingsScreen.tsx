@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type { PhotoCurationAction, PhotoCurationAsset, PhotoUploadResult } from '@hearth/shared';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { PhotoCurationAction, PhotoCurationAsset } from '@hearth/shared';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 
 import './PhotosSettingsScreen.css';
@@ -13,6 +13,8 @@ import { Icon } from '../components/Icon';
 import { PhotoAssetImage } from '../components/PhotoAssetImage';
 import { focusById } from '../focus/focusGraph';
 import { usePhotoSourceQuery } from '../hooks/usePhotoQueries';
+import { PhotoUploadQueue, type QueuedPhoto } from '../hooks/photoUploadQueue';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 
 interface PhotoDeleteRequest {
   photos: PhotoCurationAsset[];
@@ -26,6 +28,7 @@ export function PhotosSettingsScreen() {
   const uploadInput = useRef<HTMLInputElement>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [photoPage, setPhotoPage] = useState(0);
+  const [filter, setFilter] = useState<'all' | 'favourites' | 'hidden'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [deleteRequest, setDeleteRequest] = useState<PhotoDeleteRequest | null>(null);
   const refresh = useMutation({
@@ -108,34 +111,27 @@ export function PhotosSettingsScreen() {
       await invalidatePhotoQueries(queryClient);
     },
   });
-  const upload = useMutation({
-    mutationFn: async (files: File[]) => {
-      const results = [];
-      const failures: string[] = [];
-      for (const file of files) {
-        if (file.size > 25 * 1024 * 1024) {
-          failures.push(`${file.name} is larger than 25 MB.`);
-          continue;
-        }
-        try {
-          results.push(await hearthApi.uploadPhoto(file, createRequestId('photo_upload')));
-        } catch (error) {
-          failures.push(error instanceof Error ? error.message : 'A photo could not be added.');
-        }
-      }
-      return { results, failures };
-    },
-    onSuccess: async ({ results }) => {
-      const latest = results.at(-1);
-      if (latest !== undefined) queryClient.setQueryData(queryKeys.photoSource, latest.status);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.photoSource }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.photos }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.today }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.activity }),
-      ]);
-    },
-  });
+  const [uploadQueue] = useState(
+    () =>
+      new PhotoUploadQueue(
+        hearthApi.uploadPhoto,
+        (result) => queryClient.setQueryData(queryKeys.photoSource, result.status),
+        () => {
+          void invalidatePhotoQueries(queryClient);
+        },
+      ),
+  );
+  const uploads = useSyncExternalStore(uploadQueue.subscribe, uploadQueue.getSnapshot);
+  const uploading = uploads.items.some((item) =>
+    ['queued', 'uploading', 'processing'].includes(item.state),
+  );
+  useUnsavedChanges(
+    uploading || uploads.items.some((item) => item.state === 'failed' && item.retryable),
+  );
+  useEffect(() => {
+    uploadQueue.setActive(true);
+    return () => uploadQueue.setActive(false);
+  }, [uploadQueue]);
 
   useLayoutEffect(() => {
     if (
@@ -167,11 +163,16 @@ export function PhotosSettingsScreen() {
   const restorablePhotos = selectedPhotos.filter((photo) => photo.hidden);
   const deletablePhotos = selectedPhotos.filter((photo) => photo.canDeletePermanently);
   const importedSelections = selectedPhotos.length - deletablePhotos.length;
-  const pageCount = selectionMode ? Math.ceil(data.photos.length / 48) : 1;
+  const filteredPhotos = data.photos.filter((photo) =>
+    filter === 'hidden'
+      ? photo.hidden
+      : filter === 'favourites'
+        ? photo.favourite && !photo.hidden
+        : true,
+  );
+  const pageCount = Math.ceil(filteredPhotos.length / 48);
   const currentPage = Math.min(photoPage, Math.max(0, pageCount - 1));
-  const visiblePhotos = selectionMode
-    ? data.photos.slice(currentPage * 48, (currentPage + 1) * 48)
-    : data.photos;
+  const visiblePhotos = filteredPhotos.slice(currentPage * 48, (currentPage + 1) * 48);
   const firstCurationFocus = visiblePhotos[0]
     ? primaryCurationFocusId(visiblePhotos[0], selectionMode)
     : 'photo-settings-view';
@@ -196,12 +197,15 @@ export function PhotosSettingsScreen() {
           accept="image/jpeg,image/png,image/heic,image/heif,image/tiff,image/avif,image/webp,.heic,.heif"
           aria-hidden="true"
           className="photo-upload-input"
-          disabled={upload.isPending || !data.upload.enabled}
+          disabled={!data.upload.enabled}
           multiple
           onChange={(event) => {
             const files = Array.from(event.currentTarget.files ?? []);
             event.currentTarget.value = '';
-            if (files.length > 0) upload.mutate(files);
+            if (files.length > 0)
+              uploadQueue.add(files, data.upload.maxFileBytes, () =>
+                createRequestId('photo_upload'),
+              );
           }}
           ref={uploadInput}
           tabIndex={-1}
@@ -209,20 +213,31 @@ export function PhotosSettingsScreen() {
         />
         <button
           className="admin-primary-action photo-upload-button focusable"
-          data-focus-down={canScan ? 'photo-source-refresh' : firstCurationFocus}
+          data-focus-down="photo-selection-toggle"
           data-focus-entry="true"
           data-focus-id="photo-upload-select"
-          disabled={upload.isPending || !data.upload.enabled}
+          disabled={!data.upload.enabled}
           onClick={() => uploadInput.current?.click()}
           type="button"
         >
           <Icon name="image" />
-          {upload.isPending ? 'Adding photos…' : 'Choose photos'}
+          Choose photos
         </button>
-        <p className="photo-source-guide__formats">JPEG, PNG, HEIC · 25 MB max</p>
+        <p className="photo-source-guide__formats">
+          {data.upload.acceptedFormats.join(', ')} · up to{' '}
+          {Math.round(data.upload.maxFileBytes / 1024 / 1024)} MB per photo
+        </p>
+        <p className="photo-source-guide__formats">
+          Choose multiple photos together. Keep this page open while they upload.
+        </p>
       </section>
-      {upload.isSuccess ? <UploadResult result={upload.data} /> : null}
-      {upload.isError ? <AdminError message={upload.error.message} /> : null}
+      <PhotoUploadStatus
+        items={uploads.items}
+        paused={uploads.paused}
+        onPause={uploadQueue.pause}
+        onResume={uploadQueue.resume}
+        onRetry={uploadQueue.retry}
+      />
       <div className="connection-list photo-source-options">
         <article className="connection-row">
           <span className="admin-setting-row__icon">
@@ -241,48 +256,58 @@ export function PhotosSettingsScreen() {
             {sourceBadge(status)}
           </span>
         </article>
-        <article className="connection-row photo-source-detail">
-          <span className="admin-setting-row__icon">
-            <Icon name="shield" />
-          </span>
-          <div>
-            <strong>Synology folder import</strong>
-            <p>{canScan ? data.folderImport.message : 'Not connected'}</p>
-            <dl className="photo-source-stats">
-              <div>
-                <dt>Last check</dt>
-                <dd>{formatScanTime(data.folderImport.lastCheckedAt)}</dd>
-              </div>
-              <div>
-                <dt>Imported</dt>
-                <dd>{data.importedPhotoCount}</dd>
-              </div>
-              <div>
-                <dt>Skipped</dt>
-                <dd>{data.unsupportedFileCount + data.corruptFileCount}</dd>
-              </div>
-              {data.hiddenPhotoCount > 0 ? (
+        <details className="photo-folder-options" open={data.folderImport.status === 'unavailable'}>
+          <summary
+            className="focusable"
+            data-focus-id="photo-folder-toggle"
+            data-focus-right="photo-selection-toggle"
+            data-focus-down="photo-selection-toggle"
+          >
+            Synology folder import
+          </summary>
+          <article className="connection-row photo-source-detail">
+            <span className="admin-setting-row__icon">
+              <Icon name="shield" />
+            </span>
+            <div>
+              <strong>Optional folder</strong>
+              <p>{canScan ? data.folderImport.message : 'Not connected'}</p>
+              <dl className="photo-source-stats">
                 <div>
-                  <dt>Hidden</dt>
-                  <dd>{data.hiddenPhotoCount}</dd>
+                  <dt>Last check</dt>
+                  <dd>{formatScanTime(data.folderImport.lastCheckedAt)}</dd>
                 </div>
-              ) : null}
-            </dl>
-          </div>
-          {canScan ? (
-            <button
-              className="photo-source-refresh focusable"
-              data-focus-down={firstCurationFocus}
-              data-focus-id="photo-source-refresh"
-              disabled={refresh.isPending || data.scanInProgress}
-              onClick={() => refresh.mutate()}
-              type="button"
-            >
-              <Icon name="refresh" />
-              {refresh.isPending || data.scanInProgress ? 'Checking…' : 'Check folder'}
-            </button>
-          ) : null}
-        </article>
+                <div>
+                  <dt>Imported</dt>
+                  <dd>{data.importedPhotoCount}</dd>
+                </div>
+                <div>
+                  <dt>Skipped</dt>
+                  <dd>{data.unsupportedFileCount + data.corruptFileCount}</dd>
+                </div>
+                {data.hiddenPhotoCount > 0 ? (
+                  <div>
+                    <dt>Hidden</dt>
+                    <dd>{data.hiddenPhotoCount}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+            {canScan ? (
+              <button
+                className="photo-source-refresh focusable"
+                data-focus-down={firstCurationFocus}
+                data-focus-id="photo-source-refresh"
+                disabled={refresh.isPending || data.scanInProgress}
+                onClick={() => refresh.mutate()}
+                type="button"
+              >
+                <Icon name="refresh" />
+                {refresh.isPending || data.scanInProgress ? 'Checking…' : 'Check folder'}
+              </button>
+            ) : null}
+          </article>
+        </details>
       </div>
       {refresh.isError ? <AdminError message={refresh.error.message} /> : null}
       {refresh.isSuccess ? (
@@ -310,7 +335,9 @@ export function PhotosSettingsScreen() {
               className="photo-selection-toggle focusable"
               data-focus-down={firstCurationFocus}
               data-focus-id="photo-selection-toggle"
-              data-focus-up={canScan ? 'photo-source-refresh' : 'photo-upload-select'}
+              data-focus-up="photo-upload-select"
+              data-focus-right="photo-filter-all"
+              data-focus-left="photo-folder-toggle"
               onClick={() => {
                 setSelectionMode((current) => !current);
                 setSelectedIds(new Set());
@@ -323,6 +350,33 @@ export function PhotosSettingsScreen() {
             </button>
           </div>
         </header>
+        <div className="photo-library-filters" role="group" aria-label="Filter photos">
+          {(['all', 'favourites', 'hidden'] as const).map((value) => (
+            <button
+              type="button"
+              className="photo-selection-toggle focusable"
+              aria-pressed={filter === value}
+              data-focus-id={`photo-filter-${value}`}
+              data-focus-left={
+                value === 'all'
+                  ? 'photo-selection-toggle'
+                  : value === 'favourites'
+                    ? 'photo-filter-all'
+                    : 'photo-filter-favourites'
+              }
+              data-focus-right={value === 'all' ? 'photo-filter-favourites' : 'photo-filter-hidden'}
+              data-focus-up="photo-selection-toggle"
+              data-focus-down={firstCurationFocus}
+              key={value}
+              onClick={() => {
+                setFilter(value);
+                setPhotoPage(0);
+              }}
+            >
+              {value === 'all' ? 'All photos' : value === 'favourites' ? 'Favourites' : 'Hidden'}
+            </button>
+          ))}
+        </div>
         {selectionMode ? (
           <div className="photo-bulk-actions" role="group" aria-label="Selected photo actions">
             <div>
@@ -333,6 +387,26 @@ export function PhotosSettingsScreen() {
                   : 'Choose one or more photos below.'}
               </span>
             </div>
+            <button
+              className="photo-bulk-action focusable"
+              type="button"
+              disabled={bulkCuration.isPending || deletion.isPending}
+              onClick={() =>
+                setSelectedIds(
+                  (current) => new Set([...current, ...visiblePhotos.map((photo) => photo.id)]),
+                )
+              }
+            >
+              Select page
+            </button>
+            <button
+              className="photo-bulk-action focusable"
+              type="button"
+              disabled={selectedPhotos.length === 0 || bulkCuration.isPending || deletion.isPending}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear selection
+            </button>
             <button
               className="photo-bulk-action focusable"
               disabled={hideablePhotos.length === 0 || bulkCuration.isPending || deletion.isPending}
@@ -368,10 +442,10 @@ export function PhotosSettingsScreen() {
             </button>
           </div>
         ) : null}
-        {data.photos.length === 0 ? (
+        {visiblePhotos.length === 0 ? (
           <div className="photo-curation__empty">
             <Icon name="image" />
-            <p>No photos yet.</p>
+            <p>{data.photos.length === 0 ? 'No photos yet.' : 'No photos match this filter.'}</p>
           </div>
         ) : (
           <div
@@ -416,11 +490,11 @@ export function PhotosSettingsScreen() {
             ))}
           </div>
         )}
-        {selectionMode && pageCount > 1 ? (
-          <nav className="photo-selection-pages" aria-label="Photo selection pages">
+        {pageCount > 1 ? (
+          <nav className="photo-selection-pages" aria-label="Photo library pages">
             <p role="status">
-              {currentPage * 48 + 1}–{Math.min((currentPage + 1) * 48, data.photos.length)} of{' '}
-              {data.photos.length} photos
+              {currentPage * 48 + 1}–{Math.min((currentPage + 1) * 48, filteredPhotos.length)} of{' '}
+              {filteredPhotos.length} photos
             </p>
             <div>
               {[
@@ -436,9 +510,11 @@ export function PhotosSettingsScreen() {
                   }
                   onClick={() => {
                     setPhotoPage(page);
-                    const first = data.photos[page * 48];
+                    const first = filteredPhotos[page * 48];
                     if (first)
-                      requestAnimationFrame(() => focusById(primaryCurationFocusId(first, true)));
+                      requestAnimationFrame(() =>
+                        focusById(primaryCurationFocusId(first, selectionMode)),
+                      );
                   }}
                 >
                   {label}
@@ -496,37 +572,88 @@ export function PhotosSettingsScreen() {
   );
 }
 
-function UploadResult({
-  result,
+function PhotoUploadStatus({
+  items,
+  paused,
+  onPause,
+  onResume,
+  onRetry,
 }: {
-  result: { results: PhotoUploadResult[]; failures: string[] };
+  items: QueuedPhoto[];
+  paused: boolean;
+  onPause: () => void;
+  onResume: () => void;
+  onRetry: () => void;
 }) {
-  const added = result.results.filter((item) => !item.duplicate).length;
-  const duplicates = result.results.length - added;
+  if (items.length === 0) return null;
+  const added = items.filter((item) => item.state === 'added').length;
+  const duplicates = items.filter((item) => item.state === 'duplicate').length;
+  const failed = items.filter((item) => item.state === 'failed');
+  const pending = items.filter((item) =>
+    ['queued', 'uploading', 'processing'].includes(item.state),
+  );
+  const completed = items.length - pending.length;
   return (
-    <div
-      className={`photo-upload-result${result.failures.length > 0 ? ' photo-upload-result--partial' : ''}`}
-      role="status"
-    >
-      <Icon name={result.failures.length > 0 ? 'warning' : 'check'} />
-      <div>
-        <strong>
-          {added > 0
-            ? `${added} ${added === 1 ? 'photo' : 'photos'} added.`
-            : 'No new photos added.'}
-        </strong>
-        {duplicates > 0 || result.failures.length > 0 ? (
+    <section className="photo-upload-status" aria-label="Photo uploads">
+      <div className="photo-upload-status__header">
+        <div role="status">
+          <strong>
+            {pending.length > 0
+              ? `${completed} of ${items.length} photos finished${paused ? ' · paused' : ''}`
+              : added > 0
+                ? `${added} ${added === 1 ? 'photo' : 'photos'} added.`
+                : 'No new photos added.'}
+          </strong>
           <p>
             {duplicates > 0
               ? `${duplicates} ${duplicates === 1 ? 'duplicate' : 'duplicates'}. `
               : ''}
-            {result.failures.length > 0
-              ? `${result.failures.length} ${result.failures.length === 1 ? 'photo needs' : 'photos need'} another try.`
+            {failed.length > 0
+              ? `${failed.length} ${failed.length === 1 ? 'photo needs' : 'photos need'} another try.`
               : ''}
           </p>
+        </div>
+        {pending.length > 0 ? (
+          <button
+            type="button"
+            className="photo-selection-toggle focusable"
+            onClick={paused ? onResume : onPause}
+          >
+            {paused ? 'Continue uploading' : 'Pause queue'}
+          </button>
+        ) : null}
+        {failed.some((item) => item.retryable) ? (
+          <button type="button" className="photo-selection-toggle focusable" onClick={onRetry}>
+            Retry failed photos
+          </button>
         ) : null}
       </div>
-    </div>
+      <progress aria-label="Photos finished" max={items.length} value={completed} />
+      {pending.length > 0 || failed.length > 0 ? (
+        <ul className="photo-upload-status__items">
+          {[...pending, ...failed].map((item) => (
+            <li key={item.requestId}>
+              <span title={item.name}>{item.name}</span>
+              <span>
+                {item.state === 'queued'
+                  ? 'Waiting'
+                  : item.state === 'processing'
+                    ? 'Preparing photo…'
+                    : item.state === 'failed'
+                      ? item.error
+                      : `Uploading ${Math.round(item.fraction * 100)}%`}
+              </span>
+              {item.state === 'uploading' ? (
+                <progress aria-label={`Uploading ${item.name}`} max={1} value={item.fraction} />
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {paused && pending.length > 0 ? (
+        <p>Current uploads finish; remaining photos wait here.</p>
+      ) : null}
+    </section>
   );
 }
 
@@ -624,7 +751,7 @@ function PhotoCurationCard({
             type="button"
           >
             <Icon name="eye" />
-            Restore
+            <span className="photo-curation-action__label">Restore</span>
           </button>
         ) : (
           <>
@@ -642,7 +769,7 @@ function PhotoCurationCard({
               type="button"
             >
               <Icon name="star" />
-              Favourite
+              <span className="photo-curation-action__label">Favourite</span>
             </button>
             <button
               aria-label={`Hide photo: ${photo.alt}`}
@@ -657,7 +784,7 @@ function PhotoCurationCard({
               type="button"
             >
               <Icon name="eye-off" />
-              Hide
+              <span className="photo-curation-action__label">Hide</span>
             </button>
           </>
         )}
@@ -675,7 +802,7 @@ function PhotoCurationCard({
             type="button"
           >
             <Icon name="trash" />
-            Delete
+            <span className="photo-curation-action__label">Delete</span>
           </button>
         ) : null}
       </div>

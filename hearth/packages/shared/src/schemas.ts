@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_PHOTO_UPLOAD_BYTES } from './photo-uploads.js';
 
 export const OpaqueIdSchema = z
   .string()
@@ -407,7 +408,7 @@ export const PhotoSourceIndexStatusSchema = z.object({
   importedPhotoCount: z.number().int().nonnegative().default(0),
   upload: PhotoUploadCapabilitySchema.default({
     enabled: false,
-    maxFileBytes: 25 * 1024 * 1024,
+    maxFileBytes: MAX_PHOTO_UPLOAD_BYTES,
     acceptedFormats: ['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'AVIF', 'WebP'],
   }),
   folderImport: PhotoFolderImportStatusSchema.default({

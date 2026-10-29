@@ -1074,6 +1074,28 @@ provider is deliberately unreachable.
 
 ### Photos/media
 
+D-122: **Manage photos** uses a compact paged library in normal and selection modes. Filter All,
+Favourites or Hidden; page through 48 at a time. Select page adds only the visible page to the
+selection, which is retained across pages/filters. Normal controls and exact delete confirmation
+remain available. Optional folder details are collapsed unless there is an import error.
+
+Choose multiple files together, up to **100 MiB per photo**. There is no total batch-byte limit.
+The UI takes its limit from the server capability, so old installations keep their actual lower
+limit until updated. Two transfers overlap; the NAS prepares one uploaded image at a time. Progress separates
+Uploading from Preparing photo. Pause queue stops dispatch, not already-started commands. Continue
+resumes; Retry failed photos retains each failed file and original request ID, so a lost response
+can safely replay an already accepted upload. Pause remains in effect when retries are queued.
+Keep this page open; browser suspension, leaving/reloading or closing it is not durable background
+sync. Accepted photos remain on Hearth, while unsent files need choosing again after leaving. No
+photo bytes or upload secrets are persisted in the browser. Actual iPhone/Wi-Fi/NAS throughput
+must be measured separately from local fake-server queue and image-pipeline checks.
+
+The committed Nginx upload-only location allows 100 MiB and a 300-second upstream read timeout;
+Fastify and the adapter enforce the same byte bound and retain 120-million input-pixel validation.
+The front Synology HTTPS reverse proxy may also have a body/idle bound: verify that separately at
+release time; do not silently change DSM/network configuration. New managed thumbnails use the
+smaller display derivative; existing masters/derivatives are neither replaced nor removed.
+
 - Adult phone uploads are the primary photo path. The server writes normalized managed masters to
   `/data/photo-uploads` and display/thumbnail WebPs to `/data/photo-derivatives`; both locations are
   inside the restricted `HEARTH_DATA_DIR` mount. The browser never supplies a server destination.

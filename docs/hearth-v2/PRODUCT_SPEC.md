@@ -224,8 +224,9 @@ Can understand the current household state and use clearly exposed room controls
   from the same featured photo or walking chronologically. Every photo receives a featured turn
   before repeating; reshuffle at the end without an immediate repeat. Collage supports come from
   that shuffled order and never duplicate an image within the frame. Management remains stable.
-- Photo selection uses compact whole-thumbnail tiles, three columns on a phone and 48 photos per
-  page. Selections persist across pages; destructive confirmation still freezes only the exact
+- Photo management uses a compact grid in both ordinary and selection modes, with 48 photos per
+  page. Ordinary management has two columns on phones; selection has three. All/Favourites/Hidden
+  filters and page selection make large libraries manageable. Selections persist across pages; destructive confirmation still freezes only the exact
   eligible managed-upload targets. Imported originals remain undeletable.
 - Preserve each image's native aspect ratio. Normal gallery and Today previews must not crop,
   stretch, frame or place a contrasting panel behind the photograph; rounded clipping and a

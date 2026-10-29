@@ -609,7 +609,7 @@ a new recorded decision.
 
 The primary path is explicit adult upload from the phone companion. The server:
 
-- accepts one bounded supported image per authenticated, idempotent command
+- accepts one supported image up to 100 MiB per authenticated, idempotent command (D-122)
 - verifies the decoded format instead of trusting the filename or MIME header
 - normalizes an orientation-correct managed master, television derivative and thumbnail locally
 - deduplicates the household collection by content hash

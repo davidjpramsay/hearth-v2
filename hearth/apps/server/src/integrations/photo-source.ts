@@ -1,3 +1,5 @@
+import { MAX_PHOTO_UPLOAD_BYTES } from '@hearth/shared';
+
 import type {
   PhotoAsset,
   PhotoCurationAction,
@@ -296,7 +298,7 @@ function readyIndex(indexed: number, hidden = 0): PhotoSourceIndexSnapshot {
     importedPhotoCount: 0,
     upload: {
       enabled: true,
-      maxFileBytes: 25 * 1024 * 1024,
+      maxFileBytes: MAX_PHOTO_UPLOAD_BYTES,
       acceptedFormats: ['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'AVIF', 'WebP'],
     },
     folderImport: {

@@ -267,7 +267,7 @@ export class PhotoService implements PhotoRepository {
     if (uploaded === null) {
       throw new RepositoryError(
         'VALIDATION_ERROR',
-        'Choose a supported family photo smaller than 25 MB.',
+        'Choose a supported family photo up to 100 MB.',
       );
     }
     const audit = AuditSummarySchema.parse({

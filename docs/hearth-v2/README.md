@@ -24,6 +24,10 @@ and voice. Native television media apps remain separate.
 
 ## Current boundaries
 
+D-122 improves photo administration with a compact paged library and a visible, bounded upload
+queue. The per-photo limit is 100 MiB; approval/private storage/imported-original boundaries remain.
+Local checks do not establish deployed or physical-device upload throughput.
+
 D-121 enables the shared responsive companion as an iPhone/iPad Home Screen web app: Hearth name,
 fern icons and standalone Today entry. It adds no offline cache or new authentication method.
 Local browser checks and actual device installation/release evidence stay separate in ACCEPTANCE.

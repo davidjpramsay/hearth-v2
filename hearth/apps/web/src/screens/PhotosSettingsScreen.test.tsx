@@ -315,6 +315,31 @@ describe('photo removal', () => {
     );
   });
 
+  it('pages ordinary management and preserves selection across pages and filters', async () => {
+    photos = Array.from({ length: 51 }, (_, index) => ({
+      ...upload,
+      id: `photo_${index}`,
+      alt: `Library photo ${index}`,
+      hidden: index % 10 === 0,
+    }));
+    const user = userEvent.setup();
+    await renderScreen();
+    expect(screen.getAllByRole('img')).toHaveLength(48);
+    await user.click(screen.getByRole('button', { name: 'Next photos' }));
+    expect(screen.getByRole('img', { name: 'Library photo 48' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Select photos' }));
+    await user.click(screen.getByRole('button', { name: 'Select page' }));
+    expect(screen.getByText('48 selected')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Next photos' }));
+    await user.click(screen.getByRole('button', { name: 'Select photo: Library photo 48' }));
+    expect(screen.getByText('49 selected')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Hidden' }));
+    expect(screen.getAllByRole('button', { name: /(?:Select|Deselect) photo:/ })).toHaveLength(6);
+    expect(screen.getByText('49 selected')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Clear selection' }));
+    expect(screen.getByText('0 selected')).toBeVisible();
+  }, 10_000);
+
   it('disables confirmation during deletion and does not issue duplicate commands', async () => {
     const user = userEvent.setup();
     let finish!: (result: PhotoDeletionCommandResult) => void;

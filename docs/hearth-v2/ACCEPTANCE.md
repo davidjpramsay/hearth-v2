@@ -1,5 +1,80 @@
 # Hearth v2 acceptance and definition of done
 
+## D-122 photo management and uploads — 2026-10-29
+
+The owner requested a more manageable photo-admin layout and larger/faster uploads. Ordinary
+management now uses compact whole-image cards (two phone columns, responsive wider grids), with
+48 photos per page, All/Favourites/Hidden filters and Select page/Clear selection. Selection
+survives paging/filtering. Mixed caption lengths keep actions aligned. Optional import details
+are collapsed unless unavailable. Existing exact delete confirmation, imported-original protection,
+partial failures, focus restoration and playback/ambient behavior remain.
+
+The advertised raw-image limit rises from 25 to 100 MiB per photo, not per batch. A page-memory
+queue overlaps at most two transfers, reports bytes sent separately from server preparation,
+pauses new dispatch, resumes and retries only failed files with their original request IDs/Files.
+Accepted File references are released; unfinished work registers with draft/reload guards. No
+browser transcoding, persistent queue, background worker, new credentials or permissions. The
+provider now serializes waiting work correctly, preserves master encoding/hash and generates new
+480px upload thumbnails from its smaller TV derivative. Existing stored photos are not rewritten.
+
+Authorization is checked before parsing the larger image body and checked again before mutation.
+The shared screen's retained-adult-session retirement remains in both paths. The existing
+120-million input-pixel bound remains. Nginx scopes its 100 MiB/300-second allowance to the upload
+route; other API limits, networking and all private runtime configuration remain unchanged.
+
+Browser plugin not available; the repository's production-build Playwright workflow uses isolated
+fictional data. The flow is Manage photos → filter/page/select → safe curation/deletion, plus
+multi-file upload → pause/resume → lost response → exact retry with a replay receipt.
+
+- `pnpm verify:code` — **PASS**: format/lint/types, **693 unit**, **275 API/integration**,
+  **29 migration**, **10 deployment fixtures**, Compose validation and production web/server
+  builds; `/tmp/hearth-photos-code-final.log`. API tests prove child/service/screen uploads are
+  rejected before a probe body parser runs, while an adult reaches parsing. Real image tests
+  accept a roughly 27 MB uncompressed TIFF above the former limit, reject an over-100-MiB input,
+  bound new thumbnails to 480px and safely deduplicate several waiting uploads. Queue/transport
+  cases cover bounded dispatch, progress/preparation, pause/retry/leave, typed failures and exact
+  File/request-ID reuse. A large DOM-state test was reduced to a sufficient 51-photo fixture and
+  given a scoped 10-second ceiling after parallel-suite contention exceeded its default 5 seconds.
+- `pnpm build` and `pnpm format:check` — final build/style checks after the caption-alignment and
+  130-photo fixture refinement; `/tmp/hearth-photos-build-final.log` and
+  `/tmp/hearth-photos-format-final.log`.
+- `pnpm verify:ci` — **PASS**: five policies and a complete non-overlapping **1,256-case** browser
+  inventory; `/tmp/hearth-photos-ci-policy.log`. Inventory is not hosted execution.
+- Final Chromium command: `pnpm test:e2e:built tests/e2e/photo-admin-management.spec.ts
+tests/e2e/photos.spec.ts tests/e2e/screen-admin-isolation.spec.ts --reporter=line
+--output=/tmp/hearth-photos-browser-final` — **46/46 PASS (1.7 minutes)**. This includes
+  130-photo libraries, 320/390px phones, iPad/desktop, light/dark, no horizontal overflow,
+  whole-image previews, aligned controls for mixed caption lengths, 44px minimum targets,
+  filters/page selection, keyboard/remote navigation, exact retry receipts, curation/deletion,
+  playback/ambient and shared-screen/admin isolation. Page identity, meaningful content,
+  no framework overlay, relevant console health and serious/critical a11y checks passed.
+  Log: `/tmp/hearth-photos-browser-final.log`.
+- Final WebKit command: `pnpm exec playwright test --config
+/private/tmp/hearth-morning-times-webkit.config.mts tests/e2e/photo-admin-management.spec.ts
+tests/e2e/photos.spec.ts --grep 'photo management stays|batch queue|phone administration'
+--reporter=line --output=/tmp/hearth-photos-webkit-final` — **12/12 PASS (30.5 seconds)**,
+  including phone/tablet/desktop light/dark layouts, two-transfer pause/resume, exact replay,
+  optional-import failure guidance and managed deletion. Log: `/tmp/hearth-photos-webkit-final.log`.
+  This is desktop WebKit with mobile/touch emulation, not physical iOS/Safari acceptance.
+
+The final **58** browser cases include the early-body guard and mixed-caption fixture.
+An initial mobile-header overflow was fixed. The old keyboard test was updated for the new import
+disclosure/filters and uses arrow navigation across engines. WebKit's intercepted File request
+does not expose POST text to this test, so interruption targets the third unique request ID;
+both engines still verify the original accepted receipt and `replayed: true` retry. This is browser
+and deterministic adapter evidence, not real iPhone/NAS throughput proof.
+
+Screenshots remain outside source under the final Playwright output directories. Phone gallery,
+paused queue, iPad dark and desktop layouts were visually inspected with fictional content. No
+private photos, filenames, credentials or NAS configuration were copied into evidence.
+
+**Not run:** full hosted browser execution, publication/deployment, real iPhone/iPad bulk upload,
+NAS/Wi-Fi throughput and a live end-to-end upload near the new limit. Local Nginx-container runtime
+validation remains unavailable without Docker's daemon. Read-only SSH could not read DSM's front
+reverse-proxy file; its body/time limits remain unverified. No password or broader NAS privilege
+was requested. The existing front proxy/network was not changed. A deployed large-file check must
+verify that outer limit separately, without silently changing DSM or private runtime settings.
+
 ## D-121 iPhone/iPad Home Screen web app — 2026-10-29
 
 Read-only inspection of the live public document confirmed an Apple touch icon but no manifest
