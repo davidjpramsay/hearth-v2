@@ -1,5 +1,15 @@
 # Hearth v2 local environment and operations plan
 
+## Current photo/calendar correction release (D-124/D-125)
+
+Exact release `c9af22401940616e86f1a155058df2ab522de9e5` is installed privately after all eight
+hosted jobs and 1,286 browser cases passed on 2026-10-29. Uploads accept at most 25 MiB each;
+settings omits the limit line. Routine calendar refresh uses a small heading ring, with real issue
+messages retained. No migration; both routine profiles/ticks/receipts, stable household records,
+pairings, runtime files and networking passed NAS-only preservation checks. A checked v35 backup
+is retained privately. Exact web assets/manifest/icons and health/readiness pass in ACCEPTANCE.
+No HA/TV install or alarm edit was required. Physical-device/throughput checks remain separate.
+
 ## Morning Routine profiles release (D-123)
 
 Release `3fbd69ec76ab047a3e328a78f7503a2c9f1490bc` is installed privately after all eight hosted jobs

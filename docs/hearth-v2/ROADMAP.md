@@ -2,6 +2,11 @@
 
 ## Quiet calendar refresh (D-125)
 
+Source, hosted and private activation/preservation gates passed for `c9af224` on 2026-10-29,
+together with the 25 MiB D-124 correction. The 412-case local Today/photo/isolation run and full
+1,286-case hosted browser gate passed. Physical-device viewing/upload throughput remain separate
+acceptance work; no HA automation or provider/permission change is implied.
+
 Verify typed pending/current/failure transitions, saved-event retention, quiet heading feedback on
 Today/Week/Month/Agenda, genuine error/offline messages, phone/TV fit, dark mode and reduced motion.
 Keep sync/coalescing/backoff/auth unchanged. Source checks, hosted release and private activation

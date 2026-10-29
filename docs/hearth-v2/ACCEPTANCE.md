@@ -1,5 +1,64 @@
 # Hearth v2 acceptance and definition of done
 
+## D-124/D-125 verified private correction release — 2026-10-29
+
+Application release `c9af22401940616e86f1a155058df2ab522de9e5` is pushed and installed on the
+existing private Synology. It restores **25 MiB per photo**, removes the ordinary settings limit
+line and replaces routine calendar-refresh banners with a small heading indicator on Today,
+Week, Month and Agenda. Real provider/auth/configuration/read/offline problems retain messages.
+This completes the immediate correction to the owner's approved push/deploy request and the
+calendar feedback request added during that work. There is no migration or new credential/grant.
+
+[Hosted run 40817395958](https://github.com/davidjpramsay/hearth-v2/actions/runs/40817395958)
+passed **all eight jobs**, including verified-image publication: **699 unit**, **284 API/integration**,
+**30 migration**, **10 deployment fixtures**, dependency audit with no known vulnerabilities,
+format/lint/types, production builds, Android TV tests/lint/build, container checks and **1,286
+browser cases**. Browser shards passed **322/322/321/321** (9.6/10.0/8.2/5.9 minutes). Failed cap-only
+runs remained blocked; no reduced gate, silent error swallowing or retry-policy change was used.
+
+The additional local command `pnpm -C hearth test:e2e:built tests/e2e/today-polish.spec.ts
+tests/e2e/photo-admin-management.spec.ts tests/e2e/screen-admin-isolation.spec.ts --reporter=line
+--output=/tmp/hearth-calendar-quiet-today-photos` passed **412/412 (4.9 minutes)**, including all
+384 Today composition combinations, the previously failing portrait fixture, photo queue/management
+and screen/admin isolation. Its subsequent CI inventory/lint/format chain passed too. This closes
+the pending local-matrix status in D-125 below. Separate 48 Chromium + 25 WebKit + four existing-state
+checks and the photo boundary/queue tests remain detailed in the implementation entries.
+
+Release commands/results:
+
+- `gh run view 40817395958 --repo davidjpramsay/hearth-v2 --json status,conclusion,headSha,url`
+  — **PASS**, completed/success for the exact application SHA. GitHub connector jobs/logs confirmed
+  every job and each browser count. The hosted artifact is `/tmp/hearth-release-c9af224-artifact`.
+- `ssh hearth-synology '/usr/bin/python3 - before' < /private/tmp/hearth-photo-cap25-preserve-on-nas.py`
+  — **PASS**, checked v35 online backup/private baseline retained under
+  `/volume1/hearth-v2-private/deployment-checkpoints/photo-cap25-20261029/`. Ancestors and new files
+  were checked against the existing DSM ACL allowlist (NAS administrators + Hearth service);
+  no ACL was changed. No private content, counts, hashes or credential were exported.
+- `hearth/deploy/synology/activate-private-release.sh c9af22401940616e86f1a155058df2ab522de9e5`
+  — **PASS**, the installed protected helper independently verified the release, pulled immutable
+  images, took its normal stopped-database rollback snapshot and returned ready/private. Existing
+  bridge/DNS and loopback publication were retained. Log: `/tmp/hearth-release-c9af224-activation.log`.
+- Same NAS-only checker with `after` — **PASS**, database integrity and version **35**, both saved
+  routine profiles, all dated ticks and original receipts unchanged; phone/screen/member/module/HA/
+  NBA records, photo identity/curation metadata, chore templates and Hearth reminders matched.
+  Runtime Compose/environment/helper hashes and commissioned bridge configuration matched. Ordinary
+  photo view/index timestamps are excluded; normal provider projection refreshes were not frozen.
+- `python3 /private/tmp/hearth-release-c9af224-postflight.py` — **PASS**, exact external health,
+  readiness and private runtime without household disclosure; index + **31 production assets**
+  byte-match the hosted build. Calendar/Today/photo assets, standalone manifest and all three fern
+  icons match. The hosted shared capability is 25 MiB and all three DTOs include the typed refresh
+  field. The deployed UI is therefore the same build exercised locally and in hosted Chromium.
+
+No stored photo rewrite/deletion, calendar write, provider reconnection, pairing reset, TV APK/HA
+component reinstall or HA alarm/music/power/navigation action occurred. The existing weekday alarm
+and complete commissioned networking remain unchanged. The later evidence-only commit changes no
+application bytes and needs no further activation. This checkpoint supersedes pending publication/
+private-activation flags in the D-124/D-125 implementation entries below.
+
+**Not run:** physical iPhone/iPad/TV viewing of this exact release, actual near-limit/bulk-upload
+throughput through DSM's outer proxy, physical Home Screen installation and real alarm execution.
+No such device/throughput proof is inferred from browser checks or exact deployed-asset validation.
+
 ## D-125 quiet calendar refresh — 2026-10-29
 
 The owner requested a small spinner instead of the recurring calendar-updating message. Today,
