@@ -1,5 +1,12 @@
 import { readFile, unlink } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import {
+  IndoorClimateService,
+  createDemoIndoorService,
+  loadIndoorRuntime,
+} from './indoor-climate-service.js';
+import { RestIndoorProvider } from './integrations/indoor-climate-provider.js';
 
 import type { RuntimeMode } from '@hearth/shared';
 
@@ -127,6 +134,20 @@ const privateHouseholdId = () =>
       .prepare('SELECT id FROM households ORDER BY datetime(created_at), rowid LIMIT 1')
       .get() as { id: string } | undefined
   )?.id ?? null;
+const indoorConfigPath =
+  process.env.HEARTH_INDOOR_CLIMATE_CONFIG_PATH ??
+  (homeAssistantConfigPath
+    ? join(dirname(homeAssistantConfigPath), 'indoor-climate.json')
+    : undefined);
+const indoorClimate = demoMode
+  ? createDemoIndoorService(adminRepository, () => clock.now())
+  : new IndoorClimateService(new RestIndoorProvider(), {
+      admin: adminRepository,
+      database,
+      now: () => clock.now(),
+      config: await loadIndoorRuntime(indoorConfigPath),
+      ...(indoorConfigPath ? { configPath: indoorConfigPath } : {}),
+    });
 const runtimeHouseholdId = demoMode ? DEMO_HOUSEHOLD_ID : privateHouseholdId;
 const systemOperationsConfiguration = resolveSystemOperationsConfiguration(process.env);
 const managedCalendarProvider = new ManagedCalendarProvider();
@@ -324,6 +345,7 @@ const server = buildServer({
   reminderRepository,
   calendarConnectionRepository,
   homeAssistantConnectionRepository,
+  indoorClimate,
   homeAssistantBridge,
   homeAssistantPairings,
   systemOperations,

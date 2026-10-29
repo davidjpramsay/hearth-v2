@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import type {
   DemoScenario,
@@ -11,6 +11,8 @@ import type {
 import './WeatherScreen.css';
 
 import { Icon, type IconName } from '../components/Icon';
+import { WeatherHeading } from '../components/WeatherHeading';
+import { IndoorWeatherScreen } from './IndoorWeatherScreen';
 import { EmptyState, FailureState, LoadingState } from '../components/Status';
 import { focusById, nextFocusId } from '../focus/focusGraph';
 import { useHouseholdDateTime } from '../hooks/useHouseholdClock';
@@ -26,7 +28,16 @@ import {
 
 const MODES: readonly WeatherMode[] = ['temperature', 'rain', 'wind'];
 
-export function WeatherScreen({
+export function WeatherScreen(props: { preparing: boolean; scenario: DemoScenario | 'offline' }) {
+  const [params] = useSearchParams();
+  return params.get('view') === 'indoors' ? (
+    <IndoorWeatherScreen preparing={props.preparing} />
+  ) : (
+    <OutdoorWeatherScreen {...props} />
+  );
+}
+
+function OutdoorWeatherScreen({
   preparing,
   scenario,
 }: {
@@ -40,8 +51,20 @@ export function WeatherScreen({
   const [mode, setMode] = useState<WeatherMode>('temperature');
   const [inspection, setInspection] = useState<{ day: string; time: string } | null>(null);
 
-  if (preparing || query.isPending) return <LoadingState />;
-  if (query.data === undefined) return <FailureState onRetry={() => void query.refetch()} />;
+  if (preparing || query.isPending)
+    return (
+      <div className="screen weather-screen" data-focus-loading="true">
+        <WeatherHeading />
+        <LoadingState />
+      </div>
+    );
+  if (query.data === undefined)
+    return (
+      <div className="screen weather-screen">
+        <WeatherHeading />
+        <FailureState onRetry={() => void query.refetch()} />
+      </div>
+    );
 
   const forecast = query.data;
   if (forecast.current === null || forecast.hourly.length === 0) {
@@ -49,6 +72,7 @@ export function WeatherScreen({
       forecast.configured ?? (forecast.source !== null || forecast.locationLabel !== null);
     return (
       <div className="screen weather-screen weather-screen--empty">
+        <WeatherHeading />
         <EmptyState
           title={configured ? 'Weather is unavailable' : 'Set a weather location'}
           description={
@@ -104,7 +128,7 @@ export function WeatherScreen({
     <div className="screen weather-screen">
       <header className="weather-hero">
         <div className="weather-hero__title">
-          <h1>Weather</h1>
+          <WeatherHeading />
           <p>
             {forecast.locationLabel ?? 'Local weather'} <Icon name="location" />
           </p>
@@ -160,6 +184,7 @@ export function WeatherScreen({
                 : `weather-mode-${MODES[index + 1]}`
             }
             data-focus-down="weather-chart"
+            data-focus-up="weather-view-outdoors"
             key={candidate}
             onClick={() => setMode(candidate)}
             onKeyDown={handleWeatherControlKeys}

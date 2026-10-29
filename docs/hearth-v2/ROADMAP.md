@@ -1,5 +1,15 @@
 # Hearth v2 implementation roadmap
 
+## Indoor climate (D-126)
+
+Verify the new physical sensors' Recorder history and hourly statistics, then the narrow typed
+read adapter, private source selections, exact/stale saves, missing/partial/outage state and
+Weather-off no-I/O. Inspect Outdoors regressions and Indoors TV/phone/tablet light/dark geometry,
+D-pad exit and accessibility. Keep HA's local history; commission an encrypted NAS backup with
+History included and verify one completed copy. Local code/browser evidence, publication/private
+activation, physical Hearth display, automatic scheduled backup execution and a spare-media
+restore are separate gates. No TV/power/music/alarm or network configuration change is required.
+
 ## Quiet calendar refresh (D-125)
 
 Source, hosted and private activation/preservation gates passed for `c9af224` on 2026-10-29,

@@ -93,7 +93,9 @@ export function ConnectionsSettingsScreen() {
                 : 'Approved Home Assistant access to Hearth.'
               : `${homeAssistant.data.label} · ${homeAssistant.data.message}`
           }
-          data-focus-down="connection-home-assistant"
+          data-focus-down={
+            modules.weather ? 'connection-indoor-sensors' : 'connection-home-assistant'
+          }
           data-focus-id="connection-home-assistant"
           data-focus-left="connection-home-assistant"
           data-focus-right="connection-home-assistant"
@@ -115,6 +117,16 @@ export function ConnectionsSettingsScreen() {
             </span>
           }
         />
+        {modules.weather ? (
+          <SettingsMenuLink
+            className="connection-row connection-row--action focusable"
+            icon="cloud"
+            label="Indoor sensors"
+            to="/admin/connections/indoor-sensors"
+            data-focus-id="connection-indoor-sensors"
+            data-focus-up="connection-home-assistant"
+          />
+        ) : null}
       </SettingsMenu>
     </AdminPage>
   );

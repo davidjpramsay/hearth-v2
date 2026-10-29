@@ -1,5 +1,15 @@
 # Hearth v2 domain and data model
 
+## Indoor climate projection (D-126)
+
+HA Recorder owns individual readings and retained hourly statistics. Hearth returns bounded,
+transient room/reading/sample DTOs with explicit freshness/history state and no raw provider IDs.
+Only named selected mappings, revision and provider credentials persist in the external private
+indoor source file. Existing command_receipts store actor-bound input hashes and safe save results;
+audit_events record indoor-climate.settings.update with a room count, never credentials or raw
+sensor IDs. No new SQL migration or persistent sensor-history table. Restart retains selections,
+not the temporary graph cache. See INDOOR_CLIMATE_CONTRACT.md.
+
 ## Calendar refresh presentation metadata (D-125)
 
 TodaySummary, WeekSchedule and MonthSchedule add `calendarRefreshing: boolean`, defaulting false

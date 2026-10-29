@@ -1,5 +1,17 @@
 # Hearth v2 integration contracts
 
+## Indoor temperature and humidity (D-126)
+
+D-126 explicitly extends the former four-state-only read boundary with a separate, adult-selected
+Weather data source. The existing safety states and three script mappings remain unchanged.
+Only eligible temperature/humidity measurement sensors are discoverable. Exact selected state
+reads and the read-only recorder.get_statistics action supply bounded graph data. The latter uses
+POST as the provider's query transport; it changes no devices, history or configuration.
+No generic service/entity/template proxy, new inbound HA grant, provider calendar access or
+persistent sensor archive. Open-Meteo still supplies Outdoors independently. HA's statistics action
+requires an administrator token, privately stored server-side; the narrower Hearth allowlist is
+therefore essential. See INDOOR_CLIMATE_CONTRACT.md for fields, bounds and operational acceptance.
+
 ## Calendar activity feedback (D-125)
 
 Routine background CalDAV reads expose a typed busy hint without a family warning message.
@@ -447,8 +459,9 @@ The first adapter reads exactly four mapped states in parallel:
 - one generic protected-media-active state covering native and Cast playback
 
 Translate entity IDs and raw states into family-readable Hearth models.
-Weather, climate and door sensors are not part of this first allowlist. Weather uses the separate
-Open-Meteo adapter above rather than expanding Hearth into a general Home Assistant dashboard.
+These four safety mappings remain separate from D-126's selected temperature/humidity reads.
+Door sensors remain deferred. Outdoors uses Open-Meteo; Indoors uses only its narrow selected
+measurement adapter, not a general Home Assistant dashboard.
 
 ### Command path
 

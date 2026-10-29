@@ -1,6 +1,12 @@
 import { getHearthRuntime, householdId } from './core';
 
 export const queryKeys = {
+  get indoorClimate() {
+    return [householdId(getHearthRuntime()), 'indoor-climate'] as const;
+  },
+  get indoorSettings() {
+    return [householdId(getHearthRuntime()), 'indoor-climate-settings'] as const;
+  },
   get dailyVerse() {
     const runtime = getHearthRuntime();
     return [householdId(runtime), 'daily-verse', runtime.localDate] as const;

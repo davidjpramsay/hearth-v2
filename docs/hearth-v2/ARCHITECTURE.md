@@ -1,5 +1,18 @@
 # Hearth v2 architecture
 
+## Read-only indoor climate (D-126)
+
+A separate narrow IndoorProvider reads selected HA measurement states and Recorder statistics.
+IndoorClimateService owns actor-bound discovery, versioned external source settings, safe command
+receipts/audits and four coalesced memory-only period caches. The existing household/controller
+boundaries protect routes; the Weather module lease gates all I/O. Home controls and inbound HA
+machine permissions remain separate. The private mode-0600 indoor source file sits beside existing
+HA secrets (or at HEARTH_INDOOR_CLIMATE_CONFIG_PATH). No sensor history enters Hearth SQLite.
+The same typed adapter seam has a deterministic fake for demo/tests. React owns measured SVG
+charts and URL-backed selections; no browser-to-HA traffic or new chart dependency.
+The existing outbound safety/script adapter remains unchanged except sharing its bounded transport.
+See INDOOR_CLIMATE_CONTRACT.md; live commissioning/publication are separate acceptance gates.
+
 ## Calendar refresh feedback (D-125)
 
 The projection separates routine refresh activity from issue copy. Its transient `refreshing` flag

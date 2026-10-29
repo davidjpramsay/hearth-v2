@@ -2,6 +2,17 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { BrowserAccess } from './browser-access.js';
 import { NbaService } from './nba-service.js';
 import { MorningRoutineService } from './morning-routine-service.js';
+import { IndoorClimateService, createDemoIndoorService } from './indoor-climate-service.js';
+import { RestIndoorProvider } from './integrations/indoor-climate-provider.js';
+import {
+  IndoorClimateSchema,
+  IndoorPeriodSchema,
+  IndoorSettingsSchema,
+  IndoorTestSchema,
+  SaveIndoorSettingsSchema,
+  IndoorDiscoverySchema,
+  IndoorSettingsResultSchema,
+} from '@hearth/shared';
 import {
   MorningOverviewSchema,
   MorningSettingsSchema,
@@ -400,6 +411,7 @@ export interface BuildServerOptions {
   gamesArchive?: GamesArchive;
   nba?: NbaService;
   morningRoutine?: MorningRoutineService;
+  indoorClimate?: IndoorClimateService;
   nbaBoxScore?: NbaBoxScoreProvider;
   nbaMedia?: NbaMediaProvider;
 }
@@ -447,6 +459,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const adminRepository =
     options.adminRepository ?? new InMemoryAdminRepository(() => runtime.clock.now());
   const realtime = options.realtimeHub ?? new RealtimeHub();
+  const indoorClimate =
+    options.indoorClimate ??
+    (demoMode
+      ? createDemoIndoorService(adminRepository, () => runtime.clock.now())
+      : new IndoorClimateService(new RestIndoorProvider(), {
+          admin: adminRepository,
+          now: () => runtime.clock.now(),
+        }));
   const planningRepository = options.planningRepository ?? new InMemoryPlanningRepository();
   const homeRepository =
     options.homeRepository ??
@@ -2368,6 +2388,76 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
+  server.get('/api/v1/households/:householdId/indoor-climate', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const query = parse(
+      z.object({ period: IndoorPeriodSchema.default('day') }).strict(),
+      request.query,
+      reply,
+    );
+    if (!params || !query) return reply;
+    return run(reply, async () => {
+      const home = await adminRepository.getHousehold(params.householdId);
+      return IndoorClimateSchema.parse(
+        await indoorClimate.read(params.householdId, home.timezone, query.period),
+      );
+    });
+  });
+  server.get('/api/v1/households/:householdId/indoor-climate-settings', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (!params) return reply;
+    return run(reply, async () => {
+      await adminRepository.getOverview(params.householdId, actorId(request.headers, options));
+      return IndoorSettingsSchema.parse(indoorClimate.settings(params.householdId));
+    });
+  });
+  server.post(
+    '/api/v1/households/:householdId/indoor-climate-settings/tests',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(IndoorTestSchema, request.body, reply);
+      if (!params || !body) return reply;
+      return run(reply, async () =>
+        IndoorDiscoverySchema.parse(
+          await indoorClimate.discover(params.householdId, actorId(request.headers, options), body),
+        ),
+      );
+    },
+  );
+  server.post(
+    '/api/v1/households/:householdId/indoor-climate-settings/discoveries',
+    async (request, reply) => {
+      const params = parse(HouseholdParamsSchema, request.params, reply);
+      const body = parse(z.object({}).strict(), request.body, reply);
+      if (!params || !body) return reply;
+      return run(reply, async () =>
+        IndoorDiscoverySchema.parse(
+          await indoorClimate.discover(params.householdId, actorId(request.headers, options)),
+        ),
+      );
+    },
+  );
+  server.put('/api/v1/households/:householdId/indoor-climate-settings', async (request, reply) => {
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    const body = parse(SaveIndoorSettingsSchema, request.body, reply);
+    if (!params || !body) return reply;
+    return run(reply, async () => {
+      const result = IndoorSettingsResultSchema.parse(
+        await indoorClimate.save(
+          params.householdId,
+          actorId(request.headers, options),
+          body,
+          () => {
+            actorId(request.headers, options);
+          },
+        ),
+      );
+      realtime.publish(params.householdId, 'weather.changed', params.householdId);
+      return result;
+    });
+  });
+
   server.get('/api/v1/households/:householdId/weather', async (request, reply) => {
     const params = parse(HouseholdParamsSchema, request.params, reply);
     if (params === null) return reply;
@@ -3657,6 +3747,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       reminderRepository.reset();
       calendarConnectionRepository.reset();
       homeAssistantConnectionRepository.reset();
+      indoorClimate.reset();
       systemOperations.reset();
       todayContentRepository.reset();
       weatherLocationRepository.reset();

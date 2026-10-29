@@ -24,6 +24,7 @@ const actionPresentations: Record<AuditSummary['action'], ActivityPresentation> 
   'morning-routine.reopen': family('Morning step reopened', 'sun'),
   'module.update': system('Module setting changed', 'leaf'),
   'nba.settings.update': family('NBA standout teams updated', 'basketball'),
+  'indoor-climate.settings.update': family('Indoor sensors updated', 'home'),
   'chore.complete': planning('Chore marked done', 'chores'),
   'chore.undo': planning('Chore completion undone', 'chores'),
   'chore.skip': planning('Chore skipped', 'chores'),

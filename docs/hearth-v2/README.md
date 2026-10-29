@@ -24,6 +24,10 @@ and voice. Native television media apps remain separate.
 
 ## Current boundaries
 
+D-126 adds read-only [Indoor climate](INDOOR_CLIMATE_CONTRACT.md) inside Weather. Home Assistant
+owns sensor history and encrypted NAS backups; Hearth keeps only selected mappings and temporary
+graph data. Recording, local implementation and live deployment/backup evidence remain separate.
+
 D-125 replaces routine calendar updating banners with a quiet heading ring on Today and Calendar;
 genuine issues remain visible. Provider/sync/auth behavior is unchanged. See ACCEPTANCE for release evidence.
 

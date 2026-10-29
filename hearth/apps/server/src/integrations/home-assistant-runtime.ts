@@ -289,7 +289,7 @@ export async function removeHomeAssistantRuntimeConfig(configPath: string): Prom
   await rm(configPath, { force: true });
 }
 
-async function homeAssistantRequest(
+export async function homeAssistantRequest(
   config: Pick<HomeAssistantRuntimeConfig, 'serverUrl' | 'accessToken'>,
   path: string,
   fetcher: HomeAssistantFetch,

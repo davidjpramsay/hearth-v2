@@ -1259,6 +1259,7 @@ export const AuditSummarySchema = z.object({
     'today.sections.update',
     'module.update',
     'nba.settings.update',
+    'indoor-climate.settings.update',
   ]),
   targetId: OpaqueIdSchema,
   occurredAt: TimestampSchema,

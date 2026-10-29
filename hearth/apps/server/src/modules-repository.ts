@@ -211,6 +211,7 @@ export function moduleForApiRoute(route: string): ModuleId | null {
   const suffix = route.replace('/api/v1/households/:householdId/', '');
   if (/^(calendar-connection|week|month|events)(?:[/-]|$)/.test(suffix)) return 'calendar';
   if (/^weather(?:[/-]|$)/.test(suffix)) return 'weather';
+  if (/^indoor-climate(?:[/-]|$)/.test(suffix)) return 'weather';
   if (/^reminders(?:[/-]|$)/.test(suffix)) return 'reminders';
   if (/^(chore-|pocket-money|members\/:memberId\/pocket-money|assist\/chore)/.test(suffix))
     return 'chores';

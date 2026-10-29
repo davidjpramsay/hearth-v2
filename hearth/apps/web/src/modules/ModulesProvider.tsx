@@ -7,7 +7,7 @@ import { ModulesContext } from './context';
 
 const domains: Partial<Record<ModuleId, readonly string[]>> = {
   calendar: ['week', 'month', 'calendar-connection'],
-  weather: ['weather', 'weather-location'],
+  weather: ['weather', 'weather-location', 'indoor-climate', 'indoor-climate-settings'],
   reminders: ['reminders'],
   chores: ['chores', 'chore-occurrence', 'chore-templates', 'pocket-money'],
   lists: ['lists', 'list-settings'],

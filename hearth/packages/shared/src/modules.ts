@@ -96,7 +96,7 @@ export function moduleForPath(path: string): ModuleId | null {
   const clean = normalizeModulePath(path);
   if (/^\/(calendar(?:\/|$)|week(?:\/|$)|month(?:\/|$))/.test(clean)) return 'calendar';
   const roots: Array<[RegExp, ModuleId]> = [
-    [/^\/(weather|admin\/connections\/weather)(?:\/|$)/, 'weather'],
+    [/^\/(weather|admin\/connections\/(weather|indoor-sensors))(?:\/|$)/, 'weather'],
     [/^\/reminders(?:\/|$)/, 'reminders'],
     [/^\/(chores|admin\/(routines|chore-day|pocket-money|rewards))(?:\/|$)/, 'chores'],
     [/^\/(lists|admin\/lists)(?:\/|$)/, 'lists'],

@@ -1,5 +1,14 @@
 # Hearth v2 product specification
 
+## Indoor climate (D-126)
+
+Weather adds Outdoors/Indoors. Indoors shows explicitly selected temperature and humidity sensors,
+named rooms and trailing day/week/month/year graphs. Home Assistant remains the sensor/history
+owner; Hearth keeps only a bounded temporary display cache. Missing or old readings stay explicit.
+Use HA's local Recorder and long-term statistics, with encrypted History-inclusive backups to a
+restricted Synology destination. No climate-device control, general sensor dashboard, new inbound
+HA permission or Open-Meteo change. See [INDOOR_CLIMATE_CONTRACT.md](INDOOR_CLIMATE_CONTRACT.md).
+
 ## Quiet calendar activity (D-125)
 
 Routine calendar refresh uses a small spinner beside the Today/Calendar heading while saved plans

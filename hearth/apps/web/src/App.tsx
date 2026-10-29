@@ -26,6 +26,9 @@ const MorningRoutineSettingsScreen = lazy(async () => ({
 const NbaSettingsScreen = lazy(async () => ({
   default: (await import('./screens/NbaSettingsScreen')).NbaSettingsScreen,
 }));
+const IndoorSensorsSettingsScreen = lazy(async () => ({
+  default: (await import('./screens/IndoorSensorsSettingsScreen')).IndoorSensorsSettingsScreen,
+}));
 
 const AdminAuthBoundary = lazy(async () => ({
   default: (await import('./auth/AdminAuthBoundary')).AdminAuthBoundary,
@@ -219,6 +222,10 @@ export function App() {
               <Route path="/admin" element={<AdminScreen />} />
               <Route path="/admin/modules" element={<ModulesSettingsScreen />} />
               <Route path="/admin/nba" element={<NbaSettingsScreen />} />
+              <Route
+                path="/admin/connections/indoor-sensors"
+                element={<IndoorSensorsSettingsScreen />}
+              />
               <Route path="/admin/morning-routine" element={<MorningRoutineSettingsScreen />} />
               <Route path="/admin/household" element={<HouseholdSettingsScreen />} />
               <Route path="/admin/people" element={<PeopleSettingsScreen />} />

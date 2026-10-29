@@ -1,5 +1,27 @@
 # Hearth v2 local environment and operations plan
 
+## Indoor sensor history and backups (D-126)
+
+Connect temperature/humidity measurements to HA and inspect their History plus Recorder Statistics
+(No issue). Keep the HA database on its local storage; do not mount a live SQLite file on the NAS
+or increase all detailed history to 365 days. Long-term hourly statistics are retained by HA.
+
+Adult Connections → Indoor sensors tests HA access and selects exact measurements/room labels.
+The provider requires an HA administrator token for read-only Recorder statistics. Paste it only
+into the private setup field, never chat or source. Existing source edits reuse the saved token.
+HEARTH_INDOOR_CLIMATE_CONFIG_PATH may override the default indoor-climate.json beside the existing
+HA secret. The mounted secret directory/Compose/network layout need not change. Protect this file
+with mode 0600 and the existing service/admin ACL. Browser/SQLite/audit results contain no token,
+provider URL or raw entity ID. Removing a room retains the HA source/history.
+
+For recovery, add a restricted Synology SMB backup destination through HA OS Network storage,
+then automatic daily encrypted backups with **History included**, 14 retained copies and that
+NAS destination selected. Privately save the HA emergency kit outside this repository. Verify a
+completed backup in HA and its actual NAS file; separately restore to spare/test media. Configuring
+a schedule is not proof a scheduled backup ran. Existing shares/users, networking, HA automations,
+TV state and Hearth pairings must remain unchanged. Source/UI work alone authorizes no new NAS
+account, shared-folder permission or deployment; record exact adult approval/commissioning evidence.
+
 ## Current photo/calendar correction release (D-124/D-125)
 
 Exact release `c9af22401940616e86f1a155058df2ab522de9e5` is installed privately after all eight

@@ -1,5 +1,21 @@
 # Hearth v2 television and companion UX specification
 
+## Weather → Indoors (D-126)
+
+Weather's heading switches Outdoors/Indoors without requiring a configured outdoor forecast.
+Indoors shows a named room, current Celsius/percent values, last-report times and Day/Week/Month/
+Year choices. Two responsive small-multiple SVG graphs show period means and low–high shading on
+separate labelled scales. Missing periods leave gaps; new sensors never imply a year of history.
+All controls have D-pad paths back to Weather/menu; loading waits for a useful focus entry.
+Phones stack charts and retain natural scrolling. TV fits one viewport; both themes remain legible.
+
+Adult Connections → Indoor sensors tests a source, exposes only eligible friendly sensor choices,
+groups them into up to eight named rooms and saves exact selections. Edit existing choices without
+re-entering the token. Replacement is explicit. Failed/ambiguous saves preserve the draft/exact
+request; old settings revisions cannot silently overwrite newer choices. Removing a room removes
+only its Hearth display. Shared screens never receive setup links or source credentials.
+See INDOOR_CLIMATE_CONTRACT for states, retention and verification.
+
 ## Quiet calendar activity (D-125)
 
 Today, Week, Month and Agenda place a small refresh ring beside the heading. It has the accessible

@@ -24,7 +24,15 @@ export const REALTIME_QUERY_DOMAINS: Record<string, readonly string[]> = {
   'chore-template.changed': ['today', 'chores', 'chore-templates', 'pocket-money', 'activity'],
   'home.changed': ['home', 'home-assistant-connection', 'activity'],
   'today.changed': ['today', 'today-configuration', 'daily-verse', 'activity'],
-  'weather.changed': ['weather-location', 'weather', 'today', 'week', 'activity'],
+  'weather.changed': [
+    'weather-location',
+    'weather',
+    'indoor-climate',
+    'indoor-climate-settings',
+    'today',
+    'week',
+    'activity',
+  ],
   'calendar.changed': [
     'today',
     'week',

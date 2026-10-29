@@ -1,5 +1,63 @@
 # Hearth v2 acceptance and definition of done
 
+## D-126 indoor climate — local implementation and real Recorder proof, 2026-10-29
+
+**Live HA recording PASS:** the newly connected temperature and humidity measurements each show
+recorded five-minute history; Recorder Statistics lists both with **No issue**. A bounded read-only
+recorder.get_statistics query returned a completed hourly mean/min/max record for each. This is
+real HA recording evidence, not a Hearth/server deployment claim. The source was connected today;
+no year of pre-installation data is implied. No device command, purge or recording-setting change.
+
+**Backups OPEN:** no automatic backups and no connected NAS network-storage destination were
+configured at inspection. A backup-setup draft was reviewed but not saved. The attempted emergency
+kit download is unverified; no key is retained in source/evidence. Do not claim NAS protection yet.
+Live source commissioning, exact private deployment, actual Hearth TV/phone viewing, scheduled
+backup operation and isolated HA restore remain open. No source credential, backup account or
+NAS share was created, and no automatic backup configuration was saved during this checkpoint.
+
+**Local implementation PASS:** Weather now has Outdoors/Indoors, adult-only named sensor selection,
+separate temperature/humidity charts and trailing day/week/month/year views. Read-only provider
+and private source-file boundaries are specified in [INDOOR_CLIMATE_CONTRACT.md](INDOOR_CLIMATE_CONTRACT.md).
+No migration, inbound HA grant, HA custom component, recorder retention, networking, alarm or
+TV command changed. Existing Outdoor Weather fit was restored after a compact-TV header overflow
+was caught; its assertion was not relaxed.
+
+Commands/results from `/private/tmp/hearth-morning-routine`, branch `codex/indoor-climate-ha`:
+
+- `pnpm -C hearth verify:code` — **PASS**: format/lint/types, **714 unit** (108 shared, 48 core,
+  115 server, 443 web), **290 API/integration**, **30 migration**, deployment validation/fixtures
+  and production server/web builds. Log `/tmp/hearth-indoor-verify-code.log`. Initial sandbox-only
+  localhost denial was rerun outside the sandbox; the complete gate passed. A subsequent CSS-only
+  compact-header correction passed `pnpm -C hearth build` and the complete targeted browser run.
+- `pnpm -C hearth verify:ci` — **PASS**, five policy tests and complete, non-overlapping inventory
+  of **1,304** browser cases (326 per shard). This is an inventory check, not a full browser run.
+- `pnpm -C hearth test:e2e:built tests/e2e/indoor-weather.spec.ts tests/e2e/weather.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts --reporter=line --output=/tmp/hearth-indoor-final-browser`
+  — **PASS 60/60 (2.6 minutes)**. Includes 18 new indoor checks, seven phone/tablet/TV viewports
+  in light/dark, serious/critical accessibility checks, D-pad escape, Back/reopen, exact settings
+  retry after lost response, explicit unavailable readings, existing Outdoor Weather and screen
+  isolation. Log `/tmp/hearth-indoor-final-browser.log`.
+- `pnpm -C hearth test:e2e:built tests/e2e/indoor-weather.spec.ts --browser=webkit
+--grep '390x844|820x1180|settings|missing history' --reporter=line
+--output=/tmp/hearth-indoor-webkit` — **PASS 7/7 (16.8 seconds)**. iOS-engine phone/tablet
+  layouts, source setup, unavailable history and lost-response exact retry; not physical Safari.
+- `pnpm -C hearth test:e2e:built tests/e2e/screen-admin-isolation.spec.ts
+--grep 'all admin routes|unconfigured weather' --reporter=line
+--output=/tmp/hearth-indoor-added-isolation` — **PASS 2/2 (17.5 seconds)** after explicitly
+  adding the Indoor sensors URL and configured Indoors view to shared-screen denial coverage.
+- Final `pnpm -C hearth format:check`, `pnpm -C hearth lint` and `git diff --check` — **PASS**.
+
+Rendered inspection: `/tmp/hearth-indoor-final-browser/indoor-weather-Indoors-fit-56a56-h-range-and-Back-navigation/indoors-light-390.png`
+(phone), `indoor-weather-Indoors-fit-ac4ed-h-range-and-Back-navigation/indoors-dark-1920.png`
+(TV, same output root), plus Outdoor Weather compact dark TV and phone rain images. These contain
+**fictional demo data**; no real sensor history, source IDs, token, reminder or household contents
+were placed in evidence. Mobile stacks and scrolls; TV remains one viewport. Full-page phone
+screenshots retain the fixed navigation at the original viewport position.
+
+**Not run:** hosted release gate, push/publication, private activation, real Hearth source reads,
+physical iPhone/TV viewing, completed/scheduled NAS backup and spare-media HA restore. No Android
+source changed; Gradle checks were not run for this local web/server addition.
+
 ## D-124/D-125 verified private correction release — 2026-10-29
 
 Application release `c9af22401940616e86f1a155058df2ab522de9e5` is pushed and installed on the

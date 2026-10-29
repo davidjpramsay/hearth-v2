@@ -1,5 +1,24 @@
 # Hearth v2 decision record
 
+## D-126 — Indoor climate reads HA history; HA owns recording and NAS recovery
+
+- Date: 2026-10-29
+- Status: accepted direction; local implementation, commissioning and release gates tracked separately
+- Context: the owner added a Zigbee temperature/humidity sensor and wants useful indoor readings
+  and up to a year of trends in Hearth without another history database.
+- Choice: add Weather → Indoors through a narrow read-only server adapter and explicit adult room/
+  sensor selection. HA Recorder and long-term statistics remain authoritative. Use bounded
+  current/period queries, temporary display caches, safe exact settings receipts, private credentials
+  and the Weather module's access gate. No general entity/service proxy or inbound HA grant change.
+  Keep the existing local HA database; schedule encrypted History-inclusive backups to a restricted
+  NAS destination and privately retain its recovery kit. No InfluxDB or 365-day raw-history change.
+- Consequence: HA continues recording when Hearth is closed. Older graph ranges are aggregated,
+  and a new sensor has no pre-installation history. Provider statistics currently require an HA
+  administrator credential despite this adapter's narrower read allowlist. Backup commissioning,
+  publication/deployment, physical display and spare-media restore require their own evidence.
+  This explicitly supersedes the old blanket deferral of climate reads, while leaving the four
+  safety states, script allowlist and native media/voice boundaries intact. See INDOOR_CLIMATE_CONTRACT.
+
 ## D-125 — Quiet routine calendar refreshes
 
 - Date: 2026-10-29

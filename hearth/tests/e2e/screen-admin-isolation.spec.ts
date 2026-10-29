@@ -143,6 +143,7 @@ test('all admin routes and restored/encoded links return a paired screen to the 
     '/admin/connections',
     '/admin/connections/calendar',
     '/admin/connections/home-assistant',
+    '/admin/connections/indoor-sensors',
     '/admin/planning',
     '/admin/lists',
     '/admin/meals',
@@ -197,6 +198,10 @@ test('unconfigured weather gives a paired screen phone guidance without a settin
   });
   await page.goto('/weather');
   await expect(page.getByText('Ask an adult to choose a location from their phone.')).toBeVisible();
+  await expect(page.locator('a[href^="/admin"]')).toHaveCount(0);
+  await page.goto('/weather?view=indoors');
+  await expect(page.getByRole('heading', { name: 'Family room', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Indoor sensors', exact: true })).toHaveCount(0);
   await expect(page.locator('a[href^="/admin"]')).toHaveCount(0);
 });
 
