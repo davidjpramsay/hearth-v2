@@ -2,6 +2,16 @@
 
 ## D-123 School days and Weekends — 2026-10-29
 
+Release follow-up: commit `5d59ea7` was pushed with D-121/D-122 included. Hosted run
+`40809638472` passed code/API, Android TV and image builds, but stopped before publication when
+the existing System health browser case still expected the pre-upgrade text “Migration 34”. The
+test now expects 35; no runtime behavior was changed to satisfy it. No NAS activation occurred
+from that failed run. A new complete hosted run is required before activation.
+The focused command `pnpm test:e2e:built tests/e2e/admin.spec.ts --grep 'adult sees concise system health'
+--reporter=line --output=/tmp/hearth-migration35-health-final` passed **1/1 (6.6 seconds)**;
+`pnpm format:check` and `git diff --check` also passed. Logs are
+`/tmp/hearth-migration35-health-final.log` and `/tmp/hearth-migration35-format.log`.
+
 The requested two-profile refinement is implemented locally. School days retains the existing
 participants, ordered steps and countdown times (07:00–08:00 by default). Weekends starts with the
 same explicit participants, empty steps and countdown off. Each profile has independent people,
