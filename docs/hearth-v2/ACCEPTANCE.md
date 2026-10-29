@@ -32,9 +32,23 @@ Long labels and lists over seven retain paging; phone flow, data, settings and H
 morning-routine.spec.ts --grep 'fits 390x844|countdown time fields|follows module availability'
 --output=/tmp/hearth-morning-seven-webkit-final` — **4/4 PASS (12.3 seconds)** with iPhone emulation;
   both themes, verse popup/Back focus, module-off and time-field save/reopen pass.
-- `git diff --check` — PASS. Approved hosted/private release results follow once complete.
-  Actual physical TV/iPhone rendering remains unverified for this addition; no live data or settings
-  have been changed locally.
+- `git diff --check` — PASS.
+
+The combined Bible-verse/seven-step release **`aa6c0782d2965997e671c99029b8fa5e01fbb384` is now
+privately deployed**, including verse commit `2182e22`. [Verify Hearth run 40796288437](https://github.com/davidjpramsay/hearth-v2/actions/runs/40796288437)
+passed all eight jobs and **1,240 browser tests** (310 per shard) before publishing the exact images.
+Hosted summaries: `/tmp/hearth-morning-seven-hosted.log`.
+
+`hearth/deploy/synology/activate-private-release.sh aa6c0782d2965997e671c99029b8fa5e01fbb384`
+passed using the existing protected helper. `python3 /private/tmp/hearth-release-aa6c078-postflight.py`
+passed exact-release health/readiness/private-runtime checks and matched the index plus **27
+production assets** to that run's artifact. Logs: `/tmp/hearth-release-aa6c078-activation.log` and
+`/tmp/hearth-release-aa6c078-postflight.log`. The NAS-local before/after comparison also passed for
+saved routine settings/progress, approved HA connection, module settings, protected people/phone/
+screen records, existing data counts, runtime configuration, complete bridge interface and database
+integrity. No private comparison values were exported. No HA component/automation, APK, credential
+or household record was edited by this release. Actual physical TV/iPhone rendering has not been
+rechecked; refresh/reopen Hearth to load the assets.
 
 ### Bottom daily verse — 2026-10-29
 
@@ -74,8 +88,9 @@ morning-routine.spec.ts --grep 'fits 390x844|countdown time fields|follows modul
 - `git diff --check` — PASS. Inspected fictional-demo screenshots include
   `/tmp/hearth-morning-verse-final/morning-routine-Morning-Ro-aed2f--1280x640-light-visual-a11y/morning-routine.png`.
 
-This addition is implemented and verified locally. It has not been published/deployed or checked
-on the physical TV/iPhone. It changes no live data, credentials, HA configuration or networking.
+These local results preceded the approved combined seven-step release recorded above, which now
+includes this verse addition. Actual physical TV/iPhone rendering remains unverified. The release
+preserved household data, credentials, HA configuration and networking.
 
 ### Remove combined routine count — 2026-10-29
 
