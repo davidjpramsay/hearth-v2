@@ -5,9 +5,7 @@ import type { PlanningRepository } from './planning-repository.js';
 import type { PhotoRepository } from './photo-repository.js';
 import type { TodayContentRepository } from './today-content-repository.js';
 import type { ReminderRepository } from './reminder-repository.js';
-import type { DailyVerseProvider } from './integrations/daily-verse-provider.js';
-import { TodayVerseCache } from './integrations/today-verse-cache.js';
-import type { RealtimeHub } from './realtime.js';
+import type { TodayVerseCache } from './integrations/today-verse-cache.js';
 import { localDateInTimezone } from '@hearth/core';
 import type { ModulesService } from './modules-repository.js';
 
@@ -19,8 +17,7 @@ export function createTodayReader({
   photoRepository,
   todayContentRepository,
   reminderRepository,
-  dailyVerseProvider,
-  realtime,
+  verseCache,
   now = () => new Date(),
 }: {
   modules: ModulesService;
@@ -30,13 +27,9 @@ export function createTodayReader({
   photoRepository: PhotoRepository;
   todayContentRepository: TodayContentRepository;
   reminderRepository: ReminderRepository;
-  dailyVerseProvider: DailyVerseProvider;
-  realtime: RealtimeHub;
+  verseCache: TodayVerseCache;
   now?: () => Date;
 }) {
-  const verseCache = new TodayVerseCache(dailyVerseProvider, (id) =>
-    realtime.publish(id, 'today.changed', id),
-  );
   return async (householdId: string, localDate: string) => {
     const enabled = modules.get(householdId).enabled;
     const [today, household, lists, meals, gallery, todayConfiguration, activeNotice] =

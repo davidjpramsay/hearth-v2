@@ -26,6 +26,14 @@ with visible checks and undo. Use
 readable targets, bounded TV height, D-pad/Back, reduced motion and both themes. No loud sounds,
 auto-advancing focus, blocking expiry, punitive late state or automatic TV takeover.
 
+When the Daily Bible verse module is enabled, show its compact, content-height card in the bottom
+row beside Today. It uses the same household-local daily verse as Today, independently of Today's
+section visibility setting. Short TVs show a readable one-line excerpt; Select opens the existing
+full-text/attribution dialog and Back restores focus. Five standard steps remain visible. Phones
+place the card after the lists in normal flow. A missing, failed or stale verse never blocks routine
+reads/checks; show an honest unavailable/retry or saved state. Module off removes the card/dialog
+and stops reads. No new key, background worker or HA authority is introduced.
+
 The countdown follows current household-local time, never elapsed time since opening the screen.
 Before start show the start time; during the window count down to the end; afterward show Time to
 go without disabling unfinished steps. Weekends show a quiet weekday-only state. Completion is
@@ -37,6 +45,12 @@ client clock, with foreground/poll refresh and stale-day write rejection.
 ## Typed API and storage
 
 Schemas: `packages/shared/src/morning-routine.ts`; pure clock policy in `packages/core`.
+
+- `GET /api/v1/households/:householdId/daily-verse`: existing `DailyVerseSummarySchema` or JSON
+  null, using today's household-local date. Authenticated household readers only; enforce
+  `dailyVerse` module availability and `private, no-store` before provider work. Reuse Today's
+  nonblocking cache, provider limits, realtime `today.changed` and existing private ESV key.
+  This endpoint does not load other Today content or change its visibility preferences.
 
 - `GET /api/v1/households/:householdId/morning-routine`: current dated view for authorised household
   readers, including paired displays. Safe person presentation, selected steps, completion versions,

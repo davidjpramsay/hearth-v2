@@ -12,6 +12,13 @@ HA receives only the new allowlisted screen tab and module flag; routine content
 stay outside automation authority. Legacy module grants are frozen; a fresh disclosed approval is
 required. See [MORNING_ROUTINE_CONTRACT.md](MORNING_ROUTINE_CONTRACT.md).
 
+Morning Routine's optional bottom verse uses a narrow household/module-gated `GET .../daily-verse`
+returning the existing nullable verse schema. Today and this read share one nonblocking verse cache
+per server; an optional provider refresh cannot hold routine reads or check commands open. The
+household-local date comes from the server clock/timezone. No duplicate provider/key, database
+table, Today aggregation read or HA scope is added. `today.changed` also invalidates the dedicated
+verse query. The existing full-text dialog preserves attribution and opener focus.
+
 ## Bounded Today composer (D-116)
 
 `TodayScreen` derives enabled content from the existing typed summary and module flags. Its scoped

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Icon, type IconName } from './Icon';
@@ -60,7 +60,7 @@ interface SummaryBandProps {
   label: string;
   children: ReactNode;
   to?: string;
-  onActivate?: () => void;
+  onActivate?: (event: MouseEvent<HTMLButtonElement>) => void;
   ariaLabel?: string;
   className?: string;
   focus?: SummaryBandFocusProps;

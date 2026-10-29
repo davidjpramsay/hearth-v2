@@ -5,6 +5,14 @@ import { DEFAULT_MODULE_FLAGS, MODULE_IDS } from '../../packages/shared/src/modu
 const api = 'http://127.0.0.1:4310/api/v1';
 const home = `${api}/households/household_hearth_demo`;
 const adult = { 'X-Hearth-Demo-Actor': 'member_maya' };
+const verse = {
+  reference: 'Demo preview',
+  text: 'Let kindness shape the way you speak and serve one another today.',
+  translation: 'Demo',
+  sourceUrl: null,
+  freshness: 'current',
+  statusMessage: null,
+};
 const titles = [
   'Get dressed',
   'Shoes and socks',
@@ -73,6 +81,9 @@ for (const viewport of [
       await page.route('**/api/v1/households/*/morning-routine', (route) =>
         route.fulfill({ json: overview }),
       );
+      await page.route('**/api/v1/households/*/daily-verse', (route) =>
+        route.fulfill({ json: verse }),
+      );
       await page.goto('/morning-routine');
       await expect(page).toHaveURL(/\/morning-routine$/);
       await expect(page).toHaveTitle(/Hearth/);
@@ -87,6 +98,8 @@ for (const viewport of [
         '1 of 5 done',
       ]);
       await expect(page.getByText('18:00', { exact: true })).toBeVisible();
+      const verseCard = page.getByRole('button', { name: 'Read Demo preview', exact: true });
+      await expect(verseCard).toBeVisible();
       await expect(
         page.getByRole('progressbar', { name: 'Morning time remaining' }),
       ).toHaveAttribute('aria-valuenow', '30');
@@ -116,6 +129,7 @@ for (const viewport of [
             .locator('.app-content')
             .evaluate((element) => element.scrollHeight <= element.clientHeight + 1),
         ).toBe(true);
+        await expect(verseCard).toBeInViewport({ ratio: 1 });
         expect(
           await page
             .locator('.morning-screen')
@@ -126,6 +140,13 @@ for (const viewport of [
         await first.focus();
         for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
         await expect(last).toBeFocused();
+        await page.keyboard.press('ArrowDown');
+        await expect(verseCard).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(page.getByRole('dialog', { name: 'Demo preview' })).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await expect(verseCard).toBeFocused();
         await first.focus();
         await page.keyboard.press('ArrowLeft');
         await expect(page.locator('.tv-rail :focus')).toHaveCount(1);
@@ -142,6 +163,136 @@ for (const viewport of [
       });
     });
   }
+test('the morning verse follows module availability and closes its full-text view when disabled', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [id, enabled] of [
+    ['morningRoutine', true],
+    ['dailyVerse', false],
+  ] as const)
+    expect(
+      (
+        await request.put(`${home}/modules/${id}`, {
+          headers: adult,
+          data: { requestId: `request_morning_verse_${id.toLowerCase()}`, enabled },
+        })
+      ).ok(),
+    ).toBe(true);
+  let reads = 0;
+  await page.route('**/api/v1/households/*/daily-verse', (route) => {
+    reads += 1;
+    return route.fulfill({ json: verse });
+  });
+  await page.route('**/api/v1/households/*/morning-routine', (route) =>
+    route.fulfill({ json: overview }),
+  );
+  await page.goto('/morning-routine');
+  await expect(page.getByRole('heading', { name: 'Morning Routine', exact: true })).toBeVisible();
+  await expect(page.locator('.morning-verse')).toHaveCount(0);
+  expect(reads).toBe(0);
+  expect(
+    (
+      await request.put(`${home}/modules/dailyVerse`, {
+        headers: adult,
+        data: { requestId: 'request_morning_verse_enable', enabled: true },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.reload();
+  const card = page.getByRole('button', { name: 'Read Demo preview' });
+  await expect(card).toBeVisible();
+  await card.click();
+  await expect(page.getByRole('dialog', { name: 'Demo preview' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(card).toBeFocused();
+  await card.click();
+  await expect(page.getByRole('dialog', { name: 'Demo preview' })).toBeVisible();
+  expect(
+    (
+      await request.put(`${home}/modules/dailyVerse`, {
+        headers: adult,
+        data: { requestId: 'request_morning_verse_disable', enabled: false },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.locator('.morning-verse')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Ari: Shoes and socks', exact: true }),
+  ).toBeVisible();
+});
+
+test('a missing or stale morning verse does not block the routine and its full text stays accessible', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 640 });
+  await page.route('**/api/v1/households/*/modules', (route) =>
+    route.fulfill({
+      json: {
+        householdId: overview.householdId,
+        enabled: { ...DEFAULT_MODULE_FLAGS, morningRoutine: true },
+      },
+    }),
+  );
+  await page.route('**/api/v1/households/*/morning-routine', (route) =>
+    route.fulfill({ json: overview }),
+  );
+  let available = false;
+  let failed = false;
+  const longVerse = {
+    ...verse,
+    text: 'A fictional longer demo reading about kindness and patience. '.repeat(18),
+  };
+  await page.route('**/api/v1/households/*/daily-verse', (route) =>
+    failed
+      ? route.fulfill({
+          status: 503,
+          json: {
+            error: {
+              code: 'OFFLINE',
+              message: 'Verse unavailable',
+              retryable: true,
+              requestId: null,
+            },
+          },
+        })
+      : route.fulfill({ json: available ? longVerse : null }),
+  );
+  await page.goto('/morning-routine');
+  const retry = page.getByRole('button', { name: 'Refresh daily verse' });
+  await expect(retry).toContainText('Today’s verse isn’t available yet.');
+  await expect(page.locator('.morning-step')).toHaveCount(15);
+  await expect(
+    page.getByRole('button', { name: 'Ari: Shoes and socks', exact: true }),
+  ).toHaveAttribute('aria-disabled', 'false');
+  available = true;
+  await retry.click();
+  const card = page.getByRole('button', { name: 'Read Demo preview' });
+  await expect(card).toBeVisible();
+  failed = true;
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(card).toContainText('Daily verse · saved');
+  await card.click();
+  const dialog = page.getByRole('dialog', { name: 'Demo preview' });
+  await expect(dialog).toContainText(longVerse.text.trim());
+  await expect(dialog).toContainText('Showing a saved verse.');
+  for (let index = 0; index < 6; index++) {
+    await page.keyboard.press('Tab');
+    await expect(dialog.locator(':focus')).toHaveCount(1);
+  }
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(card).toBeFocused();
+  expect(
+    await page
+      .locator('.app-content')
+      .evaluate((element) => element.scrollHeight <= element.clientHeight + 1),
+  ).toBe(true);
+});
 test('countdown time fields stay separated on narrow phones and save both values @visual @a11y', async ({
   page,
   request,

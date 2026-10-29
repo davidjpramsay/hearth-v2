@@ -1,6 +1,10 @@
 import { getHearthRuntime, householdId } from './core';
 
 export const queryKeys = {
+  get dailyVerse() {
+    const runtime = getHearthRuntime();
+    return [householdId(runtime), 'daily-verse', runtime.localDate] as const;
+  },
   get morningRoutine() {
     return [householdId(getHearthRuntime()), 'morning-routine'] as const;
   },

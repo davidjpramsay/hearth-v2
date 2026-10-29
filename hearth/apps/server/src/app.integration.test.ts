@@ -337,6 +337,114 @@ describe('Hearth v2 API', () => {
     expect(refreshed.json().dailyVerse.freshness).toBe('current');
   });
 
+  it('shares the nonblocking daily verse cache with Today without depending on its visibility', async () => {
+    const verse = new FakeDailyVerseProvider().getCachedDailyVerse();
+    let finish: ((value: typeof verse) => void) | undefined;
+    const getDailyVerse = vi.fn(
+      () =>
+        new Promise<typeof verse>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const app = buildServer({
+      logger: false,
+      dailyVerseProvider: {
+        getCachedDailyVerse: () => ({ ...verse, freshness: 'stale' }),
+        getDailyVerse,
+      },
+    });
+    servers.push(app);
+    const base = '/api/v1/households/household_hearth_demo';
+    await app.inject({
+      method: 'PUT',
+      url: `${base}/today-sections`,
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: {
+        requestId: 'request_hide_today_verse',
+        dinner: true,
+        listSummary: true,
+        notice: true,
+        photo: true,
+        dailyVerse: false,
+        reminders: true,
+      },
+    });
+    expect((await app.inject(`${base}/today?date=2026-08-03`)).json().dailyVerse).toBeNull();
+    expect(getDailyVerse).not.toHaveBeenCalled();
+    const first = await app.inject(`${base}/daily-verse`);
+    expect(first.statusCode).toBe(200);
+    expect(first.headers['cache-control']).toBe('private, no-store');
+    expect(first.headers.vary).toContain('Cookie');
+    expect(first.json()).toMatchObject({ text: verse.text, freshness: 'stale' });
+    await app.inject({
+      method: 'PUT',
+      url: `${base}/today-sections`,
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: {
+        requestId: 'request_shared_verse',
+        dinner: true,
+        listSummary: true,
+        notice: true,
+        photo: true,
+        dailyVerse: true,
+        reminders: true,
+      },
+    });
+    expect((await app.inject(`${base}/today?date=2026-08-03`)).json().dailyVerse.freshness).toBe(
+      'stale',
+    );
+    expect(getDailyVerse).toHaveBeenCalledTimes(1);
+    expect(getDailyVerse).toHaveBeenCalledWith('household_hearth_demo', '2026-08-03');
+    finish?.(verse);
+    await Promise.resolve();
+    expect((await app.inject(`${base}/daily-verse`)).json()).toEqual(verse);
+    expect(getDailyVerse).toHaveBeenCalledTimes(1);
+  });
+
+  it('gates the daily verse read by household access and its own module before provider work', async () => {
+    const provider = new FakeDailyVerseProvider();
+    const read = vi.spyOn(provider, 'getDailyVerse');
+    const app = buildServer({ logger: false, dailyVerseProvider: provider });
+    servers.push(app);
+    const base = '/api/v1/households/household_hearth_demo';
+    await app.inject({
+      method: 'PUT',
+      url: `${base}/modules/dailyVerse`,
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: { requestId: 'request_verse_off', enabled: false },
+    });
+    expect((await app.inject(`${base}/daily-verse`)).statusCode).toBe(403);
+    expect(read).not.toHaveBeenCalled();
+    expect(
+      (await app.inject('/api/v1/households/household_other/daily-verse')).statusCode,
+    ).not.toBe(200);
+    expect(read).not.toHaveBeenCalled();
+    const privateApp = buildServer({
+      logger: false,
+      demoMode: false,
+      dailyVerseProvider: provider,
+    });
+    servers.push(privateApp);
+    expect([401, 403]).toContain((await privateApp.inject(`${base}/daily-verse`)).statusCode);
+    expect(
+      (
+        await app.inject({
+          url: `${base}/daily-verse`,
+          headers: { authorization: 'HearthAutomation unsupported' },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(read).not.toHaveBeenCalled();
+    await app.inject({
+      method: 'PUT',
+      url: `${base}/modules/dailyVerse`,
+      headers: { 'x-hearth-demo-actor': 'member_maya' },
+      payload: { requestId: 'request_verse_on', enabled: true },
+    });
+    expect((await app.inject(`${base}/daily-verse`)).json().reference).toBe('Demo preview');
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
   it('distinguishes process health from database readiness', async () => {
     const ready = buildServer({ logger: false, releaseVersion: 'release-test-123' });
     servers.push(ready);

@@ -246,6 +246,9 @@ import {
 import { RealtimeHub } from './realtime.js';
 import { GamesArchive } from './games-archive.js';
 import { createTodayReader } from './today-reader.js';
+import { TodayVerseCache } from './integrations/today-verse-cache.js';
+import { localDateInTimezone } from '@hearth/core';
+import { DailyVerseSummarySchema } from '@hearth/shared';
 import { HomeService, type HomeRepository } from './home-repository.js';
 import { UnconfiguredHomeAssistantProvider } from './integrations/home-assistant-provider.js';
 import {
@@ -536,6 +539,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     done(null, body);
   });
 
+  const verseCache = new TodayVerseCache(dailyVerseProvider, (id) =>
+    realtime.publish(id, 'today.changed', id),
+  );
   const readToday = createTodayReader({
     modules,
     repository,
@@ -544,8 +550,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     photoRepository,
     todayContentRepository,
     reminderRepository,
-    dailyVerseProvider,
-    realtime,
+    verseCache,
     now: () => runtime.clock.now(),
   });
   const homeAssistantBridge =
@@ -2348,6 +2353,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const query = parse(TodayQuerySchema, request.query, reply);
     if (params === null || query === null) return reply;
     return run(reply, async () => readToday(params.householdId, query.date));
+  });
+
+  server.get('/api/v1/households/:householdId/daily-verse', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie, Authorization');
+    const params = parse(HouseholdParamsSchema, request.params, reply);
+    if (!params) return reply;
+    return run(reply, async () => {
+      const household = await adminRepository.getHousehold(params.householdId);
+      const date = localDateInTimezone(runtime.clock.now().toISOString(), household.timezone);
+      return DailyVerseSummarySchema.nullable().parse(verseCache.read(params.householdId, date));
+    });
   });
 
   server.get('/api/v1/households/:householdId/weather', async (request, reply) => {

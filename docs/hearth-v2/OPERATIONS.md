@@ -2,6 +2,10 @@
 
 ## Morning Routine release (D-120)
 
+The bottom-verse refinement needs matching server/web images for its new `GET .../daily-verse`
+read. It reuses the commissioned ESV key/cache and needs no migration, key setup, HA component
+update or alarm edit. Private activation and physical phone/TV viewing remain separate gates.
+
 The release includes migration 0034 and HA custom component 1.4.0. Use the existing immutable
 verified private activation/backup path. Preserve the complete commissioned network, pairings and
 household data. The new module defaults off and does not seed personal steps. After approval,

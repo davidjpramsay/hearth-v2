@@ -229,6 +229,33 @@
 .morning-footer > .button {
   margin-inline-start: auto;
 }
+.morning-footer > span {
+  flex: 0 1 25%;
+}
+.morning-footer .morning-verse {
+  flex: 1;
+  min-width: 0;
+  min-height: 74px;
+  padding: 10px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.morning-verse > div {
+  flex: 1;
+  overflow: hidden;
+}
+.morning-verse h2 {
+  font-size: 14px;
+}
+.morning-verse p {
+  font-size: 22px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.morning-verse:focus-visible {
+  transform: none;
+}
 .morning-pager {
   display: flex;
   align-items: center;
@@ -335,6 +362,23 @@
     min-height: 48px;
     padding: 6px 10px;
   }
+  .morning-footer .morning-verse {
+    min-height: 60px;
+    padding: 8px 12px;
+    gap: 10px;
+  }
+  .morning-verse h2 {
+    font-size: 12px;
+  }
+  .morning-verse p {
+    font-size: 18px;
+    -webkit-line-clamp: 1;
+  }
+  .morning-verse .summary-band__icon,
+  .morning-verse .summary-band__chevron {
+    width: 24px;
+    height: 24px;
+  }
 }
 @media (max-width: 1199px) {
   .morning-header {
@@ -411,6 +455,14 @@
     font-size: 16px;
   }
   .morning-footer {
+    font-size: 17px;
+    flex-wrap: wrap;
+  }
+  .morning-footer > span,
+  .morning-footer .morning-verse {
+    flex-basis: 100%;
+  }
+  .morning-verse p {
     font-size: 17px;
   }
   .morning-screen .button {

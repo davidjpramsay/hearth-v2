@@ -42,6 +42,12 @@ On narrow phones, stack Start time and Ready by with full-width native time cont
 each field to its grid cell so Safari's time-picker sizing cannot overlap its neighbour or panel.
 The midnight reset derives from the home date, not navigation. See MORNING_ROUTINE_CONTRACT.md.
 
+When Daily Bible verse is enabled, Morning Routine adds a compact bottom card beside Today. Keep
+its height intrinsic and the five standard checklist rows visible on short TVs. A readable excerpt
+opens the existing full verse/attribution popup; Back returns to the card. Phones place it after
+the lists. Missing/stale content has an honest retry/saved state and never blocks the checklists.
+Disabling the verse module removes both card and dialog; Today's section visibility is independent.
+
 **More → Modules** (also Hearth settings → Modules) is one adult-only page of twelve labelled
 On/Off switches, shared styles, large targets and short retained-data copy. No confirmation maze,
 per-screen picker or data deletion. Show confirmed state, Saving, a readable failure and safe exact

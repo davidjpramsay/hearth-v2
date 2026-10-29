@@ -7,6 +7,8 @@ import { morningRoutineApi } from '../api/morningRoutine';
 import { createRequestId, getHearthRuntime, HearthApiError } from '../api/core';
 import { queryKeys } from '../api/queryKeys';
 import { Icon } from '../components/Icon';
+import { MorningRoutineVerse } from '../components/MorningRoutineVerse';
+import { useModules } from '../modules/context';
 import { FailureState, LoadingState } from '../components/Status';
 import { useTodayViewportClass } from '../layout/todayRailCapacity';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -60,6 +62,7 @@ function MorningBoard({
   refresh: () => void;
 }) {
   const client = useQueryClient();
+  const modules = useModules();
   const online = useOnlineStatus();
   const viewport = useTodayViewportClass();
   const [page, setPage] = useState(0);
@@ -251,6 +254,7 @@ function MorningBoard({
                 person={person}
                 steps={steps}
                 entry={index === 0}
+                railExit={viewport !== 'companion' && index === 0}
                 canCheck={canCheck}
                 busy={busy}
                 capacity={
@@ -270,6 +274,7 @@ function MorningBoard({
       </div>
       <footer className="morning-footer">
         {footerMessage ? <span>{footerMessage}</span> : null}
+        {modules.dailyVerse ? <MorningRoutineVerse /> : null}
         <Link
           className="button focusable"
           data-focus-id="morning-today"
@@ -312,12 +317,14 @@ function MorningPerson({
   person,
   steps,
   entry,
+  railExit,
   canCheck,
   busy,
   capacity,
   onToggle,
 }: MorningOverview['people'][number] & {
   entry: boolean;
+  railExit: boolean;
   canCheck: boolean;
   busy: boolean;
   capacity: number;
@@ -365,6 +372,7 @@ function MorningPerson({
               }}
               data-focus-entry={entry && index === 0 && canCheck ? 'true' : undefined}
               data-focus-id={`morning-${person.id}-${step.id}`}
+              data-focus-left={railExit ? 'nav-morning' : undefined}
             >
               <span className="morning-step__number" aria-hidden="true">
                 {activePage * capacity + index + 1}

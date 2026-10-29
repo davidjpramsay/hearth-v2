@@ -12,6 +12,11 @@ Wait a bounded interval for the actual registered screen selector, then `select.
 with `morning_routine`. A failed/offline selector must not interrupt music or repeatedly relaunch.
 Installation and actual weekday alarm operation remain separate acceptance checks.
 
+Morning Routine can also show the existing daily Bible verse. Its narrow read reuses the same
+server-side ESV provider/cache and private key as Today, with no browser provider request or extra
+credential setup. It respects the `dailyVerse` module, independently of Today's section switch.
+Saved/unavailable verse states do not block routine use. This does not change the HA alarm or grant.
+
 ## NBA (D-113)
 
 The keyless server adapter reads fixed ESPN NBA standings and monthly scoreboard HTTPS feeds.

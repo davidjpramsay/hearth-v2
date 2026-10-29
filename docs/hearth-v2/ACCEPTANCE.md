@@ -2,6 +2,47 @@
 
 ## D-120 Morning Routine — 2026-10-28
 
+### Bottom daily verse — 2026-10-29
+
+The owner requested the daily Bible verse at the bottom of Morning Routine. A compact card beside
+Today reuses the existing full-text/attribution dialog. Its household/module-gated daily read shares
+the nonblocking Today verse cache and provider/key, independently of Today section visibility.
+No new database state or HA change. Normal five-step lists must remain visible; cached/unavailable
+states must not block checks. Source/local tests, publication and physical rendering remain separate.
+Browser plugin not available; the repository's production-build Playwright workflow supplies
+TV/mobile/keyboard evidence, with an additional iPhone WebKit check. The flow under test is
+Morning Routine → compact daily verse → full text → Back to its opener, plus module-off and
+unavailable/saved states without blocking checklist use.
+
+- `pnpm verify:code` — PASS: format/lint/types, **681 unit**, **274 API/integration**, **29 migration**,
+  **10** deployment safety fixtures and production server/web builds. Final log:
+  `/tmp/hearth-morning-verse-code-final.log`. The API regressions prove independent Today visibility,
+  shared pending-provider/cache behaviour, private/foreign/automation access denial, module gating
+  before provider work and private no-store responses. No database migration is added.
+- `pnpm verify:ci` — PASS: five policies and complete non-overlapping **1,239-case** inventory;
+  `/tmp/hearth-morning-verse-ci.log`. This is inventory, not a full hosted browser run.
+- `pnpm test:e2e:built tests/e2e/morning-routine.spec.ts tests/e2e/today-settings.spec.ts
+--grep 'Morning Routine fits|morning verse|countdown time|adult settings save|weekend and failed|long steps|daily verse is optional'
+--output=/tmp/hearth-morning-verse-final` — **27/27 PASS (52.7 seconds)**. Nine light/dark viewport
+  pairs cover 4K/1080p/compact/short TV, tablet and phone; all 15 standard demo steps and the bottom
+  verse stay visible on TV. D-pad reaches the verse, opens full text, closes with Back/Escape,
+  restores focus and exits to the rail. Includes missing/retry, long saved text, focus containment,
+  module-off/no read/dialog removal, settings save/reopen, exact check retry and prior Today popup.
+  Page identity/content, no framework overlay, console health, serious/critical a11y and reduced
+  motion pass. Initial test-only route matches were narrowed to the API before the final run.
+- `pnpm exec playwright test --config=/private/tmp/hearth-morning-times-webkit.config.mts
+morning-routine.spec.ts --grep 'fits 390x844|countdown time fields|follows module availability'
+--output=/tmp/hearth-morning-verse-webkit-final` — **4/4 PASS (13.3 seconds)**, with iPhone emulation.
+  A first Safari-engine check found tap activation did not focus the opener; the morning card now
+  explicitly focuses its button before opening the existing dialog. The shared SummaryBand callback
+  exposes its typed activation event; other consumers retain their behaviour. Both browsers now
+  restore card focus after closing, and module-off removes the popup.
+- `git diff --check` — PASS. Inspected fictional-demo screenshots include
+  `/tmp/hearth-morning-verse-final/morning-routine-Morning-Ro-aed2f--1280x640-light-visual-a11y/morning-routine.png`.
+
+This addition is implemented and verified locally. It has not been published/deployed or checked
+on the physical TV/iPhone. It changes no live data, credentials, HA configuration or networking.
+
 ### Remove combined routine count — 2026-10-29
 
 At the owner's request, the routine footer no longer shows the household-wide “steps done

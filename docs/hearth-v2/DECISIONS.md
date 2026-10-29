@@ -16,6 +16,11 @@
   progress cues, reduced motion, dark mode and remote exit/navigation. The 2026-10-29 refinement
   fits standard five-step lists together on compact/short TVs, removing duplicate next-step and
   introductory headings while retaining announced save feedback and visible errors.
+- Verse: The owner also requested the Bible verse at the bottom. Reuse the existing daily verse,
+  private provider key, shared nonblocking cache and full-text dialog through a narrow authenticated
+  `GET .../daily-verse`. Respect its module flag independently of Today's section switch; retain
+  five-step TV fit, readable excerpts, saved/unavailable states and remote focus. No new persistence,
+  provider, credential, HA grant or alarm behaviour.
 - HA: The existing bridge may select the new family tab only with explicit new-module approval.
   HA retains all physical/music authority. Append a weekday choice after the existing launch and
   guards; preserve weekend alarm behaviour. Never execute wake/music as a setup test.
