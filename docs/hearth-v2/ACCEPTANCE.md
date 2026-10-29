@@ -26,8 +26,27 @@ with the explicitly approved phone time-field release below; no settings/data/HA
 morning-routine.spec.ts --grep 'fits 390x844|countdown time fields'
 --output=/tmp/hearth-morning-footer-webkit` — **3/3 PASS (8.5 seconds)** with iPhone emulation.
   Light/dark routine rendering has no aggregate count; time fields remain separated and persisted.
-- `git diff --check` — PASS. Hosted publication and private activation results follow once
-  complete. Actual physical TV and iPhone Safari remain separate, unverified checks.
+- `git diff --check` — PASS.
+
+Both refinements are now privately deployed as **`af8168e6801a38d950f1d4ade4909fa14218e9fc`**,
+including phone-field commit `e846b2b`. The owner explicitly approved push/deployment after the
+initial automatic approval review held publication. [Verify Hearth run 40789769562](https://github.com/davidjpramsay/hearth-v2/actions/runs/40789769562)
+passed all eight jobs, including **1,237 browser tests** (310 + 309 + 309 + 309), before publishing
+the exact images. Hosted summaries: `/tmp/hearth-morning-footer-hosted.log`.
+
+`hearth/deploy/synology/activate-private-release.sh af8168e6801a38d950f1d4ade4909fa14218e9fc`
+passed using the existing protected helper. `python3 /private/tmp/hearth-release-af8168e-postflight.py`
+passed exact-release health/readiness/private runtime and matched the index plus **27 production
+assets** to that run's artifact. Logs: `/tmp/hearth-release-af8168e-activation.log` and
+`/tmp/hearth-release-af8168e-postflight.log`. The NAS-local before/after comparison passed for
+routine settings/progress, approved HA connection, module settings, protected people/phone/screen
+records, existing data counts, runtime configuration, complete bridge interface and database
+integrity. No private comparison values were exported. No HA component/automation, APK,
+credential or household record was edited by this release.
+
+Final fictional-demo screenshot:
+`/tmp/hearth-morning-footer-chromium-final/morning-routine-Morning-Ro-aed2f--1280x640-light-visual-a11y/morning-routine.png`.
+Actual physical TV and iPhone Safari have not been rechecked; refresh/reopen to load the assets.
 
 ### Phone countdown-field fit — 2026-10-29
 
