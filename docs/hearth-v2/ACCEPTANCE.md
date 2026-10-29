@@ -1,5 +1,20 @@
 # Hearth v2 acceptance and definition of done
 
+## Indoor chart copy cleanup — local, 2026-10-30
+
+Removed the “Line: average · Shading: recorded low–high” explanation from both indoor charts.
+The existing Saved history state appears on its own only when retained samples are being shown
+after a history-read failure. Normal chart cards end with their Low/Average/High summaries.
+
+`pnpm -C hearth --filter @hearth/web typecheck`, `pnpm -C hearth lint`, production web build,
+formatting and `git diff --check` passed. Existing `indoorChartGeometry.test.ts` passed **21/21**.
+`pnpm -C hearth test:e2e:built tests/e2e/indoor-weather.spec.ts --grep 'Indoors fits (390x844|1920x1080)'
+--reporter=line --output=/private/tmp/hearth-indoor-key-removed` passed **4/4**, phone/TV light/dark,
+including bounds, Back and accessibility checks. Screenshots were visually inspected there;
+log `/private/tmp/hearth-indoor-key-browser.log`. Browser plugin unavailable; repository Playwright
+used against isolated demo data. **Not run:** publication/deployment or actual phone/TV viewing.
+No server, provider, data, HA or network change.
+
 ## Bible reading popup (D-055) — local cleanup, 2026-10-30
 
 Today and Morning Routine share the updated reading dialog. It inherits Hearth's Source Sans

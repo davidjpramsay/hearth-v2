@@ -55,6 +55,8 @@ Temperature uses enclosing whole-number 1/2/5-based steps with padding and a min
 span, including negative and constant readings. Humidity keeps a fixed 0–100% axis with 20-point
 steps (25 in short charts). Show at least five vertical labels at supported sizes, never rounded
 labels detached from their gridline values. Small time tick marks identify the labelled instants.
+Do not repeat line/shading explanatory sentences beneath the plots. Retain the Saved history
+state when a chart is using retained samples after a history-read failure.
 URL-backed view/room/period choices support Back/reopen. TV fits one viewport; phones stack.
 Visible focus, D-pad escape to Weather navigation, text alternatives, dark mode and reduced motion
 are required. Empty, loading, partial, stale, denied and unavailable states remain distinct.

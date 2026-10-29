@@ -316,11 +316,8 @@ function IndoorChart({
           </div>
         ))}
       </dl>
-      {samples.length > 0 ? (
-        <p className="indoor-chart-key">
-          Line: average · Shading: recorded low–high
-          {reading?.historyStatus === 'unavailable' ? ' · Saved history' : ''}
-        </p>
+      {samples.length > 0 && reading?.historyStatus === 'unavailable' ? (
+        <p className="indoor-history-status">Saved history</p>
       ) : null}
     </section>
   );
