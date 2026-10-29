@@ -22,14 +22,27 @@ The full web/server, dependency, migration, deployment-fixture and Android TV ga
   **DENY** for the new backup-only account; the original two allowed Hearth-data principals remain
   unchanged. The checker accepts only that additional denial, not a new grant or missing allowlist.
 
-**Sensor commissioning:** the private source is mode 0600 and owned by the application service.
-The NAS-host setup validated the chosen temperature/humidity sensor shapes and completed hourly
-statistics using real HA reads. No credential, raw entity ID or sensor contents are in this evidence.
-**Live container proof remains OPEN:** deployed Indoor Weather currently reports unavailable;
-the read-only container diagnostic also timed out for unauthenticated reachability and the selected
-HA sensor request. The same configured HA host responds from the NAS host. A specific one-host,
-one-port outbound-rule exception is awaiting approval; no such network rule is applied yet. Do not infer application-to-HA
-success from the NAS-host checks. No firewall/network change was made to conceal this issue.
+**Live sensor proof PASS:** the private source is mode 0600 and owned by the application service.
+After the separately approved network exception, the running container returned HTTP 401 at HA's
+unauthenticated API boundary and HTTP 200 for the selected authenticated measurement. Shape checks
+passed; the real adapter returned **current**, **one room**, **38 temperature and 38 humidity samples**.
+The deployed authenticated shared-screen page rendered both real charts without stale/unavailable
+notices. Day, week, month and year requests all rendered two history charts; Day was restored.
+There were **zero administration links**. No token, raw entity ID or sensor values enter this evidence.
+This is real deployed browser/container proof; physical iPhone/TV viewing remains separate.
+
+**HA-only network exception PASS:** the owner explicitly approved one persistent outbound allowance
+from Hearth's existing bridge to the configured HA host, TCP/80 only. The operator helper verified
+an exact protected-hook baseline, serialized with the existing release activation lock, retained
+root-only originals and compared forwarding rules before/after. Every previous rule retained its
+order; only the one host/port rule was added. Both the protected source and existing boot/update
+hook contain it. Reachability was tested with rollback on failure; the normal restricted release
+helper still passes its installation check. No global Docker/LAN bypass, router/DNS/bridge change,
+new inbound port, device command or NAS/HA restart. An initial attempt used an optional rule-comment
+match unavailable on DSM; it stopped and restored the original hook byte-for-byte. The approved
+retry uses ordinary TCP/IP matches. Logs: `/private/tmp/hearth-indoor-ha-access.log` and the earlier
+`/private/tmp/hearth-indoor-readcheck.log`. Installation supports reboot/update persistence; an
+actual NAS reboot and later release activation were not performed as tests.
 
 **Backup proof PASS:** HA's selected NAS network storage is active. Daily backups use the system
 optimal time and retain **14** copies. Settings/history and all apps are included. Both local and
@@ -40,6 +53,9 @@ reported success in **two locations**. A nonempty NAS tar was independently insp
 `backup.json` is present, `protected=true`, the Home Assistant archive is present and
 `homeassistant.exclude_database=false`. No private archive contents or encryption key were extracted.
 The recovery-kit Download control was invoked, but a saved user file has not been verified.
+The owner subsequently declined the additional recovery-key copy. Its staging was blocked after
+that withdrawal; no recovery-key escrow was executed. HA retains its current key. Existing
+NAS backups and their configured schedule remain intact; no backup was deleted or disabled.
 
 Operational setup corrections were confined to one-off helpers outside source/runtime: HA's
 REST Supervisor proxy does not expose mount management, so its supported administrator WebSocket
@@ -48,8 +64,9 @@ explicit SMB version override was removed in favour of normal current-protocol n
 No older SMB protocol, new application package, HA restart, alarm/TV/media action or unrelated
 account privilege was enabled. The temporary pure-Python client was official-PyPI/SHA-256 verified.
 
-**Not run/open:** container-to-HA sensor success, physical TV/iPhone inspection, next scheduled
-backup execution, recovery-kit custody and isolated restore onto spare/test media. Sensor history
+**Not run/open:** physical TV/iPhone inspection, actual NAS reboot/later-update persistence, next
+scheduled backup execution and isolated restore onto spare/test media. Recovery-key custody
+outside HA was declined by the owner, rather than verified complete. Sensor history
 began on installation day; no historical year was fabricated. This commissioning checkpoint
 supersedes the local-only publication/backup flags in the implementation evidence below.
 
@@ -61,7 +78,8 @@ recorder.get_statistics query returned a completed hourly mean/min/max record fo
 real HA recording evidence, not a Hearth/server deployment claim. The source was connected today;
 no year of pre-installation data is implied. No device command, purge or recording-setting change.
 
-**Backups OPEN:** no automatic backups and no connected NAS network-storage destination were
+**Initial backup inspection (superseded by commissioning above):** no automatic backups and no
+connected NAS network-storage destination were
 configured at inspection. A backup-setup draft was reviewed but not saved. The attempted emergency
 kit download is unverified; no key is retained in source/evidence. Do not claim NAS protection yet.
 Live source commissioning, exact private deployment, actual Hearth TV/phone viewing, scheduled

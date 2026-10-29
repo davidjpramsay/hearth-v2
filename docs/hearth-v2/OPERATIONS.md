@@ -3,14 +3,25 @@
 ## Indoor sensor history and backups (D-126)
 
 Commissioned 2026-10-29 with explicit owner approval: exact application release `a8c3a58` is
-privately deployed after the complete hosted gate. HA has daily backups with global retention of
-14, Settings/history and all apps included, and local plus restricted NAS locations selected.
-NAS encryption is enabled. A completed NAS tar was verified as protected, with the Home Assistant
-archive and database included. Keep next scheduled-run, recovery-kit custody and spare-media restore
-as separate evidence. The current application-to-HA read is unavailable pending a read-only
-container check. That check confirms timeouts from the running container while NAS-host reads pass;
-a narrow HA-only outbound firewall exception is awaiting owner approval. Do not call the live
-Indoors bridge complete yet. See ACCEPTANCE for commands.
+privately deployed after the complete hosted gate. The running container and deployed browser now
+read real temperature/humidity and day/week/month/year history. Shared-screen admin isolation and
+post-change data/runtime/bridge preservation passed. See ACCEPTANCE for exact evidence.
+
+HA has daily backups with global retention of 14, Settings/history and all apps included, and local
+plus restricted NAS locations selected. NAS encryption is enabled. A completed NAS tar was verified
+as protected, with the Home Assistant archive and database included. The next scheduled run and
+a spare-media restore remain separate evidence. The owner declined an extra recovery-key copy;
+no key escrow was executed. Keep existing encrypted backups/schedule intact. Do not claim the
+current HA key is independently recoverable after loss of the HA storage.
+
+The owner approved a single outbound Hearth-bridge-to-HA-host TCP/80 rule after container reads
+otherwise timed out. It lives in the existing protected firewall source and boot/update hook;
+all older rules retain their order. The operator retained root-only original/checkpoint files and
+validated exact scope plus authenticated sensor reads. No broad LAN/Docker bypass, new inbound port,
+router/DNS change or restart. Do not use the optional iptables comment match on this DSM: it is not
+installed. Changing the HA host or port later requires a separately reviewed operator policy update;
+adult source settings never widen root-owned network access automatically. Actual reboot and later
+release activation remain untested; the existing restricted activation-helper check passes.
 
 HA mount administration uses the supported administrator `supervisor/api` WebSocket command;
 Core's REST Supervisor proxy intentionally rejects mount management. Use the actual current DSM
@@ -19,7 +30,7 @@ Do not force a CIFS version through HA's old-protocol override; omit it for norm
 negotiation. The backup account has no administrator membership, a nologin shell, no app privileges
 and explicit denial on pre-existing shares. Only the new backup folder is writable. Those new
 account-only deny entries do not authorize changing existing users' access. No HA restart, alarm,
-TV command, DNS/router setting or networking workaround was used in this checkpoint.
+TV command or DNS/router setting was changed. The explicit HA-only network exception is recorded above.
 
 Connect temperature/humidity measurements to HA and inspect their History plus Recorder Statistics
 (No issue). Keep the HA database on its local storage; do not mount a live SQLite file on the NAS

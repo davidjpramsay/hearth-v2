@@ -18,6 +18,11 @@
   publication/deployment, physical display and spare-media restore require their own evidence.
   This explicitly supersedes the old blanket deferral of climate reads, while leaving the four
   safety states, script allowlist and native media/voice boundaries intact. See INDOOR_CLIMATE_CONTRACT.
+- Commissioning boundary: the owner separately approved one existing-bridge-to-configured-HA-host
+  TCP/80 forwarding rule. Root-owned operator network policy stays separate from adult source
+  settings; source edits never automatically widen LAN access. Existing forwarding/DNS rules,
+  inbound exposure and TV/HA automations remain unchanged. Boot/update-hook installation and
+  actual reboot/later-update execution are separate evidence.
 
 ## D-125 — Quiet routine calendar refreshes
 
@@ -94,7 +99,6 @@
 - Boundary: No deletion, live upload, import-source, DSM/network or deployment change is authorized
   by local implementation. Larger end-to-end uploads and throughput still require physical/private
   release verification; a local benchmark cannot prove NAS/Wi-Fi speed.
-
 
 ## D-121 — Install the shared web companion on iPhone and iPad
 

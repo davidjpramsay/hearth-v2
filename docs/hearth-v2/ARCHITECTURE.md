@@ -11,7 +11,11 @@ HA secrets (or at HEARTH_INDOOR_CLIMATE_CONFIG_PATH). No sensor history enters H
 The same typed adapter seam has a deterministic fake for demo/tests. React owns measured SVG
 charts and URL-backed selections; no browser-to-HA traffic or new chart dependency.
 The existing outbound safety/script adapter remains unchanged except sharing its bounded transport.
-See INDOOR_CLIMATE_CONTRACT.md; live commissioning/publication are separate acceptance gates.
+Root-owned NAS egress policy remains separate from adult source settings. The commissioned
+owner-approved exception permits only the configured HA host/port from Hearth's existing bridge;
+changing a source cannot automatically widen it. Existing bridge/DNS policy and inbound exposure
+remain unchanged. See INDOOR_CLIMATE_CONTRACT.md; commissioning/publication and physical proof
+remain separate acceptance gates.
 
 ## Calendar refresh feedback (D-125)
 

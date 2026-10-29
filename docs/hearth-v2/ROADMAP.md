@@ -2,13 +2,17 @@
 
 ## Indoor climate (D-126)
 
-Verify the new physical sensors' Recorder history and hourly statistics, then the narrow typed
-read adapter, private source selections, exact/stale saves, missing/partial/outage state and
-Weather-off no-I/O. Inspect Outdoors regressions and Indoors TV/phone/tablet light/dark geometry,
-D-pad exit and accessibility. Keep HA's local history; commission an encrypted NAS backup with
-History included and verify one completed copy. Local code/browser evidence, publication/private
-activation, physical Hearth display, automatic scheduled backup execution and a spare-media
-restore are separate gates. No TV/power/music/alarm or network configuration change is required.
+Source, full hosted gate (1,304 browser cases), private deployment/preservation, real HA Recorder,
+container-to-HA selected reads and rendered day/week/month/year charts passed on 2026-10-29.
+The owner-approved single-host TCP/80 outbound exception preserves all earlier rules. Daily
+encrypted backups retain 14 copies, include History and have one independently verified NAS copy.
+HA retains its local database and remains the history authority. There was no TV/power/music/alarm
+change, router/DNS change, general LAN bypass or new inbound port.
+
+Keep physical Hearth TV/iPhone viewing, actual reboot/later-update policy persistence, the next
+scheduled backup execution and a spare-media restore as separate open gates. Independent recovery-key
+custody was declined by the owner and must not be marked as proved.
+No year before sensor installation was fabricated. Exact evidence and commands are in ACCEPTANCE.
 
 ## Quiet calendar refresh (D-125)
 
