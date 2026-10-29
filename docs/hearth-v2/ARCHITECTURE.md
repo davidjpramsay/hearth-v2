@@ -1,5 +1,17 @@
 # Hearth v2 architecture
 
+## Shareable setup boundary (D-127)
+
+The new installer operates only on a fresh private directory and its unique Docker Compose project.
+It selects a successful main verification with published images, checks revision labels, binds web
+to loopback and creates a private local first-use QR. No new public claim API or host-network policy.
+Its explicit portable update command checkpoints complete stopped data/photos/secrets, verifies SQLite,
+and restores matching data/configuration on failed readiness; this is not the Synology root agent.
+Get started and Connections consume existing adult read models under the existing shared-screen
+boundary; no new schema, migration or authority. Code-only deterministic setup downloads are generated
+at web build time. The HA installer replaces only its own component with a private rollback copy,
+never HA config entries/automations or secrets. See SHARING_SETUP_CONTRACT.md.
+
 ## Read-only indoor climate (D-126)
 
 A separate narrow IndoorProvider reads selected HA measurement states and Recorder statistics.

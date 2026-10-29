@@ -1,5 +1,65 @@
 # Hearth v2 acceptance and definition of done
 
+## D-127 shareable setup — local work, 2026-10-29
+
+Implemented a guarded fresh Docker installer and explicit portable update path, private first-phone
+QR CLI, Get started adult route, resilient optional Connections and deterministic HA/server setup
+ZIPs. HA remains optional. No live household, NAS networking, HA files, automations or grants changed.
+The install/update fixtures are disposable local directories, not actual deployment or recovery proof.
+
+Local verification **PASS** from `/private/tmp/hearth-morning-routine`, branch
+`codex/shareable-setup`:
+
+- `pnpm -C hearth verify:code` — format, lint, types, **718 unit**, **290 API/integration**,
+  **30 migration**, existing deployment checks, production builds and the new fresh-private-backend
+  smoke all passed. Log `/private/tmp/hearth-setup-final-verify-code.log`.
+- Portable install/update fixtures: **14/14**, including the actual Docker Compose JSON parser,
+  private files, refusal/consumed-key resume, supported verified-release selection, complete stopped
+  checkpoints, integrity checks, insufficient-space refusal and matching rollback. HA component
+  install/update fixtures: **6/6**, including deterministic allowlisted packaging, checksum/path/
+  symlink refusal, retained old code and interruption rollback. Both run inside `verify:code`.
+- `pnpm -C hearth test:e2e:built tests/e2e/guided-setup.spec.ts tests/e2e/admin.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts tests/e2e/phone-codes.spec.ts tests/e2e/modules.spec.ts
+--reporter=line --output=/private/tmp/hearth-setup-final-browser` — **102/102**, 3.2 minutes.
+  Phone/tablet/desktop, both themes, accessibility, provider failure isolation, six-letter approval,
+  optional outbound controls, downloads, off-module I/O, D-pad/Back and all admin-route screen denial.
+  Log `/private/tmp/hearth-setup-final-browser.log`.
+- `pnpm -C hearth test:e2e:built tests/e2e/guided-setup.spec.ts --browser=webkit
+--grep '390|820|HA install download|disabled modules' --reporter=line
+--output=/private/tmp/hearth-setup-webkit` — **10/10**, 17.5 seconds. Safari engine in both phone/tablet orientations, not an iPhone.
+- Extended `guided-setup.spec.ts` Chromium run — **16/16**, 29.5 seconds, all seven required
+  viewports (390×844, 844×390, 820×1180, 1180×820, 1366×768, 1920×1080, 3840×2160), light/dark.
+  Log `/private/tmp/hearth-setup-guided-final.log`; screenshots `/private/tmp/hearth-setup-guided-final/`.
+- `python3.12 -B -m unittest discover -s hearth/integrations/home_assistant/tests -v` —
+  **69/69**. The first attempt with this Mac's Python 3.9 lacked the component tests' documented
+  modern-Python APIs; the supported Python 3.12 rerun passed without changing HA code.
+- `pnpm -C hearth verify:ci` — **5/5** policy tests and complete non-overlapping inventory of
+  **1,320 browser cases**. Inventory is not an execution of all those cases.
+- `pnpm -C hearth audit:dependencies` — **no known vulnerabilities**. `git diff --check` passed.
+  Both built ZIPs were compared with their exact source installers and explicit code-only lists.
+
+The fresh-backend smoke creates an empty private SQLite installation with no HA/calendar/ESV
+credentials, generates its local private PNG, claims one fixture adult, confirms first-use proof
+consumption and successfully reads authenticated admin/Today with HA unconfigured. It removes all
+fixture storage afterward. This is local HTTP backend/QR evidence, not trusted-HTTPS or device proof.
+A new CI Docker boot step uses this run's preloaded labelled amd64 images and generated Compose,
+checks real non-root mounted QR generation and core reads without HA, then removes its isolated
+project. That container step remains **not run locally**; the Mac's Docker daemon is arm64 and this
+first installer explicitly supports x86-64. Publication is gated on that job, not assumed from mocks.
+
+Inspection caught a temporary-storage flow-list parse issue and a new-row navigation-order change;
+both were corrected and covered by the passing parser/browser checks. Initial owner claims now
+open Get started; replacement retains recovery guidance, with regression tests for both.
+Rendered demo screenshots are under `/private/tmp/hearth-setup-final-browser/`, including the
+390px Welcome/Connections views and 1920px dark Connections view. They contain fictional demo data.
+
+**Not run:** hosted verification/publication, candidate image installation, fresh trusted-HTTPS
+server commissioning, actual iPhone QR scan/Home Screen use, live HA install/restart/pairing,
+power-loss recovery and consumer hardware acceptance. No Android app code changed; native checks
+remain in the hosted release gate. Existing commissioned Synology/HA/data/networking remain untouched.
+This is a tested private self-hosted setup candidate, not a factory plug-and-play appliance.
+See SHARING_SETUP_CONTRACT.md.
+
 ## D-126 private deployment and backup commissioning — 2026-10-29
 
 The owner explicitly approved publication, private activation, the HA read connection and a

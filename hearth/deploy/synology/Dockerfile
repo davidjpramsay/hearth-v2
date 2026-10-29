@@ -19,6 +19,9 @@ COPY apps/server apps/server
 COPY apps/web apps/web
 COPY packages/core packages/core
 COPY packages/shared packages/shared
+COPY integrations integrations
+COPY scripts scripts
+COPY deploy/portable deploy/portable
 RUN pnpm build:packages
 
 FROM workspace AS server-build

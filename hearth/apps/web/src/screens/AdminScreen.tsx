@@ -53,6 +53,7 @@ const settingGroups: Array<{ title: string; settings: Setting[] }> = [
         icon: 'users',
         path: '/admin/people',
       },
+      { title: 'Get started', icon: 'leaf', path: '/admin/get-started' },
     ],
   },
   {

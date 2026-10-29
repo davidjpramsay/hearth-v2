@@ -83,6 +83,9 @@ const AppearanceSettingsScreen = lazy(async () => ({
 const ConnectionsSettingsScreen = lazy(async () => ({
   default: (await import('./screens/ConnectionsSettingsScreen')).ConnectionsSettingsScreen,
 }));
+const GetStartedScreen = lazy(async () => ({
+  default: (await import('./screens/GetStartedScreen')).GetStartedScreen,
+}));
 const CalendarConnectionSettingsScreen = lazy(async () => ({
   default: (await import('./screens/CalendarConnectionSettingsScreen'))
     .CalendarConnectionSettingsScreen,
@@ -220,6 +223,7 @@ export function App() {
               }
             >
               <Route path="/admin" element={<AdminScreen />} />
+              <Route path="/admin/get-started" element={<GetStartedScreen />} />
               <Route path="/admin/modules" element={<ModulesSettingsScreen />} />
               <Route path="/admin/nba" element={<NbaSettingsScreen />} />
               <Route

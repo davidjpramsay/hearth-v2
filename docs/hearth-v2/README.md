@@ -24,6 +24,11 @@ and voice. Native television media apps remain separate.
 
 ## Current boundaries
 
+D-127 adds [guided private installation and optional connections](SHARING_SETUP_CONTRACT.md),
+a Get started page and matching code-only HA downloads. Local fixtures/browser verification do
+not establish a fresh server, actual phone/TV, HA restart, publication or live deployment. HA stays
+optional; trusted private HTTPS and currently x86-64 Docker remain explicit prerequisites.
+
 D-126 adds read-only [Indoor climate](INDOOR_CLIMATE_CONTRACT.md) inside Weather. Home Assistant
 owns sensor history and encrypted NAS backups; Hearth keeps only selected mappings and temporary
 graph data. Recording, local implementation and live deployment/backup evidence remain separate.

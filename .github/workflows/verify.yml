@@ -46,6 +46,14 @@ jobs:
       - name: Verify browser shard coverage
         run: pnpm verify:ci
 
+      - name: Share matching setup downloads
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hearth-setup-downloads
+          path: hearth/apps/web/public/downloads/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Share this run's production build
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -174,6 +182,7 @@ jobs:
           target: server
           platforms: linux/amd64
           push: false
+          load: true
           tags: ghcr.io/${{ github.repository_owner }}/hearth-v2-server:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -190,6 +199,7 @@ jobs:
           target: web
           platforms: linux/amd64
           push: false
+          load: true
           tags: ghcr.io/${{ github.repository_owner }}/hearth-v2-web:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -197,6 +207,9 @@ jobs:
             org.opencontainers.image.title=Hearth v2 web
           cache-from: type=gha,scope=hearth-web-amd64
           cache-to: type=gha,mode=max,scope=hearth-web-amd64
+
+      - name: Verify a fresh generated installation without Home Assistant
+        run: python3 -B hearth/deploy/portable/tests/docker-boot.py '${{ github.sha }}'
 
   publish-synology-images:
     name: Publish verified Synology images

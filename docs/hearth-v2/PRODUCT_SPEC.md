@@ -1,5 +1,14 @@
 # Hearth v2 product specification
 
+## Shareable private setup (D-127)
+
+Core family features work without Home Assistant. Offer a guided fresh-server installer, a private
+first-phone QR and an adult Get started page for people, modules, screens and recovery. Optional
+connections explain their prerequisites independently. The installer uses verified pinned images
+and new private storage; it never copies an existing household or weakens first-owner proof.
+See [SHARING_SETUP_CONTRACT.md](SHARING_SETUP_CONTRACT.md). Trusted private HTTPS and x86-64 Docker
+remain explicit prerequisites; native network commissioning is not simulated.
+
 ## Indoor climate (D-126)
 
 Weather adds Outdoors/Indoors. Indoors shows explicitly selected temperature and humidity sensors,

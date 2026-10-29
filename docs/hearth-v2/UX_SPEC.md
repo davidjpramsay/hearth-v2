@@ -1,5 +1,17 @@
 # Hearth v2 television and companion UX specification
 
+## Guided household setup (D-127)
+
+A successful initial owner claim opens Welcome to Hearth → Get started. Existing owner replacement
+still opens Recovery & lost phones. Adults can start using Hearth immediately and return through
+Hearth settings. Show family, modules, screen/phone connection and recovery as clear linked tasks,
+using real state rather than a stored browser checklist. No HA connection is required.
+Connections groups Everyday connections (Calendar, Outdoor weather, Family photos) and Optional
+smart home (HA, Indoor sensors). Keep rows usable when one provider is unavailable. Hide disabled
+features without fetching them. HA offers a matching download, install/update steps, copyable Hearth
+address and existing six-letter approval. Outbound home actions start collapsed unless already
+connected. No token form or script mapping is a prerequisite for opening HA setup or Morning Routine.
+
 ## Weather → Indoors (D-126)
 
 Weather's heading switches Outdoors/Indoors without requiring a configured outdoor forecast.

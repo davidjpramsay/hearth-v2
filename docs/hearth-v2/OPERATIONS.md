@@ -1,5 +1,28 @@
 # Hearth v2 local environment and operations plan
 
+## Install Hearth for another household (D-127)
+
+Use [the portable installer guide](../../hearth/deploy/portable/README.md) for a fresh x86-64 Docker
+installation with an already trusted private HTTPS proxy. The interactive installer chooses a fully
+verified published main release and new protected storage; no HA or existing household data is
+required. Its local PNG supplies the existing strong first-use QR. Never serve/copy private cards
+into Git, artifacts or public folders. Once claimed, the server consumes its first-use proof;
+resume/update must continue without recreating it. Get started links to lost-phone recovery.
+
+For an installation created by this tool, `install.py --directory PRIVATE_DIRECTORY --resume`
+checks its exact record/configuration; `--update` proposes a verified forward release, asks for
+maintenance consent and retains complete stopped checkpoints plus failed-update state. Avoid edits
+during update and allow full-copy disk space. A power loss/failed rollback can require operator
+recovery; no automatic phone-update agent is installed. Do not adopt the current commissioned
+Synology into this tool. It keeps its existing protected update helper and network policy.
+
+Connections → Home Assistant offers the exact matching public-code ZIP. Run its installer against
+the explicitly chosen HA configuration folder, or copy only its bundled component using the existing
+secure administration method. Restart HA deliberately, then approve six letters on an adult Hearth
+phone. Updates keep a private component rollback copy, not a backup of HA settings/history. No
+long credential is manually handled for this inbound connection. Sensor/history and outbound home
+controls retain their separate explicit setup. No HA/NAS live changes follow from building a ZIP.
+
 ## Indoor sensor history and backups (D-126)
 
 Commissioned 2026-10-29 with explicit owner approval: exact application release `a8c3a58` is

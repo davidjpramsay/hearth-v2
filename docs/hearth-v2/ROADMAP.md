@@ -1,5 +1,14 @@
 # Hearth v2 implementation roadmap
 
+## Shareable setup (D-127)
+
+Implement a guarded fresh-server installer, explicit portable update/checkpoint/rollback command,
+first-phone private QR, adult Get started, resilient optional Connections and downloadable matching
+HA installation/update tools. Local verification, publication, real fresh-server/phone/HA acceptance
+and deployment are distinct gates in ACCEPTANCE. Do not alter the commissioned private NAS or HA
+while developing these tools. Consumer trusted-certificate/network commissioning, ARM images,
+phone-triggered portable updates and integration-store publication remain later work.
+
 ## Indoor climate (D-126)
 
 Source, full hosted gate (1,304 browser cases), private deployment/preservation, real HA Recorder,

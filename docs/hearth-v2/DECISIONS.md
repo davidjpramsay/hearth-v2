@@ -1,5 +1,16 @@
 # Hearth v2 decision record
 
+## D-127 — Make private setup shareable without requiring Home Assistant
+
+Accepted 2026-10-29 at the owner's request. Keep the existing private setup/recovery and screen/adult
+separation. Add guided fresh-server installation using verified pinned images and a local private
+QR, an adult Get started page and independent optional Connections. Include deterministic matching
+HA code downloads and a narrow local install/update helper with rollback, preserving existing
+credentials and explicit approval. Portable release updates retain a complete stopped checkpoint;
+never downgrade a migrated database in place. Do not automatically configure public exposure,
+certificates, host networking, HA devices/automations or live Synology policy. Keep prerequisites and
+actual hardware/deployment evidence explicit. The contract is SHARING_SETUP_CONTRACT.md.
+
 ## D-126 — Indoor climate reads HA history; HA owns recording and NAS recovery
 
 - Date: 2026-10-29

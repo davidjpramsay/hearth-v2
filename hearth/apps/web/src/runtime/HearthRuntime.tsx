@@ -105,7 +105,10 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
             {...(privateIntent ? { privateIntent } : {})}
             timezone={runtime.data.timezone}
             onOwnerConnected={() =>
-              clearIdentityAndReload(queryClient, '/admin/televisions?recovery=1')
+              clearIdentityAndReload(
+                queryClient,
+                auth.data?.requiresSetup ? '/admin/get-started' : '/admin/televisions?recovery=1',
+              )
             }
             onComplete={async () => {
               setPhoneIntent(null);
@@ -151,7 +154,11 @@ export function HearthRuntimeBootstrap({ children }: { children: ReactNode }) {
       return (
         <Suspense fallback={<SecureSetupLoading />}>
           {runtime.data.requiresSetup ? (
-            <FirstUseSetup runtime={runtime.data} auth={auth.data} onComplete={refreshAccess} />
+            <FirstUseSetup
+              runtime={runtime.data}
+              auth={auth.data}
+              onComplete={() => clearIdentityAndReload(queryClient, '/admin/get-started')}
+            />
           ) : (
             <PrivateHouseholdAccess
               auth={auth.data}

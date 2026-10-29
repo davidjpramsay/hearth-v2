@@ -140,219 +140,228 @@ export function HomeAssistantConnectionSettingsScreen() {
   return (
     <AdminPage backLabel="Back to Connections" backTo="/admin/connections" title="Home Assistant">
       <HomeAssistantBridgeSettings />
-      <h2>Hearth controls Home Assistant</h2>
-      <div className="calendar-privacy-note home-assistant-privacy-note">
-        <Icon name="shield" />
-        <div>
-          <strong>Strictly limited</strong>
-          <p>
-            Hearth reads four safety signals and may run only Evening, Goodnight and Screen off.
-          </p>
-        </div>
-      </div>
-
-      {confirmation === null ? null : (
-        <p className="save-confirmation" role="status">
-          {confirmation}
+      <details className="connection-help" open={currentConnection !== null}>
+        <summary>Optional home-action controls</summary>
+        <p>
+          Only set this up if you want Hearth’s Evening, Goodnight and Screen off buttons. It is not
+          needed for the HA integration, indoor sensors or morning checklists.
         </p>
-      )}
-      {mutationError === null ? null : <AdminError message={mutationError.message} />}
+        <h2>Hearth controls Home Assistant</h2>
+        <div className="calendar-privacy-note home-assistant-privacy-note">
+          <Icon name="shield" />
+          <div>
+            <strong>Strictly limited</strong>
+            <p>
+              Hearth reads four safety signals and may run only Evening, Goodnight and Screen off.
+            </p>
+          </div>
+        </div>
 
-      {!showForm && currentConnection !== null ? (
-        <ConnectionSummary
-          connection={currentConnection}
-          confirmRemove={confirmRemove}
-          removing={remove.isPending}
-          onEdit={() => {
-            setLabel(currentConnection.label);
-            setEditing(true);
-            setConfirmation(null);
-          }}
-          onRemove={() => remove.mutate()}
-          onRequestRemove={() => setConfirmRemove(true)}
-          onKeep={() => setConfirmRemove(false)}
-        />
-      ) : (
-        <>
-          {testResult === null ? (
-            <form className="admin-form calendar-connection-form" onSubmit={submitTest}>
-              {runtime.mode === 'private' ? null : (
-                <div className="calendar-demo-note">
-                  <strong>Local demo:</strong> this uses fictional Home Assistant choices and does
-                  not contact a real household system.
+        {confirmation === null ? null : (
+          <p className="save-confirmation" role="status">
+            {confirmation}
+          </p>
+        )}
+        {mutationError === null ? null : <AdminError message={mutationError.message} />}
+
+        {!showForm && currentConnection !== null ? (
+          <ConnectionSummary
+            connection={currentConnection}
+            confirmRemove={confirmRemove}
+            removing={remove.isPending}
+            onEdit={() => {
+              setLabel(currentConnection.label);
+              setEditing(true);
+              setConfirmation(null);
+            }}
+            onRemove={() => remove.mutate()}
+            onRequestRemove={() => setConfirmRemove(true)}
+            onKeep={() => setConfirmRemove(false)}
+          />
+        ) : (
+          <>
+            {testResult === null ? (
+              <form className="admin-form calendar-connection-form" onSubmit={submitTest}>
+                {runtime.mode === 'private' ? null : (
+                  <div className="calendar-demo-note">
+                    <strong>Local demo:</strong> this uses fictional Home Assistant choices and does
+                    not contact a real household system.
+                  </div>
+                )}
+                <label>
+                  Home Assistant address
+                  <input
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    data-focus-id="home-assistant-server-url"
+                    defaultValue="http://homeassistant.local:8123"
+                    inputMode="url"
+                    maxLength={500}
+                    name="serverUrl"
+                    required
+                    spellCheck={false}
+                    type="url"
+                  />
+                </label>
+                <p className="field-help">Use the root address without an API path.</p>
+                <label>
+                  Long-lived access token
+                  <input
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    maxLength={512}
+                    minLength={20}
+                    name="accessToken"
+                    onChange={(event) => setAccessToken(event.target.value)}
+                    placeholder="Paste token from your Home Assistant profile"
+                    required
+                    spellCheck={false}
+                    type="password"
+                    value={accessToken}
+                  />
+                </label>
+                <p className="field-help">
+                  Stored only in Hearth’s private server file and cleared here after testing.
+                </p>
+                <button className="admin-submit" disabled={testConnection.isPending} type="submit">
+                  {testConnection.isPending ? 'Testing securely…' : 'Test connection'}
+                </button>
+                {editing ? (
+                  <button
+                    className="admin-secondary calendar-cancel"
+                    onClick={() => {
+                      setEditing(false);
+                      resetTest();
+                    }}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+              </form>
+            ) : (
+              <div className="calendar-tested-account">
+                <span className="admin-setting-row__icon">
+                  <Icon name="check" />
+                </span>
+                <div>
+                  <strong>{testResult.instanceName}</strong>
+                  <span>
+                    {testResult.serverHost} · Home Assistant {testResult.version}
+                  </span>
                 </div>
-              )}
-              <label>
-                Home Assistant address
-                <input
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  data-focus-id="home-assistant-server-url"
-                  defaultValue="http://homeassistant.local:8123"
-                  inputMode="url"
-                  maxLength={500}
-                  name="serverUrl"
-                  required
-                  spellCheck={false}
-                  type="url"
-                />
-              </label>
-              <p className="field-help">Use the root address without an API path.</p>
-              <label>
-                Long-lived access token
-                <input
-                  autoCapitalize="none"
-                  autoComplete="off"
-                  maxLength={512}
-                  minLength={20}
-                  name="accessToken"
-                  onChange={(event) => setAccessToken(event.target.value)}
-                  placeholder="Paste token from your Home Assistant profile"
-                  required
-                  spellCheck={false}
-                  type="password"
-                  value={accessToken}
-                />
-              </label>
-              <p className="field-help">
-                Stored only in Hearth’s private server file and cleared here after testing.
-              </p>
-              <button className="admin-submit" disabled={testConnection.isPending} type="submit">
-                {testConnection.isPending ? 'Testing securely…' : 'Test connection'}
-              </button>
-              {editing ? (
+                <button className="admin-secondary" onClick={resetTest} type="button">
+                  Test another system
+                </button>
+              </div>
+            )}
+
+            {testResult === null ? null : (
+              <section
+                aria-labelledby="home-assistant-mapping-title"
+                className="calendar-picker home-assistant-mapping"
+              >
+                <header>
+                  <h2 id="home-assistant-mapping-title">Choose what Hearth may use</h2>
+                  <span className="connection-badge connection-badge--healthy">
+                    Connection works
+                  </span>
+                </header>
+
+                <label className="home-assistant-label-field">
+                  Connection name
+                  <input
+                    maxLength={80}
+                    onChange={(event) => setLabel(event.target.value)}
+                    required
+                    value={label}
+                  />
+                </label>
+
+                <MappingGroup title="Safety signals">
+                  <MappingField
+                    description="Whether anyone is home"
+                    label="Household occupancy"
+                    onChange={(occupancyId) =>
+                      setMappings((current) => ({ ...current, occupancyId }))
+                    }
+                    options={testResult.options.occupancy}
+                    value={mappings.occupancyId}
+                  />
+                  <MappingField
+                    description="Power state only—not media control"
+                    label="Living room television"
+                    onChange={(televisionPowerId) =>
+                      setMappings((current) => ({ ...current, televisionPowerId }))
+                    }
+                    options={testResult.options.televisionPower}
+                    value={mappings.televisionPowerId}
+                  />
+                  <MappingField
+                    description="Whether Hearth is visible on the TV"
+                    label="Hearth foreground"
+                    onChange={(hearthForegroundId) =>
+                      setMappings((current) => ({ ...current, hearthForegroundId }))
+                    }
+                    options={testResult.options.hearthForeground}
+                    value={mappings.hearthForegroundId}
+                  />
+                  <MappingField
+                    description="Prevents unsafe screen-off automation"
+                    label="Protected native playback"
+                    onChange={(protectedMediaId) =>
+                      setMappings((current) => ({ ...current, protectedMediaId }))
+                    }
+                    options={testResult.options.protectedMedia}
+                    value={mappings.protectedMediaId}
+                  />
+                </MappingGroup>
+
+                <MappingGroup title="Approved Home actions">
+                  <MappingField
+                    description="Warm lights for the evening"
+                    label="Evening"
+                    onChange={(eveningScriptId) =>
+                      setMappings((current) => ({ ...current, eveningScriptId }))
+                    }
+                    options={testResult.options.scripts}
+                    value={mappings.eveningScriptId}
+                  />
+                  <MappingField
+                    description="Settle the house for bedtime"
+                    label="Goodnight"
+                    onChange={(goodnightScriptId) =>
+                      setMappings((current) => ({ ...current, goodnightScriptId }))
+                    }
+                    options={testResult.options.scripts}
+                    value={mappings.goodnightScriptId}
+                  />
+                  <MappingField
+                    description="Turn off the television safely"
+                    label="Screen off"
+                    onChange={(screenOffScriptId) =>
+                      setMappings((current) => ({ ...current, screenOffScriptId }))
+                    }
+                    options={testResult.options.scripts}
+                    value={mappings.screenOffScriptId}
+                  />
+                </MappingGroup>
+
                 <button
-                  className="admin-secondary calendar-cancel"
-                  onClick={() => {
-                    setEditing(false);
-                    resetTest();
-                  }}
+                  className="admin-submit"
+                  disabled={
+                    !label.trim() || !Object.values(mappings).every(Boolean) || save.isPending
+                  }
+                  onClick={saveConnection}
                   type="button"
                 >
-                  Cancel
+                  {save.isPending ? 'Saving securely…' : 'Save connection'}
                 </button>
-              ) : null}
-            </form>
-          ) : (
-            <div className="calendar-tested-account">
-              <span className="admin-setting-row__icon">
-                <Icon name="check" />
-              </span>
-              <div>
-                <strong>{testResult.instanceName}</strong>
-                <span>
-                  {testResult.serverHost} · Home Assistant {testResult.version}
-                </span>
-              </div>
-              <button className="admin-secondary" onClick={resetTest} type="button">
-                Test another system
-              </button>
-            </div>
-          )}
-
-          {testResult === null ? null : (
-            <section
-              aria-labelledby="home-assistant-mapping-title"
-              className="calendar-picker home-assistant-mapping"
-            >
-              <header>
-                <h2 id="home-assistant-mapping-title">Choose what Hearth may use</h2>
-                <span className="connection-badge connection-badge--healthy">Connection works</span>
-              </header>
-
-              <label className="home-assistant-label-field">
-                Connection name
-                <input
-                  maxLength={80}
-                  onChange={(event) => setLabel(event.target.value)}
-                  required
-                  value={label}
-                />
-              </label>
-
-              <MappingGroup title="Safety signals">
-                <MappingField
-                  description="Whether anyone is home"
-                  label="Household occupancy"
-                  onChange={(occupancyId) =>
-                    setMappings((current) => ({ ...current, occupancyId }))
-                  }
-                  options={testResult.options.occupancy}
-                  value={mappings.occupancyId}
-                />
-                <MappingField
-                  description="Power state only—not media control"
-                  label="Living room television"
-                  onChange={(televisionPowerId) =>
-                    setMappings((current) => ({ ...current, televisionPowerId }))
-                  }
-                  options={testResult.options.televisionPower}
-                  value={mappings.televisionPowerId}
-                />
-                <MappingField
-                  description="Whether Hearth is visible on the TV"
-                  label="Hearth foreground"
-                  onChange={(hearthForegroundId) =>
-                    setMappings((current) => ({ ...current, hearthForegroundId }))
-                  }
-                  options={testResult.options.hearthForeground}
-                  value={mappings.hearthForegroundId}
-                />
-                <MappingField
-                  description="Prevents unsafe screen-off automation"
-                  label="Protected native playback"
-                  onChange={(protectedMediaId) =>
-                    setMappings((current) => ({ ...current, protectedMediaId }))
-                  }
-                  options={testResult.options.protectedMedia}
-                  value={mappings.protectedMediaId}
-                />
-              </MappingGroup>
-
-              <MappingGroup title="Approved Home actions">
-                <MappingField
-                  description="Warm lights for the evening"
-                  label="Evening"
-                  onChange={(eveningScriptId) =>
-                    setMappings((current) => ({ ...current, eveningScriptId }))
-                  }
-                  options={testResult.options.scripts}
-                  value={mappings.eveningScriptId}
-                />
-                <MappingField
-                  description="Settle the house for bedtime"
-                  label="Goodnight"
-                  onChange={(goodnightScriptId) =>
-                    setMappings((current) => ({ ...current, goodnightScriptId }))
-                  }
-                  options={testResult.options.scripts}
-                  value={mappings.goodnightScriptId}
-                />
-                <MappingField
-                  description="Turn off the television safely"
-                  label="Screen off"
-                  onChange={(screenOffScriptId) =>
-                    setMappings((current) => ({ ...current, screenOffScriptId }))
-                  }
-                  options={testResult.options.scripts}
-                  value={mappings.screenOffScriptId}
-                />
-              </MappingGroup>
-
-              <button
-                className="admin-submit"
-                disabled={
-                  !label.trim() || !Object.values(mappings).every(Boolean) || save.isPending
-                }
-                onClick={saveConnection}
-                type="button"
-              >
-                {save.isPending ? 'Saving securely…' : 'Save connection'}
-              </button>
-            </section>
-          )}
-        </>
-      )}
+              </section>
+            )}
+          </>
+        )}
+      </details>
     </AdminPage>
   );
 }

@@ -1,5 +1,15 @@
 # Hearth v2 integration contracts
 
+## Optional connections and installation (D-127)
+
+Hearth works without HA. Connections explains independent calendar, location-based outdoor weather,
+phone photo uploads and optional HA/indoor sensors. HA integration installation has a matching
+code-only ZIP and narrow local installer/update helper; restart and adult six-letter approval remain
+explicit. This does not publish a HACS/Marketplace listing, auto-install into HA, expand grants,
+choose TV entities or edit alarms. Indoor history still uses HA's selected-sensor administrator-token
+adapter; external credentials are not shortened or silently reused across connection directions.
+See SHARING_SETUP_CONTRACT.md and hearth/integrations/home_assistant/README.md.
+
 ## Indoor temperature and humidity (D-126)
 
 D-126 explicitly extends the former four-state-only read boundary with a separate, adult-selected

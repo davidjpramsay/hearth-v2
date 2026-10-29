@@ -1,0 +1,44 @@
+.setup-intro {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+}
+.setup-intro img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.setup-intro h2,
+.setup-intro p {
+  margin: 0;
+}
+.setup-group {
+  margin-block: 28px;
+  min-width: 0;
+}
+.setup-group h2 {
+  margin-bottom: 12px;
+}
+.setup-group .settings-menu__heading > span {
+  font-size: 14px;
+  font-weight: 400;
+}
+.setup-finish {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+@media (max-width: 480px) {
+  .setup-intro {
+    padding: 16px;
+    gap: 12px;
+  }
+  .setup-intro img {
+    width: 44px;
+    height: 44px;
+  }
+}

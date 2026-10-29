@@ -135,6 +135,7 @@ test('all admin routes and restored/encoded links return a paired screen to the 
   });
   for (const path of [
     '/admin',
+    '/admin/get-started',
     '/admin/household',
     '/admin/people',
     '/admin/access',

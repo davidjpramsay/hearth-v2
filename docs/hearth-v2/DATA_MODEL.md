@@ -1,5 +1,15 @@
 # Hearth v2 domain and data model
 
+## Installation records (D-127)
+
+The portable installer keeps a protected external `installation.json` with format, pinned release,
+private origin, service UID/GID, unique Compose project, loopback port and configuration checksum.
+It is operator metadata, not household identity or claim authority. The independent first-use proof
+lives only in the protected secrets directory and is consumed on first owner claim; the local QR
+card is never served by the application. Complete private update checkpoints retain data, photos,
+secrets and their matching release metadata. No new SQLite migration/table or HA authority is added.
+See SHARING_SETUP_CONTRACT.md.
+
 ## Indoor climate projection (D-126)
 
 HA Recorder owns individual readings and retained hourly statistics. Hearth returns bounded,

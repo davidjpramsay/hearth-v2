@@ -1,5 +1,10 @@
 # Hearth for Home Assistant
 
+Hearth’s Connections → Home Assistant page provides a matching code-only ZIP and guarded
+`install.py` helper. The helper installs/updates only `custom_components/hearth`, retains a private
+rollback copy and changes no HA settings, credentials or automations. Restart HA when convenient,
+then use the existing six-letter approval. Manual folder copying remains available for HA OS.
+
 Manual-install local custom integration for the Hearth bridge v1. It is not
 built into Home Assistant or published through HACS. No MQTT broker is needed.
 Installing or updating a live Home Assistant instance is a separate manual step.

@@ -31,3 +31,5 @@ local.properties
 # Local IDE state
 .idea/
 *.iml
+# Generated, public-code-only setup downloads; included in production builds.
+hearth/apps/web/public/downloads/

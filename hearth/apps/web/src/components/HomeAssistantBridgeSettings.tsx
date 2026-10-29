@@ -12,6 +12,7 @@ import { queryKeys } from '../api/queryKeys';
 import { useAdminQuery } from '../hooks/useAdminQueries';
 import { AdminError, AdminLoading } from './AdminPage';
 import './HomeAssistantBridgeSettings.css';
+import { HomeAssistantInstallGuide } from './HomeAssistantInstallGuide';
 
 export function HomeAssistantBridgeSettings() {
   const admin = useAdminQuery();
@@ -160,23 +161,7 @@ export function HomeAssistantBridgeSettings() {
         <h2 id="ha-bridge-title">Home Assistant controls Hearth</h2>
         <p>Connect with six letters. No key to copy or type.</p>
       </header>
-      <details className="ha-bridge-setup">
-        <summary data-focus-entry="true" data-focus-id="home-assistant-bridge-setup">
-          How to connect Home Assistant
-        </summary>
-        <ol>
-          <li>Install the current Hearth custom integration in Home Assistant.</li>
-          <li>
-            In Home Assistant, add Hearth and enter your private Hearth address. If already added,
-            open its connection repair instead.
-          </li>
-          <li>Enter its six-letter code below and approve the Hearth connection.</li>
-        </ol>
-        <p>
-          Only visible screens respond to tab changes. Native TVs need the updated Hearth APK.
-          Sharing data or changing chores does not need a screen.
-        </p>
-      </details>
+      <HomeAssistantInstallGuide />
       {summary.isPending ? <AdminLoading /> : null}
       {summary.isError ? (
         <AdminError

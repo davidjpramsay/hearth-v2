@@ -629,6 +629,7 @@ test('adult can test, map, save and remove a tightly scoped Home Assistant conne
   await page.locator('[data-focus-id="connection-home-assistant"]').click();
   await expect(page).toHaveURL(/\/admin\/connections\/home-assistant$/);
   await expect(page.getByRole('heading', { name: 'Home Assistant', exact: true })).toBeVisible();
+  await page.getByText('Optional home-action controls', { exact: true }).click();
   await expect(page.getByText('Strictly limited')).toBeVisible();
 
   const token = 'private-home-assistant-token';
@@ -686,6 +687,7 @@ test('adult can test, map, save and remove a tightly scoped Home Assistant conne
   await page.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Remove connection' }).click();
   await page.getByRole('button', { name: 'Yes, remove' }).click();
+  await page.getByText('Optional home-action controls', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Test connection' })).toBeVisible();
   expect(consoleProblems).toEqual([]);
 });
@@ -698,6 +700,7 @@ test('Home Assistant setup has family-safe authentication errors and keyboard Ba
   await page.locator('[data-focus-id="connection-home-assistant"]').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-focus-id="home-assistant-bridge-setup"]')).toBeFocused();
+  await page.getByText('Optional home-action controls', { exact: true }).click();
   await page.getByLabel('Long-lived access token').fill('wrong-home-assistant-token');
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(page.getByRole('alert')).toContainText(

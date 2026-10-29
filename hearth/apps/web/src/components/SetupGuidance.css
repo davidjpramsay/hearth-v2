@@ -1,0 +1,28 @@
+.connection-section {
+  margin-block: 24px;
+}
+.connection-help {
+  margin-top: 24px;
+}
+.connection-help summary {
+  cursor: pointer;
+  min-height: 48px;
+  display: list-item;
+  padding-block: 12px;
+  font-weight: 600;
+}
+.connection-help ol {
+  padding-inline-start: 24px;
+}
+.connection-help li {
+  margin-block: 12px;
+}
+.connection-help a {
+  overflow-wrap: anywhere;
+}
+
+.connection-help > a.admin-secondary {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}

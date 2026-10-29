@@ -34,6 +34,8 @@ grep -q '/usr/local/etc/hearth-v2/control:/run/hearth-update' "$script_dir/compo
 grep -q 'release-safety.py' "$script_dir/install-release-helper.sh"
 python3 -I -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' "$script_dir/release-safety.py"
 python3 -I "$script_dir/owner-access.test.py"
+python3 -B -m unittest discover -s "$script_dir/../portable/tests" -v
+python3 -B -m unittest discover -s "$script_dir/../../integrations/home_assistant/installer_tests" -v
 
 docker compose \
   --env-file "$environment_file" \

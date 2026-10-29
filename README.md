@@ -3,6 +3,10 @@
 Hearth is a private, television-first family dashboard for calendars, reminders, chores, meals,
 lists, photos, weather and selected Home Assistant actions.
 
+Home Assistant is optional. For a fresh household, follow the
+[guided installation](hearth/deploy/portable/README.md); existing Synology installations keep their
+[current update tools](hearth/deploy/synology/README.md).
+
 The application lives in [`hearth/`](hearth/). Product and operational decisions live in
 [`docs/hearth-v2/`](docs/hearth-v2/README.md).
 
