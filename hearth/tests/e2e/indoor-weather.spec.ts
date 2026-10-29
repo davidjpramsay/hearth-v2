@@ -38,6 +38,9 @@ for (const viewport of [
       await expect(page).toHaveURL(/period=year/);
       await expect(page.getByText('Past 365 days · Daily averages')).toBeVisible();
       await expect(page.getByRole('img', { name: /Temperature history/ })).toBeVisible();
+      // Let the initial realtime catch-up finish before discarding the document.
+      // WebKit reports its unload-cancelled fetches as access-control page errors.
+      await page.waitForLoadState('networkidle');
       await page.reload();
       await expect(page.getByRole('button', { name: 'Year', exact: true })).toHaveAttribute(
         'aria-pressed',
@@ -88,6 +91,110 @@ test('Indoors D-pad controls have an exit to Weather and the menu', async ({ pag
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('[data-focus-id="nav-weather"]')).toBeFocused();
 });
+for (const width of [390, 1920]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Indoor axes use regular readable labels at ${width}px in ${theme}`, async ({
+      page,
+    }, info) => {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 1080 });
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+      // Keep the server's synthetic samples/intervals, but pin the trailing window
+      // to an odd-minute endpoint that previously produced arbitrary time labels.
+      await page.route('**/indoor-climate?period=*', async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        const shift = Date.parse('2026-10-29T02:15:00Z') - Date.parse(body.end);
+        const move = (at: string) => new Date(Date.parse(at) + shift).toISOString();
+        body.start = move(body.start);
+        body.end = move(body.end);
+        body.fetchedAt = '2026-10-29T02:15:00Z';
+        for (const room of body.rooms)
+          for (const metric of ['temperature', 'humidity']) {
+            room[metric].reportedAt = body.fetchedAt;
+            for (const sample of room[metric].samples) {
+              sample.at = move(sample.at);
+              sample.end = move(sample.end);
+            }
+          }
+        await route.fulfill({ response, json: body });
+      });
+      try {
+        await page.goto('/weather?view=indoors');
+        await page.evaluate(() => document.fonts.ready);
+        for (const period of ['Day', 'Week', 'Month', 'Year']) {
+          await page.getByRole('button', { name: period, exact: true }).click();
+          await expect(
+            page.getByText(
+              {
+                Day: 'Past 24 hours · 5-minute averages',
+                Week: 'Past 7 days · Hourly averages',
+                Month: 'Past 30 days · Daily averages',
+                Year: 'Past 365 days · Daily averages',
+              }[period]!,
+              { exact: true },
+            ),
+          ).toBeVisible();
+          await expect(page.locator('.indoor-charts')).toHaveAttribute('aria-busy', 'false');
+          for (const chart of await page.locator('.indoor-plot svg').all()) {
+            await expect(chart.locator('.indoor-dot')).toHaveCount(
+              { Day: 288, Week: 168, Month: 30, Year: 365 }[period]!,
+            );
+            await expect(chart.locator('.indoor-line')).toHaveCount(1);
+            const axes = await chart.evaluate((svg) => {
+              const bounds = svg.getBoundingClientRect();
+              const labels = (selector: string) =>
+                Array.from(svg.querySelectorAll(selector), (label) => {
+                  const rect = label.getBoundingClientRect();
+                  return {
+                    text: label.textContent ?? '',
+                    left: rect.left - bounds.left,
+                    right: rect.right - bounds.left,
+                    top: rect.top - bounds.top,
+                    bottom: rect.bottom - bounds.top,
+                  };
+                });
+              return {
+                x: labels('.indoor-x-tick text'),
+                y: labels('.indoor-y-label'),
+                width: bounds.width,
+                height: bounds.height,
+              };
+            });
+            expect(axes.x.length).toBeGreaterThanOrEqual(width === 390 ? 3 : 6);
+            expect(axes.y.length).toBeGreaterThanOrEqual(5);
+            for (const label of [...axes.x, ...axes.y]) {
+              expect(label.left).toBeGreaterThanOrEqual(-1);
+              expect(label.right).toBeLessThanOrEqual(axes.width + 1);
+              expect(label.top).toBeGreaterThanOrEqual(-1);
+              expect(label.bottom).toBeLessThanOrEqual(axes.height + 1);
+            }
+            axes.x.forEach((label, index) => {
+              if (period === 'Day') expect(label.text).toMatch(/^\d{1,2}(am|pm)$/);
+              if (index > 0)
+                expect(label.left - axes.x[index - 1]!.right).toBeGreaterThanOrEqual(6);
+            });
+            axes.y.forEach((label, index) => {
+              if (index > 0)
+                expect(axes.y[index - 1]!.top - label.bottom).toBeGreaterThanOrEqual(2);
+            });
+          }
+          await page.screenshot({
+            path: info.outputPath(`indoor-axes-${period.toLowerCase()}-${width}-${theme}.png`),
+            fullPage: width === 390,
+          });
+          if (width === 390)
+            await page.getByRole('region', { name: 'Temperature', exact: true }).screenshot({
+              path: info.outputPath(
+                `indoor-temperature-${period.toLowerCase()}-${width}-${theme}.png`,
+              ),
+            });
+        }
+      } finally {
+        await page.unrouteAll({ behavior: 'wait' });
+      }
+    });
+  }
+}
 test('indoor settings save named selections and keep source credentials out of the page after testing', async ({
   page,
 }) => {

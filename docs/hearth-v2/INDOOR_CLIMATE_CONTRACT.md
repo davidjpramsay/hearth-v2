@@ -47,6 +47,14 @@ Weather → Indoors uses one room selector and two small-multiple SVG time-serie
 separate Celsius/percent axes, visible latest/min/average/max values and range labels. React owns
 both charts; no new chart dependency or animation loop. Fixed-size labels/markers and measured
 geometry avoid stretching. Gaps remain gaps; temperature/humidity do not share a misleading axis.
+Keep the actual trailing time window and position samples by elapsed time. Day ticks use whole
+household-local hours; longer periods use local midnight dates or actual month starts. Choose
+regular intervals from measured width/font size, with fewer labels on phones and no overlapping
+or clipped text. DST and quarter/half-hour timezone offsets must not shift or relabel readings.
+Temperature uses enclosing whole-number 1/2/5-based steps with padding and a minimum four-degree
+span, including negative and constant readings. Humidity keeps a fixed 0–100% axis with 20-point
+steps (25 in short charts). Show at least five vertical labels at supported sizes, never rounded
+labels detached from their gridline values. Small time tick marks identify the labelled instants.
 URL-backed view/room/period choices support Back/reopen. TV fits one viewport; phones stack.
 Visible focus, D-pad escape to Weather navigation, text alternatives, dark mode and reduced motion
 are required. Empty, loading, partial, stale, denied and unavailable states remain distinct.

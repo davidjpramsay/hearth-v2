@@ -1,5 +1,45 @@
 # Hearth v2 acceptance and definition of done
 
+## D-126 indoor chart axes — local refinement, 2026-10-29
+
+Replaced arbitrary start/middle/end axis labels with whole local hours, regular dates and actual
+month boundaries while preserving trailing windows, elapsed sample positions and missing-data
+gaps. Temperature has enclosing padded whole-number steps; humidity retains 0–100% with five or
+six labelled values. Measured font/container size controls label density and padding. This changes
+presentation only: no provider, DTO, history retention, authentication, HA, NAS or network changes.
+
+Local checks from `/private/tmp/hearth-morning-routine`, `codex/shareable-setup`:
+
+- `pnpm -C hearth --filter @hearth/web exec vitest run src/screens/indoorChartGeometry.test.ts`
+  — **21/21**, including quarter/half-hour timezones, Sydney DST in both directions, odd-minute
+  windows, true elapsed positions, negative/constant/outlying temperatures, compact vertical
+  labels, 360/375/390px phone density, local dates/month starts, gaps and duration-weighted means.
+- `pnpm -C hearth --filter @hearth/web test:unit` — **463/463**. The first broad attempt was
+  blocked only by the restricted local listener required by five existing transport tests; the
+  rerun with loopback access passed. Log `/private/tmp/hearth-indoor-axes-unit-pass.log`.
+- `pnpm -C hearth --filter @hearth/web typecheck`, `pnpm -C hearth lint`, `pnpm -C hearth build`
+  and the final `pnpm -C hearth --filter @hearth/web build` — **PASS**. No dependency added.
+- `pnpm -C hearth test:e2e:built tests/e2e/indoor-weather.spec.ts --reporter=line
+--output=/private/tmp/hearth-indoor-axes-chromium-pass` — **22/22**. Seven viewports, both themes,
+  D-pad exit, Back/reopen, a11y, missing history, source privacy and exact settings-save retry.
+  The four axis cases visit every period on phone/TV and measure real text bounds/clearance,
+  assert correct sample replacement and capture deterministic synthetic-data screenshots.
+- `pnpm -C hearth test:e2e:built tests/e2e/indoor-weather.spec.ts --browser=webkit
+--grep 'Indoor axes|390x844|844x390|820x1180|1180x820|D-pad' --reporter=line
+--output=/private/tmp/hearth-indoor-axes-webkit-pass` — **13/13**. Phone/tablet in both orientations,
+  both themes and all period axes; Safari engine, not a physical iPhone. Initial checks exposed
+  WebKit's taller label bounds and an unload/catch-up race in the reload test. Added font-sized
+  bottom clearance and waited for catch-up before intentional reload; error/overlap assertions
+  remain intact. Log `/private/tmp/hearth-indoor-axes-webkit-pass.log`.
+- `pnpm -C hearth verify:ci` — **5/5** policy checks and a complete **1,324-case** shard inventory;
+  inventory is not full-suite execution. `pnpm -C hearth format:check` and `git diff --check` passed.
+
+Used repository Playwright because the Browser plugin is unavailable. Visually inspected the
+phone and TV axes, including Month/Year and both themes. Final screenshots are under
+`/private/tmp/hearth-indoor-axes-chromium-pass/` and `/private/tmp/hearth-indoor-axes-webkit-pass/`.
+Private data was not used. **Not run:** physical phone/TV viewing, hosted verification or deployment
+of this candidate. Existing live HA recording, networking and household data remain untouched.
+
 ## D-127 shareable setup — local work, 2026-10-29
 
 Implemented a guarded fresh Docker installer and explicit portable update path, private first-phone

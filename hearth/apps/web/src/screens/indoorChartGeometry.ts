@@ -1,4 +1,5 @@
 import type { IndoorClimate, IndoorMetric, IndoorSample } from '@hearth/shared';
+import { indoorTimeLabels, indoorValueScale } from './indoorChartAxes';
 export function indoorSummary(samples: IndoorSample[]) {
   const minimum = samples.flatMap((point) => (point.min === null ? [] : [point.min]));
   const maximum = samples.flatMap((point) => (point.max === null ? [] : [point.max]));
@@ -19,26 +20,21 @@ export function indoorSummary(samples: IndoorSample[]) {
 
 export function indoorGeometry(
   samples: IndoorSample[],
-  size: { width: number; height: number },
+  size: { width: number; height: number; fontSize?: number },
   data: Pick<IndoorClimate, 'start' | 'end' | 'intervalSeconds' | 'timezone' | 'period'>,
   metric: IndoorMetric,
 ) {
   const values = samples.flatMap((point) =>
     [point.min, point.mean, point.max].filter((value) => value !== null),
   );
-  let low = metric === 'humidity' ? 0 : Math.floor(Math.min(...values, 15) - 1);
-  let high = metric === 'humidity' ? 100 : Math.ceil(Math.max(...values, 25) + 1);
-  if (high <= low) {
-    low -= 1;
-    high += 1;
-  }
   const start = Date.parse(data.start),
     end = Date.parse(data.end),
     width = Math.max(1, size.width - 56),
-    height = Math.max(1, size.height - 36);
-  const x = (at: string) =>
-    44 + Math.max(0, Math.min(1, (Date.parse(at) - start) / (end - start))) * width;
-  const y = (value: number) => 10 + (1 - (value - low) / (high - low)) * height;
+    fontSize = size.fontSize ?? 14,
+    height = Math.max(1, size.height - fontSize * 2 - 16);
+  const { low, high, step } = indoorValueScale(values, metric, height, fontSize);
+  const x = (at: number) => 44 + Math.max(0, Math.min(1, (at - start) / (end - start))) * width;
+  const y = (value: number) => fontSize + (1 - (value - low) / (high - low)) * height;
   const paths: string[] = [],
     dots: { x: number; y: number }[] = [],
     ranges: { x: number; y: number; width: number; height: number }[] = [];
@@ -51,40 +47,31 @@ export function indoorGeometry(
       path = '';
     }
     if (sample.mean !== null) {
-      const px = x(sample.at),
+      const px = x(time),
         py = y(sample.mean);
       path += `${path ? 'L' : 'M'}${px.toFixed(2)},${py.toFixed(2)} `;
       dots.push({ x: px, y: py });
     }
     if (sample.min !== null && sample.max !== null)
       ranges.push({
-        x: x(sample.at),
+        x: x(time),
         y: y(sample.max),
-        width: Math.max(1, Math.min(size.width - 12, x(sample.end)) - x(sample.at)),
+        width: Math.max(1, Math.min(size.width - 12, x(Date.parse(sample.end))) - x(time)),
         height: Math.max(1, y(sample.min) - y(sample.max)),
       });
     last = sample.mean === null ? -Infinity : time;
   }
   if (path) paths.push(path);
-  const formatter = new Intl.DateTimeFormat('en-AU', {
-    timeZone: data.timezone,
-    ...(data.period === 'day'
-      ? { hour: 'numeric' as const, minute: '2-digit' as const }
-      : data.period === 'year'
-        ? { month: 'short' as const, year: '2-digit' as const }
-        : { day: 'numeric' as const, month: 'short' as const }),
-  });
   return {
     paths,
     dots,
     ranges,
-    ticks: [0, 0.5, 1].map((fraction) => ({
-      value: low + (high - low) * fraction,
-      y: y(low + (high - low) * fraction),
-    })),
-    labels: [0, 0.5, 1].map((fraction) => ({
-      x: 44 + fraction * width,
-      text: formatter.format(new Date(start + (end - start) * fraction)),
-    })),
+    baseline: y(low),
+    labelY: size.height - fontSize / 2,
+    ticks: Array.from({ length: Math.round((high - low) / step) + 1 }, (_, index) => {
+      const value = low + step * index;
+      return { value, y: y(value) };
+    }),
+    labels: indoorTimeLabels(data, { width: size.width, fontSize }, x),
   };
 }

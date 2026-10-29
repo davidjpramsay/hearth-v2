@@ -18,6 +18,10 @@ Weather's heading switches Outdoors/Indoors without requiring a configured outdo
 Indoors shows a named room, current Celsius/percent values, last-report times and Day/Week/Month/
 Year choices. Two responsive small-multiple SVG graphs show period means and low–high shading on
 separate labelled scales. Missing periods leave gaps; new sensors never imply a year of history.
+Use whole-hour time labels for Day, regular local dates for Week/Month and month boundaries for
+Year. Increase label density when space allows; never squeeze or rotate overlapping labels.
+Vertical scales have evenly spaced whole numbers: padded, enclosing Celsius steps and a fixed
+0–100% humidity range. Tick labels represent their actual gridline values, including below zero.
 All controls have D-pad paths back to Weather/menu; loading waits for a useful focus entry.
 Phones stack charts and retain natural scrolling. TV fits one viewport; both themes remain legible.
 

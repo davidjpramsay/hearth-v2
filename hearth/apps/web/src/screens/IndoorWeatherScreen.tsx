@@ -202,7 +202,7 @@ function IndoorChart({
   data: IndoorClimate;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 500, height: 220 });
+  const [size, setSize] = useState({ width: 500, height: 220, fontSize: 14 });
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -210,6 +210,7 @@ function IndoorChart({
       setSize({
         width: Math.max(100, element.clientWidth),
         height: Math.max(100, element.clientHeight),
+        fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
       });
     };
     measure();
@@ -263,8 +264,8 @@ function IndoorChart({
                   y2={tick.y}
                   className="indoor-grid"
                 />
-                <text x={36} y={tick.y + 4} textAnchor="end">
-                  {Math.round(tick.value)}
+                <text className="indoor-y-label" x={36} y={tick.y + 4} textAnchor="end">
+                  {tick.value}
                 </text>
               </g>
             ))}
@@ -284,15 +285,19 @@ function IndoorChart({
             {geometry.dots.map((point, index) => (
               <circle key={index} cx={point.x} cy={point.y} r={2.5} className="indoor-dot" />
             ))}
-            {geometry.labels.map((label, index) => (
-              <text
-                key={index}
-                x={label.x}
-                y={size.height - 6}
-                textAnchor={index === 0 ? 'start' : index === 2 ? 'end' : 'middle'}
-              >
-                {label.text}
-              </text>
+            {geometry.labels.map((label) => (
+              <g key={label.at} className="indoor-x-tick">
+                <line
+                  x1={label.x}
+                  x2={label.x}
+                  y1={geometry.baseline}
+                  y2={geometry.baseline + 5}
+                  className="indoor-grid"
+                />
+                <text x={label.x} y={geometry.labelY} textAnchor={label.anchor}>
+                  {label.text}
+                </text>
+              </g>
             ))}
           </svg>
         )}

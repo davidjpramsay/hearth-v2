@@ -155,6 +155,7 @@
   flex: 1;
   min-height: 180px;
   position: relative;
+  font-size: 14px;
 }
 .indoor-plot svg {
   display: block;
@@ -165,12 +166,14 @@
   overflow: visible;
 }
 .indoor-plot text {
-  font-size: 14px;
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
   fill: var(--muted);
 }
 .indoor-grid {
   stroke: var(--hairline);
   stroke-width: 1;
+  shape-rendering: crispEdges;
 }
 .indoor-line {
   fill: none;
@@ -399,7 +402,7 @@
   .indoor-periods button {
     min-height: 64px;
   }
-  .indoor-plot text {
+  .indoor-plot {
     font-size: 18px;
   }
 }
