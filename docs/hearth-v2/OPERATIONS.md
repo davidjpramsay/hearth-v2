@@ -446,15 +446,35 @@ sign-ins after the owner phone works, and record the other phone's QR acceptance
 Screen pairing stays separate.
 
 The web build runs `apps/web/scripts/build-home-icon.mjs` to compose the existing fern into the
-opaque 180×180 `apps/web/public/apple-touch-icon.png`. The shared HTML declares that same-origin
-Apple touch icon and Vite copies it into the web image's document root. The generator lives inside
-the existing Docker `COPY apps/web` boundary; no new dependency, runtime permission, cache-policy
-or networking change is required. `node apps/web/scripts/build-home-icon.mjs --check` verifies the
-committed rendition against its canonical source. The transparent favicon/brand mark is unchanged.
+opaque 180×180 `apps/web/public/apple-touch-icon.png` and 192/512px manifest icons. The shared HTML
+declares the Apple touch icon, standalone/title metadata and same-origin `/manifest.webmanifest`;
+Vite copies these public resources into the web image's document root. Nginx serves the manifest
+with an explicit JSON manifest MIME type, no-store and no application-HTML fallback. The generator
+lives inside the existing Docker `COPY apps/web` boundary; no dependency, runtime permission or
+networking change is required. `node apps/web/scripts/build-home-icon.mjs --check` verifies all
+three renditions against the canonical source. The transparent favicon/brand mark is unchanged.
 New Home Screen additions can read this icon after the release is deployed. An existing installed
 icon may be cached; its refresh needs physical verification. Do not delete/re-add a working owner
 web app, clear Safari/site data or make a new phone connection merely to update artwork. Preserve
 the current browser path and session, and check the installed icon after ordinary release reload.
+
+### Add Hearth to a new iPhone or iPad (D-121)
+
+1. With LAN/Tailscale access available, open the household's existing trusted private HTTPS Hearth
+   address in Safari. Never use a copied setup/recovery QR URL as the saved app entry.
+2. Choose **Share → Add to Home Screen**. Leave **Open as Web App** on where offered, keep the name
+   **Hearth**, then choose **Add**. No TestFlight, developer account or App Store installation is needed.
+3. Open the fern icon. Fresh launches start on Today. If **Connect to Hearth** appears, connect this
+   installed context using the existing adult-approved phone QR/code workflow. A shared-screen
+   connection remains a shared screen; installation does not turn it into an adult controller.
+4. Check portrait/landscape, tablet multitasking, More/settings navigation and close/reopen without
+   losing the intended connection. Record actual device/OS evidence separately from desktop WebKit.
+
+Safari 17.2+ copies cookies when adding a new Home Screen app, but other local storage is not copied;
+app/browser storage is separate afterward. Do not guarantee that an earlier connection transfers,
+remove old working connections before the new one is verified, replace the protected owner phone,
+or clear site data as an installation step. This web app still needs the private server/network;
+offline household access, background sync and push are not provided.
 
 Live cleanup checkpoint 2026-10-12: safe metadata initially shows four legacy browser connections
 (two for each adult), two active legacy passkeys, no protected owner, and the one retained native

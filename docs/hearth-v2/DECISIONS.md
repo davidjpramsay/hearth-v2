@@ -1,5 +1,29 @@
 # Hearth v2 decision record
 
+## D-121 — Install the shared web companion on iPhone and iPad
+
+- Date: 2026-10-29
+- Status: accepted; release and actual Home Screen installation remain separate evidence
+- Context: The fern icon was present, but Hearth deliberately had no standalone declaration or
+  manifest under the earlier icon-only D-093 refinement. The owner now requests iOS/iPadOS web-app
+  capability. This decision supersedes that refinement's metadata-only restriction, not its access
+  or privacy boundaries.
+- Choice: Declare a same-origin web manifest with stable root identity/scope, the name Hearth and
+  `display: standalone`. Start fresh launches at `/today`, never a saved administration, setup or
+  recovery URL. Retain the existing 180px Apple touch icon, generate 192/512px opaque fern renditions
+  from the same canonical artwork, and provide Apple's capable/title/default-status-bar metadata.
+  Leave orientation unrestricted for iPad rotation and multitasking. Safari remains supported.
+- Boundary: This is the existing responsive web client and private API, not a new native client or
+  authentication method. Installation grants no adult/screen privileges. Keep HttpOnly cookies,
+  approval/recovery, session expiry, shared-screen isolation and current pairings unchanged. No
+  service worker, household-data offline cache, push, background sync or credential migration.
+- Operation: New devices use Safari's Share → Add to Home Screen (Open as Web App where offered).
+  Use the existing adult-approved connection if that installed context is not connected. Never
+  delete a working owner web app or clear its data to refresh metadata. Home Screen and browser
+  storage can be separate; do not promise cookie continuity from viewport emulation.
+- Basis: [WebKit's iOS/iPadOS web-app behavior](https://webkit.org/blog/16993/news-from-wwdc25-web-technology-coming-this-fall-in-safari-26-beta/#every-site-can-be-a-web-app-on-ios-and-ipados)
+  and [Safari 17.2 cookie-copy boundary](https://webkit.org/blog/14787/webkit-features-in-safari-17-2/#web-apps).
+
 ## D-120 — Weekday Morning Routine with independent progress and countdown
 
 - Date: 2026-10-28

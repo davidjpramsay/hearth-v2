@@ -1,5 +1,15 @@
 # Hearth v2 architecture
 
+## iPhone/iPad Home Screen web app (D-121)
+
+The shared HTML declares Apple's standalone metadata and `/manifest.webmanifest`. Stable root
+identity/scope and `/today` start URL keep the installed entry independent of the route used when
+adding it. Nginx serves the manifest explicitly as `application/manifest+json`, with same-origin CSP,
+no-store and a real 404 if missing. The existing portable icon generator emits 180/192/512px opaque
+fern assets inside the existing web build boundary. No native wrapper, service worker or offline
+data store is added. All runtime, API, HttpOnly session and shared-screen authorization paths remain
+the same; browser/app storage separation is an installation concern, not a new authority signal.
+
 ## Morning Routine (D-120)
 
 The shared schema defines separate configuration/daily progress commands. Pure `morningClock`

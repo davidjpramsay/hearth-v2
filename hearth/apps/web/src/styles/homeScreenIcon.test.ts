@@ -33,6 +33,12 @@ function checkCandidate(candidate: Buffer): string {
       resolve(process.cwd(), 'public/brand/hearth-mark.png'),
       join(directory, 'public/brand/hearth-mark.png'),
     );
+    for (const size of [192, 512]) {
+      copyFileSync(
+        resolve(process.cwd(), `public/hearth-icon-${size}.png`),
+        join(directory, `public/hearth-icon-${size}.png`),
+      );
+    }
     writeFileSync(join(directory, 'public/apple-touch-icon.png'), candidate);
     return execFileSync(
       process.execPath,
@@ -47,7 +53,7 @@ function checkCandidate(candidate: Buffer): string {
   }
 }
 
-describe('iPhone Home Screen icon', () => {
+describe('iPhone and iPad Home Screen icons', () => {
   it('declares a same-origin PNG Apple touch icon on the shared application document', () => {
     const page = new DOMParser().parseFromString(html, 'text/html');
     const icons = page.head.querySelectorAll('link[rel="apple-touch-icon"]');
@@ -75,7 +81,9 @@ describe('iPhone Home Screen icon', () => {
 
   it('matches the portable exact-pixel composition of the original shared fern artwork', () => {
     const output = execFileSync(process.execPath, [buildScript, '--check'], { encoding: 'utf8' });
-    expect(output).toContain('Home Screen icon verified (180x180).');
+    for (const size of [180, 192, 512]) {
+      expect(output).toContain(`Home Screen icon verified (${size}x${size}).`);
+    }
   });
 
   it('accepts identical pixels encoded with different lossless PNG compression', async () => {
@@ -118,7 +126,7 @@ describe('iPhone Home Screen icon', () => {
     },
   );
 
-  it('preserves the favicon, external bootstrap, viewport and existing browser/session mode', () => {
+  it('preserves the favicon, external bootstrap and zoomable, orientation-neutral viewport', () => {
     const page = new DOMParser().parseFromString(html, 'text/html');
     expect(page.querySelector('link[rel="icon"]')?.getAttribute('href')).toBe(
       '/brand/hearth-mark.png',
@@ -129,7 +137,5 @@ describe('iPhone Home Screen icon', () => {
     expect(page.querySelector('script:not([type="module"])')?.getAttribute('src')).toBe(
       '/hearth-bootstrap.js',
     );
-    expect(page.querySelector('meta[name="apple-mobile-web-app-capable"]')).toBeNull();
-    expect(page.querySelector('link[rel="manifest"]')).toBeNull();
   });
 });

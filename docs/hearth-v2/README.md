@@ -24,6 +24,10 @@ and voice. Native television media apps remain separate.
 
 ## Current boundaries
 
+D-121 enables the shared responsive companion as an iPhone/iPad Home Screen web app: Hearth name,
+fern icons and standalone Today entry. It adds no offline cache or new authentication method.
+Local browser checks and actual device installation/release evidence stay separate in ACCEPTANCE.
+
 Morning Routine (D-120) follows [MORNING_ROUTINE_CONTRACT.md](MORNING_ROUTINE_CONTRACT.md):
 weekday per-person checklists, independent participant settings and a household-local 7–8 am
 downward countdown bar. Local evidence, publication and the actual HA alarm are separate gates.

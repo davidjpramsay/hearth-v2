@@ -1,5 +1,58 @@
 # Hearth v2 acceptance and definition of done
 
+## D-121 iPhone/iPad Home Screen web app — 2026-10-29
+
+Read-only inspection of the live public document confirmed an Apple touch icon but no manifest
+or standalone declaration. The requested refinement now explicitly provides a Hearth standalone
+entry, root identity/scope, safe `/today` fresh-launch URL, Apple title/default-status-bar metadata
+and same-origin 192/512px fern icons. The canonical 180px Apple icon remains pixel-identical.
+Orientation is unrestricted. No service worker, offline household cache, background sync, native
+wrapper, auth/session change or device migration is added. New installed contexts still need the
+existing connection approval if not already connected.
+
+Browser plugin not available; the repository's production-build Playwright workflow was used.
+The flow under test is manifest/icon fetch → Today launch → settings → People → Back → reload,
+plus an unconnected iPad remaining at Connect to Hearth. Local HTTP uses isolated fictional demo
+data; these browser checks are not proof of real Home Screen installation or cookie transfer.
+
+- `pnpm verify:code` — **PASS**: format/lint/types, **681 unit**, **274 API/integration**,
+  **29 migration**, **10 deployment fixtures**, Compose configuration and production web/server
+  builds; `/tmp/hearth-home-screen-code.log`. The first sandboxed attempt could not open the local
+  listeners used by five existing onboarding tests (`listen EPERM`); the complete gate passed on
+  rerun with loopback access. No application fix was needed for that environment limitation.
+- `pnpm verify:ci` — **PASS**: five policies and complete non-overlapping **1,247-case** browser
+  inventory; `/tmp/hearth-home-screen-ci-policy.log`. This is inventory, not hosted execution.
+- `pnpm test:e2e:built tests/e2e/home-screen-web-app.spec.ts --reporter=line
+--output=/tmp/hearth-home-screen-chromium` — **7/7 PASS (14.0 seconds)**: built manifest MIME/JSON,
+  icon availability/type/dimensions/opacity, launch, no worker registration and unconnected-device
+  gate. Navigation/Back/reload and no horizontal overflow pass at **390×844**, **820×1180**,
+  **1180×820**, **1366×1024** and **375×1024**. An initial test incorrectly selected the optional,
+  disabled Morning Routine destination; the final test uses always-available People settings.
+- `pnpm exec playwright test --config /private/tmp/hearth-morning-times-webkit.config.mts
+tests/e2e/home-screen-web-app.spec.ts --reporter=line --output=/tmp/hearth-home-screen-webkit`
+  — **7/7 PASS (16.7 seconds)** in installed desktop WebKit with mobile/touch emulation. The temporary
+  configuration extends the built demo-server workflow. iPad portrait/landscape/large/split-view
+  screenshots were visually inspected; page identity, meaningful content, no framework overlay,
+  no page/console errors and interaction checks passed. This is not iOS Simulator/device proof.
+- `pnpm test:e2e:built tests/e2e/phone-navigation.spec.ts
+tests/e2e/screen-admin-isolation.spec.ts tests/e2e/production-bootstrap.spec.ts
+tests/e2e/native-tv-viewport.spec.ts --reporter=line --output=/tmp/hearth-home-screen-regressions`
+  — **29/29 PASS (1.7 minutes)**: light/dark dock, scrolling/keyboard recovery, strict CSP/startup,
+  native TV canvas/keyboard activation and screen/admin isolation including mixed cookies, encoded URLs,
+  history/reload and another open administration document. No TV or auth source was changed.
+- `git diff --check` — **PASS**.
+
+Screenshots: `/tmp/hearth-home-screen-webkit/home-screen-web-app-web-ap-6b221-vigation-fit-iPad-landscape/home-screen-settings.png`
+and `.../home-screen-web-app-web-ap-6f8f2-igation-fit-iPad-split-view/home-screen-settings.png`.
+Nginx's explicit same-origin manifest MIME/404/no-store policy is configured; a local Nginx
+container run was **not run** because Docker's daemon/socket is unavailable. Compose validation
+passed. XcodeBuildMCP found no booted simulator; none was booted or changed for this web-only slice.
+
+Publication, full hosted checks, private deployment and actual iPhone/iPad Add to Home Screen,
+status-bar safe areas, installed-icon caching and intended connection continuity remain **NOT RUN**.
+Live networking, runtime configuration, pairings, household data and the installed TV APK remain
+unchanged. Do not delete a working owner web app or clear its data to test this refinement.
+
 ## D-120 Morning Routine — 2026-10-28
 
 ### Up to seven visible steps — 2026-10-29

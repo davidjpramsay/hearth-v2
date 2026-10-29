@@ -1,5 +1,12 @@
 # Hearth v2 implementation roadmap
 
+## iPhone/iPad installed web companion (D-121)
+
+Provide explicit Home Screen/standalone metadata, canonical fern icons and a stable Today entry
+without a new client, auth mode or offline cache. Verify built resources, iPad portrait/landscape/
+split-view navigation, phone/TV regressions and access isolation. Publication, private deployment,
+actual Add to Home Screen, status-bar safe areas and retained device identity are separate gates.
+
 ## Morning Routine (D-120)
 
 Implement independent weekday checklists, adult people/step/time editor, downward time bar,

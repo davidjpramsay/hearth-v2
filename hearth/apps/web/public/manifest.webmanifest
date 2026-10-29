@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "Hearth",
+  "short_name": "Hearth",
+  "lang": "en-AU",
+  "start_url": "/today",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f6f0",
+  "theme_color": "#f8f6f0",
+  "icons": [
+    {
+      "src": "/hearth-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/hearth-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

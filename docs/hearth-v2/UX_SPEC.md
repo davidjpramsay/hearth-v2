@@ -688,9 +688,13 @@ protection, cancellation and partial-failure behavior remain unchanged.
 The iPhone Home Screen entry uses Hearth's existing green fern on an opaque warm-cream square,
 not the browser's letter-only fallback. Declare an explicit same-origin PNG Apple touch icon on
 the shared document, so adding any family or settings route uses the same artwork. Let iOS apply
-its own corner mask. An icon-only change must not switch browser/standalone mode, alter storage or
-phone identity, add background/service-worker behavior, or require removing a working controller.
-Installed-icon refresh remains an actual-iPhone check, not something browser emulation proves.
+its own corner mask. D-121 explicitly enables standalone Home Screen web-app launch on iPhone and
+iPad, with the same Hearth name and fern artwork and a fresh-launch destination of Today. Keep
+portrait, landscape and tablet multitasking available. Installation never connects or promotes a
+controller; the existing approval, identity and screen boundaries apply in every browser context.
+Do not require removing a working controller, migrate its storage, or add background/service-worker
+behavior. Installed-icon refresh and actual Home Screen launch remain device checks, not something
+browser viewport emulation proves.
 
 The same web application may present a phone-oriented shell for:
 
