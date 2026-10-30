@@ -85,6 +85,14 @@ The follow-up `pnpm -C hearth verify:code` passes formatting, lint, types, **743
 proof. `pnpm -C hearth verify:ci` passes **5/5** policy checks with complete, non-overlapping
 **1,341-case** browser coverage. Logs: `/private/tmp/hearth-release-final-code.log` and
 `/private/tmp/hearth-release-final-policy.log`.
+The hosted fast-navigation check exposed a further one-paint gap before the current route's
+keyboard handler was installed. Keyboard subscriptions now update during the same layout commit
+as route/focus state. The three fast/held Appearance journeys pass **45/45** consecutive runs
+(`--repeat-each=15`; `/private/tmp/hearth-release-keyboard-repeat.log`), and all **470 web unit
+tests**, lint and web types pass. Readiness checks now wait for actual focus instead of sampling
+before asynchronous data arrives; their assertions and a11y checks are retained. The affected
+TV/tablet Pocket money and Appearance cases pass **18/18** (`--repeat-each=3`;
+`/private/tmp/hearth-release-readiness-confirmed.log`). Failed candidates were not activated.
 
 Local verification from `/private/tmp/hearth-morning-routine`, `codex/shareable-setup`:
 

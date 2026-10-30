@@ -87,13 +87,7 @@ for (const route of householdRoutes) {
       await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
       await expect(page.locator('.tv-rail')).toBeHidden();
       await page.keyboard.press('Tab');
-      expect(
-        await page.evaluate(
-          () =>
-            document.activeElement instanceof HTMLElement &&
-            document.activeElement !== document.body,
-        ),
-      ).toBe(true);
+      await expectKeyboardFocus(page);
       await expectNoSeriousAccessibilityViolations(page);
     });
   }
@@ -112,13 +106,7 @@ for (const route of adminRoutes) {
       page,
     }) => {
       await prepareRoute(page, route.path, route.title, theme, { width: 1920, height: 1080 });
-      expect(
-        await page.evaluate(
-          () =>
-            document.activeElement instanceof HTMLElement &&
-            document.activeElement !== document.body,
-        ),
-      ).toBe(true);
+      await expectKeyboardFocus(page);
       await expectNoSeriousAccessibilityViolations(page);
     });
   }
@@ -137,13 +125,7 @@ for (const route of adminRoutes) {
         await expect(page.locator('.admin-desktop-rail')).toBeHidden();
         await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
       }
-      expect(
-        await page.evaluate(
-          () =>
-            document.activeElement instanceof HTMLElement &&
-            document.activeElement !== document.body,
-        ),
-      ).toBe(true);
+      await expectKeyboardFocus(page);
       await expectNoSeriousAccessibilityViolations(page);
     });
   }
@@ -191,6 +173,17 @@ async function prepareRoute(
         document.body.scrollWidth <= window.innerWidth + 1,
     ),
   ).toBe(true);
+}
+
+async function expectKeyboardFocus(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.activeElement instanceof HTMLElement && document.activeElement !== document.body,
+      ),
+    )
+    .toBe(true);
 }
 
 async function expectNoSeriousAccessibilityViolations(page: Page) {

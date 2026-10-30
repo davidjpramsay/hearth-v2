@@ -228,7 +228,9 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     activatedMenuLink.current = null;
   }, [location.key]);
 
-  useEffect(() => {
+  // Install the current route's keys in the same commit as its focus state.
+  // A passive effect can leave the outgoing handler active for a quick next key.
+  useLayoutEffect(() => {
     const handleBack = (fromNativeShell: boolean) => {
       pendingDirections.current = [];
       pendingMenuEntry.current = null;
