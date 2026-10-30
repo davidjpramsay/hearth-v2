@@ -101,6 +101,14 @@ Right now returns to the current page unless a link was actually activated. The 
 failed before this correction; the focus file now passes **8/8**, and all **471 web unit tests**,
 lint, web types, formatting and diff checks pass. No Home Assistant or real TV command ran in these
 isolated demo checks.
+The hosted Home confirmation check then exposed focus restoration racing the mutation's pending
+state. The active Home action now exposes its busy state and stays guarded but focusable, matching
+the existing focus engine's busy-row rule. A held-response Back/duplicate-command regression fails
+before this fix and passes after it. Both Home remote journeys pass **30/30** repeated runs, and
+the full Home suite passes **16/16**, including phone, dark/TV visual, offline, errors and a11y;
+logs `/private/tmp/hearth-release-home-busy-repeat.log` and
+`/private/tmp/hearth-release-home-all-final.log`. All **471 web unit tests**, lint and web types
+also pass. Command transport, permissions, idempotency and live HA configuration are unchanged.
 
 Local verification from `/private/tmp/hearth-morning-routine`, `codex/shareable-setup`:
 

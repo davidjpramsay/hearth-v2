@@ -129,6 +129,7 @@ export function HomeScreen({
               return (
                 <div className="home-action-wrap" key={action.id}>
                   <button
+                    aria-busy={pending || undefined}
                     aria-disabled={!action.enabled || mutation.isPending}
                     aria-label={`${action.label}. ${action.description}`}
                     className="home-action focusable"

@@ -52,6 +52,48 @@ test('remote-only Home navigation, confirmation, action and Back restoration', a
   await expect(page.locator('[data-focus-id="nav-home"]')).toBeFocused();
 });
 
+test('Back restores a running Home action without allowing a duplicate command', async ({
+  page,
+}) => {
+  let release: (() => void) | undefined;
+  let requests = 0;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/home/actions/goodnight', async (route) => {
+    requests++;
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.goto('/home');
+    const goodnight = page.locator('[data-focus-id="home-action-goodnight"]');
+    await goodnight.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('[data-focus-id="home-confirm-goodnight"]')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => requests).toBe(1);
+    await expect(goodnight).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(goodnight).toBeFocused();
+    await expect(goodnight).toHaveAttribute('aria-busy', 'true');
+    await page.keyboard.press('Enter');
+    expect(requests).toBe(1);
+    const accepted = page.waitForResponse((response) =>
+      response.url().endsWith('/home/actions/goodnight'),
+    );
+    release?.();
+    expect((await accepted).ok()).toBe(true);
+    await expect(goodnight).toHaveAttribute('aria-disabled', 'false');
+    await expect(goodnight).toBeFocused();
+    expect(requests).toBe(1);
+  } finally {
+    release?.();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
+});
+
 test('failed Home action retries in place with a family-readable result', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/home?scenario=fail-next');
