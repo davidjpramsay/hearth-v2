@@ -34,6 +34,8 @@ test('remote-only Lists check, undo, Meals navigation and Back restoration', asy
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Meals' })).toBeVisible();
+  await expect(page.locator('[data-focus-id="nav-meals"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="meal-day-2026-08-03"]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Lists' })).toBeVisible();

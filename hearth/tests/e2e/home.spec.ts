@@ -24,6 +24,8 @@ test('remote-only Home navigation, confirmation, action and Back restoration', a
   const evening = page.locator('[data-focus-id="home-action-evening-mode"]');
   const goodnight = page.locator('[data-focus-id="home-action-goodnight"]');
   const screenOff = page.locator('[data-focus-id="home-action-screen-off"]');
+  await expect(page.locator('[data-focus-id="nav-home"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(evening).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(goodnight).toBeFocused();

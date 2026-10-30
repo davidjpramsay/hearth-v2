@@ -270,7 +270,9 @@ export function useRemoteNavigation(defaultFocusId: string): void {
           // Entering the page is now an explicit action. Start at its meaningful
           // entry (the current Calendar view, for example), then use spatial arrows.
           const path =
-            active instanceof HTMLAnchorElement ? new URL(active.href).pathname : location.pathname;
+            active instanceof HTMLAnchorElement && activatedMenuLink.current === active
+              ? new URL(active.href).pathname
+              : location.pathname;
           if (
             path === location.pathname &&
             (focusById(defaultFocusId) || focusById('screen-entry'))

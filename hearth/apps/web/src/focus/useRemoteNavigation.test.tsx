@@ -125,6 +125,18 @@ describe('remote menu entry', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Two action' })).toHaveFocus());
   });
 
+  it('enters the current page when a different rail item has focus but was not selected', async () => {
+    const user = userEvent.setup();
+    render(fixture());
+    const action = screen.getByRole('link', { name: 'Open detail' });
+    await waitFor(() => expect(action).toHaveFocus());
+    await user.tab({ shift: true });
+    expect(screen.getByRole('link', { name: 'Two' })).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
+    expect(action).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Two action' })).toBeNull();
+  });
+
   it('cancels delayed page entry when the user chooses the menu again', async () => {
     const user = userEvent.setup();
     const view = render(fixture(false));

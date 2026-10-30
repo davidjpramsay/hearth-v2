@@ -93,6 +93,14 @@ tests**, lint and web types pass. Readiness checks now wait for actual focus ins
 before asynchronous data arrives; their assertions and a11y checks are retained. The affected
 TV/tablet Pocket money and Appearance cases pass **18/18** (`--repeat-each=3`;
 `/private/tmp/hearth-release-readiness-confirmed.log`). Failed candidates were not activated.
+The remaining Home, NBA and Meals remote journeys now also require explicit Right after choosing
+a main-menu destination, while retaining all action/confirmation/Back assertions. Their complete
+Home/NBA/planning suites pass **74/74** (`/private/tmp/hearth-release-remote-audit-final.log`). The
+wider NBA escape/return case caught an unselected rail item being treated as a chosen destination:
+Right now returns to the current page unless a link was actually activated. The new unit regression
+failed before this correction; the focus file now passes **8/8**, and all **471 web unit tests**,
+lint, web types, formatting and diff checks pass. No Home Assistant or real TV command ran in these
+isolated demo checks.
 
 Local verification from `/private/tmp/hearth-morning-routine`, `codex/shareable-setup`:
 

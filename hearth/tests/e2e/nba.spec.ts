@@ -83,6 +83,8 @@ test('TV remote changes NBA views and Back returns to Today', async ({ page }) =
   await page.goto('/today');
   await page.locator('[data-focus-id="nav-nba"]').focus();
   await page.keyboard.press('Enter');
+  await expect(page.locator('[data-focus-id="nav-nba"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('button', { name: 'This week', exact: true })).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');

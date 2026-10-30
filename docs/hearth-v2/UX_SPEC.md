@@ -219,7 +219,8 @@ Primary commands are Up, Down, Left, Right, Select and Back.
   menu/focus choice, direction, Tab, pointer interaction or Back cancels that pending entry;
   never replay an activation. Keep the normal visible
   focus treatment once a person deliberately enters the content. Administration's desktop rail
-  follows the same rule, including shell changes.
+  follows the same rule, including shell changes. Moving along the rail alone does not choose a
+  different page: Right returns to the current page unless a new destination was actually selected.
 - Television rail rows use a stable inset focus outline, without enlargement or an outer glow that
   the scrolling navigation clips. Apply the same bounded treatment to the rail's Appearance action.
   On short displays, scroll only the rail's navigation region to reveal the current destination
