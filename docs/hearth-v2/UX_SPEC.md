@@ -214,7 +214,10 @@ Primary commands are Up, Down, Left, Right, Select and Back.
 - Choosing a main-menu destination keeps focus on that menu item. Do not automatically highlight
   a page control, including after lazy loading, background updates or a phone-menu tap. New menu
   destinations start at the top. On television, Right explicitly enters the page at its meaningful
-  entry control; on phones, touch or Tab chooses the desired control. Keep the normal visible
+  entry control; on phones, touch or Tab chooses the desired control. An early Right waits for
+  the selected lazy page instead of entering the outgoing page or losing the press. Another
+  menu/focus choice, direction, Tab, pointer interaction or Back cancels that pending entry;
+  never replay an activation. Keep the normal visible
   focus treatment once a person deliberately enters the content. Administration's desktop rail
   follows the same rule, including shell changes.
 - Television rail rows use a stable inset focus outline, without enlargement or an outer glow that

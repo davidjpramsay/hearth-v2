@@ -69,6 +69,23 @@ The new remote-only Calendar regression failed before the fix because Calendar's
 took focus automatically. The same journey now retains Calendar in the menu, then explicitly
 enters with Right, opens an event, closes its dialog and restores that event.
 
+Release verification also caught an early Right being lost while a lazy page was loading,
+including React retaining the outgoing page. Explicit entry now waits for the chosen route and
+is cancelled by another menu/focus choice, direction, Tab, pointer interaction or Back. It never
+replays Enter. The new delayed-entry unit regression failed before the fix; the final
+`pnpm -C hearth --filter @hearth/web exec vitest run src/focus/useRemoteNavigation.test.tsx`
+passes **7/7**, including cancellation and unchanged modal/Back behaviour. A built-browser check
+holding Appearance's module request, plus both existing TV Appearance journeys and dark phone
+Connections contrast/menu order, passes **4/4**; log
+`/private/tmp/hearth-release-focus-confirmed.log`. Older Connections title/surface and Appearance
+auto-entry assertions now verify the actual shared panel, its inset focus indicator, new menu
+order and explicit Right. Hosted verification and private activation still gate publication.
+The follow-up `pnpm -C hearth verify:code` passes formatting, lint, types, **743 unit / 290 API /
+30 migration tests**, installer/deployment checks, production builds and the isolated fresh-backend
+proof. `pnpm -C hearth verify:ci` passes **5/5** policy checks with complete, non-overlapping
+**1,341-case** browser coverage. Logs: `/private/tmp/hearth-release-final-code.log` and
+`/private/tmp/hearth-release-final-policy.log`.
+
 Local verification from `/private/tmp/hearth-morning-routine`, `codex/shareable-setup`:
 
 - `pnpm -C hearth --filter @hearth/web exec vitest run src/focus/focusGraph.test.ts

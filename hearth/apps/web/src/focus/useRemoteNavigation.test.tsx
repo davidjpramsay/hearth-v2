@@ -115,6 +115,28 @@ describe('remote menu entry', () => {
     expect(screen.getByRole('button', { name: 'Two action' })).toHaveFocus();
   });
 
+  it('honours explicit Right when the chosen page finishes loading', async () => {
+    const user = userEvent.setup();
+    const view = render(fixture(false));
+    await user.click(screen.getByRole('link', { name: 'Two' }));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('link', { name: 'Two' })).toHaveFocus();
+    view.rerender(fixture(true));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Two action' })).toHaveFocus());
+  });
+
+  it('cancels delayed page entry when the user chooses the menu again', async () => {
+    const user = userEvent.setup();
+    const view = render(fixture(false));
+    const menu = screen.getByRole('link', { name: 'Two' });
+    await user.click(menu);
+    await user.keyboard('{ArrowRight}');
+    await user.click(screen.getByRole('link', { name: 'Two' }));
+    view.rerender(fixture(true));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Two action' })).toBeVisible());
+    expect(screen.getByRole('link', { name: 'Two' })).toHaveFocus();
+  });
+
   it('clears the page highlight when the current menu item is chosen again', async () => {
     const user = userEvent.setup();
     render(fixture());

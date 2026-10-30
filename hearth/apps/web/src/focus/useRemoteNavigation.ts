@@ -30,6 +30,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
   const remoteMoved = useRef(false);
   const pendingDirections = useRef<FocusDirection[]>([]);
   const activatedMenuLink = useRef<HTMLAnchorElement | null>(null);
+  const pendingMenuEntry = useRef<{ control: HTMLElement; path: string } | null>(null);
 
   useLayoutEffect(() => {
     activePath.current = location.pathname;
@@ -43,6 +44,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     };
     const menuActivated = (event: MouseEvent) => {
       activatedMenuLink.current = null;
+      pendingMenuEntry.current = null;
       const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
       if (
         !(link instanceof HTMLAnchorElement) ||
@@ -76,6 +78,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     if (routeChanged) {
       remoteMoved.current = false;
       pendingDirections.current = [];
+      if (pendingMenuEntry.current?.path !== location.pathname) pendingMenuEntry.current = null;
       const active = document.activeElement;
       if (active instanceof HTMLElement && active.dataset.focusId !== undefined) {
         focusMemory.current.remember(priorPath, active.dataset.focusId);
@@ -119,6 +122,23 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       if (main !== null) main.scrollTop = 0;
     }
     let entered = menuEntry;
+    const enterPendingMenu = () => {
+      const waiting = pendingMenuEntry.current;
+      if (waiting === null) return false;
+      if (document.activeElement !== waiting.control || !waiting.control.isConnected) {
+        pendingMenuEntry.current = null;
+        return false;
+      }
+      // React can keep the outgoing page while the selected lazy route loads.
+      // Wait for that route, rather than focusing the outgoing screen's entry.
+      if (waiting.path !== location.pathname) return true;
+      if (focusById(defaultFocusId) || focusById('screen-entry')) {
+        pendingMenuEntry.current = null;
+        remoteMoved.current = true;
+        entered = true;
+      }
+      return true;
+    };
     const applyPendingDirections = () => {
       const directions = pendingDirections.current;
       pendingDirections.current = [];
@@ -147,6 +167,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     // waits for its lazy content and restores any queued directional input.
     if (routeChanged && !menuEntry) enter();
     const animationFrame = requestAnimationFrame(() => {
+      if (enterPendingMenu()) return;
       const content = document.querySelector('#main-content');
       const activeFocusId =
         document.activeElement instanceof HTMLElement
@@ -168,6 +189,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       }
     });
     const observer = new MutationObserver(() => {
+      if (enterPendingMenu()) return;
       if (focusIsWithin(content)) {
         entered = true;
         const active = document.activeElement;
@@ -209,6 +231,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
   useEffect(() => {
     const handleBack = (fromNativeShell: boolean) => {
       pendingDirections.current = [];
+      pendingMenuEntry.current = null;
       const dismiss = document.querySelector<HTMLElement>('[data-back-dismiss="true"]');
       if (dismiss !== null && dismiss.offsetParent !== null) {
         dismiss.click();
@@ -226,6 +249,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       const active = document.activeElement;
       if (event.key === 'Tab' && active instanceof HTMLElement) {
         pendingDirections.current = [];
+        pendingMenuEntry.current = null;
         const target = modalTabTarget(active, event.shiftKey);
         if (target !== null && focusControl(target)) event.preventDefault();
         return;
@@ -234,6 +258,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
       if (direction !== undefined) {
         if (!(active instanceof HTMLElement)) return;
         if (active.matches('input, textarea, select') || active.isContentEditable) return;
+        pendingMenuEntry.current = null;
         if (
           direction === 'right' &&
           active.closest('[data-focus-navigation="rail"]') !== null &&
@@ -242,7 +267,14 @@ export function useRemoteNavigation(defaultFocusId: string): void {
           event.preventDefault();
           // Entering the page is now an explicit action. Start at its meaningful
           // entry (the current Calendar view, for example), then use spatial arrows.
-          if (focusById(defaultFocusId) || focusById('screen-entry')) remoteMoved.current = true;
+          const path =
+            active instanceof HTMLAnchorElement ? new URL(active.href).pathname : location.pathname;
+          if (
+            path === location.pathname &&
+            (focusById(defaultFocusId) || focusById('screen-entry'))
+          )
+            remoteMoved.current = true;
+          else pendingMenuEntry.current = { control: active, path };
           return;
         }
         if (
@@ -284,6 +316,7 @@ export function useRemoteNavigation(defaultFocusId: string): void {
     };
     const pointerInteraction = () => {
       pendingDirections.current = [];
+      pendingMenuEntry.current = null;
     };
     window.addEventListener('keydown', handler);
     window.addEventListener('message', nativeMessageHandler);

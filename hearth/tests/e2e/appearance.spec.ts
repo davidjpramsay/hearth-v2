@@ -274,25 +274,31 @@ test('dark phone Connections stays readable while a connection is focused', asyn
 
   const calendar = page.locator('[data-focus-id="connection-calendar"]');
   await expect(calendar).toBeFocused();
-  await expect(calendar).toHaveCSS('background-color', 'rgb(43, 52, 48)');
   const focusedStyles = await calendar.evaluate((element) => {
     const card = getComputedStyle(element);
+    const panel = getComputedStyle(element.closest('.settings-menu')!);
     const title = getComputedStyle(element.querySelector('strong')!);
     const badge = getComputedStyle(element.querySelector('.connection-badge')!);
     return {
-      background: card.backgroundColor,
+      rowBackground: card.backgroundColor,
+      panelBackground: panel.backgroundColor,
+      focusIndicator: card.boxShadow,
       title: title.color,
       badge: badge.color,
     };
   });
-  expect(focusedStyles).toEqual({
-    background: 'rgb(43, 52, 48)',
+  expect(focusedStyles).toMatchObject({
+    rowBackground: 'rgba(0, 0, 0, 0)',
+    panelBackground: 'rgb(32, 39, 36)',
     title: 'rgb(241, 238, 231)',
     badge: 'rgb(241, 238, 231)',
   });
+  expect(focusedStyles.focusIndicator).toContain('inset');
 
-  await page.keyboard.press('ArrowDown');
-  await expect(page.locator('[data-focus-id="connection-home-assistant"]')).toBeFocused();
+  for (const name of [/^Outdoor weather/, /^Family photos/, /^Home Assistant/]) {
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('link', { name })).toBeFocused();
+  }
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(
@@ -322,6 +328,8 @@ test('remote navigation reaches Appearance, changes dimming and restores focus o
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/appearance$/);
+  await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="appearance-automatic"]')).toBeFocused();
 
   await page.keyboard.press('ArrowDown');
@@ -349,6 +357,8 @@ test('television rail opens the per-display Appearance control', async ({ page }
   await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/appearance$/);
+  await expect(page.locator('[data-focus-id="nav-appearance"]')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
   await expect(page.locator('[data-focus-id="appearance-automatic"]')).toBeFocused();
 });
 

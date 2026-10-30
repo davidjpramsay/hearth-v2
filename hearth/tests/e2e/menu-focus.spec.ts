@@ -151,6 +151,40 @@ test('a lazy menu destination keeps navigation focus while loading and after con
   }
 });
 
+test('an early Right enters a lazy Appearance page without needing a second press', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  let release: (() => void) | undefined;
+  let requested = false;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/assets/AppearanceSettingsScreen-*.js', async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.goto('/today');
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+    const menu = page.locator('[data-focus-id="nav-appearance"]');
+    await menu.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/appearance$/);
+    await expect.poll(() => requested).toBe(true);
+    await expect(menu).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(menu).toBeFocused();
+    release?.();
+    await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible();
+    await expect(page.locator('[data-focus-id="appearance-automatic"]')).toBeFocused();
+  } finally {
+    release?.();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
+});
+
 test.describe('phone menu taps', () => {
   test.use({ hasTouch: true, isMobile: true });
   for (const viewport of [
