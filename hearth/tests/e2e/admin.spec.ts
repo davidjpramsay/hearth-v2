@@ -277,7 +277,7 @@ test('Connections contains only services used directly by Hearth', async ({ page
   await page.getByRole('link', { name: /Connections/ }).click();
 
   await expect(page).toHaveURL(/\/admin\/connections$/);
-  await expect(page.getByRole('heading', { name: 'Connections' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connections', exact: true })).toBeVisible();
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
   await expect(page.locator('[data-focus-id="connection-calendar"]')).toBeVisible();
   await expect(page.getByText('Home Assistant', { exact: true })).toBeVisible();
